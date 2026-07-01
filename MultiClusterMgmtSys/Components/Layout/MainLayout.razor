@@ -7,12 +7,22 @@
 
 <MudLayout>
     <MudAppBar>
-        My Application
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
+        <MudIcon Icon="@Icons.Material.Filled.TravelExplore" />
+        <MudText Typo="Typo.h6">多集群管理系统</MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.WbSunny" Color="Color.Inherit" />
     </MudAppBar>
-    <MudDrawer Open="true">
-        <MudNavMenu>
-            <MudNavLink Href="/clusters" Icon="@Icons.Material.Filled.Dns" Match="NavLinkMatch.Prefix">
+    <MudDrawer @bind-Open="@_drawerOpen" 
+               ClipMode="@DrawerClipMode.Always" 
+               Variant="@DrawerVariant.Mini"
+               Elevation="1">
+        <MudNavMenu Rounded="true" Bordered="true">
+            <MudNavLink Href="/clusters" Icon="@Icons.Material.Filled.Hub" Match="NavLinkMatch.Prefix">
                 集群管理
+            </MudNavLink>
+            <MudNavLink Href="/nodes" Icon="@Icons.Material.Filled.DeviceHub" Match="NavLinkMatch.Prefix">
+                节点管理
             </MudNavLink>
 
           
@@ -20,6 +30,17 @@
     </MudDrawer>
 
     <MudMainContent>
-        @Body
+        <MudContainer MaxWidth="MaxWidth.False">
+            @Body
+        </MudContainer>
     </MudMainContent>
 </MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+
+    private void ToggleDrawer()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+}
