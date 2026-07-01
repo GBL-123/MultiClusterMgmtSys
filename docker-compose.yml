@@ -1,0 +1,6 @@
+services:
+  multiclustermgmtsys:
+    image: ${DOCKER_REGISTRY-}multiclustermgmtsys
+    build:
+      context: .
+      dockerfile: MultiClusterMgmtSys/Dockerfile
