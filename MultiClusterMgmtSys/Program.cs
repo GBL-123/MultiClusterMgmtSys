@@ -29,7 +29,6 @@ builder.Services.AddScoped<ThemeService>();
 builder.Services.AddScoped<AccountRepository>();
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<PasswordHasher<string>>();
-builder.Services.AddHttpClient();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -75,25 +74,28 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-app.MapPost("/api/login", async (HttpContext ctx, AccountService accountService, LoginRequest input) =>
+app.MapPost("/api/login", async (HttpContext ctx, [Microsoft.AspNetCore.Mvc.FromServices] AccountService accountService) =>
 {
-    if (input is null)
-        return Results.BadRequest();
+    var form = ctx.Request.Form;
+    var username = form["username"].ToString();
+    var password = form["password"].ToString();
+    var rememberMe = form["rememberMe"] == "true" || form["rememberMe"] == "True";
+    var returnUrl = string.IsNullOrEmpty(form["returnUrl"]) ? "/clusters" : form["returnUrl"].ToString();
 
-    var account = await accountService.ValidateCredentialsAsync(input.Username, input.Password);
+    var account = await accountService.ValidateCredentialsAsync(username, password);
     if (account is null)
-        return Results.Unauthorized();
+        return Results.Redirect($"/login?error=1&returnUrl={Uri.EscapeDataString(returnUrl)}");
 
     var principal = accountService.CreateClaimsPrincipal(account);
-    var props = new AuthenticationProperties { IsPersistent = input.RememberMe };
+    var props = new AuthenticationProperties { IsPersistent = rememberMe };
     await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, props);
-    return Results.Ok();
+    return Results.LocalRedirect(returnUrl);
 }).DisableAntiforgery();
 
-app.MapPost("/api/logout", async (HttpContext ctx) =>
+app.MapGet("/api/logout", async (HttpContext ctx) =>
 {
     await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-    return Results.Ok();
-}).DisableAntiforgery();
+    return Results.LocalRedirect("/login");
+});
 
 app.Run();

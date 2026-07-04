@@ -1,6 +1,5 @@
 ﻿@inherits LayoutComponentBase
 @inject ThemeService ThemeService
-@inject IHttpClientFactory HttpClientFactory
 @inject NavigationManager NavigationManager
 
 <MudThemeProvider Theme="@ThemeService.Theme"
@@ -65,16 +64,9 @@
         await ThemeService.ToggleDarkModeAsync();
     }
 
-    private async Task Logout()
+    private void Logout()
     {
-        try
-        {
-            var client = HttpClientFactory.CreateClient();
-            client.BaseAddress = new Uri(NavigationManager.BaseUri);
-            await client.PostAsync("/api/logout", null);
-        }
-        catch { }
-        NavigationManager.NavigateTo("/login", forceLoad: true);
+        NavigationManager.NavigateTo("/api/logout", forceLoad: true);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
