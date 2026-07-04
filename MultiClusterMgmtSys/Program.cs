@@ -1,14 +1,12 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
-using System.Security.Claims;
 using MultiClusterMgmtSys.Components;
 using MultiClusterMgmtSys.Daos;
-using MultiClusterMgmtSys.Models;
 using MultiClusterMgmtSys.Services;
+using MultiClusterMgmtSys.Components.Theme;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,7 +23,7 @@ builder.Services.AddScoped<ClusterRepository>();
 builder.Services.AddScoped<GroupRepository>();
 builder.Services.AddScoped<ClusterService>();
 builder.Services.AddScoped<GroupService>();
-builder.Services.AddScoped<ThemeService>();
+builder.Services.AddScoped<ThemeManager>();
 builder.Services.AddScoped<AccountRepository>();
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<PasswordHasher<string>>();

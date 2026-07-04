@@ -1,7 +1,5 @@
 @page "/login"
 @layout EmptyLayout
-@inject NavigationManager NavigationManager
-@inject AuthenticationStateProvider AuthStateProvider
 
 <div class="d-flex align-center justify-center" style="min-height:100vh; background:var(--mud-palette-background);">
     <MudCard Elevation="8" Class="pa-8" Style="width:400px; max-width:90vw;">
@@ -64,6 +62,9 @@
 </div>
 
 @code {
+    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+    [Inject] private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
+
     private string username = "";
     private string password = "";
     private bool rememberMe;

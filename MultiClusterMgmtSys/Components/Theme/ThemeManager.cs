@@ -1,9 +1,9 @@
 using Microsoft.JSInterop;
 using MudBlazor;
 
-namespace MultiClusterMgmtSys.Services;
+namespace MultiClusterMgmtSys.Components.Theme;
 
-public class ThemeService(IJSRuntime js)
+public class ThemeManager(IJSRuntime js)
 {
     private readonly IJSRuntime _js = js;
     private const string StorageKey = "mcm-theme-dark-mode";

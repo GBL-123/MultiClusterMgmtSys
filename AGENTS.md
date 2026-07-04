@@ -24,6 +24,11 @@
 - `clusters.db`、`clusters.db-shm`、`clusters.db-wal` 是运行时数据，已被 `.gitignore`（`*.db`）忽略，**勿提交**。连接串 `Data Source=clusters.db` 为相对路径，库文件位于运行时工作目录。
 - 生产管线启用了 HTTPS 重定向（`UseHttpsRedirection`）；开发环境依赖 user secrets 提供证书（`UserSecretsId` 已在 csproj 中配置）。
 
+## 编码规范
+
+- **Razor 组件（`.razor`）服务注入统一使用 `[Inject]` 特性写在 `@code` 块内**，不要在文件开头使用 `@inject` 指令。即：注入属性以 `[Inject] private <Type> <Name> { get; set; } = default!;` 形式声明在 `@code` 顶部，与其它组件状态字段集中管理。文件开头仅保留 `@page`、`@layout`、`@using` 等非注入指令。
+- 例外：纯指令性组件（无 `@code` 块、仅做静态重定向等极简场景）也按此规范，把 `[Inject]` 放入新建的 `@code` 块中。
+
 ## 架构 / 接线
 
 - 入口 `Program.cs`：注册 Razor Components（交互式 Server）、`MudServices`、`AppDbContext`（`AddDbContext`）、`ClusterService`（`AddScoped`）。启动时在 scope 内调用 `EnsureCreated()` 建库。

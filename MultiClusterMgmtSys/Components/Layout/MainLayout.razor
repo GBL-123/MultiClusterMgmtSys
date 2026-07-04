@@ -1,11 +1,9 @@
 ﻿@inherits LayoutComponentBase
-@inject ThemeService ThemeService
-@inject NavigationManager NavigationManager
 
-<MudThemeProvider Theme="@ThemeService.Theme"
-                  IsDarkMode="@ThemeService.IsDarkMode"
-                  IsDarkModeChanged="@(v => ThemeService.IsDarkMode = v)"
-                  ObserveSystemDarkModeChange="@ThemeService.ObserveSystemDarkModeChange" />
+<MudThemeProvider Theme="@ThemeManager.Theme"
+                  IsDarkMode="@ThemeManager.IsDarkMode"
+                  IsDarkModeChanged="@(v => ThemeManager.IsDarkMode = v)"
+                  ObserveSystemDarkModeChange="@ThemeManager.ObserveSystemDarkModeChange" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -25,7 +23,7 @@
                                OnClick="@Logout" />
             </Authorized>
         </AuthorizeView>
-        <MudIconButton Icon="@(ThemeService.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+        <MudIconButton Icon="@(ThemeManager.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
                        Color="Color.Inherit"
                        Title="切换深色模式"
                        OnClick="@ToggleTheme" />
@@ -52,6 +50,9 @@
 </MudLayout>
 
 @code {
+    [Inject] private ThemeManager ThemeManager { get; set; } = default!;
+    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+
     private bool _drawerOpen = true;
 
     private void ToggleDrawer()
@@ -61,7 +62,7 @@
 
     private async Task ToggleTheme()
     {
-        await ThemeService.ToggleDarkModeAsync();
+        await ThemeManager.ToggleDarkModeAsync();
     }
 
     private void Logout()
@@ -73,7 +74,7 @@
     {
         if (firstRender)
         {
-            await ThemeService.InitializeAsync();
+            await ThemeManager.InitializeAsync();
             StateHasChanged();
         }
     }
