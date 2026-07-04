@@ -1,0 +1,77 @@
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="form">
+            <MudTextField @bind-Value="Name"
+                          Label="分组名称"
+                          Required="true"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Class="mb-3" />
+
+            <MudTextField @bind-Value="Description"
+                          Label="描述（可选）"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()"
+                   Variant="Variant.Text"
+                   Disabled="saving">
+            取消
+        </MudButton>
+        <MudButton OnClick="Submit"
+                   Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   Disabled="saving"
+                   StartIcon="@((saving ? "" : Icons.Material.Filled.CreateNewFolder))">
+            @if (saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            创建
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
+    [Inject] private GroupService GroupService { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+    private MudForm form = default!;
+
+    private string Name = "";
+    private string Description = "";
+    private bool saving;
+
+    private async Task Submit()
+    {
+        await form.ValidateAsync();
+        if (!form.IsValid)
+        {
+            return;
+        }
+
+        saving = true;
+        try
+        {
+            var vm = new GroupCreateViewModel
+            {
+                Name = Name,
+                Description = string.IsNullOrEmpty(Description) ? null : Description
+            };
+            await GroupService.AddGroupAsync(vm);
+            Snackbar.Add("分组创建成功", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"创建失败: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

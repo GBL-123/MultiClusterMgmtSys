@@ -1,0 +1,132 @@
+@page "/login"
+@layout EmptyLayout
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ISnackbar Snackbar
+
+<div class="d-flex align-center justify-center" style="min-height:100vh; background:var(--mud-palette-background);">
+    <MudCard Elevation="8" Class="pa-8" Style="width:400px; max-width:90vw;">
+        <div class="d-flex flex-column align-center mb-6">
+            <MudIcon Icon="@Icons.Material.Filled.TravelExplore" Size="Size.Large" Color="Color.Primary" />
+            <MudText Typo="Typo.h5" Align="Align.Center" Class="mt-2">多集群管理系统</MudText>
+        </div>
+
+        <MudForm @ref="form">
+            <MudTextField T="string"
+                          @bind-Value="username"
+                          Label="用户名"
+                          Required="true"
+                          RequiredError="请输入用户名"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Class="mb-3" />
+
+            <MudTextField T="string"
+                          @bind-Value="password"
+                          Label="密码"
+                          Required="true"
+                          RequiredError="请输入密码"
+                          InputType="InputType.Password"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Class="mb-3" />
+
+            <MudCheckBox T="bool"
+                         @bind-Checked="rememberMe"
+                         Label="记住我"
+                         Class="mb-4" />
+        </MudForm>
+
+        @if (showError)
+        {
+            <MudText Color="Color.Error" Align="Align.Center" Class="mb-3">用户名或密码错误</MudText>
+        }
+
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   FullWidth="true"
+                   Size="Size.Large"
+                   OnClick="Submit"
+                   Disabled="submitting">
+            @if (submitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            登 录
+        </MudButton>
+    </MudCard>
+</div>
+
+@code {
+    private MudForm form = default!;
+    private string username = "";
+    private string password = "";
+    private bool rememberMe;
+    private bool submitting;
+    private bool showError;
+    private string returnUrl = "/clusters";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Parse returnUrl from query string
+        try
+        {
+            var uri = new Uri(NavigationManager.Uri);
+            if (!string.IsNullOrEmpty(uri.Query))
+            {
+                var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+                var rl = query["returnUrl"];
+                if (!string.IsNullOrEmpty(rl))
+                    returnUrl = rl;
+            }
+        }
+        catch { }
+
+        // If already authenticated, redirect away
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            if (authState.User.Identity?.IsAuthenticated == true)
+            {
+                NavigationManager.NavigateTo(returnUrl, forceLoad: true);
+            }
+        }
+        catch { }
+    }
+
+    private async Task Submit()
+    {
+        await form.ValidateAsync();
+        if (!form.IsValid)
+            return;
+
+        showError = false;
+        submitting = true;
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            client.BaseAddress = new Uri(NavigationManager.BaseUri);
+            var response = await client.PostAsJsonAsync("/api/login",
+                new LoginRequest(username, password, rememberMe, returnUrl));
+
+            if (response.IsSuccessStatusCode)
+            {
+                NavigationManager.NavigateTo(returnUrl, forceLoad: true);
+            }
+            else
+            {
+                showError = true;
+                password = "";
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"登录请求失败: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+}

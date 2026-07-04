@@ -1,20 +1,38 @@
 ﻿@inherits LayoutComponentBase
+@inject ThemeService ThemeService
+@inject IHttpClientFactory HttpClientFactory
+@inject NavigationManager NavigationManager
 
-<MudThemeProvider />
+<MudThemeProvider Theme="@ThemeService.Theme"
+                  IsDarkMode="@ThemeService.IsDarkMode"
+                  IsDarkModeChanged="@(v => ThemeService.IsDarkMode = v)"
+                  ObserveSystemDarkModeChange="@ThemeService.ObserveSystemDarkModeChange" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
 <MudLayout>
-    <MudAppBar>
+    <MudAppBar Elevation="1">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
         <MudIcon Icon="@Icons.Material.Filled.TravelExplore" />
         <MudText Typo="Typo.h6">多集群管理系统</MudText>
         <MudSpacer />
-        <MudIconButton Icon="@Icons.Material.Filled.WbSunny" Color="Color.Inherit" />
+        <AuthorizeView>
+            <Authorized>
+                <MudText Typo="Typo.body2" Class="mr-2 mud-text-secondary">@context.User.Identity?.Name</MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.Logout"
+                               Color="Color.Inherit"
+                               Title="登出"
+                               OnClick="@Logout" />
+            </Authorized>
+        </AuthorizeView>
+        <MudIconButton Icon="@(ThemeService.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                       Color="Color.Inherit"
+                       Title="切换深色模式"
+                       OnClick="@ToggleTheme" />
     </MudAppBar>
-    <MudDrawer @bind-Open="@_drawerOpen" 
-               ClipMode="@DrawerClipMode.Always" 
+    <MudDrawer @bind-Open="@_drawerOpen"
+               ClipMode="@DrawerClipMode.Always"
                Variant="@DrawerVariant.Mini"
                Elevation="1">
         <MudNavMenu Rounded="true" Bordered="true">
@@ -24,8 +42,6 @@
             <MudNavLink Href="/nodes" Icon="@Icons.Material.Filled.DeviceHub" Match="NavLinkMatch.Prefix">
                 节点管理
             </MudNavLink>
-
-          
         </MudNavMenu>
     </MudDrawer>
 
@@ -42,5 +58,31 @@
     private void ToggleDrawer()
     {
         _drawerOpen = !_drawerOpen;
+    }
+
+    private async Task ToggleTheme()
+    {
+        await ThemeService.ToggleDarkModeAsync();
+    }
+
+    private async Task Logout()
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            client.BaseAddress = new Uri(NavigationManager.BaseUri);
+            await client.PostAsync("/api/logout", null);
+        }
+        catch { }
+        NavigationManager.NavigateTo("/login", forceLoad: true);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await ThemeService.InitializeAsync();
+            StateHasChanged();
+        }
     }
 }
