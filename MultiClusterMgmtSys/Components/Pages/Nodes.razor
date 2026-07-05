@@ -271,6 +271,7 @@
     [Parameter] public int? ClusterId { get; set; }
 
     [Inject] private ClusterService ClusterService { get; set; } = default!;
+    [Inject] private ClusterNodeService ClusterNodeService { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
 
@@ -375,7 +376,7 @@
             cluster = await ClusterService.GetClusterDetailAsync(id);
             if (cluster is not null && cluster.IsReachable)
             {
-                nodes = await ClusterService.GetClusterNodesAsync(id);
+                nodes = await ClusterNodeService.GetClusterNodesAsync(id);
             }
             else
             {

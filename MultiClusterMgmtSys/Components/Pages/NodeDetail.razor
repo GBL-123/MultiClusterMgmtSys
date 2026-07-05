@@ -470,6 +470,7 @@ else
     [Parameter] public string NodeName { get; set; } = "";
 
     [Inject] private ClusterService ClusterService { get; set; } = default!;
+    [Inject] private ClusterNodeService ClusterNodeService { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
 
@@ -498,7 +499,7 @@ else
         loading = true;
         try
         {
-            node = await ClusterService.GetNodeDetailAsync(ClusterId, NodeName);
+            node = await ClusterNodeService.GetNodeDetailAsync(ClusterId, NodeName);
         }
         catch (Exception ex)
         {
