@@ -1,0 +1,386 @@
+@attribute [Authorize]
+@page "/nodes"
+@page "/clusters/{ClusterId:int}/nodes"
+
+<PageTitle>节点管理</PageTitle>
+
+<MudGrid Spacing="3">
+    <!-- ============================================ -->
+    <!-- Left pane: Cluster selection                  -->
+    <!-- ============================================ -->
+    <MudItem xs="12" md="3" lg="2">
+        <MudCard Elevation="1">
+            <MudCardContent>
+                <MudText Typo="Typo.h6" Class="mb-2">集群选择</MudText>
+
+                <MudTextField T="string"
+                              @bind-Value="clusterSearch"
+                              Label="搜索集群"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Class="mb-2" />
+
+                @if (loadingClusters)
+                {
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                }
+                else if (!clusters.Any())
+                {
+                    <MudText Class="mud-text-secondary" Align="Align.Center">暂无集群</MudText>
+                }
+                else if (!filteredClusters.Any())
+                {
+                    <MudText Class="mud-text-secondary" Align="Align.Center">没有匹配的集群</MudText>
+                }
+                else
+                {
+                    <MudList T="ClusterViewModel" Clickable="true" Dense="true">
+                        @foreach (var c in filteredClusters)
+                        {
+                            <MudListItem T="ClusterViewModel"
+                                         OnClick="@(() => SelectCluster(c.Id))"
+                                         Active="@(c.Id == ClusterId)">
+                                <div class="d-flex align-center justify-space-between" style="width: 100%;">
+                                    <MudText Typo="Typo.body2"
+                                             Style="@(c.Status == ClusterStatus.Offline ? "opacity:0.6;" : "")">
+                                        @c.Name
+                                    </MudText>
+                                    <MudChip T="string"
+                                             Size="Size.Small"
+                                             Color="GetClusterStatusColor(c.Status)"
+                                             Variant="Variant.Filled">
+                                        @c.StatusText
+                                    </MudChip>
+                                </div>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <!-- ============================================ -->
+    <!-- Right pane: Content area                      -->
+    <!-- ============================================ -->
+    <MudItem xs="12" md="9" lg="10">
+        @if (!ClusterId.HasValue)
+        {
+            <!-- Empty state: no cluster selected -->
+            <div class="d-flex flex-column align-center justify-center" style="min-height:400px;">
+                <MudIcon Icon="@Icons.Material.Filled.DeviceHub" Size="Size.Large" Class="mud-text-secondary mb-4" />
+                <MudText Typo="Typo.h6" Class="mud-text-secondary">请从左侧选择一个集群</MudText>
+            </div>
+        }
+        else
+        {
+            <!-- 1. Title row -->
+            <div class="d-flex align-center mb-4">
+                <MudText Typo="Typo.h4" Class="flex-grow-1">节点管理</MudText>
+                <MudButton Variant="Variant.Text"
+                           StartIcon="@Icons.Material.Filled.ArrowBack"
+                           OnClick="@(() => NavigationManager.NavigateTo($"/clusters/{ClusterId}"))">
+                    返回集群详情
+                </MudButton>
+            </div>
+
+            <!-- 2. Cluster context summary card -->
+            @if (cluster is not null)
+            {
+                <MudCard Elevation="1" Class="mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">集群上下文</MudText>
+                        </CardHeaderContent>
+                        <CardHeaderActions>
+                            <MudChip T="string"
+                                     Size="Size.Small"
+                                     Color="GetClusterStatusColor(cluster.Status)"
+                                     Variant="Variant.Filled">
+                                @cluster.StatusText
+                            </MudChip>
+                        </CardHeaderActions>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">名称</MudText>
+                                <MudText Typo="Typo.body1">@cluster.Name</MudText>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">状态</MudText>
+                                <MudChip T="string"
+                                         Size="Size.Small"
+                                         Color="GetClusterStatusColor(cluster.Status)"
+                                         Variant="Variant.Filled">
+                                    @cluster.StatusText
+                                </MudChip>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">节点数</MudText>
+                                <MudText Typo="Typo.body1">@cluster.NodeCount</MudText>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="3">
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">API Server</MudText>
+                                <MudText Typo="Typo.body1"
+                                         Style="max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+                                         Title="@cluster.ApiServer">
+                                    @(cluster.ApiServer ?? "—")
+                                </MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+            }
+
+            <!-- 3. Toolbar -->
+            <div class="d-flex flex-wrap align-center gap-3 mb-4">
+                <MudTextField T="string"
+                              @bind-Value="searchName"
+                              Label="搜索节点名称"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Style="min-width:200px; flex:1;" />
+
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="RefreshNodes"
+                           Disabled="loading">
+                    刷新
+                </MudButton>
+            </div>
+
+            <!-- 4. Content area -->
+            @if (loading)
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+            }
+            else if (cluster is null)
+            {
+                <!-- Cluster not found -->
+                <MudCard Class="pa-8" Elevation="2">
+                    <MudCardContent>
+                        <MudText Align="Align.Center" Class="mud-text-secondary">未找到该集群</MudText>
+                        <div class="d-flex justify-center mt-4">
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.ArrowBack"
+                                       OnClick="@(() => NavigationManager.NavigateTo("/nodes"))">
+                                返回节点管理
+                            </MudButton>
+                        </div>
+                    </MudCardContent>
+                </MudCard>
+            }
+            else if (!cluster.IsReachable)
+            {
+                <MudText Class="mud-text-secondary" Align="Align.Center">集群不可达，无法获取节点列表</MudText>
+            }
+            else if (!nodes.Any())
+            {
+                <div class="d-flex flex-column align-center justify-center" style="min-height:200px;">
+                    <MudText Class="mud-text-secondary" Align="Align.Center">暂无节点数据</MudText>
+                </div>
+            }
+            else if (!filteredNodes.Any())
+            {
+                <div class="d-flex flex-column align-center justify-center" style="min-height:200px;">
+                    <MudText Class="mud-text-secondary" Align="Align.Center">没有符合当前筛选条件的节点</MudText>
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Secondary"
+                               OnClick="@(() => searchName = "")"
+                               Class="mt-2">
+                        重置筛选
+                    </MudButton>
+                </div>
+            }
+            else
+            {
+                <MudTable T="ClusterNodeViewModel"
+                          Items="@filteredNodes"
+                          Dense="true"
+                          Hover="true"
+                          Elevation="0">
+                    <HeaderContent>
+                        <MudTh>名称</MudTh>
+                        <MudTh>状态</MudTh>
+                        <MudTh>角色</MudTh>
+                        <MudTh>Kubelet 版本</MudTh>
+                        <MudTh>操作系统</MudTh>
+                        <MudTh>内网 IP</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="名称">
+                            <MudText Color="Color.Primary"
+                                     Style="cursor:pointer; text-decoration: underline;"
+                                     @onclick="() => NavigateToNode(context.Name)">
+                                @context.Name
+                            </MudText>
+                        </MudTd>
+                        <MudTd DataLabel="状态">
+                            <MudChip T="string"
+                                     Size="Size.Small"
+                                     Color="GetNodeStatusColor(context.Status)"
+                                     Variant="Variant.Filled">
+                                @context.Status
+                            </MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="角色">@(string.IsNullOrEmpty(context.Roles) ? "—" : context.Roles)</MudTd>
+                        <MudTd DataLabel="Kubelet 版本">@(string.IsNullOrEmpty(context.KubeletVersion) ? "—" : context.KubeletVersion)</MudTd>
+                        <MudTd DataLabel="操作系统">@(string.IsNullOrEmpty(context.OsImage) ? "—" : context.OsImage)</MudTd>
+                        <MudTd DataLabel="内网 IP">@(string.IsNullOrEmpty(context.InternalIP) ? "—" : context.InternalIP)</MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        }
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public int? ClusterId { get; set; }
+
+    [Inject] private ClusterService ClusterService { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+
+    // State
+    private List<ClusterViewModel> clusters = new();
+    private List<ClusterNodeViewModel> nodes = new();
+    private ClusterDetailViewModel? cluster;
+    private bool loadingClusters;
+    private bool loading;
+    private string searchName = "";
+    private string clusterSearch = "";
+    private int? previousClusterId;
+
+    // Computed properties
+
+    private List<ClusterViewModel> filteredClusters
+    {
+        get
+        {
+            var q = clusters.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(clusterSearch))
+                q = q.Where(c => c.Name.Contains(clusterSearch, StringComparison.OrdinalIgnoreCase));
+            return q.ToList();
+        }
+    }
+
+    private List<ClusterNodeViewModel> filteredNodes
+    {
+        get
+        {
+            var q = nodes.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(searchName))
+                q = q.Where(n => n.Name.Contains(searchName, StringComparison.OrdinalIgnoreCase));
+            return q.ToList();
+        }
+    }
+
+    // Lifecycle
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClustersAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ClusterId != previousClusterId)
+        {
+            if (ClusterId.HasValue)
+            {
+                await LoadNodesAsync(ClusterId.Value);
+            }
+            else
+            {
+                nodes = new();
+                cluster = null;
+            }
+            previousClusterId = ClusterId;
+        }
+    }
+
+    // Data loading
+
+    private async Task LoadClustersAsync()
+    {
+        loadingClusters = true;
+        try
+        {
+            clusters = await ClusterService.GetClustersAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"加载集群列表失败: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loadingClusters = false;
+        }
+    }
+
+    private async Task LoadNodesAsync(int id)
+    {
+        loading = true;
+        try
+        {
+            cluster = await ClusterService.GetClusterDetailAsync(id);
+            if (cluster is not null && cluster.IsReachable)
+            {
+                nodes = await ClusterService.GetClusterNodesAsync(id);
+            }
+            else
+            {
+                nodes = new();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"加载节点列表失败: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    // Actions
+
+    private void SelectCluster(int id)
+    {
+        NavigationManager.NavigateTo($"/clusters/{id}/nodes");
+    }
+
+    private void NavigateToNode(string nodeName)
+    {
+        NavigationManager.NavigateTo($"/clusters/{ClusterId}/nodes/{nodeName}");
+    }
+
+    private async Task RefreshNodes()
+    {
+        if (ClusterId.HasValue)
+            await LoadNodesAsync(ClusterId.Value);
+    }
+
+    // Helpers
+
+    private static Color GetNodeStatusColor(string status) => status switch
+    {
+        "Ready" => Color.Success,
+        "NotReady" => Color.Error,
+        _ => Color.Default
+    };
+
+    private static Color GetClusterStatusColor(ClusterStatus status) => status switch
+    {
+        ClusterStatus.Online => Color.Success,
+        ClusterStatus.Offline => Color.Error,
+        _ => Color.Default
+    };
+}

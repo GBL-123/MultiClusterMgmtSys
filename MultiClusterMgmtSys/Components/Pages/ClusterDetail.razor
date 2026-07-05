@@ -162,6 +162,15 @@ else
                     <CardHeaderContent>
                         <MudText Typo="Typo.h6">节点列表</MudText>
                     </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   EndIcon="@Icons.Material.Filled.ArrowForward"
+                                   OnClick="@(() => NavigationManager.NavigateTo($"/clusters/{Id}/nodes"))">
+                            查看全部
+                        </MudButton>
+                    </CardHeaderActions>
                 </MudCardHeader>
                 <MudCardContent>
                     @if (loading)
@@ -188,11 +197,17 @@ else
                                 <MudTh>内网 IP</MudTh>
                             </HeaderContent>
                             <RowTemplate>
-                                <MudTd DataLabel="名称">@context.Name</MudTd>
+                                <MudTd DataLabel="名称">
+                                    <MudText Color="Color.Primary"
+                                             Style="cursor:pointer; text-decoration: underline;"
+                                             @onclick="() => NavigateToNode(context.Name)">
+                                        @context.Name
+                                    </MudText>
+                                </MudTd>
                                 <MudTd DataLabel="状态">
                                     <MudChip T="string"
                                              Size="Size.Small"
-                                             Color="@(context.Status == "Ready" ? Color.Success : Color.Error)">
+                                             Color="GetNodeStatusColor(context.Status)">
                                         @context.Status
                                     </MudChip>
                                 </MudTd>
@@ -378,6 +393,18 @@ else
     {
         ClusterStatus.Online => Color.Success,
         ClusterStatus.Offline => Color.Error,
+        _ => Color.Default
+    };
+
+    private void NavigateToNode(string nodeName)
+    {
+        NavigationManager.NavigateTo($"/clusters/{Id}/nodes/{nodeName}");
+    }
+
+    private static Color GetNodeStatusColor(string status) => status switch
+    {
+        "Ready" => Color.Success,
+        "NotReady" => Color.Error,
         _ => Color.Default
     };
 }
