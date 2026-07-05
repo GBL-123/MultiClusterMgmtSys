@@ -1,5 +1,5 @@
 @attribute [Authorize]
-@page "/clusters/{ClusterId:int}/nodes/{NodeName}"
+@page "/nodes/{ClusterId:int}/{NodeName}"
 
 <PageTitle>节点详情: @NodeName</PageTitle>
 
@@ -7,7 +7,7 @@
     <MudText Typo="Typo.h4" Class="flex-grow-1">节点详情: @NodeName</MudText>
     <MudButton Variant="Variant.Text"
                StartIcon="@Icons.Material.Filled.ArrowBack"
-               OnClick="@(() => NavigationManager.NavigateTo($"/clusters/{ClusterId}/nodes"))">
+               OnClick="@(() => NavigationManager.NavigateTo($"/nodes/{ClusterId}"))">
         返回节点列表
     </MudButton>
 </div>
@@ -26,7 +26,7 @@ else if (node is null)
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Primary"
                            StartIcon="@Icons.Material.Filled.ArrowBack"
-                           OnClick="@(() => NavigationManager.NavigateTo($"/clusters/{ClusterId}/nodes"))">
+                           OnClick="@(() => NavigationManager.NavigateTo($"/nodes/{ClusterId}"))">
                     返回节点列表
                 </MudButton>
             </div>
@@ -456,7 +456,7 @@ else
                     </MudButton>
                     <MudButton Variant="Variant.Text"
                                StartIcon="@Icons.Material.Filled.ArrowBack"
-                               OnClick="@(() => NavigationManager.NavigateTo($"/clusters/{ClusterId}/nodes"))">
+                               OnClick="@(() => NavigationManager.NavigateTo($"/nodes/{ClusterId}"))">
                         返回节点列表
                     </MudButton>
                 </MudCardContent>

@@ -1,16 +1,39 @@
 @attribute [Authorize]
 @page "/nodes"
-@page "/clusters/{ClusterId:int}/nodes"
+@page "/nodes/{ClusterId:int}"
 
 <PageTitle>节点管理</PageTitle>
+
+<style>
+    /* 左侧集群选择栏：撑满内容区高度，上下留间隙 */
+    .nodes-left-pane {
+        position: sticky;
+        top: 8px;
+        height: calc(100vh - 128px);
+    }
+    .nodes-left-pane .mud-card {
+        height: 100%;
+    }
+
+    /* MudTreeView：清除内置 hover/selected 默认背景，改由 .nodes-item-selected 控制 */
+    .nodes-cluster-tree .mud-treeview-item-content:hover,
+    .nodes-cluster-tree .mud-treeview-item-content.mud-selected-item {
+        background-color: transparent !important;
+    }
+    /* 仅叶子节点选中时显示淡蓝背景 */
+    .nodes-cluster-tree .nodes-item-selected > .mud-treeview-item-content {
+        background-color: var(--mud-palette-primary-lighten, rgba(37, 99, 235, 0.12)) !important;
+        border-radius: 4px;
+    }
+</style>
 
 <MudGrid Spacing="3">
     <!-- ============================================ -->
     <!-- Left pane: Cluster selection                  -->
     <!-- ============================================ -->
-    <MudItem xs="12" md="3" lg="2">
-        <MudCard Elevation="1">
-            <MudCardContent>
+    <MudItem xs="12" md="3" lg="2" Class="nodes-left-pane">
+        <MudCard Elevation="1" Class="d-flex flex-column h-100">
+            <MudCardContent Class="d-flex flex-column flex-grow-1 overflow-hidden pa-4">
                 <MudText Typo="Typo.h6" Class="mb-2">集群选择</MudText>
 
                 <MudTextField T="string"
@@ -22,42 +45,45 @@
                               AdornmentIcon="@Icons.Material.Filled.Search"
                               Class="mb-2" />
 
-                @if (loadingClusters)
-                {
-                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
-                }
-                else if (!clusters.Any())
-                {
-                    <MudText Class="mud-text-secondary" Align="Align.Center">暂无集群</MudText>
-                }
-                else if (!filteredClusters.Any())
-                {
-                    <MudText Class="mud-text-secondary" Align="Align.Center">没有匹配的集群</MudText>
-                }
-                else
-                {
-                    <MudList T="ClusterViewModel" Clickable="true" Dense="true">
-                        @foreach (var c in filteredClusters)
-                        {
-                            <MudListItem T="ClusterViewModel"
-                                         OnClick="@(() => SelectCluster(c.Id))"
-                                         Active="@(c.Id == ClusterId)">
-                                <div class="d-flex align-center justify-space-between" style="width: 100%;">
-                                    <MudText Typo="Typo.body2"
-                                             Style="@(c.Status == ClusterStatus.Offline ? "opacity:0.6;" : "")">
-                                        @c.Name
-                                    </MudText>
-                                    <MudChip T="string"
-                                             Size="Size.Small"
-                                             Color="GetClusterStatusColor(c.Status)"
-                                             Variant="Variant.Filled">
-                                        @c.StatusText
-                                    </MudChip>
-                                </div>
-                            </MudListItem>
-                        }
-                    </MudList>
-                }
+                <div class="flex-grow-1 overflow-auto">
+                    @if (loadingClusters)
+                    {
+                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                    }
+                    else if (!clusters.Any())
+                    {
+                        <MudText Class="mud-text-secondary" Align="Align.Center">暂无集群</MudText>
+                    }
+                    else if (!groupedClusters.Any())
+                    {
+                        <MudText Class="mud-text-secondary" Align="Align.Center">没有匹配的集群</MudText>
+                    }
+                    else
+                    {
+                        <MudTreeView T="int" ExpandOnClick="true" Class="nodes-cluster-tree">
+                            @foreach (var g in groupedClusters)
+                            {
+                                <MudTreeViewItem T="int"
+                                                 Text="@g.Name"
+                                                 Icon="@Icons.Material.Filled.Folder"
+                                                 IconExpanded="@Icons.Material.Filled.FolderOpen"
+                                                 Expanded="true">
+                                    @foreach (var c in g.Clusters)
+                                    {
+                                        var isSelected = c.Id == ClusterId;
+                                        <MudTreeViewItem T="int"
+                                                         Text="@c.Name"
+                                                         EndIcon="@GetClusterStatusIcon(c.Status)"
+                                                         EndIconColor="@GetClusterStatusColor(c.Status)"
+                                                         Selected="isSelected"
+                                                         OnClick="@(() => SelectCluster(c.Id))"
+                                                         Class="@(isSelected ? "nodes-item-selected" : "")" />
+                                    }
+                                </MudTreeViewItem>
+                            }
+                        </MudTreeView>
+                    }
+                </div>
             </MudCardContent>
         </MudCard>
     </MudItem>
@@ -260,15 +286,31 @@
 
     // Computed properties
 
-    private List<ClusterViewModel> filteredClusters
+    private List<ClusterGroupNode> groupedClusters
     {
         get
         {
             var q = clusters.AsEnumerable();
             if (!string.IsNullOrWhiteSpace(clusterSearch))
                 q = q.Where(c => c.Name.Contains(clusterSearch, StringComparison.OrdinalIgnoreCase));
-            return q.ToList();
+
+            return q
+                .GroupBy(c => c.GroupName ?? "未分组")
+                .Select(g => new ClusterGroupNode
+                {
+                    Name = g.Key,
+                    Clusters = g.OrderBy(c => c.Name).ToList()
+                })
+                .OrderBy(g => g.Name == "未分组" ? 1 : 0)
+                .ThenBy(g => g.Name)
+                .ToList();
         }
+    }
+
+    private sealed class ClusterGroupNode
+    {
+        public string Name { get; set; } = "";
+        public List<ClusterViewModel> Clusters { get; set; } = new();
     }
 
     private List<ClusterNodeViewModel> filteredNodes
@@ -354,12 +396,12 @@
 
     private void SelectCluster(int id)
     {
-        NavigationManager.NavigateTo($"/clusters/{id}/nodes");
+        NavigationManager.NavigateTo($"/nodes/{id}");
     }
 
     private void NavigateToNode(string nodeName)
     {
-        NavigationManager.NavigateTo($"/clusters/{ClusterId}/nodes/{nodeName}");
+        NavigationManager.NavigateTo($"/nodes/{ClusterId}/{nodeName}");
     }
 
     private async Task RefreshNodes()
@@ -382,5 +424,12 @@
         ClusterStatus.Online => Color.Success,
         ClusterStatus.Offline => Color.Error,
         _ => Color.Default
+    };
+
+    private static string GetClusterStatusIcon(ClusterStatus status) => status switch
+    {
+        ClusterStatus.Online => Icons.Material.Filled.CheckCircle,
+        ClusterStatus.Offline => Icons.Material.Filled.Cancel,
+        _ => Icons.Material.Filled.RemoveCircle
     };
 }

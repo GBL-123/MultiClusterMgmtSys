@@ -167,7 +167,7 @@ else
                                    Color="Color.Primary"
                                    Size="Size.Small"
                                    EndIcon="@Icons.Material.Filled.ArrowForward"
-                                   OnClick="@(() => NavigationManager.NavigateTo($"/clusters/{Id}/nodes"))">
+                                   OnClick="@(() => NavigationManager.NavigateTo($"/nodes/{Id}"))">
                             查看全部
                         </MudButton>
                     </CardHeaderActions>
@@ -398,7 +398,7 @@ else
 
     private void NavigateToNode(string nodeName)
     {
-        NavigationManager.NavigateTo($"/clusters/{Id}/nodes/{nodeName}");
+        NavigationManager.NavigateTo($"/nodes/{Id}/{nodeName}");
     }
 
     private static Color GetNodeStatusColor(string status) => status switch
