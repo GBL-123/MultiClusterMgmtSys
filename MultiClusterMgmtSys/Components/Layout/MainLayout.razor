@@ -8,42 +8,12 @@
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<MudLayout>
-    <MudAppBar Elevation="1">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@ToggleDrawer" />
-        <MudIcon Icon="@Icons.Material.Filled.TravelExplore" />
-        <MudText Typo="Typo.h6">多集群管理系统</MudText>
-        <MudSpacer />
-        <AuthorizeView>
-            <Authorized>
-                <MudText Typo="Typo.body2" Class="mr-2 mud-text-secondary">@context.User.Identity?.Name</MudText>
-                <MudIconButton Icon="@Icons.Material.Filled.Logout"
-                               Color="Color.Inherit"
-                               Title="登出"
-                               OnClick="@Logout" />
-            </Authorized>
-        </AuthorizeView>
-        <MudIconButton Icon="@(ThemeManager.IsDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
-                       Color="Color.Inherit"
-                       Title="切换深色模式"
-                       OnClick="@ToggleTheme" />
-    </MudAppBar>
-    <MudDrawer @bind-Open="@_drawerOpen"
-               ClipMode="@DrawerClipMode.Always"
-               Variant="@DrawerVariant.Mini"
-               Elevation="1">
-        <MudNavMenu Rounded="true" Bordered="true">
-            <MudNavLink Href="/clusters" Icon="@Icons.Material.Filled.Hub" Match="NavLinkMatch.Prefix">
-                集群管理
-            </MudNavLink>
-            <MudNavLink Href="/nodes" Icon="@Icons.Material.Filled.DeviceHub" Match="NavLinkMatch.Prefix">
-                节点管理
-            </MudNavLink>
-        </MudNavMenu>
-    </MudDrawer>
+<MudLayout Class="d-flex" Style="height:100vh;">
+    <AppBar OnMenuClick="@ToggleDrawer" OnThemeClick="@ToggleTheme" />
+    <Drawer IsOpen="@_drawerOpen" />
 
-    <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.False">
+    <MudMainContent Class="d-flex">
+        <MudContainer MaxWidth="MaxWidth.False" Class="pa-4 d-flex">
             @Body
         </MudContainer>
     </MudMainContent>
@@ -51,7 +21,6 @@
 
 @code {
     [Inject] private ThemeManager ThemeManager { get; set; } = default!;
-    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
 
     private bool _drawerOpen = true;
 
@@ -63,11 +32,6 @@
     private async Task ToggleTheme()
     {
         await ThemeManager.ToggleDarkModeAsync();
-    }
-
-    private void Logout()
-    {
-        NavigationManager.NavigateTo("/api/logout", forceLoad: true);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
