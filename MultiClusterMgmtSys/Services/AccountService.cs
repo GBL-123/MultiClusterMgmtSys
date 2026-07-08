@@ -29,9 +29,9 @@ public class AccountService(AccountRepository repo, PasswordHasher<string> hashe
     {
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.Name, account.Username),
-            new Claim(ClaimTypes.NameIdentifier, account.Id.ToString()),
-            new Claim(ClaimTypes.Role, account.Role.ToString())
+            new(ClaimTypes.Name, account.Username),
+            new(ClaimTypes.NameIdentifier, account.Id.ToString()),
+            new(ClaimTypes.Role, account.Role.ToString())
         };
 
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);

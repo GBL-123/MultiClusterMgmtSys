@@ -83,7 +83,7 @@ app.MapPost("/api/login", async (HttpContext ctx, [Microsoft.AspNetCore.Mvc.From
 
     var account = await accountService.ValidateCredentialsAsync(username, password);
     if (account is null)
-        return Results.Redirect($"/login?error=1&returnUrl={Uri.EscapeDataString(returnUrl)}");
+        return Results.Redirect($"/login?error=1&returnUrl={Uri.EscapeDataString(returnUrl)}&username={Uri.EscapeDataString(username)}");
 
     var principal = accountService.CreateClaimsPrincipal(account);
     var props = new AuthenticationProperties { IsPersistent = rememberMe };

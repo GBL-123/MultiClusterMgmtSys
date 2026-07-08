@@ -86,6 +86,9 @@
                     returnUrl = rl;
                 if (query["error"] == "1")
                     showError = true;
+                var un = query["username"];
+                if (!string.IsNullOrEmpty(un))
+                    username = un;
             }
         }
         catch { }
