@@ -1,0 +1,152 @@
+@attribute [Authorize(Roles="Admin")]
+@page "/configmaps/{ClusterId:int}/{Namespace}/{Name}/yaml"
+
+<PageTitle>编辑 YAML: @Name</PageTitle>
+
+<div class="d-flex align-center mb-4">
+    <MudText Typo="Typo.h4" Class="flex-grow-1">编辑 YAML: @Name</MudText>
+    <MudButton Variant="Variant.Text"
+               StartIcon="@Icons.Material.Filled.ArrowBack"
+               OnClick="@(() => NavigationManager.NavigateTo($"/configmaps/{ClusterId}"))">
+        返回列表
+    </MudButton>
+</div>
+
+@if (loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+}
+else if (loadError)
+{
+    <MudCard Class="pa-8" Elevation="2">
+        <MudCardContent>
+            <MudText Align="Align.Center" Class="mud-text-secondary" Typo="Typo.h6">ConfigMap 不存在或已被删除</MudText>
+            <div class="d-flex justify-center mt-4">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.ArrowBack"
+                           OnClick="@(() => NavigationManager.NavigateTo($"/configmaps/{ClusterId}"))">
+                    返回列表
+                </MudButton>
+            </div>
+        </MudCardContent>
+    </MudCard>
+}
+else
+{
+    <MudCard Elevation="1" Class="mb-4">
+        <MudCardContent>
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="displayName"
+                                  Label="名称"
+                                  ReadOnly="true"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField @bind-Value="displayNamespace"
+                                  Label="命名空间"
+                                  ReadOnly="true"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense" />
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+
+    <MudCard Elevation="1" Class="mb-4">
+        <MudCardContent>
+            <MudTextField T="string"
+                          @bind-Value="yamlContent"
+                          Label="YAML"
+                          Lines="25"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Style="font-family: monospace;" />
+        </MudCardContent>
+    </MudCard>
+
+    <div class="d-flex justify-end mt-4">
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Save"
+                   OnClick="Save"
+                   Disabled="saving">
+            @if (saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            保存
+        </MudButton>
+    </div>
+}
+
+@code {
+    [Parameter] public int ClusterId { get; set; }
+    [Parameter] public string Namespace { get; set; } = "";
+    [Parameter] public string Name { get; set; } = "";
+
+    [Inject] private ConfigMapService ConfigMapService { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+
+    private string yamlContent = "";
+    private string displayName = "";
+    private string displayNamespace = "";
+    private bool loading = true;
+    private bool loadError;
+    private bool saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            loadError = false;
+            var detail = await ConfigMapService.GetConfigMapAsync(ClusterId, Name, Namespace);
+            if (detail is null)
+            {
+                Snackbar.Add("ConfigMap 不存在或已被删除", Severity.Warning);
+                loadError = true;
+                return;
+            }
+            displayName = detail.Name;
+            displayNamespace = detail.Namespace;
+            yamlContent = detail.Yaml;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"加载 ConfigMap 详情失败: {ex.Message}", Severity.Error);
+            loadError = true;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task Save()
+    {
+        saving = true;
+        try
+        {
+            await ConfigMapService.UpdateConfigMapFromYamlAsync(ClusterId, Name, Namespace, yamlContent);
+            Snackbar.Add("修改成功", Severity.Success);
+            NavigationManager.NavigateTo($"/configmaps/{ClusterId}");
+        }
+        catch (Exception ex)
+        {
+            var msg = ex.Message;
+            if (msg.Contains("409") || msg.Contains("Conflict"))
+                Snackbar.Add("资源已被他人修改，请刷新后重试", Severity.Warning);
+            else if (msg.Contains("YAML") || msg.Contains("deserialize") || msg.Contains("parse"))
+                Snackbar.Add($"YAML 格式错误: {ex.Message}", Severity.Error);
+            else
+                Snackbar.Add($"修改失败: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

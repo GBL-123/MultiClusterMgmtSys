@@ -1,4 +1,10 @@
-## ADDED Requirements
+# ConfigMap Management
+
+## Purpose
+
+ConfigMap 资源的查看（列表 + 详情页）、新建（对话框）、结构化修改（编辑页）、YAML 修改（YAML 编辑页）、删除（确认对话框）能力，覆盖服务层 k8s 调用、ViewModel 映射、页面布局与左侧页签交互、权限控制与离线降级。
+
+## Requirements
 
 ### Requirement: ConfigMap 列表查看
 

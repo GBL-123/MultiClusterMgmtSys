@@ -22,6 +22,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<ClusterRepository>();
 builder.Services.AddScoped<GroupRepository>();
 builder.Services.AddScoped<ClusterNodeService>();
+builder.Services.AddScoped<ConfigMapService>();
 builder.Services.AddScoped<ClusterService>();
 builder.Services.AddScoped<GroupService>();
 builder.Services.AddScoped<ThemeManager>();
