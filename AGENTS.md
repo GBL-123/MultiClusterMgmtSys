@@ -42,8 +42,8 @@
 - 分层（单向依赖：Razor → Service 返回 ViewModel → Repository 返回实体 → DbContext）：
   - `Components/`：Blazor UI。`Layout/`（`MainLayout` 委托 `AppBar`+`Drawer`、`EmptyLayout` 供登录页）、`Pages/`（按功能分子目录）、`Theme/ThemeManager.cs`（Scoped，MudTheme 定义 + localStorage 持久化）。
   - `Daos/`：`AppDbContext`（DbSets：`ClusterGroups`、`Clusters`、`Accounts`）+ `ClusterRepository`、`GroupRepository`、`AccountRepository`（返回实体）。
-  - `Services/`：`ClusterService`（集群 CRUD + 探测）、`ClusterNodeService`（节点查询）、`GroupService`、`AccountService`（均返回 ViewModel）。
-  - `Models/`：`ClusterGroup`、`ClusterInfo`、`ClusterStatus`、`ConnectionType`、`Account`、`AppRole`。
+  - `Services/`：`ClusterService`（集群 CRUD + 探测）、`ClusterNodeService`（节点查询）、`ConfigMapService`（ConfigMap CRUD）、`GroupService`、`AccountService`（均返回 ViewModel）。
+  - `Models/`：`ClusterGroup`、`ClusterInfo`、`ClusterStatus`、`ConnectionType`、`Account`、`AppRole`、`LoginRequest`。
   - `ViewModels/`：纯 POCO 契约 + `Mappings/` 扩展方法（`entity.ToViewModel()`）。
 - 数据模型：`ClusterGroup` 1—N `ClusterInfo`（外键 `GroupId`，`OnDelete SetNull`）。`ClusterInfo.KubeConfig`/`Token` 以明文存于 `TEXT` 列。`Account` 密码用 `PasswordHasher<string>`（PBKDF2）哈希。
 
@@ -64,7 +64,7 @@
 
 ## OpenSpec 变更管理
 
-- 仓库使用 OpenSpec 管理功能变更。主 spec 在 `openspec/specs/`（`authentication`、`cluster-management`、`node-management`），已实现功能的权威规范。
+- 仓库使用 OpenSpec 管理功能变更。主 spec 在 `openspec/specs/`（`authentication`、`cluster-management`、`configmap-management`、`node-management`），已实现功能的权威规范。
 - 活跃变更在 `openspec/changes/`，归档变更在 `openspec/changes/archive/YYYY-MM-DD-<name>/`。
 - 常用命令：`openspec list`、`openspec status --change "<name>"`、`openspec validate --changes "<name>"`、`openspec new change "<name>"`。
 - 无 store 注册，命令作用于最近的本地 `openspec/` 目录。
