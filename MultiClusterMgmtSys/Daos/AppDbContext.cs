@@ -1,13 +1,15 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using MultiClusterMgmtSys.Models;
 
 namespace MultiClusterMgmtSys.Daos;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+public class AppDbContext(DbContextOptions<AppDbContext> options)
+    : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>(options)
 {
     public DbSet<ClusterGroup> ClusterGroups => Set<ClusterGroup>();
     public DbSet<ClusterInfo> Clusters => Set<ClusterInfo>();
-    public DbSet<Account> Accounts => Set<Account>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -31,11 +33,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                   .OnDelete(DeleteBehavior.SetNull);
         });
 
-        modelBuilder.Entity<Account>(entity =>
+        modelBuilder.Entity<ApplicationUser>(entity =>
         {
-            entity.Property(e => e.Username).IsRequired();
-            entity.Property(e => e.PasswordHash).IsRequired();
-            entity.HasIndex(e => e.Username).IsUnique();
+            entity.Property(e => e.DisplayName).HasMaxLength(64);
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
     }
 }

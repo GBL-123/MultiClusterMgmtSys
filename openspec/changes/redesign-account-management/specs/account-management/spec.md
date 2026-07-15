@@ -129,3 +129,27 @@
 
 - **WHEN** 密码长度 < 8 或缺字母 / 缺数字
 - **THEN** `AlphanumericPasswordValidator.ValidateAsync` 返回 `IdentityResult.Failed`（`Code = "PasswordTooWeak"`），`UserManager.CreateAsync` 整体失败，端点 / 页面映射到 `error=weakpwd` / Snackbar 提示
+
+### Requirement: 侧边栏自助资料入口
+
+系统 SHALL 在 `Components/Layout/Drawer.razor` 的 `MudNavMenu` 中对所有已登录用户（含 Member）暴露"个人资料"入口（`MudNavLink` 指向 `/profile`），允许 Member 通过侧边栏进入 `/profile` 修改自己的显示名与密码；Admin 同时可见"账号管理"与"个人资料"两个入口。
+
+#### Scenario: Member 在侧边栏看到"个人资料"
+
+- **WHEN** Member 用户登录后展开 Drawer
+- **THEN** Drawer 渲染"个人资料" `MudNavLink`（`Icons.Material.Filled.Person`，`Href="/profile"`，无 `AuthorizeView Roles` 角色限制），点击后 `NavigationManager.NavigateTo("/profile")` 跳转到 `/profile` 页
+
+#### Scenario: Member 在侧边栏看不到"账号管理"
+
+- **WHEN** Member 用户登录后展开 Drawer
+- **THEN** Drawer 不渲染"账号管理" `MudNavLink`（仍受 `<AuthorizeView Roles="Admin">` 包裹，Member 不匹配），Member 直接访问 `/accounts` 仍被 `[Authorize(Roles="Admin")]` 拦截
+
+#### Scenario: Admin 在侧边栏看到两个入口
+
+- **WHEN** Admin 用户登录后展开 Drawer
+- **THEN** Drawer 同时渲染"账号管理"（→ `/accounts`，Admin 后台）与"个人资料"（→ `/profile`）两个 `MudNavLink`，两者均可点击跳转
+
+#### Scenario: 未登录不渲染入口
+
+- **WHEN** 未登录用户访问任意页面
+- **THEN** Drawer 的两个账号入口都不渲染（"账号管理"受 Admin `AuthorizeView` 保护、"个人资料"虽无角色限制但 Drawer 整体由 `MainLayout` 的认证上下文驱动，未登录时受 `<AuthorizeView>` 顶层包裹不渲染账号区）

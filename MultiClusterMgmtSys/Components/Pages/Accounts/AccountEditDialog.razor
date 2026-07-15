@@ -1,0 +1,156 @@
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="form">
+            <MudTextField @bind-Value="userName"
+                          Label="用户名"
+                          Required="true"
+                          RequiredError="请输入用户名"
+                          Immediate="true"
+                          Disabled="@isEdit"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Class="mb-3" />
+
+            <MudTextField @bind-Value="displayName"
+                          Label="显示名"
+                          Immediate="true"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Class="mb-3" />
+
+            <MudSelect T="string"
+                       @bind-Value="roleName"
+                       Label="角色"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Class="mb-3">
+                <MudSelectItem Value="@("Admin")">Admin</MudSelectItem>
+                <MudSelectItem Value="@("Member")">Member</MudSelectItem>
+            </MudSelect>
+
+            <MudTextField @bind-Value="password"
+                          Label="@(isEdit ? "新密码（留空表示不修改）" : "初始密码")"
+                          Required="@(!isEdit)"
+                          RequiredError="@(isEdit ? "" : "请输入初始密码")"
+                          Immediate="true"
+                          InputType="@(showPassword ? InputType.Text : InputType.Password)"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@(showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                          OnAdornmentClick="@(() => showPassword = !showPassword)"
+                          HelperText="@(isEdit ? "留空表示不修改，至少 8 位且包含字母和数字" : "至少 8 位且包含字母和数字")"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Class="mb-2" />
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()"
+                   Variant="Variant.Text"
+                   Disabled="saving">
+            取消
+        </MudButton>
+        <MudButton OnClick="Submit"
+                   Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   Disabled="saving">
+            @if (saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @(isEdit ? "保存" : "创建")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
+    [Inject] private AccountService AccountSvc { get; set; } = default!;
+    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+
+    [Parameter] public AccountViewModel? EditingAccount { get; set; }
+
+    private MudForm form = default!;
+    private bool isEdit => EditingAccount is not null;
+    private string userName = "";
+    private string? displayName;
+    private string roleName = "Member";
+    private string password = "";
+    private bool showPassword;
+    private bool saving;
+
+    protected override void OnInitialized()
+    {
+        if (EditingAccount is not null)
+        {
+            userName = EditingAccount.UserName;
+            displayName = EditingAccount.DisplayName;
+            roleName = EditingAccount.RoleName;
+        }
+    }
+
+    private async Task Submit()
+    {
+        await form.ValidateAsync();
+        if (!form.IsValid) return;
+
+        saving = true;
+        try
+        {
+            if (isEdit)
+            {
+                if (string.IsNullOrWhiteSpace(password))
+                {
+                    var result = await AccountSvc.UpdateAccountAsync(EditingAccount!.Id, displayName, roleName);
+                    if (result.Succeeded)
+                    {
+                        Dialog.Close(DialogResult.Ok(true));
+                    }
+                    else
+                    {
+                        ShowErrors(result);
+                    }
+                }
+                else
+                {
+                    var updateResult = await AccountSvc.UpdateAccountAsync(EditingAccount!.Id, displayName, roleName);
+                    if (!updateResult.Succeeded)
+                    {
+                        ShowErrors(updateResult);
+                        return;
+                    }
+                    var resetResult = await AccountSvc.ResetPasswordAsync(EditingAccount.Id, password);
+                    if (resetResult.Succeeded)
+                    {
+                        Dialog.Close(DialogResult.Ok(true));
+                    }
+                    else
+                    {
+                        ShowErrors(resetResult);
+                    }
+                }
+            }
+            else
+            {
+                var result = await AccountSvc.CreateAccountAsync(userName, password, displayName, roleName);
+                if (result.Succeeded)
+                {
+                    Dialog.Close(DialogResult.Ok(true));
+                }
+                else
+                {
+                    ShowErrors(result);
+                }
+            }
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private void ShowErrors(IdentityResult result)
+    {
+        var msg = string.Join("; ", result.Errors.Select(e => e.Description));
+        Snackbar.Add(msg, Severity.Error);
+    }
+}
