@@ -84,3 +84,5 @@
 - [x] 10.1 `AddIdentityCore` 不注册 `Identity.Application` cookie 方案，`SignInManager.PasswordSignInAsync` 抛 "No sign-in authentication handler is registered for the scheme 'Identity.Application'"。修复：把 `AddAuthentication().AddCookie()` 改为 `AddAuthentication(IdentityConstants.ApplicationScheme).AddCookie(IdentityConstants.ApplicationScheme, ...)`，让 `SignInManager` 默认方案与注册的 cookie 方案对齐
 - [x] 10.2 Login.razor 旧版用 `OnClick + AuthService` 模式，与新 SignInManager 端点不兼容。已在 4.3 改造为原生 HTML `<form method="post" action="/api/login">` 提交，同步移除 `AuthService` 依赖
 - [x] 10.3 数据库文件 `clusters.db*` 路径在工作目录 `MultiClusterMgmtSys/MultiClusterMgmtSys/`（非仓库根），首次清理时误删仓库根路径；已重新清理正确路径后 `EnsureCreated` 建出 7 张 AspNet* + Clusters/ClusterGroups 表，admin/member 种子成功插入
+- [x] 10.4 侧边栏个人资料入口：Member 可通过 Drawer 进入 `/profile` 修改自己的显示名与密码。修改 `Components/Layout/Drawer.razor` 在 Admin-only "账号管理" 链接下方增加 `<AuthorizeView>`（无角色限制）包裹的 `MudNavLink Href="/profile" Icon="Person"` "个人资料" 链接；Admin 同时看到"账号管理"与"个人资料"两个入口
+- [x] 10.5 在 `openspec/changes/redesign-account-management/specs/account-management/spec.md` 的 ADDED 区增加 `Requirement: 侧边栏自助资料入口`（4 个场景：Member 看到 / Member 看不到"账号管理" / Admin 双入口 / 未登录不渲染）
