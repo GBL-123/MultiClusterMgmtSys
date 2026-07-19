@@ -3,29 +3,20 @@ using MultiClusterMgmtSys.Models;
 
 namespace MultiClusterMgmtSys.Services.Identity;
 
-public class AlphanumericPasswordValidator : IPasswordValidator<ApplicationUser>
+public class CustomPasswordValidator : IPasswordValidator<ApplicationUser>
 {
     public Task<IdentityResult> ValidateAsync(UserManager<ApplicationUser> manager, ApplicationUser user, string? password)
     {
-        if (string.IsNullOrEmpty(password) || password.Length < 8)
+        if (string.IsNullOrEmpty(password))
         {
             return Task.FromResult(IdentityResult.Failed(new IdentityError
             {
-                Code = "PasswordTooWeak",
-                Description = "密码至少 8 位且包含字母和数字"
+                Code = "PasswordIsInvalid",
+                Description = "密码不能为空"
             }));
         }
 
-        var hasLetter = false;
-        var hasDigit = false;
-        foreach (var c in password)
-        {
-            if (char.IsLetter(c)) hasLetter = true;
-            else if (char.IsDigit(c)) hasDigit = true;
-            if (hasLetter && hasDigit) break;
-        }
-
-        if (!hasLetter || !hasDigit)
+        if (!password.Any(char.IsLetterOrDigit))
         {
             return Task.FromResult(IdentityResult.Failed(new IdentityError
             {

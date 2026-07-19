@@ -1,15 +1,19 @@
-﻿<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+﻿@using MultiClusterMgmtSys.Components.Redirection
+
+<Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
             <NotAuthorized>
-                @if (context.User.Identity?.IsAuthenticated == true)
-                {
-                    <p style="text-align:center; padding:2rem;">您没有权限访问该页面。</p>
-                }
-                else
-                {
-                    <RedirectToLogin />
-                }
+                <AuthorizeView>
+                    <Authorized Context="authorized">
+                        <LayoutView Layout="typeof(Layout.MainLayout)">
+                            <h3>403 - 无权限访问</h3>
+                        </LayoutView>
+                    </Authorized>
+                    <NotAuthorized Context="notAuthorized">
+                        <RedirectToLogin />
+                    </NotAuthorized>
+                </AuthorizeView>
             </NotAuthorized>
         </AuthorizeRouteView>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />

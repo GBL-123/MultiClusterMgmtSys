@@ -1,4 +1,4 @@
-namespace MultiClusterMgmtSys.ViewModels.Accounts;
+namespace MultiClusterMgmtSys.ViewModels;
 
 public class AccountViewModel
 {

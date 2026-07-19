@@ -35,7 +35,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
 
         modelBuilder.Entity<ApplicationUser>(entity =>
         {
-            entity.Property(e => e.DisplayName).HasMaxLength(64);
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
         });
     }

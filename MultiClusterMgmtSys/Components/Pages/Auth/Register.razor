@@ -1,12 +1,18 @@
 @page "/register"
 @layout EmptyLayout
 
+@using System.ComponentModel.DataAnnotations
+@using MultiClusterMgmtSys.Components.Redirection
+@using MultiClusterMgmtSys.Services
+@using MultiClusterMgmtSys.Requests
+
+<PageTitle>注册账号</PageTitle>
+
 <div class="d-flex align-center justify-center" style="min-height:100vh; background:var(--mud-palette-background);">
     <MudCard Elevation="8" Class="pa-8" Style="width:420px; max-width:90vw;">
         <div class="d-flex flex-column align-center mb-6">
             <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Size="Size.Large" Color="Color.Primary" />
             <MudText Typo="Typo.h5" Align="Align.Center" Class="mt-2">注册新账号</MudText>
-            <MudText Typo="Typo.caption" Align="Align.Center" Class="mud-text-secondary mt-1">注册成功后将自动登录为 Member 角色</MudText>
         </div>
 
         @if (!string.IsNullOrEmpty(errorMessage))
@@ -14,32 +20,22 @@
             <MudAlert Severity="Severity.Error" Dense="true" Class="mb-4">@errorMessage</MudAlert>
         }
 
-        <form method="post" action="/api/register" id="registerForm">
-            <input type="hidden" name="returnUrl" value="@returnUrl" />
-
+        <EditForm Model="Input" method="post" OnValidSubmit="RegisterUser" FormName="register">
+            <DataAnnotationsValidator />
+            
             <MudTextField T="string"
-                          name="username"
-                          Value="@username"
+                          Value="@Input.UserName"
+                          InputId="Input.UserName"
                           Label="用户名"
                           Required="true"
                           RequiredError="请输入用户名"
                           Immediate="true"
                           Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
                           Class="mb-3" />
 
             <MudTextField T="string"
-                          name="displayName"
-                          Value="@displayName"
-                          Label="显示名（可选）"
-                          Immediate="true"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
-                          Class="mb-3" />
-
-            <MudTextField T="string"
-                          name="password"
-                          Value="@password"
+                          Value="@Input.Password"
+                          InputId="Input.Password"
                           Label="密码"
                           Required="true"
                           RequiredError="请输入密码"
@@ -47,19 +43,16 @@
                           InputType="InputType.Password"
                           HelperText="至少 8 位，包含字母和数字"
                           Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
                           Class="mb-3" />
 
             <MudTextField T="string"
-                          name="confirmPassword"
-                          Value="@confirmPassword"
+                          Value="@Input.ConfirmPassword"
                           Label="确认密码"
                           Required="true"
                           RequiredError="请再次输入密码"
                           Immediate="true"
                           InputType="InputType.Password"
                           Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
                           Class="mb-3" />
 
             <MudButton Variant="Variant.Filled"
@@ -67,68 +60,61 @@
                        FullWidth="true"
                        Size="Size.Large"
                        ButtonType="ButtonType.Submit"
-                       form="registerForm"
                        Class="mt-2">
                 注 册
             </MudButton>
-        </form>
+        </EditForm>
 
         <MudDivider Class="my-4" />
 
         <MudText Align="Align.Center" Class="mud-text-secondary">
-            已有账号？<MudLink Href="@($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}")" Underline="Underline.Always">返回登录</MudLink>
+            已有账号？<MudLink Href="/login" Underline="Underline.Always">返回登录</MudLink>
         </MudText>
     </MudCard>
 </div>
 
 @code {
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
-    [Inject] private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
+    [Inject] private IdentityRedirectManager RedirectManager { get; set; } = default!;
+    [Inject] private AccountService AccountService { get; set; } = default!;
 
-    private string username = "";
-    private string displayName = "";
-    private string password = "";
-    private string confirmPassword = "";
-    private string returnUrl = "/clusters";
     private string? errorMessage;
 
-    protected override async Task OnInitializedAsync()
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override void OnInitialized()
     {
-        try
-        {
-            var uri = new Uri(NavigationManager.Uri);
-            if (!string.IsNullOrEmpty(uri.Query))
-            {
-                var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
-                var rl = query["returnUrl"];
-                if (!string.IsNullOrEmpty(rl))
-                    returnUrl = rl;
-                var un = query["username"];
-                if (!string.IsNullOrEmpty(un))
-                    username = un;
+        Input ??= new();
+    }
 
-                var err = query["error"];
-                errorMessage = err switch
-                {
-                    "duplicate" => "该用户名已被占用",
-                    "weakpwd" => "密码至少 8 位且包含字母和数字",
-                    "mismatch" => "两次输入的密码不一致",
-                    "unknown" or null => null,
-                    _ => $"注册失败: {err}"
-                };
-            }
-        }
-        catch { }
-
-        // If already authenticated, redirect away
-        try
+    private async Task RegisterUser()
+    {
+        var request = new RegisterRequest(Input.UserName, Input.Password, Input.ConfirmPassword);
+        var result = await AccountService.RegisterAsync(request);
+        if (!result.Succeeded)
         {
-            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            if (authState.User.Identity?.IsAuthenticated == true)
-            {
-                NavigationManager.NavigateTo("/", forceLoad: true);
-            }
+            errorMessage = string.Join(", ", result.Errors.Select(e => e.Description));
+            return;
         }
-        catch { }
+        RedirectManager.RedirectTo("/login");
+    }
+
+    private sealed class InputModel
+    {
+        [Required]
+        public string UserName { get; set; } = "";
+
+        [Required]
+        [StringLength(100, MinimumLength = 8)]
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = "";
+
+        [DataType(DataType.Password)]
+        [Compare("Password", ErrorMessage = "两次密码不一致")]
+        public string ConfirmPassword { get; set; } = "";
     }
 }

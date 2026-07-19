@@ -12,26 +12,6 @@
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
     }
 
-    <MudCard Class="pa-4 mb-4" Elevation="1">
-        <MudText Typo="Typo.h6" Class="mb-3">显示名</MudText>
-        <MudTextField @bind-Value="displayName"
-                      Label="显示名"
-                      Variant="Variant.Outlined"
-                      Margin="Margin.Dense"
-                      Class="mb-3" />
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.Save"
-                   OnClick="SaveDisplayName"
-                   Disabled="savingDisplayName">
-            @if (savingDisplayName)
-            {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-            }
-            保存显示名
-        </MudButton>
-    </MudCard>
-
     <MudCard Class="pa-4" Elevation="1">
         <MudText Typo="Typo.h6" Class="mb-3">修改密码</MudText>
 
@@ -85,7 +65,6 @@
     [Inject] private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
 
-    private string? displayName;
     private string currentPassword = "";
     private string newPassword = "";
     private string confirmPassword = "";
@@ -102,10 +81,6 @@
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
             currentUserName = authState.User.Identity?.Name ?? "";
             var user = await AccountSvc.GetUserByNameAsync(currentUserName);
-            if (user is not null)
-            {
-                displayName = user.DisplayName;
-            }
         }
         catch (Exception ex)
         {
@@ -123,7 +98,7 @@
         savingDisplayName = true;
         try
         {
-            var result = await AccountSvc.UpdateProfileAsync(currentUserName, displayName);
+            var result = await AccountSvc.UpdateProfileAsync(currentUserName);
             if (result.Succeeded)
             {
                 Snackbar.Add("资料已更新", Severity.Success);

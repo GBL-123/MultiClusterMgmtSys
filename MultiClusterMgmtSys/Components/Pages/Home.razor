@@ -3,8 +3,6 @@
 @code {
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
 
-    protected override void OnInitialized()
-    {
+    protected override void OnInitialized() =>
         NavigationManager.NavigateTo("/clusters");
-    }
 }

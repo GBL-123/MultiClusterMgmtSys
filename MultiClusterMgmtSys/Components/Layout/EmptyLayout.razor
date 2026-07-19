@@ -1,5 +1,7 @@
 @inherits LayoutComponentBase
 
+@using MultiClusterMgmtSys.Components.Theme
+
 <MudThemeProvider Theme="@ThemeManager.Theme"
                   IsDarkMode="@ThemeManager.IsDarkMode"
                   IsDarkModeChanged="@(v => ThemeManager.IsDarkMode = v)"
