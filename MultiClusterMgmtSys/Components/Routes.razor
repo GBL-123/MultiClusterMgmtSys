@@ -4,16 +4,7 @@
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
             <NotAuthorized>
-                <AuthorizeView>
-                    <Authorized Context="authorized">
-                        <LayoutView Layout="typeof(Layout.MainLayout)">
-                            <h3>403 - 无权限访问</h3>
-                        </LayoutView>
-                    </Authorized>
-                    <NotAuthorized Context="notAuthorized">
-                        <RedirectToLogin />
-                    </NotAuthorized>
-                </AuthorizeView>
+                <RedirectToLogin />
             </NotAuthorized>
         </AuthorizeRouteView>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />

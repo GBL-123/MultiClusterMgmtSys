@@ -1,7 +1,13 @@
 @page "/login"
 @layout EmptyLayout
 
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Identity
 @using MultiClusterMgmtSys.Components.Redirection
+
+@inject IdentityRedirectManager RedirectManager
+@inject AccountService AccountService
 
 <PageTitle>登录</PageTitle>
 
@@ -10,48 +16,40 @@
         <div class="d-flex flex-column align-center mb-6">
             <MudIcon Icon="@Icons.Material.Filled.TravelExplore" Size="Size.Large" Color="Color.Primary" />
             <MudText Typo="Typo.h5" Align="Align.Center" Class="mt-2">多集群管理系统</MudText>
+            <StatusMessage Message="@errorMessage" />
         </div>
 
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <MudText Color="Color.Error" Align="Align.Center" Class="mb-3">@errorMessage</MudText>
-        }
+        <EditForm EditContext="editContext" method="post" OnSubmit="LoginUser" FormName="login">
+            <DataAnnotationsValidator />
+            <MudStaticTextField For="@(() => Input.UserName)"
+                                @bind-Value="Input.UserName"
+                                Label="用户名"
+                                Variant="Variant.Outlined"
+                                Margin="Margin.Dense"
+                                Class="pb-2"
+                                autocomplete="username webauthn"
+                                aria-required="true" />
+            <MudStaticTextField For="@(() => Input.Password)"
+                                @bind-Value="Input.Password"
+                                Label="密码" 
+                                InputType="InputType.Password"
+                                Variant="Variant.Outlined"
+                                Margin="Margin.Dense"
+                                Class="pb-2"
+                                autocomplete="current-password"
+                                aria-required="true" />
+            <MudStaticCheckBox For="@(() => Input.RememberMe)"
+                                @bind-Value="Input.RememberMe">
+                记住我
+            </MudStaticCheckBox>
 
-        <form method="post" action="/api/login" id="login">
-            <input type="hidden" name="ReturnUrl" value="@input.ReturnUrl" />
-            <AntiforgeryToken />
-            <MudTextField @bind-Value="@input.UserName"
-                          name="UserName"
-                          Label="用户名"
-                          Required="true"
-                          RequiredError="请输入用户名"
-                          Immediate="true"
-                          Variant="Variant.Outlined"
-                          Class="mb-3" />
-
-            <MudTextField @bind-Value="@input.Password"
-                          name="Password"
-                          Label="密码"
-                          Required="true"
-                          RequiredError="请输入密码"
-                          Immediate="true"
-                          InputType="InputType.Password"
-                          Variant="Variant.Outlined"
-                          Class="mb-3" />
-
-            <MudCheckBox @bind-Value="@input.RememberMe"
-                         Label="记住我"
-                         Class="mb-4" />
-            <input type="hidden" name="RememberMe" value="@(input.RememberMe ? "true" : "false")" />
-
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       FullWidth="true"
-                       Size="Size.Large"
-                       ButtonType="ButtonType.Submit">
+            <MudStaticButton Variant="Variant.Filled"
+                             Color="Color.Primary"
+                             FullWidth="true"
+                             FormAction="FormAction.Submit" Size="Size.Large">
                 登 录
-            </MudButton>
-        </form>
+            </MudStaticButton>
+        </EditForm>
 
         <MudDivider Class="my-4" />
 
@@ -62,31 +60,67 @@
 </div>
 
 @code {
-    [Inject] private IdentityRedirectManager RedirectManager { get; set; } = default!;
-    [Inject] private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
-
     private string? errorMessage;
-    private InputModel input = new();
     private EditContext editContext = default!;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        editContext = new EditContext(input);
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        if (authState.User.Identity?.IsAuthenticated == true)
+        Input ??= new();
+
+        editContext = new EditContext(Input);
+
+        if (HttpMethods.IsGet(HttpContext.Request.Method))
         {
-            RedirectManager.RedirectTo(input.ReturnUrl);
+            // Clear the existing external cookie to ensure a clean login process
+            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+        }
+    }
+
+    public async Task LoginUser()
+    {
+        // If doing a password sign-in, validate the form.
+        if (!editContext.Validate())
+        {
+            return;
+        }
+
+        // This doesn't count login failures towards account lockout
+        // To enable password failures to trigger account lockout, set lockoutOnFailure: true
+        var result = await AccountService.LoginAsync(
+            new LoginRequest(
+                Input.UserName,
+                Input.Password,
+                Input.RememberMe
+            )
+        );
+        if (result.Succeeded)
+        {
+            RedirectManager.RedirectTo(ReturnUrl);
+        }
+        else
+        {
+            errorMessage = "Error: 用户名或密码错误";
         }
     }
 
     private sealed class InputModel
     {
+        [Required(ErrorMessage = "请输入用户名")]
         public string UserName { get; set; } = "";
 
+        [Required(ErrorMessage = "请输入密码")]
+        [DataType(DataType.Password)]
         public string Password { get; set; } = "";
 
-        public bool RememberMe { get; set; } = false;
-
-        public string ReturnUrl { get; set; } = "/";
+        public bool RememberMe { get; set; }
     }
 }

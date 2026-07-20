@@ -1,8 +1,7 @@
 ﻿@page "/"
 
-@code {
-    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+@inject IdentityRedirectManager RedirectManager
 
-    protected override void OnInitialized() =>
-        NavigationManager.NavigateTo("/clusters");
+@code {
+    protected override void OnInitialized() => RedirectManager.RedirectTo("/clusters");
 }
