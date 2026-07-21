@@ -10,7 +10,11 @@
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-@Body
+<MudLayout Class="d-flex" Style="height:100vh;">
+    <MudContainer MaxWidth="MaxWidth.False" Class="pa-4 d-flex justify-center align-center">
+        @Body
+    </MudContainer>
+</MudLayout>
 
 @code {
     [Inject] private ThemeManager ThemeManager { get; set; } = default!;

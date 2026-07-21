@@ -11,14 +11,14 @@
 
 <PageTitle>登录</PageTitle>
 
-<div class="mcm-page d-flex align-center justify-center" style="min-height:100vh; background:var(--mud-palette-background);">
-    <MudCard Elevation="8" Class="pa-8" Style="width:400px; max-width:90vw;">
-        <div class="d-flex flex-column align-center mb-6">
+<MudPaper Elevation="8" Width="400px" Class="pa-8">
+    <MudStack >
+        <MudStack AlignItems="AlignItems.Center">
             <MudIcon Icon="@Icons.Material.Filled.TravelExplore" Size="Size.Large" Color="Color.Primary" />
-            <MudText Typo="Typo.h5" Align="Align.Center" Class="mt-2">多集群管理系统</MudText>
+            <MudText Typo="Typo.h5">多集群管理系统</MudText>
             <StatusMessage Message="@errorMessage" />
-        </div>
-
+        </MudStack>
+       
         <EditForm EditContext="editContext" method="post" OnSubmit="LoginUser" FormName="login">
             <DataAnnotationsValidator />
             <MudStaticTextField For="@(() => Input.UserName)"
@@ -27,19 +27,21 @@
                                 Variant="Variant.Outlined"
                                 Margin="Margin.Dense"
                                 Class="pb-2"
-                                autocomplete="username webauthn"
-                                aria-required="true" />
+                                UserAttributes="@userNameTextFieldAttr" />
             <MudStaticTextField For="@(() => Input.Password)"
                                 @bind-Value="Input.Password"
-                                Label="密码" 
+                                Label="密码"
                                 InputType="InputType.Password"
                                 Variant="Variant.Outlined"
                                 Margin="Margin.Dense"
+                                Adornment="Adornment.End"
+                                AdornmentIcon="@Icons.Material.Outlined.Visibility"
+                                AdornmentToggledIcon="@Icons.Material.Outlined.VisibilityOff"
+                                AdornmentClickFunction="showPassword"
                                 Class="pb-2"
-                                autocomplete="current-password"
-                                aria-required="true" />
+                                UserAttributes="@passwordTextFieldAttr" />
             <MudStaticCheckBox For="@(() => Input.RememberMe)"
-                                @bind-Value="Input.RememberMe">
+                               @bind-Value="Input.RememberMe">
                 记住我
             </MudStaticCheckBox>
 
@@ -53,15 +55,25 @@
 
         <MudDivider Class="my-4" />
 
-        <MudText Align="Align.Center" Class="mud-text-secondary">
+        <MudText Align="Align.Center">
             没有账号？<MudLink Href="/register" Underline="Underline.Always">立即注册</MudLink>
         </MudText>
-    </MudCard>
-</div>
+    </MudStack>
+</MudPaper>
 
 @code {
     private string? errorMessage;
     private EditContext editContext = default!;
+    private Dictionary<string, object> userNameTextFieldAttr = new()
+    {
+        { "autocomplete", "username webauthn"},
+        { "aria-required", "true" }
+    };
+    private Dictionary<string, object> passwordTextFieldAttr = new()
+    {
+        { "autocomplete", "current-password" },
+        { "aria-required", "true" }
+    };
 
     [CascadingParameter]
     private HttpContext HttpContext { get; set; } = default!;

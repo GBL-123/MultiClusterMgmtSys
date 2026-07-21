@@ -28,4 +28,8 @@
     <Folder Include="Models\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="wwwroot\ShowPassword.js" />
+  </ItemGroup>
+
 </Project>
