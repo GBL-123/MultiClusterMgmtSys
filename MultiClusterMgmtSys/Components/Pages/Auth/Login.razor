@@ -1,5 +1,6 @@
 @page "/login"
 @layout EmptyLayout
+@attribute [ExcludeFromInteractiveRouting]
 
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Authentication
@@ -16,7 +17,7 @@
         <MudStack AlignItems="AlignItems.Center">
             <MudIcon Icon="@Icons.Material.Filled.TravelExplore" Size="Size.Large" Color="Color.Primary" />
             <MudText Typo="Typo.h5">多集群管理系统</MudText>
-            <StatusMessage Message="@errorMessage" />
+            <StatusMessage IsSuccess="@isSuccess" Message="@errorMessage" />
         </MudStack>
        
         <EditForm EditContext="editContext" method="post" OnSubmit="LoginUser" FormName="login">
@@ -48,7 +49,8 @@
             <MudStaticButton Variant="Variant.Filled"
                              Color="Color.Primary"
                              FullWidth="true"
-                             FormAction="FormAction.Submit" Size="Size.Large">
+                             FormAction="FormAction.Submit"
+                             Size="Size.Large">
                 登 录
             </MudStaticButton>
         </EditForm>
@@ -62,6 +64,7 @@
 </MudPaper>
 
 @code {
+    private bool isSuccess = false;
     private string? errorMessage;
     private EditContext editContext = default!;
     private Dictionary<string, object> userNameTextFieldAttr = new()
@@ -114,14 +117,13 @@
                 Input.RememberMe
             )
         );
-        if (result.Succeeded)
+        if (!result.Succeeded)
         {
-            RedirectManager.RedirectTo(ReturnUrl);
+            isSuccess = false;
+            errorMessage = "用户名或密码错误";
         }
-        else
-        {
-            errorMessage = "Error: 用户名或密码错误";
-        }
+        isSuccess = true;
+        RedirectManager.RedirectTo(ReturnUrl);
     }
 
     private sealed class InputModel

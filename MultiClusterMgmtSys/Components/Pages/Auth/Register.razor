@@ -1,118 +1,130 @@
 @page "/register"
 @layout EmptyLayout
+@attribute [ExcludeFromInteractiveRouting]
 
 @using System.ComponentModel.DataAnnotations
 @using MultiClusterMgmtSys.Components.Redirection
 @using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.Requests
 
+@inject IdentityRedirectManager RedirectManager
+@inject AccountService AccountService
+
 <PageTitle>注册账号</PageTitle>
 
-<div class="d-flex align-center justify-center" style="min-height:100vh; background:var(--mud-palette-background);">
-    <MudCard Elevation="8" Class="pa-8" Style="width:420px; max-width:90vw;">
-        <div class="d-flex flex-column align-center mb-6">
+<MudPaper Elevation="8" Width="400px" Class="pa-8">
+    <MudStack >
+        <MudStack AlignItems="AlignItems.Center">
             <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Size="Size.Large" Color="Color.Primary" />
-            <MudText Typo="Typo.h5" Align="Align.Center" Class="mt-2">注册新账号</MudText>
-        </div>
-
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <MudAlert Severity="Severity.Error" Dense="true" Class="mb-4">@errorMessage</MudAlert>
-        }
+            <MudText Typo="Typo.h5">注册新账号</MudText>
+            <StatusMessage IsSuccess="@isSuccess" Message="@errorMessage" />
+        </MudStack>
 
         <EditForm Model="Input" method="post" OnValidSubmit="RegisterUser" FormName="register">
             <DataAnnotationsValidator />
-            
-            <MudTextField T="string"
-                          Value="@Input.UserName"
-                          InputId="Input.UserName"
-                          Label="用户名"
-                          Required="true"
-                          RequiredError="请输入用户名"
-                          Immediate="true"
-                          Variant="Variant.Outlined"
-                          Class="mb-3" />
+            <MudStaticTextField For="@(() => Input.UserName)"
+                                @bind-Value="Input.UserName"
+                                Label="用户名"
+                                Required="true"
+                                Variant="Variant.Outlined"
+                                Margin="Margin.Dense"
+                                Class="pb-2"
+                                UserAttributes="@userNameTextFieldAttr" />
+            <MudStaticTextField For="@(() => Input.Password)"
+                                @bind-Value="Input.Password"
+                                Label="密码"
+                                Required="true"
+                                InputType="InputType.Password"
+                                Variant="Variant.Outlined"
+                                Margin="Margin.Dense"
+                                Adornment="Adornment.End"
+                                AdornmentIcon="@Icons.Material.Outlined.Visibility"
+                                AdornmentToggledIcon="@Icons.Material.Outlined.VisibilityOff"
+                                AdornmentClickFunction="showPassword"
+                                Class="pb-2"
+                                UserAttributes="@passwordTextFieldAttr" />
+            <MudStaticTextField For="@(() => Input.ConfirmPassword)"
+                                @bind-Value="Input.ConfirmPassword"
+                                Label="确认密码"
+                                Required="true"
+                                InputType="InputType.Password"
+                                Variant="Variant.Outlined"
+                                Margin="Margin.Dense"
+                                Adornment="Adornment.End"
+                                AdornmentIcon="@Icons.Material.Outlined.Visibility"
+                                AdornmentToggledIcon="@Icons.Material.Outlined.VisibilityOff"
+                                AdornmentClickFunction="showPassword"
+                                Class="pb-2"
+                                UserAttributes="@confirmPasswordTextFieldAttr" />
 
-            <MudTextField T="string"
-                          Value="@Input.Password"
-                          InputId="Input.Password"
-                          Label="密码"
-                          Required="true"
-                          RequiredError="请输入密码"
-                          Immediate="true"
-                          InputType="InputType.Password"
-                          HelperText="至少 8 位，包含字母和数字"
-                          Variant="Variant.Outlined"
-                          Class="mb-3" />
-
-            <MudTextField T="string"
-                          Value="@Input.ConfirmPassword"
-                          Label="确认密码"
-                          Required="true"
-                          RequiredError="请再次输入密码"
-                          Immediate="true"
-                          InputType="InputType.Password"
-                          Variant="Variant.Outlined"
-                          Class="mb-3" />
-
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       FullWidth="true"
-                       Size="Size.Large"
-                       ButtonType="ButtonType.Submit"
-                       Class="mt-2">
+            <MudStaticButton Variant="Variant.Filled"
+                             Color="Color.Primary"
+                             FullWidth="true"
+                             FormAction="FormAction.Submit"
+                             Size="Size.Large">
                 注 册
-            </MudButton>
+            </MudStaticButton>
         </EditForm>
 
         <MudDivider Class="my-4" />
 
-        <MudText Align="Align.Center" Class="mud-text-secondary">
+        <MudText Align="Align.Center">
             已有账号？<MudLink Href="/login" Underline="Underline.Always">返回登录</MudLink>
         </MudText>
-    </MudCard>
-</div>
+    </MudStack>
+</MudPaper>
 
 @code {
-    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
-    [Inject] private IdentityRedirectManager RedirectManager { get; set; } = default!;
-    [Inject] private AccountService AccountService { get; set; } = default!;
-
+    private bool isSuccess = false;
     private string? errorMessage;
+    private Dictionary<string, object> userNameTextFieldAttr = new()
+    {
+        { "autocomplete", "username"},
+        { "aria-required", "true" }
+    };
+    private Dictionary<string, object> passwordTextFieldAttr = new()
+    {
+        { "autocomplete", "new-password" },
+        { "aria-required", "true" }
+    };
+    private Dictionary<string, object> confirmPasswordTextFieldAttr = new()
+    {
+        { "autocomplete", "new-password" },
+        { "aria-required", "true" }
+    };
 
     [SupplyParameterFromForm]
     private InputModel Input { get; set; } = default!;
-
-    [SupplyParameterFromQuery]
-    private string? ReturnUrl { get; set; }
 
     protected override void OnInitialized()
     {
         Input ??= new();
     }
 
-    private async Task RegisterUser()
+    private async Task RegisterUser(EditContext editContext)
     {
         var request = new RegisterRequest(Input.UserName, Input.Password, Input.ConfirmPassword);
         var result = await AccountService.RegisterAsync(request);
         if (!result.Succeeded)
         {
-            errorMessage = string.Join(", ", result.Errors.Select(e => e.Description));
+            isSuccess = false;
+            errorMessage = string.Join("\n", result.Errors.Select(e => e.Description));
             return;
         }
-        RedirectManager.RedirectTo("/login");
+        isSuccess = true;
+        RedirectManager.RedirectTo("/register/confirmation");
     }
 
     private sealed class InputModel
     {
-        [Required]
+        [Required(ErrorMessage = "请输入用户名")]
         public string UserName { get; set; } = "";
 
-        [Required]
-        [StringLength(100, MinimumLength = 8)]
+        [Required(ErrorMessage = "请输入密码")]
         [DataType(DataType.Password)]
         public string Password { get; set; } = "";
 
+        [Required(ErrorMessage = "请确认密码")]
         [DataType(DataType.Password)]
         [Compare("Password", ErrorMessage = "两次密码不一致")]
         public string ConfirmPassword { get; set; } = "";
