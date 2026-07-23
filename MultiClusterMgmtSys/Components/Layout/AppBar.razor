@@ -1,5 +1,10 @@
 ﻿@using MultiClusterMgmtSys.Components.Theme
 
+@inject ThemeManager ThemeManager
+@inject NavigationManager NavigationManager
+@inject AuthService AuthService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
 <MudAppBar Elevation="1">
     <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@MenuClick" />
     <MudIcon Icon="@Icons.Material.Filled.TravelExplore" />
@@ -21,11 +26,11 @@
 </MudAppBar>
 
 @code {
-    [Parameter] public EventCallback OnMenuClick { get; set; }
-    [Parameter] public EventCallback OnThemeClick { get; set; }
+    [Parameter]
+    public EventCallback OnMenuClick { get; set; }
 
-    [Inject] private ThemeManager ThemeManager { get; set; } = default!;
-    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+    [Parameter]
+    public EventCallback OnThemeClick { get; set; }
 
     private async Task MenuClick()
     {
@@ -37,8 +42,9 @@
         await OnThemeClick.InvokeAsync();
     }
 
-    private void Logout()
+    private async Task Logout()
     {
-        NavigationManager.NavigateTo("/api/logout", forceLoad: true);
+        var returnUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.NavigateTo($"/api/logout?returnUrl={returnUrl}", forceLoad: true);
     }
 }

@@ -1,7 +1,6 @@
 ﻿@page "/register/confirmation"
 @layout EmptyLayout
 
-@inject IdentityRedirectManager RedirectManager
 @inject NavigationManager Navigation
 
 <PageTitle>注册确认</PageTitle>
@@ -21,9 +20,12 @@
     private bool isSuccess = true;
     private string? successMessage;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        _ = CountDownAsync();
+        if (firstRender)
+        {
+            await CountDownAsync();
+        }
     }
 
     public async Task CountDownAsync()

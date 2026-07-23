@@ -60,32 +60,6 @@ public class AccountService(
         logger.LogInformation("Create admin account succeeded");
     }
 
-    public async Task<IdentityResult> RegisterAsync(RegisterRequest request)
-    {
-        var user = new ApplicationUser
-        {
-            UserName = request.UserName,
-            NormalizedUserName = request.UserName.ToUpperInvariant(),
-            CreatedAt = DateTime.UtcNow
-        };
-        var result = await userManager.CreateAsync(user, request.Password);
-
-        if (result.Succeeded)
-        {
-            await userManager.AddToRoleAsync(user, MemberRole);
-        }
-        return result;
-    }
-
-    public async Task<SignInResult> LoginAsync(LoginRequest request)
-    {
-        return await signInManager.PasswordSignInAsync(
-            request.UserName,
-            request.Password,
-            request.RememberMe,
-            lockoutOnFailure: false);
-    }
-
     public async Task<AccountViewModel[]> GetAllAccountsAsync()
     {
         var list = await userManager.Users
@@ -264,15 +238,8 @@ public class AccountService(
         return result;
     }
 
-    public Task<SignInResult> PasswordSignInAsync(string username, string password, bool isPersistent)
-    {
-        return signInManager.PasswordSignInAsync(username, password, isPersistent, lockoutOnFailure: false);
-    }
 
-    public async Task SignOutAsync()
-    {
-        await signInManager.SignOutAsync();
-    }
+    
 
     public async Task<ApplicationUser?> GetUserByNameAsync(string username)
     {

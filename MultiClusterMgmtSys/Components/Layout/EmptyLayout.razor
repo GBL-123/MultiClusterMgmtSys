@@ -2,6 +2,8 @@
 
 @using MultiClusterMgmtSys.Components.Theme
 
+@inject ThemeManager ThemeManager
+
 <MudThemeProvider Theme="@ThemeManager.Theme"
                   IsDarkMode="@ThemeManager.IsDarkMode"
                   IsDarkModeChanged="@(v => ThemeManager.IsDarkMode = v)"
@@ -15,7 +17,3 @@
         @Body
     </MudContainer>
 </MudLayout>
-
-@code {
-    [Inject] private ThemeManager ThemeManager { get; set; } = default!;
-}

@@ -8,7 +8,7 @@
 @using MultiClusterMgmtSys.Components.Redirection
 
 @inject IdentityRedirectManager RedirectManager
-@inject AccountService AccountService
+@inject AuthService AuthService
 
 <PageTitle>登录</PageTitle>
 
@@ -41,9 +41,9 @@
                                 AdornmentClickFunction="showPassword"
                                 Class="pb-2"
                                 UserAttributes="@passwordTextFieldAttr" />
-            <MudStaticCheckBox For="@(() => Input.RememberMe)"
-                               @bind-Value="Input.RememberMe">
-                记住我
+            <MudStaticCheckBox For="@(() => Input.AutoLogin)"
+                               @bind-Value="Input.AutoLogin">
+                自动登录
             </MudStaticCheckBox>
 
             <MudStaticButton Variant="Variant.Filled"
@@ -110,11 +110,11 @@
 
         // This doesn't count login failures towards account lockout
         // To enable password failures to trigger account lockout, set lockoutOnFailure: true
-        var result = await AccountService.LoginAsync(
+        var result = await AuthService.LoginAsync(
             new LoginRequest(
                 Input.UserName,
                 Input.Password,
-                Input.RememberMe
+                Input.AutoLogin
             )
         );
         if (!result.Succeeded)
@@ -135,6 +135,6 @@
         [DataType(DataType.Password)]
         public string Password { get; set; } = "";
 
-        public bool RememberMe { get; set; }
+        public bool AutoLogin { get; set; }
     }
 }

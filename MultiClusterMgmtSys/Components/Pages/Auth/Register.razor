@@ -8,7 +8,7 @@
 @using MultiClusterMgmtSys.Requests
 
 @inject IdentityRedirectManager RedirectManager
-@inject AccountService AccountService
+@inject AuthService AuthService
 
 <PageTitle>注册账号</PageTitle>
 
@@ -104,7 +104,7 @@
     private async Task RegisterUser(EditContext editContext)
     {
         var request = new RegisterRequest(Input.UserName, Input.Password, Input.ConfirmPassword);
-        var result = await AccountService.RegisterAsync(request);
+        var result = await AuthService.RegisterAsync(request);
         if (!result.Succeeded)
         {
             isSuccess = false;

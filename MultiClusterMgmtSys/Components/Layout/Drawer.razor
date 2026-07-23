@@ -19,13 +19,9 @@
                 </MudNavLink>
             </Authorized>
         </AuthorizeView>
-        <AuthorizeView>
-            <Authorized>
-                <MudNavLink Href="/profile" Icon="@Icons.Material.Filled.Person" Match="NavLinkMatch.Prefix">
-                    个人资料
-                </MudNavLink>
-            </Authorized>
-        </AuthorizeView>
+        <MudNavLink Href="/profile" Icon="@Icons.Material.Filled.Person" Match="NavLinkMatch.Prefix">
+            个人资料
+        </MudNavLink>
         <MudNavLink Href="/testpage" Icon="@Icons.Material.Filled.DeviceHub" Match="NavLinkMatch.Prefix">
             测试页面
         </MudNavLink>
@@ -33,5 +29,6 @@
 </MudDrawer>
 
 @code {
-    [Parameter] public bool IsOpen { get; set; }
+    [Parameter]
+    public bool IsOpen { get; set; }
 }
