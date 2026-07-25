@@ -1,0 +1,119 @@
+<MudTable T="ClusterViewModel"
+          ServerData="@LoadInner"
+          RowsPerPage="20"
+          Dense="true"
+          Hover="true"
+          Elevation="0"
+          Loading="Processing"
+          @ref="table">
+    <HeaderContent>
+        <MudTh><MudTableSortLabel T="ClusterViewModel" SortBy="@(x => x.Name)" SortLabel="Name">名称</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="ClusterViewModel" SortBy="@(x => x.Status)" SortLabel="Status">状态</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="ClusterViewModel" SortBy="@(x => x.Version)" SortLabel="Version">版本</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="ClusterViewModel" SortBy="@(x => x.NodeCount)" SortLabel="NodeCount">节点数</MudTableSortLabel></MudTh>
+        <MudTh>分组</MudTh>
+        <MudTh>API Server</MudTh>
+        <MudTh><MudTableSortLabel T="ClusterViewModel" SortBy="@(x => x.CreatedAt)" SortLabel="CreatedAt">创建时间</MudTableSortLabel></MudTh>
+        <MudTh>操作</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="名称">
+            <MudText Color="Color.Primary"
+                     Style="cursor:pointer; text-decoration: underline;"
+                     @onclick="() => OnNavigate.InvokeAsync(context.Id)">
+                @context.Name
+            </MudText>
+        </MudTd>
+        <MudTd DataLabel="状态">
+            <MudChip T="string"
+                     Size="Size.Small"
+                     Color="GetStatusColor(context.Status)"
+                     Variant="Variant.Filled">
+                @context.StatusText
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="版本">@(context.Version ?? "—")</MudTd>
+        <MudTd DataLabel="节点数">@context.NodeCount</MudTd>
+        <MudTd DataLabel="分组">@(context.GroupName ?? "未分组")</MudTd>
+        <MudTd DataLabel="API Server">
+            <MudText Style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+                     Title="@context.ApiServer">
+                @(context.ApiServer ?? "—")
+            </MudText>
+        </MudTd>
+        <MudTd DataLabel="创建时间">@context.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudTd>
+        <MudTd DataLabel="操作">
+            <AuthorizeView Roles="Admin">
+                <Authorized Context="authContext">
+                    <div @onclick:stopPropagation="true" class="d-flex gap-2" style="gap: 4px;">
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                       Size="Size.Small"
+                                       OnClick="@(() => OnRefresh.InvokeAsync(context.Id))"
+                                       Disabled="Processing" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Size="Size.Small"
+                                       OnClick="@(() => OnEdit.InvokeAsync(context.Id))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       OnClick="@(() => OnDelete.InvokeAsync(context))"
+                                       Disabled="Processing" />
+                    </div>
+                </Authorized>
+            </AuthorizeView>
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager />
+    </PagerContent>
+    <LoadingContent>
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    </LoadingContent>
+    <NoRecordsContent>
+        <div class="d-flex flex-column align-center justify-center" style="min-height:300px;">
+            <MudText Class="mud-text-secondary" Align="Align.Center">暂无集群或没有符合筛选条件的集群</MudText>
+            <div class="d-flex gap-2 mt-4" style="gap:8px;">
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Secondary"
+                           OnClick="OnReset">
+                    重置筛选
+                </MudButton>
+                <AuthorizeView Roles="Admin">
+                    <Authorized>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="OnAdd">
+                            添加集群
+                        </MudButton>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+        </div>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    [Parameter] public Func<TableState, Task<TableData<ClusterViewModel>>> OnLoadPaged { get; set; } = default!;
+    [Parameter] public EventCallback<int> OnRefresh { get; set; }
+    [Parameter] public EventCallback<int> OnEdit { get; set; }
+    [Parameter] public EventCallback<ClusterViewModel> OnDelete { get; set; }
+    [Parameter] public EventCallback<int> OnNavigate { get; set; }
+    [Parameter] public EventCallback OnAdd { get; set; }
+    [Parameter] public EventCallback OnReset { get; set; }
+    [Parameter] public bool Processing { get; set; }
+
+    private MudTable<ClusterViewModel> table = default!;
+
+    private Task<TableData<ClusterViewModel>> LoadInner(TableState state, CancellationToken _)
+        => OnLoadPaged(state);
+
+    public Task ReloadAsync() => table.ReloadServerData();
+
+    private static Color GetStatusColor(ClusterStatus status) => status switch
+    {
+        ClusterStatus.Online => Color.Success,
+        ClusterStatus.Offline => Color.Error,
+        _ => Color.Default
+    };
+}

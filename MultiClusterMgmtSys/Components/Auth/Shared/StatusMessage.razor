@@ -1,0 +1,42 @@
+﻿@if (!string.IsNullOrEmpty(DisplayMessage))
+{
+    var icon = IsSuccess ? Icons.Material.Filled.CheckCircleOutline : Icons.Material.Filled.ErrorOutline;
+    var color = IsSuccess ? Color.Success : Color.Error;
+    var colorClass = IsSuccess ? "green lighten-5" : "red lighten-5";
+
+    <MudPaper Elevation="0" Square="true" MinWidth="80%" Class="@($"pa-2 {colorClass}")">
+        <MudStack AlignItems="AlignItems.Center">
+            <MudIcon Icon="@icon" Color="@color" />
+            <MudText Color="@color" Align="Align.Center" Style="white-space: pre-line;">@DisplayMessage</MudText>
+        </MudStack>
+    </MudPaper>
+}
+
+@code {
+    private string? messageFromCookie;
+
+    [Parameter]
+    public string? Message { get; set; }
+
+    [Parameter]
+    public bool IsSuccess { get; set; }
+
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? DisplayMessage => Message ?? messageFromCookie;
+
+    protected override void OnInitialized()
+    {
+        if (HttpContext is null)
+        {
+            return;
+        }
+        messageFromCookie = HttpContext.Request.Cookies[RedirectManager.StatusCookieName];
+
+        if (messageFromCookie is not null)
+        {
+            HttpContext.Response.Cookies.Delete(RedirectManager.StatusCookieName);
+        }
+    }
+}

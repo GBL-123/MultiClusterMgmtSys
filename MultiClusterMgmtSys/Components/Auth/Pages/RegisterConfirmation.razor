@@ -1,0 +1,43 @@
+﻿@page "/register/confirmation"
+@layout EmptyLayout
+
+@using MultiClusterMgmtSys.Components.Auth.Shared
+
+@inject NavigationManager NavigationManager
+
+<PageTitle>注册确认</PageTitle>
+
+<MudPaper Elevation="8" Width="400px" Class="pa-8">
+    <MudStack AlignItems="AlignItems.Center">
+        <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Size="Size.Large" Color="Color.Primary" />
+        <MudText Typo="Typo.h5">注册新账号</MudText>
+        <StatusMessage IsSuccess="@isSuccess" Message="@successMessage" />
+        <MudText Align="Align.Center">
+            如果没有自动跳转，请点击<MudLink Href="/login" Underline="Underline.Always">立即跳转</MudLink>
+        </MudText>
+    </MudStack>
+</MudPaper>
+
+@code {
+    private bool isSuccess = true;
+    private string? successMessage;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await CountDownAsync();
+        }
+    }
+
+    public async Task CountDownAsync()
+    {
+        for (int count = 5; count > 0; count--)
+        {
+            successMessage = $"注册成功，{count} 秒后跳转登录页面...";
+            StateHasChanged();
+            await Task.Delay(1000);
+        }
+        NavigationManager.NavigateTo("/login", forceLoad: true);
+    }
+}

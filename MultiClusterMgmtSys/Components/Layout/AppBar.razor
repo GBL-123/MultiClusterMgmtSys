@@ -1,9 +1,8 @@
-﻿@using MultiClusterMgmtSys.Components.Theme
+﻿@using MultiClusterMgmtSys.Components.Auth.Services
 
 @inject ThemeManager ThemeManager
 @inject NavigationManager NavigationManager
 @inject AuthService AuthService
-@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <MudAppBar Elevation="1">
     <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@MenuClick" />
@@ -12,7 +11,7 @@
     <MudSpacer />
     <AuthorizeView>
         <Authorized>
-            <MudText Typo="Typo.body2" Class="mr-2 mud-text-secondary">@context.User.Identity?.Name</MudText>
+            <MudText Typo="Typo.body2">@context.User.Identity?.Name</MudText>
             <MudIconButton Icon="@Icons.Material.Filled.Logout"
                            Color="Color.Inherit"
                            Title="登出"

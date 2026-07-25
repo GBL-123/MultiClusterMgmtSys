@@ -3,12 +3,16 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 using MultiClusterMgmtSys.Components;
-using MultiClusterMgmtSys.Components.Theme;
-using MultiClusterMgmtSys.Components.Redirection;
-using MultiClusterMgmtSys.Daos;
-using MultiClusterMgmtSys.Models;
-using MultiClusterMgmtSys.Services;
-using MultiClusterMgmtSys.Services.Identity;
+using MultiClusterMgmtSys.Data;
+using MultiClusterMgmtSys.Data.Repositories;
+using MultiClusterMgmtSys.Data.Entities;
+using MultiClusterMgmtSys.Components.Common;
+using MultiClusterMgmtSys.Features.Account.Services;
+using MultiClusterMgmtSys.Features.Clusters.Services;
+using MultiClusterMgmtSys.Features.Nodes.Services;
+using MultiClusterMgmtSys.Features.Configmaps.Services;
+using MultiClusterMgmtSys.Common.Identity;
+using MultiClusterMgmtSys.Components.Auth.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,7 +33,7 @@ builder.Services.AddScoped<GroupService>();
 builder.Services.AddScoped<ThemeManager>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AccountService>();
-builder.Services.AddScoped<IdentityRedirectManager>();
+builder.Services.AddScoped<RedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 
 builder.Services.AddAuthorization();
@@ -63,7 +67,7 @@ builder.Services.ConfigureApplicationCookie(options =>
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-builder.Services.AddDbContext<AppDbContext>(options =>
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
@@ -78,7 +82,7 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
         options.Stores.SchemaVersion = IdentitySchemaVersions.Version3;
     })
     .AddRoles<IdentityRole<int>>()
-    .AddEntityFrameworkStores<AppDbContext>()
+    .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddSignInManager()
     .AddErrorDescriber<ChineseIdentityErrorDescriber>();
 
@@ -86,7 +90,7 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.EnsureCreated();
 
     var accountService = scope.ServiceProvider.GetRequiredService<AccountService>();

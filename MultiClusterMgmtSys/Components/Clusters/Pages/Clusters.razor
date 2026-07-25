@@ -1,0 +1,221 @@
+@attribute [Authorize]
+@page "/clusters"
+
+@inject ClusterService ClusterService
+@inject GroupService GroupService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>集群管理</PageTitle>
+
+<MudStack>
+    <MudText Typo="Typo.h4" Class="mb-4">集群管理</MudText>
+
+    <div class="d-flex align-center mb-4" style="justify-content: space-between;">
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">共 @totalCount 个集群</MudText>
+        <div class="d-flex align-center gap-3" style="gap: 8px;">
+            <MudButton Variant="Variant.Text"
+                       StartIcon="@Icons.Material.Filled.Folder"
+                       OnClick="OpenManageGroupsDialog">
+                分组管理
+            </MudButton>
+            <AuthorizeView Roles="Admin">
+                <Authorized>
+                    <MudButton Variant="Variant.Text"
+                               StartIcon="@Icons.Material.Filled.CreateNewFolder"
+                               OnClick="OpenCreateGroupDialog">
+                        新建分组
+                    </MudButton>
+                </Authorized>
+            </AuthorizeView>
+            <AuthorizeView Roles="Admin">
+                <Authorized>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="OpenAddClusterDialog">
+                        添加集群
+                    </MudButton>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+    </div>
+
+    <ClusterToolbar Filters="@query"
+                    Groups="@groups"
+                    AvailableVersions="@availableVersions"
+                    OnFilterChanged="RefreshFromFilter" />
+
+    <ClusterTable OnLoadPaged="LoadPaged"
+                  OnRefresh="RefreshCluster"
+                  OnEdit="OpenEditClusterDialog"
+                  OnDelete="DeleteCluster"
+                  OnNavigate="NavigateToDetail"
+                  OnAdd="OpenAddClusterDialog"
+                  OnReset="RefreshFromFilter"
+                  Processing="processing"
+                  @ref="tableComponent" />
+</MudStack>
+
+@code {
+    private List<ClusterGroupViewModel> groups = [];
+    private List<string> availableVersions = [];
+    private readonly ClusterQuery query = new();
+    private int totalCount;
+    private bool processing;
+    private ClusterTable? tableComponent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var groupsTask = GroupService.GetGroupsAsync();
+            var versionsTask = ClusterService.GetAvailableVersionsAsync();
+            await Task.WhenAll(groupsTask, versionsTask);
+            groups = groupsTask.Result;
+            availableVersions = versionsTask.Result;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"加载数据失败: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task<TableData<ClusterViewModel>> LoadPaged(TableState state)
+    {
+        try
+        {
+            var result = await ClusterService.GetPagedAsync(state, query);
+            totalCount = result.Total;
+            return new TableData<ClusterViewModel>
+            {
+                Items = result.Items,
+                TotalItems = result.Total
+            };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"加载集群失败: {ex.Message}", Severity.Error);
+            return new TableData<ClusterViewModel> { Items = [], TotalItems = 0 };
+        }
+    }
+
+    private Task RefreshFromFilter() => tableComponent?.ReloadAsync() ?? Task.CompletedTask;
+
+    private async Task OpenAddClusterDialog()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<AddClusterDialog>("添加集群", options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await RefreshVersionsIfNeeded();
+            await tableComponent!.ReloadAsync();
+        }
+    }
+
+    private async Task OpenCreateGroupDialog()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<CreateGroupDialog>("新建分组", options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            groups = await GroupService.GetGroupsAsync();
+        }
+    }
+
+    private async Task OpenEditClusterDialog(int id)
+    {
+        var parameters = new DialogParameters { { "ClusterId", id } };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<EditClusterDialog>("编辑集群", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await RefreshVersionsIfNeeded();
+            await tableComponent!.ReloadAsync();
+        }
+    }
+
+    private async Task OpenManageGroupsDialog()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ManageGroupsDialog>("分组管理", options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            groups = await GroupService.GetGroupsAsync();
+            if (query.GroupId.HasValue && !groups.Any(g => g.Id == query.GroupId.Value))
+            {
+                query.GroupId = null;
+            }
+        }
+    }
+
+    private async Task RefreshCluster(int id)
+    {
+        processing = true;
+        try
+        {
+            await ClusterService.RefreshClusterStatusAsync(id);
+            await tableComponent!.ReloadAsync();
+            Snackbar.Add("集群状态已刷新", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"刷新状态失败: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            processing = false;
+        }
+    }
+
+    private async Task DeleteCluster(ClusterViewModel cluster)
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "确认删除",
+            $"确认删除集群「{cluster.Name}」？此操作不可撤销。",
+            yesText: "删除",
+            noText: "取消");
+
+        if (confirmed == true)
+        {
+            processing = true;
+            try
+            {
+                await ClusterService.DeleteClusterAsync(cluster.Id);
+                Snackbar.Add("集群已删除", Severity.Success);
+                await RefreshVersionsIfNeeded();
+                await tableComponent!.ReloadAsync();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"删除集群失败: {ex.Message}", Severity.Error);
+            }
+            finally
+            {
+                processing = false;
+            }
+        }
+    }
+
+    private void NavigateToDetail(int id)
+    {
+        RedirectManager.RedirectTo($"/clusters/{id}");
+    }
+
+    private async Task RefreshVersionsIfNeeded()
+    {
+        try
+        {
+            availableVersions = await ClusterService.GetAvailableVersionsAsync();
+        }
+        catch
+        {
+            // 版本下拉刷新失败不影响主流程
+        }
+    }
+}
