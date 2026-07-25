@@ -12,7 +12,7 @@
 
 <MudLayout Class="d-flex" Style="height:100vh;">
     <AppBar OnMenuClick="@ToggleDrawer" OnThemeClick="@ToggleTheme" />
-    <Drawer IsOpen="@_drawerOpen" />
+    <Drawer IsOpen="@drawerOpen" />
 
     <MudMainContent Class="d-flex">
         <MudContainer MaxWidth="MaxWidth.False" Class="pa-4 d-flex">
@@ -22,11 +22,11 @@
 </MudLayout>
 
 @code {
-    private bool _drawerOpen = true;
+    private bool drawerOpen = true;
 
     private void ToggleDrawer()
     {
-        _drawerOpen = !_drawerOpen;
+        drawerOpen = !drawerOpen;
     }
 
     private async Task ToggleTheme()
