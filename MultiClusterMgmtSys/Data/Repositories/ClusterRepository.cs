@@ -1,8 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Data;
+using MultiClusterMgmtSys.Components.Clusters.Requests;
 using MultiClusterMgmtSys.Data.Entities;
-using MultiClusterMgmtSys.Features.Clusters.ViewModels;
 
 namespace MultiClusterMgmtSys.Data.Repositories;
 
@@ -43,7 +42,7 @@ public class ClusterRepository(ApplicationDbContext db)
         }
     }
 
-    public async Task<(List<ClusterInfo> Items, int Total)> GetPagedAsync(ClusterQuery q)
+    public async Task<(List<ClusterInfo> Items, int Total)> GetPagedAsync(ClusterQueryRequest q)
     {
         var query = db.Clusters.Include(c => c.Group).AsNoTracking();
 

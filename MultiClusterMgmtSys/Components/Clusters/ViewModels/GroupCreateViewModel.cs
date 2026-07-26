@@ -1,4 +1,4 @@
-namespace MultiClusterMgmtSys.Features.Clusters.ViewModels;
+namespace MultiClusterMgmtSys.Components.Clusters.ViewModels;
 
 public class GroupCreateViewModel
 {

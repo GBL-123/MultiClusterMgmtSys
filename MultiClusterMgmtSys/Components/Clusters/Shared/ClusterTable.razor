@@ -1,3 +1,6 @@
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+@using MultiClusterMgmtSys.Common.Enums
+
 <MudTable T="ClusterViewModel"
           ServerData="@LoadInner"
           RowsPerPage="20"
@@ -94,14 +97,29 @@
 </MudTable>
 
 @code {
-    [Parameter] public Func<TableState, Task<TableData<ClusterViewModel>>> OnLoadPaged { get; set; } = default!;
-    [Parameter] public EventCallback<int> OnRefresh { get; set; }
-    [Parameter] public EventCallback<int> OnEdit { get; set; }
-    [Parameter] public EventCallback<ClusterViewModel> OnDelete { get; set; }
-    [Parameter] public EventCallback<int> OnNavigate { get; set; }
-    [Parameter] public EventCallback OnAdd { get; set; }
-    [Parameter] public EventCallback OnReset { get; set; }
-    [Parameter] public bool Processing { get; set; }
+    [Parameter]
+    public Func<TableState, Task<TableData<ClusterViewModel>>> OnLoadPaged { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<int> OnRefresh { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnEdit { get; set; }
+
+    [Parameter]
+    public EventCallback<ClusterViewModel> OnDelete { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnNavigate { get; set; }
+
+    [Parameter]
+    public EventCallback OnAdd { get; set; }
+
+    [Parameter]
+    public EventCallback OnReset { get; set; }
+
+    [Parameter]
+    public bool Processing { get; set; }
 
     private MudTable<ClusterViewModel> table = default!;
 

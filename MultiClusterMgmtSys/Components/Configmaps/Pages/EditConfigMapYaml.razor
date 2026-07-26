@@ -1,4 +1,4 @@
-@attribute [Authorize(Roles="Admin")]
+@* @attribute [Authorize(Roles="Admin")]
 @page "/configmaps/{ClusterId:int}/{Namespace}/{Name}/yaml"
 
 <PageTitle>编辑 YAML: @Name</PageTitle>
@@ -149,4 +149,4 @@ else
             saving = false;
         }
     }
-}
+} *@

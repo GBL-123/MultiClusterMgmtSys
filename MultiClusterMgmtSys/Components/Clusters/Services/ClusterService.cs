@@ -1,16 +1,16 @@
 using k8s;
-using k8s.Models;
-using MultiClusterMgmtSys.ViewModels.Mappings;
 using MudBlazor;
 using System.Text;
 using MultiClusterMgmtSys.Data.Repositories;
 using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Features.Clusters.ViewModels;
-using MultiClusterMgmtSys.Features.Clusters.ViewModels.Mappings;
-using MultiClusterMgmtSys.Features.Nodes.Services;
+using MultiClusterMgmtSys.Components.Clusters.ViewModels.Mappings;
+using MultiClusterMgmtSys.Components.Clusters.ViewModels;
+using MultiClusterMgmtSys.Components.Nodes.Services;
+using MultiClusterMgmtSys.Common.ViewModels;
+using MultiClusterMgmtSys.Components.Clusters.Requests;
 
-namespace MultiClusterMgmtSys.Features.Clusters.Services;
+namespace MultiClusterMgmtSys.Components.Clusters.Services;
 
 public class ClusterService(ClusterRepository repo, ClusterNodeService nodeService, ILogger<ClusterService> logger)
 {
@@ -24,7 +24,7 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         return [.. clusters.Select(c => c.ToViewModel())];
     }
 
-    public async Task<PagedResult<ClusterViewModel>> GetPagedAsync(ClusterQuery query)
+    public async Task<PagedResult<ClusterViewModel>> GetPagedAsync(ClusterQueryRequest query)
     {
         var (items, total) = await repo.GetPagedAsync(query);
         return new PagedResult<ClusterViewModel>(
@@ -32,7 +32,7 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
             total);
     }
 
-    public async Task<PagedResult<ClusterViewModel>> GetPagedAsync(TableState state, ClusterQuery baseQuery)
+    public async Task<PagedResult<ClusterViewModel>> GetPagedAsync(TableState state, ClusterQueryRequest baseQuery)
     {
         baseQuery.SortBy = state.SortLabel switch
         {

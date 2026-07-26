@@ -1,6 +1,6 @@
-using MultiClusterMgmtSys.Features.Nodes.ViewModels;
+using MultiClusterMgmtSys.Components.Nodes.ViewModels;
 
-namespace MultiClusterMgmtSys.Features.Clusters.ViewModels;
+namespace MultiClusterMgmtSys.Components.Clusters.ViewModels;
 
 public class ClusterNodeDetailViewModel
 {

@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using MultiClusterMgmtSys.Components.Auth.Services;
 using System.Security.Claims;
 
-namespace MultiClusterMgmtSys.Common.Identity;
+namespace MultiClusterMgmtSys.Components.Auth.Services.Identity;
 
 internal static class IdentityComponentsEndpointRouteBuilderExtensions
 {

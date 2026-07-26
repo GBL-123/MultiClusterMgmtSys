@@ -1,4 +1,10 @@
-@using MultiClusterMgmtSys.Models
+@using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Components.Clusters.Services
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+
+@inject ClusterService ClusterService
+@inject GroupService GroupService
+@inject ISnackbar Snackbar
 
 <MudDialog>
     <DialogContent>
@@ -114,10 +120,8 @@
 </MudDialog>
 
 @code {
-    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
-    [Inject] private ClusterService ClusterService { get; set; } = default!;
-    [Inject] private GroupService GroupService { get; set; } = default!;
-    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
 
     private MudForm form = default!;
     private List<ClusterGroupViewModel> groups = new();

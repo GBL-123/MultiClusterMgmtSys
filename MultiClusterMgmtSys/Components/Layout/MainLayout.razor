@@ -10,12 +10,12 @@
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<MudLayout Class="d-flex" Style="height:100vh;">
+<MudLayout Class="d-flex app-layout">
     <AppBar OnMenuClick="@ToggleDrawer" OnThemeClick="@ToggleTheme" />
     <Drawer IsOpen="@drawerOpen" />
 
     <MudMainContent Class="d-flex">
-        <MudContainer MaxWidth="MaxWidth.False" Class="pa-4 d-flex">
+        <MudContainer MaxWidth="MaxWidth.False" Class="pa-4 flex-grow-1">
             @Body
         </MudContainer>
     </MudMainContent>

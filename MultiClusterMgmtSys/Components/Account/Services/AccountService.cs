@@ -4,9 +4,8 @@ using MultiClusterMgmtSys.Data;
 using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Features.Account.ViewModels;
 using MultiClusterMgmtSys.Features.Account.ViewModels.Mappings;
-using MultiClusterMgmtSys.Requests;
 
-namespace MultiClusterMgmtSys.Features.Account.Services;
+namespace MultiClusterMgmtSys.Components.Account.Services;
 
 public class AccountService(
     UserManager<ApplicationUser> userManger,

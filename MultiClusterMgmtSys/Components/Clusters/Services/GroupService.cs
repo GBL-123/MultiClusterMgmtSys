@@ -1,9 +1,9 @@
+using MultiClusterMgmtSys.Components.Clusters.ViewModels;
+using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Data.Repositories;
-using MultiClusterMgmtSys.Features.Clusters.ViewModels;
-using MultiClusterMgmtSys.Features.Clusters.ViewModels.Mappings;
-using MultiClusterMgmtSys.Models;
+using MultiClusterMgmtSys.Components.Clusters.ViewModels.Mappings;
 
-namespace MultiClusterMgmtSys.Features.Clusters.Services;
+namespace MultiClusterMgmtSys.Components.Clusters.Services;
 
 public class GroupService(GroupRepository repo, ILogger<GroupService> logger)
 {

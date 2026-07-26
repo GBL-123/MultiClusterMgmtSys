@@ -1,0 +1,137 @@
+@using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Components.Clusters.Requests
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+
+<MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
+    <MudTextField T="string"
+                  Value="@Query.Name"
+                  ValueChanged="@OnNameChanged"
+                  Label="搜索集群名称"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense" />
+    <MudSelect T="int?"
+               Value="@Query.GroupId"
+               ValueChanged="OnGroupChanged"
+               Label="分组"
+               Variant="Variant.Outlined"
+               Margin="Margin.Dense"
+               Dense="true">
+        <MudSelectItem Value="@((int?)null)">全部分组</MudSelectItem>
+        @foreach (var group in Groups)
+        {
+            <MudSelectItem Value="@((int?)group.Id)">@group.Name</MudSelectItem>
+        }
+    </MudSelect>
+    <MudSelect T="ClusterStatus?"
+               Value="@Query.Status"
+               ValueChanged="OnStatusChanged"
+               Label="状态"
+               Variant="Variant.Outlined"
+               Margin="Margin.Dense"
+               Dense="true">
+        <MudSelectItem Value="@((ClusterStatus?)null)">全部</MudSelectItem>
+        <MudSelectItem Value="@((ClusterStatus?)ClusterStatus.Online)">在线</MudSelectItem>
+        <MudSelectItem Value="@((ClusterStatus?)ClusterStatus.Offline)">离线</MudSelectItem>
+        <MudSelectItem Value="@((ClusterStatus?)ClusterStatus.Unknown)">未知</MudSelectItem>
+    </MudSelect>
+    <MudSelect T="string"
+               Value="@Query.Version"
+               ValueChanged="OnVersionChanged"
+               Label="版本"
+               Variant="Variant.Outlined"
+               Margin="Margin.Dense"
+               Dense="true">
+        <MudSelectItem Value="@("__ALL__")">全部</MudSelectItem>
+        @foreach (var version in AvailableVersions)
+        {
+            <MudSelectItem Value="@version">@version</MudSelectItem>
+        }
+        <MudSelectItem Value="@("__NULL__")">未知</MudSelectItem>
+    </MudSelect>
+    <MudFlexBreak />
+    <MudDatePicker T="DateTime?"
+                    Value="@Query.DateStart"
+                    ValueChanged="OnDateStartChanged"
+                    Label="开始时间"
+                    Variant="Variant.Outlined"
+                    Margin="Margin.Dense"
+                    Dense="true" />
+    <MudDatePicker T="DateTime?"
+                    Value="@Query.DateEnd"
+                    ValueChanged="OnDateEndChanged"
+                    Label="结束时间"
+                    Variant="Variant.Outlined"
+                    Margin="Margin.Dense"
+                    Dense="true" />
+    <MudSpacer />
+    <MudButton Variant="Variant.Outlined"
+               Color="Color.Secondary"
+               StartIcon="@Icons.Material.Filled.Refresh"
+               Class="p"
+               OnClick="ResetFilter">
+        重置
+    </MudButton>
+</MudStack>
+
+@code {
+    [Parameter]
+    public ClusterQueryRequest Query { get; set; } = new();
+
+    [Parameter]
+    public IReadOnlyList<ClusterGroupViewModel> Groups { get; set; } = [];
+
+    [Parameter]
+    public IReadOnlyList<string> AvailableVersions { get; set; } = [];
+
+    [Parameter]
+    public EventCallback OnFilterChanged { get; set; }
+
+    private Task OnNameChanged(string? v)
+    {
+        Query.Name = v;
+        return OnFilterChanged.InvokeAsync();
+    }
+
+    private Task OnGroupChanged(int? v)
+    {
+        Query.GroupId = v;
+        return OnFilterChanged.InvokeAsync();
+    }
+
+    private Task OnStatusChanged(ClusterStatus? v)
+    {
+        Query.Status = v;
+        return OnFilterChanged.InvokeAsync();
+    }
+
+    private Task OnVersionChanged(string? v)
+    {
+        Query.Version = v;
+        return OnFilterChanged.InvokeAsync();
+    }
+
+    private Task OnDateStartChanged(DateTime? v)
+    {
+        Query.DateStart = v;
+        return OnFilterChanged.InvokeAsync();
+    }
+
+    private Task OnDateEndChanged(DateTime? v)
+    {
+        Query.DateEnd = v;
+        return OnFilterChanged.InvokeAsync();
+    }
+
+    private Task ResetFilter()
+    {
+        Query.Name = null;
+        Query.GroupId = null;
+        Query.Status = null;
+        Query.Version = "__ALL__";
+        Query.DateStart = null;
+        Query.DateEnd = null;
+        return OnFilterChanged.InvokeAsync();
+    }
+}

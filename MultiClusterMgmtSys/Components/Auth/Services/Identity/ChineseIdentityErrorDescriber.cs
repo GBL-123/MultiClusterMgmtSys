@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 
-namespace MultiClusterMgmtSys.Common.Identity;
+namespace MultiClusterMgmtSys.Components.Auth.Services.Identity;
 
 public class ChineseIdentityErrorDescriber : IdentityErrorDescriber
 {

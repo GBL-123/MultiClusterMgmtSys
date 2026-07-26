@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using MultiClusterMgmtSys.Data.Entities;
 
-namespace MultiClusterMgmtSys.Common.Identity;
+namespace MultiClusterMgmtSys.Components.Auth.Services.Identity;
 
 // This is a server-side AuthenticationStateProvider that revalidates the security stamp for the connected user
 // every 30 minutes an interactive circuit is connected.

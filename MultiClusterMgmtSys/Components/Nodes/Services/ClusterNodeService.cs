@@ -1,15 +1,14 @@
 using k8s;
 using k8s.Models;
 using MultiClusterMgmtSys.Common.Enums;
+using MultiClusterMgmtSys.Components.Clusters.Services;
+using MultiClusterMgmtSys.Components.Clusters.ViewModels;
+using MultiClusterMgmtSys.Components.Nodes.ViewModels;
 using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Data.Repositories;
-using MultiClusterMgmtSys.Features.Clusters.Services;
-using MultiClusterMgmtSys.Features.Clusters.ViewModels;
-using MultiClusterMgmtSys.Features.Nodes.ViewModels;
-using MultiClusterMgmtSys.ViewModels;
 using System.Text;
 
-namespace MultiClusterMgmtSys.Features.Nodes.Services;
+namespace MultiClusterMgmtSys.Components.Nodes.Services;
 
 /// <summary>
 /// 节点维度的查询服务：从 k8s 实时拉取节点列表与节点详情。

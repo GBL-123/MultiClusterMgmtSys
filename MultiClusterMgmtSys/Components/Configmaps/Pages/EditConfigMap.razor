@@ -1,4 +1,4 @@
-@attribute [Authorize(Roles="Admin")]
+@* @attribute [Authorize(Roles="Admin")]
 @page "/configmaps/{ClusterId:int}/{Namespace}/{Name}/edit"
 
 <PageTitle>修改 ConfigMap: @Name</PageTitle>
@@ -99,7 +99,7 @@ else
         </MudCardContent>
     </MudCard>
 
-    @* Inline add-key dialog *@
+    @* Inline add-key dialog
     @if (showAddKeyDialog)
     {
         <MudOverlay Visible="true" OnClick="@(() => showAddKeyDialog = false)" />
@@ -120,7 +120,7 @@ else
         </MudCard>
     }
 
-    @* Save button *@
+    @* Save button
     <div class="d-flex justify-end mt-4">
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
@@ -255,4 +255,4 @@ else
             saving = false;
         }
     }
-}
+} *@

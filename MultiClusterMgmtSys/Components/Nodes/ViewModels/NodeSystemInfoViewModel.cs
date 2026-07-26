@@ -1,4 +1,4 @@
-namespace MultiClusterMgmtSys.Features.Nodes.ViewModels;
+namespace MultiClusterMgmtSys.Components.Nodes.ViewModels;
 
 public class NodeSystemInfoViewModel
 {

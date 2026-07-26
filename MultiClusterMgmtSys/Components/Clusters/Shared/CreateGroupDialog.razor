@@ -1,3 +1,9 @@
+@using MultiClusterMgmtSys.Components.Clusters.Services
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+
+@inject GroupService GroupService
+@inject ISnackbar Snackbar
+
 <MudDialog>
     <DialogContent>
         <MudForm @ref="form">
@@ -35,9 +41,10 @@
 </MudDialog>
 
 @code {
-    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
-    [Inject] private GroupService GroupService { get; set; } = default!;
-    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
+
+    
 
     private MudForm form = default!;
 

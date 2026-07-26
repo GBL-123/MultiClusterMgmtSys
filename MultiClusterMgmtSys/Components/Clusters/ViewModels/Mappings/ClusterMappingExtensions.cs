@@ -1,8 +1,8 @@
 using MultiClusterMgmtSys.Common.Enums;
 using MultiClusterMgmtSys.Data.Entities;
-using MultiClusterMgmtSys.Features.Clusters.ViewModels;
+using MultiClusterMgmtSys.Components.Clusters.ViewModels;
 
-namespace MultiClusterMgmtSys.Features.Clusters.ViewModels.Mappings;
+namespace MultiClusterMgmtSys.Components.Clusters.ViewModels.Mappings;
 
 public static class ClusterMappingExtensions
 {

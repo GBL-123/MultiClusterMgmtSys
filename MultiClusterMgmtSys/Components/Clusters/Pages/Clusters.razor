@@ -1,51 +1,53 @@
 @attribute [Authorize]
 @page "/clusters"
 
+@using MultiClusterMgmtSys.Components.Clusters.Services
+@using MultiClusterMgmtSys.Components.Clusters.Shared
+@using MultiClusterMgmtSys.Components.Clusters.Requests
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+
 @inject ClusterService ClusterService
 @inject GroupService GroupService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
-@inject IdentityRedirectManager RedirectManager
+@inject RedirectManager RedirectManager
 
 <PageTitle>集群管理</PageTitle>
 
-<MudStack>
-    <MudText Typo="Typo.h4" Class="mb-4">集群管理</MudText>
+<MudStack Class="pa-4">
+    <MudText Typo="Typo.h4">集群管理</MudText>
+    <MudStack Row="true">
+        <MudSpacer />
+        <MudButton Variant="Variant.Text"
+                   StartIcon="@Icons.Material.Filled.Folder"
+                   OnClick="OpenManageGroupsDialog">
+            分组管理
+        </MudButton>
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <MudButton Variant="Variant.Text"
+                           StartIcon="@Icons.Material.Filled.CreateNewFolder"
+                           OnClick="OpenCreateGroupDialog">
+                    新建分组
+                </MudButton>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="OpenAddClusterDialog">
+                    添加集群
+                </MudButton>
+            </Authorized>
+        </AuthorizeView>
+    </MudStack>
 
-    <div class="d-flex align-center mb-4" style="justify-content: space-between;">
-        <MudText Typo="Typo.body2" Class="mud-text-secondary">共 @totalCount 个集群</MudText>
-        <div class="d-flex align-center gap-3" style="gap: 8px;">
-            <MudButton Variant="Variant.Text"
-                       StartIcon="@Icons.Material.Filled.Folder"
-                       OnClick="OpenManageGroupsDialog">
-                分组管理
-            </MudButton>
-            <AuthorizeView Roles="Admin">
-                <Authorized>
-                    <MudButton Variant="Variant.Text"
-                               StartIcon="@Icons.Material.Filled.CreateNewFolder"
-                               OnClick="OpenCreateGroupDialog">
-                        新建分组
-                    </MudButton>
-                </Authorized>
-            </AuthorizeView>
-            <AuthorizeView Roles="Admin">
-                <Authorized>
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.Add"
-                               OnClick="OpenAddClusterDialog">
-                        添加集群
-                    </MudButton>
-                </Authorized>
-            </AuthorizeView>
-        </div>
-    </div>
-
-    <ClusterToolbar Filters="@query"
-                    Groups="@groups"
-                    AvailableVersions="@availableVersions"
-                    OnFilterChanged="RefreshFromFilter" />
+    <ClusterFilterBar Query="@query"
+                      Groups="@groups"
+                      AvailableVersions="@availableVersions"
+                      OnFilterChanged="RefreshFromFilter" />
 
     <ClusterTable OnLoadPaged="LoadPaged"
                   OnRefresh="RefreshCluster"
@@ -61,7 +63,7 @@
 @code {
     private List<ClusterGroupViewModel> groups = [];
     private List<string> availableVersions = [];
-    private readonly ClusterQuery query = new();
+    private ClusterQueryRequest query = new();
     private int totalCount;
     private bool processing;
     private ClusterTable? tableComponent;

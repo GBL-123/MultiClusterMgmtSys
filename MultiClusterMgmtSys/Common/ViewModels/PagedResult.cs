@@ -1,9 +1,10 @@
-namespace MultiClusterMgmtSys.Features.Clusters.ViewModels;
+namespace MultiClusterMgmtSys.Common.ViewModels;
 
 public class PagedResult<T>
 {
     public List<T> Items { get; set; } = [];
-    public int Total { get; set; }
+
+    public int Total { get; set; } = 0;
 
     public PagedResult() { }
 

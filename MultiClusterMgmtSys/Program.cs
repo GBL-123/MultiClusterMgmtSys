@@ -7,12 +7,12 @@ using MultiClusterMgmtSys.Data;
 using MultiClusterMgmtSys.Data.Repositories;
 using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Components.Common;
-using MultiClusterMgmtSys.Features.Account.Services;
-using MultiClusterMgmtSys.Features.Clusters.Services;
-using MultiClusterMgmtSys.Features.Nodes.Services;
+using MultiClusterMgmtSys.Components.Nodes.Services;
 using MultiClusterMgmtSys.Features.Configmaps.Services;
-using MultiClusterMgmtSys.Common.Identity;
 using MultiClusterMgmtSys.Components.Auth.Services;
+using MultiClusterMgmtSys.Components.Clusters.Services;
+using MultiClusterMgmtSys.Components.Auth.Services.Identity;
+using MultiClusterMgmtSys.Components.Account.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
