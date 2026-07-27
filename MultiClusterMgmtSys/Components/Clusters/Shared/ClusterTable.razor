@@ -1,13 +1,15 @@
 @using MultiClusterMgmtSys.Components.Clusters.ViewModels
 @using MultiClusterMgmtSys.Common.Enums
 
+
+
 <MudTable T="ClusterViewModel"
           ServerData="@LoadInner"
-          RowsPerPage="20"
-          Dense="true"
+          RowsPerPage="50"
           Hover="true"
-          Elevation="0"
           Loading="Processing"
+          FixedHeader="true"
+          Height="90%"
           @ref="table">
     <HeaderContent>
         <MudTh><MudTableSortLabel T="ClusterViewModel" SortBy="@(x => x.Name)" SortLabel="Name">名称</MudTableSortLabel></MudTh>
@@ -35,13 +37,13 @@
                 @context.StatusText
             </MudChip>
         </MudTd>
-        <MudTd DataLabel="版本">@(context.Version ?? "—")</MudTd>
+        <MudTd DataLabel="版本">@(context.Version ?? "未知")</MudTd>
         <MudTd DataLabel="节点数">@context.NodeCount</MudTd>
         <MudTd DataLabel="分组">@(context.GroupName ?? "未分组")</MudTd>
         <MudTd DataLabel="API Server">
             <MudText Style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
                      Title="@context.ApiServer">
-                @(context.ApiServer ?? "—")
+                @(context.ApiServer ?? "未知")
             </MudText>
         </MudTd>
         <MudTd DataLabel="创建时间">@context.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudTd>
@@ -67,32 +69,13 @@
         </MudTd>
     </RowTemplate>
     <PagerContent>
-        <MudTablePager />
+        <MudTablePager RowsPerPageString="每页条数：" InfoFormat="共 {all_items} 条" />
     </PagerContent>
     <LoadingContent>
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+        <MudText>正在加载...</MudText>
     </LoadingContent>
     <NoRecordsContent>
-        <div class="d-flex flex-column align-center justify-center" style="min-height:300px;">
-            <MudText Class="mud-text-secondary" Align="Align.Center">暂无集群或没有符合筛选条件的集群</MudText>
-            <div class="d-flex gap-2 mt-4" style="gap:8px;">
-                <MudButton Variant="Variant.Text"
-                           Color="Color.Secondary"
-                           OnClick="OnReset">
-                    重置筛选
-                </MudButton>
-                <AuthorizeView Roles="Admin">
-                    <Authorized>
-                        <MudButton Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   StartIcon="@Icons.Material.Filled.Add"
-                                   OnClick="OnAdd">
-                            添加集群
-                        </MudButton>
-                    </Authorized>
-                </AuthorizeView>
-            </div>
-        </div>
+        <MudText>暂无集群或没有符合筛选条件的集群</MudText>
     </NoRecordsContent>
 </MudTable>
 

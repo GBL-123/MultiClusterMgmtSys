@@ -2,22 +2,19 @@
 @using MultiClusterMgmtSys.Components.Clusters.Requests
 @using MultiClusterMgmtSys.Components.Clusters.ViewModels
 
-<MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
-    <MudTextField T="string"
-                  Value="@Query.Name"
-                  ValueChanged="@OnNameChanged"
-                  Label="搜索集群名称"
-                  Adornment="Adornment.Start"
-                  AdornmentIcon="@Icons.Material.Filled.Search"
+<MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Class="flex-grow-1">
+    <MudStack Row="true" Class="flex-grow-1">
+    <MudTextField @bind-Value="@Query.Name"
+                  Label="集群名称"
                   Variant="Variant.Outlined"
-                  Margin="Margin.Dense" />
-    <MudSelect T="int?"
-               Value="@Query.GroupId"
-               ValueChanged="OnGroupChanged"
+                  Margin="Margin.Dense"
+                  Placeholder="请输入集群名称"
+                  Style="min-width:200px;" />
+    <MudSelect @bind-Value="Query.GroupId"
                Label="分组"
                Variant="Variant.Outlined"
                Margin="Margin.Dense"
-               Dense="true">
+               Style="min-width:150px;">
         <MudSelectItem Value="@((int?)null)">全部分组</MudSelectItem>
         @foreach (var group in Groups)
         {
@@ -30,7 +27,7 @@
                Label="状态"
                Variant="Variant.Outlined"
                Margin="Margin.Dense"
-               Dense="true">
+               Style="min-width:100px;">
         <MudSelectItem Value="@((ClusterStatus?)null)">全部</MudSelectItem>
         <MudSelectItem Value="@((ClusterStatus?)ClusterStatus.Online)">在线</MudSelectItem>
         <MudSelectItem Value="@((ClusterStatus?)ClusterStatus.Offline)">离线</MudSelectItem>
@@ -42,7 +39,7 @@
                Label="版本"
                Variant="Variant.Outlined"
                Margin="Margin.Dense"
-               Dense="true">
+               Style="min-width:150px;">
         <MudSelectItem Value="@("__ALL__")">全部</MudSelectItem>
         @foreach (var version in AvailableVersions)
         {
@@ -50,29 +47,38 @@
         }
         <MudSelectItem Value="@("__NULL__")">未知</MudSelectItem>
     </MudSelect>
-    <MudFlexBreak />
-    <MudDatePicker T="DateTime?"
-                    Value="@Query.DateStart"
-                    ValueChanged="OnDateStartChanged"
-                    Label="开始时间"
-                    Variant="Variant.Outlined"
-                    Margin="Margin.Dense"
-                    Dense="true" />
-    <MudDatePicker T="DateTime?"
-                    Value="@Query.DateEnd"
-                    ValueChanged="OnDateEndChanged"
-                    Label="结束时间"
-                    Variant="Variant.Outlined"
-                    Margin="Margin.Dense"
-                    Dense="true" />
+    </MudStack>
+
+    <MudStack Row="true" Class="flex-grow-1">
+        <MudDatePicker T="DateTime?"
+                        Value="@Query.DateStart"
+                        ValueChanged="OnDateStartChanged"
+                        Label="开始时间"
+                        Variant="Variant.Outlined"
+                        Margin="Margin.Dense"
+                        Style="min-width:250px;" />
+        <MudDatePicker T="DateTime?"
+                        Value="@Query.DateEnd"
+                        ValueChanged="OnDateEndChanged"
+                        Label="结束时间"
+                        Variant="Variant.Outlined"
+                        Margin="Margin.Dense"
+                        Style="min-width:250px;" />
+    </MudStack>
     <MudSpacer />
+    <MudStack Row="true">
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Search">
+        查询
+    </MudButton>
     <MudButton Variant="Variant.Outlined"
                Color="Color.Secondary"
                StartIcon="@Icons.Material.Filled.Refresh"
-               Class="p"
                OnClick="ResetFilter">
         重置
     </MudButton>
+    </MudStack>
 </MudStack>
 
 @code {
@@ -106,7 +112,7 @@
         return OnFilterChanged.InvokeAsync();
     }
 
-    private Task OnVersionChanged(string? v)
+    private Task OnVersionChanged(string v)
     {
         Query.Version = v;
         return OnFilterChanged.InvokeAsync();
