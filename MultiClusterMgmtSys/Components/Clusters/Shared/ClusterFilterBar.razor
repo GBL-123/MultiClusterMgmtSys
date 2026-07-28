@@ -2,51 +2,51 @@
 @using MultiClusterMgmtSys.Components.Clusters.Requests
 @using MultiClusterMgmtSys.Components.Clusters.ViewModels
 
-<MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Class="flex-grow-1">
+<MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
     <MudStack Row="true" Class="flex-grow-1">
-    <MudTextField @bind-Value="@Query.Name"
-                  Label="集群名称"
-                  Variant="Variant.Outlined"
-                  Margin="Margin.Dense"
-                  Placeholder="请输入集群名称"
-                  Style="min-width:200px;" />
-    <MudSelect @bind-Value="Query.GroupId"
-               Label="分组"
-               Variant="Variant.Outlined"
-               Margin="Margin.Dense"
-               Style="min-width:150px;">
-        <MudSelectItem Value="@((int?)null)">全部分组</MudSelectItem>
-        @foreach (var group in Groups)
-        {
-            <MudSelectItem Value="@((int?)group.Id)">@group.Name</MudSelectItem>
-        }
-    </MudSelect>
-    <MudSelect T="ClusterStatus?"
-               Value="@Query.Status"
-               ValueChanged="OnStatusChanged"
-               Label="状态"
-               Variant="Variant.Outlined"
-               Margin="Margin.Dense"
-               Style="min-width:100px;">
-        <MudSelectItem Value="@((ClusterStatus?)null)">全部</MudSelectItem>
-        <MudSelectItem Value="@((ClusterStatus?)ClusterStatus.Online)">在线</MudSelectItem>
-        <MudSelectItem Value="@((ClusterStatus?)ClusterStatus.Offline)">离线</MudSelectItem>
-        <MudSelectItem Value="@((ClusterStatus?)ClusterStatus.Unknown)">未知</MudSelectItem>
-    </MudSelect>
-    <MudSelect T="string"
-               Value="@Query.Version"
-               ValueChanged="OnVersionChanged"
-               Label="版本"
-               Variant="Variant.Outlined"
-               Margin="Margin.Dense"
-               Style="min-width:150px;">
-        <MudSelectItem Value="@("__ALL__")">全部</MudSelectItem>
-        @foreach (var version in AvailableVersions)
-        {
-            <MudSelectItem Value="@version">@version</MudSelectItem>
-        }
-        <MudSelectItem Value="@("__NULL__")">未知</MudSelectItem>
-    </MudSelect>
+        <MudTextField @bind-Value="@Query.Name"
+                      Label="集群名称"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Placeholder="请输入集群名称"
+                      Style="min-width:200px;" />
+        <MudSelect @bind-Value="Query.GroupId"
+                   Label="分组"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   Style="min-width:150px;">
+            <MudSelectItem Value="@((int?)null)">全部分组</MudSelectItem>
+            @foreach (var group in Groups)
+            {
+                <MudSelectItem Value="@((int?)group.Id)">@group.Name</MudSelectItem>
+            }
+        </MudSelect>
+        <MudSelect T="ClusterStatus?"
+                   Value="@Query.Status"
+                   ValueChanged="OnStatusChanged"
+                   Label="状态"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   Style="min-width:100px;">
+            <MudSelectItem Value="@((ClusterStatus?)null)">全部</MudSelectItem>
+            <MudSelectItem Value="@((ClusterStatus?)ClusterStatus.Online)">在线</MudSelectItem>
+            <MudSelectItem Value="@((ClusterStatus?)ClusterStatus.Offline)">离线</MudSelectItem>
+            <MudSelectItem Value="@((ClusterStatus?)ClusterStatus.Unknown)">未知</MudSelectItem>
+        </MudSelect>
+        <MudSelect T="string"
+                   Value="@Query.Version"
+                   ValueChanged="OnVersionChanged"
+                   Label="版本"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   Style="min-width:150px;">
+            <MudSelectItem Value="@("__ALL__")">全部</MudSelectItem>
+            @foreach (var version in AvailableVersions)
+            {
+                <MudSelectItem Value="@version">@version</MudSelectItem>
+            }
+            <MudSelectItem Value="@("__NULL__")">未知</MudSelectItem>
+        </MudSelect>
     </MudStack>
 
     <MudStack Row="true" Class="flex-grow-1">

@@ -123,6 +123,7 @@
         {
             isSuccess = false;
             errorMessage = "用户名或密码错误";
+            return;
         }
         isSuccess = true;
         RedirectManager.RedirectTo(ReturnUrl);

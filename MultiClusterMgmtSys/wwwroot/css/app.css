@@ -1,0 +1,22 @@
+﻿.app-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100vh !important;
+    min-width: 1280px;
+    min-height: 720px;
+}
+
+.auth-alert-text {
+    white-space: pre-line;
+}
+
+.clusters-table {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+    .clusters-table .mud-table-container {
+        display: flex;
+        flex-grow: 1;
+    }

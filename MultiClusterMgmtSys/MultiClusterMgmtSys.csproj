@@ -35,7 +35,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="wwwroot\ShowPassword.js" />
+    <None Include="wwwroot\js\show-password.js" />
   </ItemGroup>
 
 </Project>
