@@ -3,7 +3,7 @@
 @using MultiClusterMgmtSys.Components.Clusters.ViewModels
 
 <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
-    <MudStack Row="true" Class="flex-grow-1">
+    <MudStack Row="true" Class="flex-auto">
         <MudTextField @bind-Value="@Query.Name"
                       Label="集群名称"
                       Variant="Variant.Outlined"
@@ -49,7 +49,7 @@
         </MudSelect>
     </MudStack>
 
-    <MudStack Row="true" Class="flex-grow-1">
+    <MudStack Row="true" Class="flex-auto">
         <MudDatePicker T="DateTime?"
                         Value="@Query.DateStart"
                         ValueChanged="OnDateStartChanged"

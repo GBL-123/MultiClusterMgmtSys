@@ -2,12 +2,10 @@
 @using MultiClusterMgmtSys.Common.Enums
 
 
-
 <MudTable T="ClusterViewModel"
           ServerData="@LoadInner"
-          RowsPerPage="50"
+          RowsPerPage="10"
           Hover="true"
-          Loading="Processing"
           FixedHeader="true"
           Class="clusters-table"
           @ref="table">
@@ -50,7 +48,6 @@
         <MudTd DataLabel="操作">
             <AuthorizeView Roles="Admin">
                 <Authorized Context="authContext">
-                    <div @onclick:stopPropagation="true" class="d-flex gap-2" style="gap: 4px;">
                         <MudIconButton Icon="@Icons.Material.Filled.Refresh"
                                        Size="Size.Small"
                                        OnClick="@(() => OnRefresh.InvokeAsync(context.Id))"
@@ -63,7 +60,7 @@
                                        Color="Color.Error"
                                        OnClick="@(() => OnDelete.InvokeAsync(context))"
                                        Disabled="Processing" />
-                    </div>
+                    
                 </Authorized>
             </AuthorizeView>
         </MudTd>
