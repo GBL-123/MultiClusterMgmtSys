@@ -1,3 +1,4 @@
+using MudBlazor;
 using MultiClusterMgmtSys.Common.Enums;
 
 namespace MultiClusterMgmtSys.Components.Clusters.Requests;
@@ -12,9 +13,7 @@ public class ClusterQueryRequest
 
     public string Version { get; set; } = "__ALL__";
 
-    public DateTime? DateStart { get; set; }
-
-    public DateTime? DateEnd { get; set; }
+    public DateRange? DateRange { get; set; }
 
     public int Page { get; set; } = 1;
 

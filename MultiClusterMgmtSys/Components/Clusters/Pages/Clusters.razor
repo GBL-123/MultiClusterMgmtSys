@@ -49,27 +49,29 @@
             <ClusterFilterBar Query="@query"
                               Groups="@groups"
                               AvailableVersions="@availableVersions"
-                              OnFilterChanged="RefreshFromFilter" />
+                              OnFilterChanged="RefreshTable"
+                              OnReset="ResetTable"/>
         </MudStack>
     </MudPaper>
 
-    <ClusterTable OnLoadPaged="LoadPaged"
-                  OnRefresh="RefreshCluster"
-                  OnEdit="OpenEditClusterDialog"
-                  OnDelete="DeleteCluster"
-                  OnNavigate="NavigateToDetail"
-                  OnAdd="OpenAddClusterDialog"
-                  OnReset="RefreshFromFilter"
-                  Processing="processing"
+    <ClusterTable Query="@query"
+                  OnRefreshCluster="RefreshCluster"
+                  OnEditCluster="OpenEditClusterDialog"
+                  OnDeleteCluster="DeleteCluster"
+                  OnNavigateClusterDetail="NavigateToDetail"
+                  IsProcessing="isProcessing"
                   @ref="tableComponent" />
 </MudStack>
 
 @code {
     private List<ClusterGroupViewModel> groups = [];
+
     private List<string> availableVersions = [];
+
     private ClusterQueryRequest query = new();
-    private int totalCount;
-    private bool processing;
+
+    private bool isProcessing;
+
     private ClusterTable? tableComponent;
 
     protected override async Task OnInitializedAsync()
@@ -88,26 +90,9 @@
         }
     }
 
-    private async Task<TableData<ClusterViewModel>> LoadPaged(TableState state)
-    {
-        try
-        {
-            var result = await ClusterService.GetPagedAsync(state, query);
-            totalCount = result.Total;
-            return new TableData<ClusterViewModel>
-            {
-                Items = result.Items,
-                TotalItems = result.Total
-            };
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"加载集群失败: {ex.Message}", Severity.Error);
-            return new TableData<ClusterViewModel> { Items = [], TotalItems = 0 };
-        }
-    }
+    private Task RefreshTable() => tableComponent?.ReloadDataAsync() ?? Task.CompletedTask;
 
-    private Task RefreshFromFilter() => tableComponent?.ReloadAsync() ?? Task.CompletedTask;
+    private Task ResetTable() => tableComponent?.ResetSortAsync() ?? Task.CompletedTask;
 
     private async Task OpenAddClusterDialog()
     {
@@ -117,7 +102,7 @@
         if (result is not null && !result.Canceled)
         {
             await RefreshVersionsIfNeeded();
-            await tableComponent!.ReloadAsync();
+            await tableComponent!.ReloadDataAsync();
         }
     }
 
@@ -141,7 +126,7 @@
         if (result is not null && !result.Canceled)
         {
             await RefreshVersionsIfNeeded();
-            await tableComponent!.ReloadAsync();
+            await tableComponent!.ReloadDataAsync();
         }
     }
 
@@ -159,11 +144,11 @@
 
     private async Task RefreshCluster(int id)
     {
-        processing = true;
+        isProcessing = true;
         try
         {
             await ClusterService.RefreshClusterStatusAsync(id);
-            await tableComponent!.ReloadAsync();
+            await tableComponent!.ReloadDataAsync();
             Snackbar.Add("集群状态已刷新", Severity.Success);
         }
         catch (Exception ex)
@@ -172,7 +157,7 @@
         }
         finally
         {
-            processing = false;
+            isProcessing = false;
         }
     }
 
@@ -186,13 +171,13 @@
 
         if (confirmed == true)
         {
-            processing = true;
+            isProcessing = true;
             try
             {
                 await ClusterService.DeleteClusterAsync(cluster.Id);
                 Snackbar.Add("集群已删除", Severity.Success);
                 await RefreshVersionsIfNeeded();
-                await tableComponent!.ReloadAsync();
+                await tableComponent!.ReloadDataAsync();
             }
             catch (Exception ex)
             {
@@ -200,7 +185,7 @@
             }
             finally
             {
-                processing = false;
+                isProcessing = false;
             }
         }
     }

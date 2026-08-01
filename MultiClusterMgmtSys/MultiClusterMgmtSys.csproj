@@ -26,12 +26,8 @@
 
   <ItemGroup>
     <Folder Include="Data\Entities\" />
-    <Folder Include="Components\Account\DTOs\Mappings\" />
     <Folder Include="Components\Account\Requests\" />
-    <Folder Include="Components\Clusters\DTOs\Mappings\" />
-    <Folder Include="Components\Configmaps\DTOs\" />
     <Folder Include="Components\Nodes\Shared\" />
-    <Folder Include="Components\Nodes\DTOs\" />
   </ItemGroup>
 
   <ItemGroup>

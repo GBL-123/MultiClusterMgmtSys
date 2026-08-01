@@ -1,13 +1,15 @@
-@using MultiClusterMgmtSys.Components.Clusters.ViewModels
 @using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Components.Clusters.Requests
+@using MultiClusterMgmtSys.Components.Clusters.Services
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
 
+@inject ClusterService ClusterService
 
-<MudTable T="ClusterViewModel"
-          ServerData="@LoadInner"
-          RowsPerPage="10"
+<MudTable ServerData="@LoadData"
           Hover="true"
           FixedHeader="true"
           Class="clusters-table"
+          @key="tableKey"
           @ref="table">
     <HeaderContent>
         <MudTh><MudTableSortLabel T="ClusterViewModel" SortBy="@(x => x.Name)" SortLabel="Name">名称</MudTableSortLabel></MudTh>
@@ -23,14 +25,19 @@
         <MudTd DataLabel="名称">
             <MudText Color="Color.Primary"
                      Style="cursor:pointer; text-decoration: underline;"
-                     @onclick="() => OnNavigate.InvokeAsync(context.Id)">
+                     @onclick="() => OnNavigateClusterDetail.InvokeAsync(context.Id)">
                 @context.Name
             </MudText>
         </MudTd>
         <MudTd DataLabel="状态">
             <MudChip T="string"
                      Size="Size.Small"
-                     Color="GetStatusColor(context.Status)"
+                     Color="@(context.Status switch
+                     {
+                         ClusterStatus.Online => Color.Success,
+                         ClusterStatus.Offline => Color.Error,
+                         _ => Color.Default
+                     })"
                      Variant="Variant.Filled">
                 @context.StatusText
             </MudChip>
@@ -50,16 +57,16 @@
                 <Authorized Context="authContext">
                         <MudIconButton Icon="@Icons.Material.Filled.Refresh"
                                        Size="Size.Small"
-                                       OnClick="@(() => OnRefresh.InvokeAsync(context.Id))"
-                                       Disabled="Processing" />
+                                       OnClick="@(() => OnRefreshCluster.InvokeAsync(context.Id))"
+                                       Disabled="IsProcessing" />
                         <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                        Size="Size.Small"
-                                       OnClick="@(() => OnEdit.InvokeAsync(context.Id))" />
+                                       OnClick="@(() => OnEditCluster.InvokeAsync(context.Id))" />
                         <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
                                        Size="Size.Small"
                                        Color="Color.Error"
-                                       OnClick="@(() => OnDelete.InvokeAsync(context))"
-                                       Disabled="Processing" />
+                                       OnClick="@(() => OnDeleteCluster.InvokeAsync(context))"
+                                       Disabled="IsProcessing" />
                     
                 </Authorized>
             </AuthorizeView>
@@ -78,40 +85,44 @@
 
 @code {
     [Parameter]
-    public Func<TableState, Task<TableData<ClusterViewModel>>> OnLoadPaged { get; set; } = default!;
+    public ClusterQueryRequest Query { get; set; } = new();
 
     [Parameter]
-    public EventCallback<int> OnRefresh { get; set; }
+    public EventCallback<int> OnRefreshCluster { get; set; }
 
     [Parameter]
-    public EventCallback<int> OnEdit { get; set; }
+    public EventCallback<int> OnEditCluster { get; set; }
 
     [Parameter]
-    public EventCallback<ClusterViewModel> OnDelete { get; set; }
+    public EventCallback<ClusterViewModel> OnDeleteCluster { get; set; }
 
     [Parameter]
-    public EventCallback<int> OnNavigate { get; set; }
+    public EventCallback<int> OnNavigateClusterDetail { get; set; }
 
     [Parameter]
-    public EventCallback OnAdd { get; set; }
+    public bool IsProcessing { get; set; }
 
-    [Parameter]
-    public EventCallback OnReset { get; set; }
+    private MudTable<ClusterViewModel> table = new();
 
-    [Parameter]
-    public bool Processing { get; set; }
+    private int tableKey;
 
-    private MudTable<ClusterViewModel> table = default!;
-
-    private Task<TableData<ClusterViewModel>> LoadInner(TableState state, CancellationToken _)
-        => OnLoadPaged(state);
-
-    public Task ReloadAsync() => table.ReloadServerData();
-
-    private static Color GetStatusColor(ClusterStatus status) => status switch
+    private async Task<TableData<ClusterViewModel>> LoadData(TableState state, CancellationToken _)
     {
-        ClusterStatus.Online => Color.Success,
-        ClusterStatus.Offline => Color.Error,
-        _ => Color.Default
-    };
+
+        var result = await ClusterService.GetPagedAsync(state, Query);
+        return new TableData<ClusterViewModel>
+        {
+            Items = result.Items,
+            TotalItems = result.Total
+        };
+    }
+
+    public Task ReloadDataAsync() => table.ReloadServerData();
+
+    public Task ResetSortAsync()
+    {
+        tableKey++;          // 改变 key → Blazor 销毁重建 MudTable
+        StateHasChanged();   // 排序箭头、分页全部回到初始状态，自动重新加载
+        return Task.CompletedTask;
+    }
 }

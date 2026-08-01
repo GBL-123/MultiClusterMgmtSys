@@ -60,11 +60,17 @@ public class ClusterRepository(ApplicationDbContext db)
         else if (q.Version != "__ALL__" && !string.IsNullOrEmpty(q.Version))
             query = query.Where(c => c.Version == q.Version);
 
-        if (q.DateStart.HasValue)
-            query = query.Where(c => c.CreatedAt >= q.DateStart.Value);
+        if (q.DateRange?.Start is not null)
+        {
+            var start = DateTime.SpecifyKind(q.DateRange.Start.Value, DateTimeKind.Utc);
+            query = query.Where(c => c.CreatedAt >= start);
+        }
 
-        if (q.DateEnd.HasValue)
-            query = query.Where(c => c.CreatedAt < q.DateEnd.Value.AddDays(1));
+        if (q.DateRange?.End is not null)
+        {
+            var end = DateTime.SpecifyKind(q.DateRange.End.Value, DateTimeKind.Utc).AddDays(1);
+            query = query.Where(c => c.CreatedAt < end);
+        }
 
         var total = await query.CountAsync();
 

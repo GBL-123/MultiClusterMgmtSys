@@ -21,9 +21,7 @@
                 <MudSelectItem Value="@((int?)group.Id)">@group.Name</MudSelectItem>
             }
         </MudSelect>
-        <MudSelect T="ClusterStatus?"
-                   Value="@Query.Status"
-                   ValueChanged="OnStatusChanged"
+        <MudSelect @bind-Value="Query.Status"
                    Label="状态"
                    Variant="Variant.Outlined"
                    Margin="Margin.Dense"
@@ -33,9 +31,7 @@
             <MudSelectItem Value="@((ClusterStatus?)ClusterStatus.Offline)">离线</MudSelectItem>
             <MudSelectItem Value="@((ClusterStatus?)ClusterStatus.Unknown)">未知</MudSelectItem>
         </MudSelect>
-        <MudSelect T="string"
-                   Value="@Query.Version"
-                   ValueChanged="OnVersionChanged"
+        <MudSelect @bind-Value="Query.Version"
                    Label="版本"
                    Variant="Variant.Outlined"
                    Margin="Margin.Dense"
@@ -50,26 +46,20 @@
     </MudStack>
 
     <MudStack Row="true" Class="flex-auto">
-        <MudDatePicker T="DateTime?"
-                        Value="@Query.DateStart"
-                        ValueChanged="OnDateStartChanged"
-                        Label="开始时间"
-                        Variant="Variant.Outlined"
-                        Margin="Margin.Dense"
-                        Style="min-width:250px;" />
-        <MudDatePicker T="DateTime?"
-                        Value="@Query.DateEnd"
-                        ValueChanged="OnDateEndChanged"
-                        Label="结束时间"
-                        Variant="Variant.Outlined"
-                        Margin="Margin.Dense"
-                        Style="min-width:250px;" />
+        <MudDateRangePicker @bind-Value="Query.DateRange"
+                            Label="创建日期"
+                            PlaceholderStart="开始日期"
+                            PlaceholderEnd="结束日期"
+                            Variant="Variant.Outlined"
+                            Margin="Margin.Dense"
+                            Style="min-width:400px;" />
     </MudStack>
     <MudSpacer />
     <MudStack Row="true">
     <MudButton Variant="Variant.Filled"
                Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.Search">
+               StartIcon="@Icons.Material.Filled.Search"
+               OnClick="Search">
         查询
     </MudButton>
     <MudButton Variant="Variant.Outlined"
@@ -94,39 +84,11 @@
     [Parameter]
     public EventCallback OnFilterChanged { get; set; }
 
-    private Task OnNameChanged(string? v)
-    {
-        Query.Name = v;
-        return OnFilterChanged.InvokeAsync();
-    }
+    [Parameter]
+    public EventCallback OnReset { get; set; }
 
-    private Task OnGroupChanged(int? v)
+    private Task Search()
     {
-        Query.GroupId = v;
-        return OnFilterChanged.InvokeAsync();
-    }
-
-    private Task OnStatusChanged(ClusterStatus? v)
-    {
-        Query.Status = v;
-        return OnFilterChanged.InvokeAsync();
-    }
-
-    private Task OnVersionChanged(string v)
-    {
-        Query.Version = v;
-        return OnFilterChanged.InvokeAsync();
-    }
-
-    private Task OnDateStartChanged(DateTime? v)
-    {
-        Query.DateStart = v;
-        return OnFilterChanged.InvokeAsync();
-    }
-
-    private Task OnDateEndChanged(DateTime? v)
-    {
-        Query.DateEnd = v;
         return OnFilterChanged.InvokeAsync();
     }
 
@@ -136,8 +98,7 @@
         Query.GroupId = null;
         Query.Status = null;
         Query.Version = "__ALL__";
-        Query.DateStart = null;
-        Query.DateEnd = null;
-        return OnFilterChanged.InvokeAsync();
+        Query.DateRange = new DateRange(null, null);
+        return OnReset.InvokeAsync();
     }
 }
