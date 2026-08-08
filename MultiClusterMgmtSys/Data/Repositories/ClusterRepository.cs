@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Components.Clusters.Requests;
+using MultiClusterMgmtSys.Common.Queries;
 using MultiClusterMgmtSys.Data.Entities;
 
 namespace MultiClusterMgmtSys.Data.Repositories;
@@ -42,33 +42,33 @@ public class ClusterRepository(ApplicationDbContext db)
         }
     }
 
-    public async Task<(List<ClusterInfo> Items, int Total)> GetPagedAsync(ClusterQueryRequest q)
+    public async Task<(List<ClusterInfo> Items, int Total)> GetPagedAsync(ClusterPageQuery q)
     {
         var query = db.Clusters.Include(c => c.Group).AsNoTracking();
 
         if (q.GroupId.HasValue)
             query = query.Where(c => c.GroupId == q.GroupId);
 
-        if (!string.IsNullOrWhiteSpace(q.Name))
-            query = query.Where(c => c.Name.Contains(q.Name));
+        if (!string.IsNullOrWhiteSpace(q.NameContains))
+            query = query.Where(c => c.Name.Contains(q.NameContains));
 
         if (q.Status.HasValue)
             query = query.Where(c => c.Status == q.Status);
 
-        if (q.Version == "__NULL__")
+        if (q.HasVersion == false)
             query = query.Where(c => string.IsNullOrEmpty(c.Version));
-        else if (q.Version != "__ALL__" && !string.IsNullOrEmpty(q.Version))
+        else if (q.HasVersion == true && !string.IsNullOrEmpty(q.Version))
             query = query.Where(c => c.Version == q.Version);
 
-        if (q.DateRange?.Start is not null)
+        if (q.CreatedAfter is not null)
         {
-            var start = DateTime.SpecifyKind(q.DateRange.Start.Value, DateTimeKind.Utc);
+            var start = DateTime.SpecifyKind(q.CreatedAfter.Value, DateTimeKind.Utc);
             query = query.Where(c => c.CreatedAt >= start);
         }
 
-        if (q.DateRange?.End is not null)
+        if (q.CreatedBefore is not null)
         {
-            var end = DateTime.SpecifyKind(q.DateRange.End.Value, DateTimeKind.Utc).AddDays(1);
+            var end = DateTime.SpecifyKind(q.CreatedBefore.Value, DateTimeKind.Utc).AddDays(1);
             query = query.Where(c => c.CreatedAt < end);
         }
 

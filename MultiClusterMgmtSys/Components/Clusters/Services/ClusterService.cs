@@ -4,6 +4,7 @@ using System.Text;
 using MultiClusterMgmtSys.Data.Repositories;
 using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Common.Enums;
+using MultiClusterMgmtSys.Common.Queries;
 using MultiClusterMgmtSys.Components.Clusters.ViewModels.Mappings;
 using MultiClusterMgmtSys.Components.Clusters.ViewModels;
 using MultiClusterMgmtSys.Components.Nodes.Services;
@@ -24,8 +25,9 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         return [.. clusters.Select(c => c.ToViewModel())];
     }
 
-    public async Task<PagedResult<ClusterViewModel>> GetPagedAsync(ClusterQueryRequest query)
+    public async Task<PagedResult<ClusterViewModel>> GetPagedAsync(ClusterQueryRequest request)
     {
+        var query = ToPageQuery(request);
         var (items, total) = await repo.GetPagedAsync(query);
         return new PagedResult<ClusterViewModel>(
             items.Select(c => c.ToViewModel()).ToList(),
@@ -47,6 +49,40 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         baseQuery.Page = state.Page + 1;
         baseQuery.PageSize = state.PageSize;
         return await GetPagedAsync(baseQuery);
+    }
+
+    private static ClusterPageQuery ToPageQuery(ClusterQueryRequest r)
+    {
+        bool? hasVersion = r.VersionFilter switch
+        {
+            VersionFilter.All => null,
+            VersionFilter.OnlyNull => false,
+            VersionFilter.Specific => true,
+            _ => null
+        };
+
+        var versionString = r.VersionFilter == VersionFilter.Specific ? r.Version : null;
+
+        DateTime? createdAfter = r.DateRange?.Start is not null
+            ? DateTime.SpecifyKind(r.DateRange.Start.Value, DateTimeKind.Utc)
+            : null;
+        DateTime? createdBefore = r.DateRange?.End is not null
+            ? DateTime.SpecifyKind(r.DateRange.End.Value, DateTimeKind.Utc)
+            : null;
+
+        return new ClusterPageQuery(
+            r.GroupId,
+            r.Name,
+            r.Status,
+            hasVersion,
+            versionString,
+            createdAfter,
+            createdBefore,
+            r.SortBy,
+            r.SortDescending,
+            Math.Max(r.Page, 1),
+            Math.Max(r.PageSize, 1)
+        );
     }
 
     public async Task<List<string>> GetAvailableVersionsAsync()

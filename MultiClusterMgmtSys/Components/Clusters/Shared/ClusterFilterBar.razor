@@ -31,17 +31,17 @@
             <MudSelectItem Value="@((ClusterStatus?)ClusterStatus.Offline)">离线</MudSelectItem>
             <MudSelectItem Value="@((ClusterStatus?)ClusterStatus.Unknown)">未知</MudSelectItem>
         </MudSelect>
-        <MudSelect @bind-Value="Query.Version"
+        <MudSelect @bind-Value="Query.VersionFilter"
                    Label="版本"
                    Variant="Variant.Outlined"
                    Margin="Margin.Dense"
                    Style="min-width:150px;">
-            <MudSelectItem Value="@("__ALL__")">全部</MudSelectItem>
+            <MudSelectItem Value="@VersionFilter.All" OnClick="@(() => Query.Version = null)">全部</MudSelectItem>
             @foreach (var version in AvailableVersions)
             {
-                <MudSelectItem Value="@version">@version</MudSelectItem>
+                <MudSelectItem Value="@VersionFilter.Specific" OnClick="@(() => Query.Version = version)">@version</MudSelectItem>
             }
-            <MudSelectItem Value="@("__NULL__")">未知</MudSelectItem>
+            <MudSelectItem Value="@VersionFilter.OnlyNull" OnClick="@(() => Query.Version = null)">未知</MudSelectItem>
         </MudSelect>
     </MudStack>
 
@@ -97,7 +97,8 @@
         Query.Name = null;
         Query.GroupId = null;
         Query.Status = null;
-        Query.Version = "__ALL__";
+        Query.VersionFilter = VersionFilter.All;
+        Query.Version = null;
         Query.DateRange = new DateRange(null, null);
         return OnReset.InvokeAsync();
     }

@@ -11,7 +11,9 @@ public class ClusterQueryRequest
 
     public ClusterStatus? Status { get; set; }
 
-    public string Version { get; set; } = "__ALL__";
+    public VersionFilter VersionFilter { get; set; } = VersionFilter.All;
+
+    public string? Version { get; set; }
 
     public DateRange? DateRange { get; set; }
 
