@@ -9,11 +9,6 @@ public class ClusterRepository(ApplicationDbContext db)
 {
     private readonly ApplicationDbContext db = db;
 
-    public async Task<List<ClusterInfo>> GetAllAsync()
-    {
-        return await db.Clusters.Include(c => c.Group).ToListAsync();
-    }
-
     public async Task<ClusterInfo?> GetByIdAsync(int id)
     {
         return await db.Clusters.Include(c => c.Group).FirstOrDefaultAsync(c => c.Id == id);
@@ -55,20 +50,20 @@ public class ClusterRepository(ApplicationDbContext db)
         if (q.Status.HasValue)
             query = query.Where(c => c.Status == q.Status);
 
-        if (q.HasVersion == false)
+        if (q.HasVersion is false)
             query = query.Where(c => string.IsNullOrEmpty(c.Version));
-        else if (q.HasVersion == true && !string.IsNullOrEmpty(q.Version))
+        else if (q.HasVersion is true && !string.IsNullOrEmpty(q.Version))
             query = query.Where(c => c.Version == q.Version);
 
         if (q.CreatedAfter is not null)
         {
-            var start = DateTime.SpecifyKind(q.CreatedAfter.Value, DateTimeKind.Utc);
+            var start = q.CreatedAfter.Value;
             query = query.Where(c => c.CreatedAt >= start);
         }
 
         if (q.CreatedBefore is not null)
         {
-            var end = DateTime.SpecifyKind(q.CreatedBefore.Value, DateTimeKind.Utc).AddDays(1);
+            var end = q.CreatedBefore.Value.AddDays(1);
             query = query.Where(c => c.CreatedAt < end);
         }
 
