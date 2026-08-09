@@ -108,8 +108,19 @@
 
     private async Task<TableData<ClusterViewModel>> LoadData(TableState state, CancellationToken _)
     {
-
-        var result = await ClusterService.GetPagedAsync(state, Query);
+        Query.SortBy = state.SortLabel switch
+        {
+            "Name" => ClusterSortField.Name,
+            "Status" => ClusterSortField.Status,
+            "Version" => ClusterSortField.Version,
+            "NodeCount" => ClusterSortField.NodeCount,
+            "CreatedAt" => ClusterSortField.CreatedAt,
+            _ => ClusterSortField.CreatedAt
+        };
+        Query.SortDescending = state.SortDirection != SortDirection.Ascending;
+        Query.Page = state.Page + 1;
+        Query.PageSize = state.PageSize;
+        var result = await ClusterService.GetPagedAsync(Query);
         return new TableData<ClusterViewModel>
         {
             Items = result.Items,

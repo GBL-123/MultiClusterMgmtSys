@@ -31,23 +31,6 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
             total);
     }
 
-    public async Task<PagedResult<ClusterViewModel>> GetPagedAsync(TableState state, ClusterQueryRequest baseQuery)
-    {
-        baseQuery.SortBy = state.SortLabel switch
-        {
-            "Name" => ClusterSortField.Name,
-            "Status" => ClusterSortField.Status,
-            "Version" => ClusterSortField.Version,
-            "NodeCount" => ClusterSortField.NodeCount,
-            "CreatedAt" => ClusterSortField.CreatedAt,
-            _ => ClusterSortField.CreatedAt
-        };
-        baseQuery.SortDescending = state.SortDirection != SortDirection.Ascending;
-        baseQuery.Page = state.Page + 1;
-        baseQuery.PageSize = state.PageSize;
-        return await GetPagedAsync(baseQuery);
-    }
-
     public async Task<List<string>> GetAvailableVersionsAsync()
     {
         logger.LogInformation("GetAvailableVersions");
