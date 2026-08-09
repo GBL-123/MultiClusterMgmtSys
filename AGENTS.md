@@ -26,18 +26,21 @@ There is **no test project** and no lint/format/typecheck config. Do not invent 
 
 - Schema is created with `db.Database.EnsureCreated()` in `Program.cs` at startup — there are **no EF migrations** in the repo. Changing the model means dropping/regenerating `MultiClusterMgmtSys.db`, not running `dotnet ef migrations add`.
 - On every startup `AccountService.CreateAdminAsync()` seeds roles and an `admin` user with default password `Changeme_123` (see `Components/Account/Services/AccountService.cs`). Don't relocate that call without preserving the startup seed.
-- `MultiClusterMgmtSys.db` / `.db-shm` / `.db-wal` are committed under the project dir. They are runtime artifacts — do not hand-edit; delete to reset local state.
+- `*.db` / `*.db-shm` / `*.db-wal` are **gitignored** (see `.gitignore` tail) and are NOT tracked — they are runtime artifacts, do not hand-edit; delete to reset local state. The active store is `MultiClusterMgmtSys.db` (per `appsettings.json`). A stray `clusters.db` may appear locally from older runs — it is unused; ignore it.
 - Connection string lives in `appsettings.json` (`ConnectionStrings:DefaultConnection`); overriding it requires user secrets (`UserSecretsId` is set in the csproj) or env, not another appsettings file.
 
 ## Namespaces — gotcha
 
-Folder-to-namespace mapping is **inconsistent** across feature folders. Match the existing namespace of neighbouring files when adding a file; do not assume path == namespace:
+Folder-to-namespace mapping is **inconsistent** across feature folders, and even within a single feature folder. Do not assume path == namespace — open a sibling file in the same folder and copy its namespace. The current split:
 
-- `Components/Account/ViewModels/**`          → `MultiClusterMgmtSys.Features.Account.ViewModels[.Mappings]`
-- `Components/Configmaps/Services/**`          → `MultiClusterMgmtSys.Features.Configmaps.Services`
-- `Components/Clusters/**`, `Components/Nodes/**`, `Components/Auth/**`, `Data/**`, `Common/**` → `MultiClusterMgmtSys.[<Folder>...]*` matching the physical path.
+- `Components/Account/ViewModels/**` (incl. `Mappings/`) → `MultiClusterMgmtSys.Features.Account.ViewModels[.Mappings]` (**`Features.*`**, not `Components.*`)
+- `Components/Account/Services/**` → `MultiClusterMgmtSys.Components.Account.Services` (**`Components.*`**, not `Features.*`)
+- `Components/Configmaps/**` (Services, ViewModels, Mappings) → `MultiClusterMgmtSys.Features.Configmaps.*` (**`Features.*`**)
+- `Components/Clusters/**`, `Components/Nodes/**`, `Components/Auth/**` → `MultiClusterMgmtSys.Components.<Feature>.*` (matches physical path)
+- `Data/**` → `MultiClusterMgmtSys.Data.*` (matches physical path)
+- **Two different `Common` folders, different roots:** root `Common/**` (Enums/Queries/ViewModels like `PagedResult<>`) → `MultiClusterMgmtSys.Common.*` (matches path); `Components/Common/**` (`ThemeManager`, `RedirectManager`) → `MultiClusterMgmtSys.Components.Common` (NOT `MultiClusterMgmtSys.Common`).
 
-`Program.cs` imports both `using MultiClusterMgmtSys.Features.Configmaps.Services;` and the `Components.*` ones — preserve that split when wiring up new services.
+`Program.cs` mixes both `using MultiClusterMgmtSys.Features.Configmaps.Services;` and the `MultiClusterMgmtSys.Components.*` ones — preserve whichever style the folder already uses when wiring up new services.
 
 ## Architecture notes
 
@@ -49,7 +52,7 @@ Folder-to-namespace mapping is **inconsistent** across feature folders. Match th
 ## OpenCode / OpenSpec
 
 - OpenCode skills for OpenSpec live under `.opencode/skills/openspec-*` and commands under `.opencode/commands/`. The repository uses an `openspec/` workflow (`changes/`, `specs/`, `config.yaml`). Use the `openspec-*` skills for proposing/implementing/archiving changes instead of editing those folders by hand.
-- `openspec/config.yaml` is currently all commented-out placeholders — tech-stack context is not yet filled in.
+- `openspec/config.yaml` has only `schema: spec-driven` set; the tech-stack `context:` block is still commented-out placeholders.
 
 ## Conventions to preserve
 
