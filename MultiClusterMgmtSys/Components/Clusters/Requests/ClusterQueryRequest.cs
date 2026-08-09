@@ -1,5 +1,6 @@
 using MudBlazor;
 using MultiClusterMgmtSys.Common.Enums;
+using MultiClusterMgmtSys.Common.Queries;
 
 namespace MultiClusterMgmtSys.Components.Clusters.Requests;
 
@@ -11,9 +12,7 @@ public class ClusterQueryRequest
 
     public ClusterStatus? Status { get; set; }
 
-    public VersionFilter VersionFilter { get; set; } = VersionFilter.All;
-
-    public string? Version { get; set; }
+    public string VersionSelection { get; set; } = VersionFilterSentinel.All;
 
     public DateRange? DateRange { get; set; }
 

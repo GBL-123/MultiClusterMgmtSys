@@ -6,7 +6,6 @@ public record ClusterPageQuery(
     int? GroupId,
     string? NameContains,
     ClusterStatus? Status,
-    bool? HasVersion,
     string? Version,
     DateTime? CreatedAfter,
     DateTime? CreatedBefore,
@@ -14,3 +13,9 @@ public record ClusterPageQuery(
     bool SortDescending = true,
     int Page = 1,
     int PageSize = 20);
+
+public static class VersionFilterSentinel
+{
+    public const string All = "";
+    public const string OnlyNull = "__null__";
+}

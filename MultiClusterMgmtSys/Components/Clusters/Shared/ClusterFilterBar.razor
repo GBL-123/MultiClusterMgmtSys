@@ -1,4 +1,5 @@
 @using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Common.Queries
 @using MultiClusterMgmtSys.Components.Clusters.Requests
 @using MultiClusterMgmtSys.Components.Clusters.ViewModels
 
@@ -31,17 +32,17 @@
             <MudSelectItem Value="@((ClusterStatus?)ClusterStatus.Offline)">离线</MudSelectItem>
             <MudSelectItem Value="@((ClusterStatus?)ClusterStatus.Unknown)">未知</MudSelectItem>
         </MudSelect>
-        <MudSelect @bind-Value="Query.VersionFilter"
+        <MudSelect @bind-Value="Query.VersionSelection"
                    Label="版本"
                    Variant="Variant.Outlined"
                    Margin="Margin.Dense"
                    Style="min-width:150px;">
-            <MudSelectItem Value="@VersionFilter.All" OnClick="@(() => Query.Version = null)">全部</MudSelectItem>
+            <MudSelectItem Value="@VersionFilterSentinel.All">全部</MudSelectItem>
             @foreach (var version in AvailableVersions)
             {
-                <MudSelectItem Value="@VersionFilter.Specific" OnClick="@(() => Query.Version = version)">@version</MudSelectItem>
+                <MudSelectItem Value="@version">@version</MudSelectItem>
             }
-            <MudSelectItem Value="@VersionFilter.OnlyNull" OnClick="@(() => Query.Version = null)">未知</MudSelectItem>
+            <MudSelectItem Value="@VersionFilterSentinel.OnlyNull">未知</MudSelectItem>
         </MudSelect>
     </MudStack>
 
@@ -97,8 +98,7 @@
         Query.Name = null;
         Query.GroupId = null;
         Query.Status = null;
-        Query.VersionFilter = VersionFilter.All;
-        Query.Version = null;
+        Query.VersionSelection = VersionFilterSentinel.All;
         Query.DateRange = new DateRange(null, null);
         return OnReset.InvokeAsync();
     }

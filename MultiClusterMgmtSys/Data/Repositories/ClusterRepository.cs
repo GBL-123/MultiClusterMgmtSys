@@ -50,9 +50,9 @@ public class ClusterRepository(ApplicationDbContext db)
         if (q.Status.HasValue)
             query = query.Where(c => c.Status == q.Status);
 
-        if (q.HasVersion is false)
+        if (q.Version == VersionFilterSentinel.OnlyNull)
             query = query.Where(c => string.IsNullOrEmpty(c.Version));
-        else if (q.HasVersion is true && !string.IsNullOrEmpty(q.Version))
+        else if (q.Version is not null)
             query = query.Where(c => c.Version == q.Version);
 
         if (q.CreatedAfter is not null)

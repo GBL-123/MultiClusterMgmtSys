@@ -209,15 +209,12 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
 
     private static ClusterPageQuery ToPageQuery(ClusterQueryRequest r)
     {
-        bool? hasVersion = r.VersionFilter switch
+        string? version = r.VersionSelection switch
         {
-            VersionFilter.All => null,
-            VersionFilter.OnlyNull => false,
-            VersionFilter.Specific => true,
-            _ => null
+            VersionFilterSentinel.All => null,
+            VersionFilterSentinel.OnlyNull => VersionFilterSentinel.OnlyNull,
+            _ => r.VersionSelection
         };
-
-        var versionString = r.VersionFilter == VersionFilter.Specific ? r.Version : null;
 
         DateTime? createdAfter = r.DateRange?.Start is not null
             ? DateTime.SpecifyKind(r.DateRange.Start.Value, DateTimeKind.Utc)
@@ -230,8 +227,7 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
             r.GroupId,
             r.Name,
             r.Status,
-            hasVersion,
-            versionString,
+            version,
             createdAfter,
             createdBefore,
             r.SortBy,
