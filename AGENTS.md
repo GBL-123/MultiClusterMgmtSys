@@ -44,18 +44,25 @@ Folder-to-namespace mapping is **inconsistent** across feature folders, and even
 
 ## Architecture notes
 
-- Entrypoint: `Program.cs` registers MudBlazor, Razor components (interactive server), Identity (cookie `MultiClusterMgmtSys.Auth`, 8h sliding, login `/login`, default redirect `/clusters`), `ApplicationDbContext` (SQLite), and a set of scoped services/repositories (`ClusterRepository`, `GroupRepository`, `ClusterService`, `GroupService`, `ClusterNodeService`, `ConfigMapService`, `AuthService`, `AccountService`, `ThemeManager`, `RedirectManager`).
+- Entrypoint: `Program.cs` registers MudBlazor, Razor components (interactive server), Identity (cookie `MultiClusterMgmtSys.Auth`, 8h sliding, login `/login`, default redirect `/clusters`), `ApplicationDbContext` (SQLite), and a set of scoped services/repositories (`ClusterRepository`, `GroupRepository`, `ClusterService`, `GroupService`, `ClusterNodeService`, `ConfigMapService`, `AuthService`, `AccountService`, `ThemeManager`, `RedirectManager`, `ClusterSelectionState`).
 - Feature layout under `Components/<Feature>/{Pages,Shared,Services,Requests,ViewModels,ViewModels/Mappings}`; `Data` holds `ApplicationDbContext` + `Entities` + `Repositories`; `Common` holds shared `Enums`/`ViewModels` (e.g. `PagedResult<>`).
 - `Components/Auth/Services/Identity/*` hosts the Identity scaffolding extensions (`IdentityRevalidatingAuthenticationStateProvider`, `IdentityComponentsEndpointRouteBuilderExtensions`, `ChineseIdentityErrorDescriber`) — `Program.cs` calls `MapAdditionalIdentityEndpoints()` from here.
 - K8s credentials are stored per `ClusterInfo` (`KubeConfig` / `Token` columns, `SkipTlsVerify` defaults to `true`); see `Data/ApplicationDbContext.cs` for the model constraints.
+- `ClusterInfo` also has a `ClusterEndpoint` one-to-many collection (`Endpoints`) — admin-managed VIP/Domain metadata that doesn't come from the K8s API. Kind enum lives in `Common/Enums/ClusterEndpointKind.cs`. Adding endpoints requires the `Endpoints` cascade to be honoured by `EnsureCreated()` (no migrations).
+- `ClusterGroup` carries only `Name` (no `Description`); `ApplicationDbContext` enforces the schema, so any column add/remove requires dropping `MultiClusterMgmtSys.db`.
 
 ## OpenCode / OpenSpec
 
 - OpenCode skills for OpenSpec live under `.opencode/skills/openspec-*` and commands under `.opencode/commands/`. The repository uses an `openspec/` workflow (`changes/`, `specs/`, `config.yaml`). Use the `openspec-*` skills for proposing/implementing/archiving changes instead of editing those folders by hand.
 - `openspec/config.yaml` has only `schema: spec-driven` set; the tech-stack `context:` block is still commented-out placeholders.
+- Main spec for the cluster query contract lives at `openspec/specs/cluster-query-layering/spec.md`; `ClusterPageQuery.GroupId` semantic there (null=no filter, `0`=ungrouped sentinel → repo translates to `WHERE GroupId IS NULL`, positive=equality) must not drift from the repository implementation.
+- OpenSpec `tasks.md` files use `- [ ]`/`- [x]` checkbox format that the apply skill parses — preserve this exact format when editing task lists.
 
 ## Conventions to preserve
 
 - New services go through the scoped-DI pattern already in `Program.cs`; repositories surface data, services compose logic + K8s calls, `.razor` pages bind to ViewModels via `*.ViewModels.Mappings` extension methods.
+- Services log meaningful events with `logger.LogInformation` at enter/done and `logger.LogWarning` on failures — established pattern in `GroupService`, `ClusterService`. Match it for new service methods.
 - Razor `_Imports.razor` is the source of implied `@using`s; check it before adding `@using` to individual pages.
 - `BlazorDisableThrowNavigationException` is enabled in the csproj — leave it on.
+- **Frontend: prefer MudBlazor components**; fall back to raw HTML/CSS only when MudBlazor genuinely can't fit the need. Documented workaround: inline action buttons inside a `@onclick` row must be wrapped in `<span @onclick:stopPropagation="true">` — `@onclick` + `@onclick:stopPropagation` on the same MudBlazor component is a Razor error (RZ10010).
+- Admin-only actions (create / rename / delete / batch operations / cluster delete) are gated via `<AuthorizeView Roles="Admin"><Authorized>`; view and filter actions are role-agnostic.

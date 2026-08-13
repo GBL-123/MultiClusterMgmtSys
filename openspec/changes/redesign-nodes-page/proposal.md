@@ -1,0 +1,38 @@
+## Why
+
+The node management pages (`/nodes/{ClusterId}` and `/nodes/{ClusterId}/{NodeName}`) were written in the project's first-generation layout style (left TreeView cluster-picker + right self-contained content column) and have since been **commented out in place** (`@* ... *@` wrapping both `Nodes.razor` and `NodeDetail.razor`, 418 + 532 lines of dead code). The cluster feature has since moved to a newer visual vocabulary — `MudStack flex-auto` vertical card stacking on detail pages and a `MudPaper` toolbar + server-paged `MudTable` on list pages — driven by the in-flight `redesign-cluster-detail-with-endpoints` and `refactor-clusters-group-sidebar-layout` changes. `ClusterNodesCard.razor` still links to `/nodes/{Cluster.Id}` via its "查看全部" button, so the dead pages are a live 404 path. The redesign brings the node pages back online in the current style without expanding the feature surface (read-only viewing, no Cordon/Drain).
+
+## What Changes
+
+- **Rewrite `Components/Nodes/Pages/Nodes.razor`** (`/nodes` and `/nodes/{ClusterId}`): replace the single-column content page with a **two-column layout mirroring `Clusters.razor`** — a persistent left `NodeClusterSidebar` (240px, clusters grouped by `GroupName`, each group collapsible, selected cluster highlighted, status color-dots, NO search box) and a right content pane. The right pane shows the selected cluster's nodes (existing `NodeListToolbar` + `NodeListFilterBar` + `NodeListTable`) when a cluster is chosen, or a "请从左侧选择一个集群" empty-state hint on the parameterless route. `ClusterId` remains `int?`; the selected cluster is expressed in the URL (`/nodes/{ClusterId}`) and additionally remembered in the shared scoped `ClusterSelectionState` so returning to the Drawer's `/nodes` entry restores the last selection in place (no URL redirect, no landing card). Content page wired to existing `ClusterNodeService.GetClusterNodesAsync` and `ClusterService.GetClusterDetailAsync`.
+- **Rewrite `Components/Nodes/Pages/NodeDetail.razor`** (`/nodes/{ClusterId}/{NodeName}`): drop the per-page heading + flat `MudGrid`; new layout = `NodeDetailToolbar` (`MudPaper pa-4 mb-4`, mirroring `ClusterDetailToolbar`) followed by a `MudStack flex-auto` of focused cards: `NodeOverviewCard`, `NodeSchedulingCard`, `NodeMetadataCard`, `NodeAddressesCard`, `NodeConditionsCard`, `NodeTaintsCard`, `NodeLabelsCard`, `NodeAnnotationsCard`, `NodeResourcesCard`, `NodeSystemInfoCard`. All cards are new shared components under `Components/Nodes/Shared/`, each wrapping one section of `ClusterNodeDetailViewModel` as a `MudCard Elevation="1" Class="mb-4"` (mirroring `ClusterOverviewCard` / `ClusterEndpointsCard`).
+- **Add `Components/Nodes/Shared/NodeListToolbar.razor`, `NodeListFilterBar.razor`, `NodeListTable.razor`, `NodeDetailToolbar.razor`** plus the ten detail cards listed above — same component decomposition pattern as `Components/Clusters/Shared/`.
+- **Preserve and extend routes**: `/nodes/{ClusterId}` and `/nodes/{ClusterId}/{NodeName}` are restored verbatim; a new parameterless `/nodes` route is added to host the cluster-selection landing state (Drawer's "节点管理" entry already targets `/nodes`, so this completes the previously-broken link). `ClusterNodesCard.razor`'s "查看全部" navigation is unchanged (it already points to `/nodes/{Cluster.Id}`).
+- **Minimal read-only VM addition**: `ClusterNodeService.GetClusterNodesAsync` / `GetNodeDetailAsync` and `ClusterNodeDetailViewModel` + all child VMs are reused as-is. `ClusterNodeViewModel` gains one read-only `bool Unschedulable` field (populated from `node.Spec.Unschedulable` in the existing `MapNode` mapper) so the list-page filter bar can offer the Schedulability filter; this is a purely additive field, no existing consumer breaks. No DB schema change (nodes remain a live K8s read, never persisted).
+- **Shared scoped `ClusterSelectionState` service** (already existing in the codebase at `Components/Common/ClusterSelectionState.cs`, registered `AddScoped` in `Program.cs`, serving all feature pages): in-memory session-scoped holder of the user's last-visited `ClusterId`. Wraps a single `int? SelectedClusterId` with `Set(int)` / `Clear()` mutators. Not persisted across reloads. The node pages write to it (list + detail) and the parameterless `/nodes` route reads it back to restore the last selection in place.
+- **No new admin actions**: toolbar exposes only Back + Refresh on both pages. Cordon / Drain / uncordon are explicitly out of scope.
+- **Direct overwrite** of the commented `Nodes.razor` / `NodeDetail.razor` files (git history preserves the dead version). Old `@using MultiClusterMgmtSys.Services` / `MultiClusterMgmtSys.ViewModels` (non-existent namespaces) are dropped in favor of the correct `Components.*` namespaces.
+
+## Capabilities
+
+### New Capabilities
+
+- `nodes-page`: Read-only node management surface: a parameterless cluster-selection landing at `/nodes`, the per-cluster node list at `/nodes/{ClusterId}`, and the node detail at `/nodes/{ClusterId}/{NodeName}`, all rendered in the project's current Cluster-feature visual vocabulary (toolbar + stacked cards / toolbar + filter bar + paged table), reusing existing `ClusterNodeService` and node view models.
+
+### Modified Capabilities
+
+- (none — existing `cluster-query-layering` is unaffected; node pages use the non-paged `GetClusterNodesAsync` path and do not touch the cluster query spec)
+
+## Impact
+
+- **Code**:
+  - `Components/Nodes/Pages/Nodes.razor` — rewrite (currently commented).
+  - `Components/Nodes/Pages/NodeDetail.razor` — rewrite (currently commented).
+  - `Components/Nodes/Shared/` — new directory containing 14 shared Razor components (4 list-page helpers + 10 detail cards + 2 toolbars; see design.md for exact list).
+  - `Components/Clusters/Shared/ClusterNodesCard.razor` — no code change (its existing "查看全部" link target becomes live again).
+- **Namespaces**: new files follow the existing `Components/Nodes/**` rule — `MultiClusterMgmtSys.Components.Nodes.*` (matches physical path, NOT `Features.*` per AGENTS.md). `_Imports.razor` is unchanged; each new page/component carries explicit `@using MultiClusterMgmtSys.Components.Nodes.Services` / `...Clusters.Services` / `...Clusters.ViewModels` / `...Nodes.ViewModels` as needed, mirroring `ClusterDetail.razor`.
+- **Services/APIs**: `ClusterNodeService` reused unmodified; one additive field on `ClusterNodeViewModel` (`Unschedulable`), populated by a one-line setter addition in `ClusterNodeService.MapNode`. `ClusterService`, `ClusterNodeDetailViewModel`, `NodeAddressViewModel`, `NodeConditionViewModel`, `NodeTaintViewModel`, `NodeSystemInfoViewModel` reused unmodified. Shared scoped `ClusterSelectionState` already registered in `Program.cs` (no registration change needed).
+- **Database**: none. Nodes are a live K8s read; no entity change, no migration, no `EnsureCreated` impact.
+- **Dependencies**: no new NuGet packages; uses only MudBlazor 9 + existing `Microsoft.AspNetCore.Authorization` (`AuthorizeView`).
+- **Routes**: `/nodes` (new — previously 404), `/nodes/{ClusterId}`, and `/nodes/{ClusterId}/{NodeName}` are all live, working routes (the first two are handled by the same `Nodes.razor` page component via two `@page` directives; the detail page remains its own file).
+- **Tests**: no test project exists in the repo; manual smoke verified via `dotnet build` + `dotnet run`.
