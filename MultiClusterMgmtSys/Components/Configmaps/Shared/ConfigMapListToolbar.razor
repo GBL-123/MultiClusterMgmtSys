@@ -1,0 +1,45 @@
+@using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+@namespace MultiClusterMgmtSys.Features.Configmaps.Shared
+@inject NavigationManager NavigationManager
+
+<MudPaper Class="pa-4 mb-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center">
+        <MudButton Variant="Variant.Text"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="@(() => NavigationManager.NavigateTo($"/clusters/{Cluster.Id}"))">
+            返回集群详情
+        </MudButton>
+        <MudText Typo="Typo.h4" Class="flex-auto ml-2">@Cluster.Name</MudText>
+        <MudChip T="string"
+                 Size="Size.Small"
+                 Color="GetClusterStatusColor(Cluster.Status)"
+                 Variant="Variant.Filled">
+            @Cluster.StatusText
+        </MudChip>
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="OnRefresh"
+                   Disabled="Processing">
+            @if (Processing)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
+            }
+            刷新
+        </MudButton>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] public ClusterDetailViewModel Cluster { get; set; } = default!;
+    [Parameter] public bool Processing { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+
+    private static Color GetClusterStatusColor(ClusterStatus status) => status switch
+    {
+        ClusterStatus.Online => Color.Success,
+        ClusterStatus.Offline => Color.Error,
+        _ => Color.Default
+    };
+}

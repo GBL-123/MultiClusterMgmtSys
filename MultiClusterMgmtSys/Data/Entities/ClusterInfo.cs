@@ -28,6 +28,10 @@ public class ClusterInfo
 
     public ClusterGroup? Group { get; set; }
 
+    public ICollection<ClusterEndpoint> Endpoints { get; set; } = new List<ClusterEndpoint>();
+
+    public ICollection<NodeIpRemark> NodeIpRemarks { get; set; } = new List<NodeIpRemark>();
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime? LastCheckedAt { get; set; }

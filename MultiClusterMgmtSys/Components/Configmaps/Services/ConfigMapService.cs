@@ -1,6 +1,7 @@
 using k8s;
 using k8s.Models;
 using MultiClusterMgmtSys.Common.Enums;
+using MultiClusterMgmtSys.Components.AuditLogs.Services;
 using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Data.Repositories;
 using MultiClusterMgmtSys.Features.Configmaps.ViewModels;
@@ -9,9 +10,10 @@ using System.Text;
 
 namespace MultiClusterMgmtSys.Features.Configmaps.Services;
 
-public class ConfigMapService(ClusterRepository repo)
+public class ConfigMapService(ClusterRepository repo, AuditService auditService)
 {
     private readonly ClusterRepository repo = repo;
+    private readonly AuditService auditService = auditService;
 
     public async Task<List<string>> GetNamespacesAsync(int clusterId)
     {
@@ -45,39 +47,6 @@ public class ConfigMapService(ClusterRepository repo)
         return cm.ToConfigMapDetailViewModel();
     }
 
-    public async Task CreateConfigMapAsync(int clusterId, ConfigMapCreateViewModel vm)
-    {
-        var entity = await repo.GetByIdAsync(clusterId)
-            ?? throw new InvalidOperationException($"Cluster {clusterId} not found");
-        var config = BuildConfig(entity);
-        using var client = new Kubernetes(config);
-        var body = new V1ConfigMap
-        {
-            Metadata = new V1ObjectMeta
-            {
-                Name = vm.Name,
-                NamespaceProperty = vm.Namespace
-            },
-            Data = vm.DataEntries
-                .Where(e => !string.IsNullOrWhiteSpace(e.Key))
-                .ToDictionary(e => e.Key, e => e.Value)
-        };
-        await client.CoreV1.CreateNamespacedConfigMapAsync(body, vm.Namespace);
-    }
-
-    public async Task UpdateConfigMapAsync(int clusterId, ConfigMapUpdateViewModel vm)
-    {
-        var entity = await repo.GetByIdAsync(clusterId)
-            ?? throw new InvalidOperationException($"Cluster {clusterId} not found");
-        var config = BuildConfig(entity);
-        using var client = new Kubernetes(config);
-        var existing = await client.CoreV1.ReadNamespacedConfigMapAsync(vm.Name, vm.Namespace);
-        existing.Data = vm.DataEntries
-            .Where(e => !string.IsNullOrWhiteSpace(e.Key))
-            .ToDictionary(e => e.Key, e => e.Value);
-        await client.CoreV1.ReplaceNamespacedConfigMapAsync(existing, vm.Name, vm.Namespace);
-    }
-
     public async Task DeleteConfigMapAsync(int clusterId, string name, string ns)
     {
         var entity = await repo.GetByIdAsync(clusterId)
@@ -85,6 +54,7 @@ public class ConfigMapService(ClusterRepository repo)
         var config = BuildConfig(entity);
         using var client = new Kubernetes(config);
         await client.CoreV1.DeleteNamespacedConfigMapAsync(name, ns);
+        await auditService.LogAsync(AuditCategory.Configmap, AuditAction.Delete, $"配置: {ns}/{name} @ 集群 {entity.Name}");
     }
 
     public async Task UpdateConfigMapFromYamlAsync(int clusterId, string name, string ns, string yaml)
@@ -98,6 +68,21 @@ public class ConfigMapService(ClusterRepository repo)
         existing.Data = deserialized.Data;
         existing.BinaryData = deserialized.BinaryData;
         await client.CoreV1.ReplaceNamespacedConfigMapAsync(existing, name, ns);
+        await auditService.LogAsync(AuditCategory.Configmap, AuditAction.Update, $"配置: {ns}/{name} @ 集群 {entity.Name}");
+    }
+
+    public async Task CreateConfigMapFromYamlAsync(int clusterId, string yaml)
+    {
+        var entity = await repo.GetByIdAsync(clusterId)
+            ?? throw new InvalidOperationException($"Cluster {clusterId} not found");
+        var config = BuildConfig(entity);
+        using var client = new Kubernetes(config);
+        var body = KubernetesYaml.Deserialize<V1ConfigMap>(yaml);
+        var ns = body.Metadata?.NamespaceProperty;
+        if (string.IsNullOrWhiteSpace(ns))
+            throw new InvalidOperationException("YAML metadata.namespace 未指定");
+        await client.CoreV1.CreateNamespacedConfigMapAsync(body, ns);
+        await auditService.LogAsync(AuditCategory.Configmap, AuditAction.Create, $"配置: {ns}/{body.Metadata?.Name ?? "未知"} @ 集群 {entity.Name}");
     }
 
     private static KubernetesClientConfiguration BuildConfig(ClusterInfo cluster)

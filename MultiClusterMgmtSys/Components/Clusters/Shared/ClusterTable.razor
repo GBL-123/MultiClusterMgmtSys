@@ -12,6 +12,10 @@
           @key="tableKey"
           @ref="table">
     <HeaderContent>
+        @if (MultiSelectVisible)
+        {
+            <MudTh Style="width:48px;"></MudTh>
+        }
         <MudTh><MudTableSortLabel T="ClusterViewModel" SortBy="@(x => x.Name)" SortLabel="Name">名称</MudTableSortLabel></MudTh>
         <MudTh><MudTableSortLabel T="ClusterViewModel" SortBy="@(x => x.Status)" SortLabel="Status">状态</MudTableSortLabel></MudTh>
         <MudTh><MudTableSortLabel T="ClusterViewModel" SortBy="@(x => x.Version)" SortLabel="Version">版本</MudTableSortLabel></MudTh>
@@ -22,6 +26,14 @@
         <MudTh>操作</MudTh>
     </HeaderContent>
     <RowTemplate>
+        @if (MultiSelectVisible)
+        {
+            <MudTd Style="width:48px;">
+                <MudCheckBox T="bool"
+                             Value="@SelectedIds.Contains(context.Id)"
+                             ValueChanged="@(v => OnRowCheckChanged(context.Id, v))" />
+            </MudTd>
+        }
         <MudTd DataLabel="名称">
             <MudText Color="Color.Primary"
                      Style="cursor:pointer; text-decoration: underline;"
@@ -55,10 +67,17 @@
         <MudTd DataLabel="操作">
             <AuthorizeView Roles="Admin">
                 <Authorized Context="authContext">
-                        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
-                                       Size="Size.Small"
-                                       OnClick="@(() => OnRefreshCluster.InvokeAsync(context.Id))"
-                                       Disabled="IsProcessing" />
+                        @if (ProcessingIds.Contains(context.Id))
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary" Class="mr-2" />
+                        }
+                        else
+                        {
+                            <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                                           Size="Size.Small"
+                                           OnClick="@(() => OnRefreshCluster.InvokeAsync(context.Id))"
+                                           Disabled="RefreshingAll" />
+                        }
                         <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                        Size="Size.Small"
                                        OnClick="@(() => OnEditCluster.InvokeAsync(context.Id))" />
@@ -66,8 +85,8 @@
                                        Size="Size.Small"
                                        Color="Color.Error"
                                        OnClick="@(() => OnDeleteCluster.InvokeAsync(context))"
-                                       Disabled="IsProcessing" />
-                    
+                                       Disabled="@(RefreshingAll || ProcessingIds.Contains(context.Id))" />
+
                 </Authorized>
             </AuthorizeView>
         </MudTd>
@@ -100,7 +119,19 @@
     public EventCallback<int> OnNavigateClusterDetail { get; set; }
 
     [Parameter]
-    public bool IsProcessing { get; set; }
+    public HashSet<int> ProcessingIds { get; set; } = new();
+
+    [Parameter]
+    public bool RefreshingAll { get; set; }
+
+    [Parameter]
+    public bool MultiSelectVisible { get; set; }
+
+    [Parameter]
+    public HashSet<int> SelectedIds { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<HashSet<int>> OnSelectedIdsChanged { get; set; }
 
     private MudTable<ClusterViewModel> table = new();
 
@@ -121,12 +152,34 @@
         Query.Page = state.Page + 1;
         Query.PageSize = state.PageSize;
         var result = await ClusterService.GetPagedAsync(Query);
+
         return new TableData<ClusterViewModel>
         {
             Items = result.Items,
             TotalItems = result.Total
         };
     }
+
+    /// <summary>
+    /// Cross-page selection: toggling a row's checkbox merges (or removes) the row's id into
+    /// the parent's persistent <see cref="SelectedIds"/> set, then notifies via
+    /// <see cref="OnSelectedIdsChanged"/>. Selection survives page changes because the parent
+    /// owns the canonical state, not MudTable.
+    /// </summary>
+    private async Task OnRowCheckChanged(int clusterId, bool @checked)
+    {
+        if (@checked)
+        {
+            selectedClusterIds.Add(clusterId);
+        }
+        else
+        {
+            selectedClusterIds.Remove(clusterId);
+        }
+        await OnSelectedIdsChanged.InvokeAsync(selectedClusterIds);
+    }
+
+    private HashSet<int> selectedClusterIds => SelectedIds;
 
     public Task ReloadDataAsync() => table.ReloadServerData();
 
@@ -135,5 +188,17 @@
         tableKey++;          // 改变 key → Blazor 销毁重建 MudTable
         StateHasChanged();   // 排序箭头、分页全部回到初始状态，自动重新加载
         return Task.CompletedTask;
+    }
+
+    public void ClearSelection()
+    {
+        var ids = SelectedIds;
+        foreach (var id in ids)
+        {
+            SelectedIds.Remove(id);
+        }
+        // Tell parent we cleared so its state stays in sync.
+        _ = OnSelectedIdsChanged.InvokeAsync(SelectedIds);
+        StateHasChanged();
     }
 }

@@ -11,7 +11,11 @@ public class ClusterRepository(ApplicationDbContext db)
 
     public async Task<ClusterInfo?> GetByIdAsync(int id)
     {
-        return await db.Clusters.Include(c => c.Group).FirstOrDefaultAsync(c => c.Id == id);
+        return await db.Clusters
+            .Include(c => c.Group)
+            .Include(c => c.Endpoints)
+            .Include(c => c.NodeIpRemarks)
+            .FirstOrDefaultAsync(c => c.Id == id);
     }
 
     public async Task<ClusterInfo> AddAsync(ClusterInfo entity)
@@ -42,7 +46,12 @@ public class ClusterRepository(ApplicationDbContext db)
         var query = db.Clusters.Include(c => c.Group).AsNoTracking();
 
         if (q.GroupId.HasValue)
-            query = query.Where(c => c.GroupId == q.GroupId);
+        {
+            if (q.GroupId == 0)
+                query = query.Where(c => c.GroupId == null);
+            else
+                query = query.Where(c => c.GroupId == q.GroupId);
+        }
 
         if (!string.IsNullOrWhiteSpace(q.NameContains))
             query = query.Where(c => c.Name.Contains(q.NameContains));
@@ -110,4 +119,20 @@ public class ClusterRepository(ApplicationDbContext db)
             .Select(v => v!)
             .ToListAsync();
     }
+
+    public async Task<int> SetGroupIdForClustersAsync(IEnumerable<int> clusterIds, int? targetGroupId)
+    {
+        var ids = clusterIds.ToList();
+        if (ids.Count == 0) return 0;
+
+        return await db.Clusters
+            .Where(c => ids.Contains(c.Id))
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.GroupId, targetGroupId));
+    }
+
+    public async Task<int> CountUngroupedAsync()
+        => await db.Clusters.CountAsync(c => c.GroupId == null);
+
+    public async Task<List<int>> GetAllIdsAsync()
+        => await db.Clusters.Select(c => c.Id).ToListAsync();
 }

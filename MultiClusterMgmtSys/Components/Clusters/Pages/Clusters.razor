@@ -1,5 +1,6 @@
 @attribute [Authorize]
 @page "/clusters"
+@implements IDisposable
 
 @using MultiClusterMgmtSys.Components.Clusters.Services
 @using MultiClusterMgmtSys.Components.Clusters.Shared
@@ -11,56 +12,103 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject RedirectManager RedirectManager
+@inject NavigationManager NavigationManager
 
 <PageTitle>集群管理</PageTitle>
 
-<MudStack Class="d-flex flex-auto">
-    <MudPaper Class="pa-4">
-        <MudStack>
-            <MudText Typo="Typo.h4">集群管理</MudText>
-            <MudStack Row="true">
-                <MudSpacer />
-                <MudButton Variant="Variant.Text"
-                           StartIcon="@Icons.Material.Filled.Folder"
-                           OnClick="OpenManageGroupsDialog">
-                    分组管理
-                </MudButton>
-                <AuthorizeView Roles="Admin">
-                    <Authorized>
-                        <MudButton Variant="Variant.Text"
-                                   StartIcon="@Icons.Material.Filled.CreateNewFolder"
-                                   OnClick="OpenCreateGroupDialog">
-                            新建分组
-                        </MudButton>
-                    </Authorized>
-                </AuthorizeView>
-                <AuthorizeView Roles="Admin">
-                    <Authorized>
-                        <MudButton Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   StartIcon="@Icons.Material.Filled.Add"
-                                   OnClick="OpenAddClusterDialog">
-                            添加集群
-                        </MudButton>
-                    </Authorized>
-                </AuthorizeView>
+<MudStack Row="true" Class="d-flex flex-auto">
+    <GroupSidebar Groups="@groups"
+                  UngroupedCount="@ungroupedCount"
+                  OnGroupSelected="SelectGroup"
+                  OnCreateGroup="OpenCreateGroupDialog"
+                  OnRenameGroup="OpenRenameGroupDialog"
+                  OnDeleteGroup="DeleteGroup" />
+
+    <MudStack Class="flex-auto">
+        <MudPaper Class="pa-4">
+            <MudStack>
+                <MudStack Row="true" AlignItems="AlignItems.Center">
+                    <MudButton Variant="Variant.Text"
+                                Color="Color.Inherit"
+                                StartIcon="@Icons.Material.Filled.Refresh"
+                                @bind-Disabled="@isRefreshingAll"
+                                OnClick="RefreshAllClustersAsync">
+                        @(isRefreshingAll ? "刷新中..." : "刷新所有集群")
+                    </MudButton>
+                    <AuthorizeView Roles="Admin">
+                        <Authorized>
+                            <MudButton Variant="@(isBatchMode ? Variant.Filled : Variant.Text)"
+                                       Color="@(isBatchMode ? Color.Secondary : Color.Inherit)"
+                                       StartIcon="@(isBatchMode ? Icons.Material.Filled.Close : Icons.Material.Filled.Checklist)"
+                                        OnClick="ToggleBatchMode">
+                                @(isBatchMode ? "退出批量" : "批量操作")
+                            </MudButton>
+                        </Authorized>
+                    </AuthorizeView>
+                    <AuthorizeView Roles="Admin">
+                        <Authorized>
+                            <MudButton Variant="Variant.Filled"
+                                        Color="Color.Primary"
+                                        StartIcon="@Icons.Material.Filled.Add"
+                                        OnClick="OpenAddClusterDialog">
+                                添加集群
+                            </MudButton>
+                        </Authorized>
+                    </AuthorizeView>
+                </MudStack>
+
+                @if (isRefreshingAll)
+                {
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudProgressLinear Color="Color.Primary"
+                                           Value="@((double)refreshAllCurrent / Math.Max(refreshAllTotal, 1) * 100)"
+                                           Style="max-width:300px;" />
+                        <MudText Class="mud-text-secondary">@refreshAllCurrent / @refreshAllTotal</MudText>
+                    </MudStack>
+                }
+
+                <ClusterFilterBar Query="@query"
+                                    AvailableVersions="@availableVersions"
+                                    OnFilterChanged="RefreshTable"
+                                    OnReset="ResetTable"/>
             </MudStack>
+        </MudPaper>
 
-            <ClusterFilterBar Query="@query"
-                              Groups="@groups"
-                              AvailableVersions="@availableVersions"
-                              OnFilterChanged="RefreshTable"
-                              OnReset="ResetTable"/>
-        </MudStack>
-    </MudPaper>
+        <ClusterTable Query="@query"
+                        OnRefreshCluster="RefreshCluster"
+                        OnEditCluster="OpenEditClusterDialog"
+                        OnDeleteCluster="DeleteCluster"
+                        OnNavigateClusterDetail="NavigateToDetail"
+                        ProcessingIds="processingClusterIds"
+                      RefreshingAll="isRefreshingAll"
+                      MultiSelectVisible="isBatchMode"
+                        SelectedIds="selectedClusterIds"
+                        OnSelectedIdsChanged="OnSelectionChanged"
+                        @ref="tableComponent" />
 
-    <ClusterTable Query="@query"
-                  OnRefreshCluster="RefreshCluster"
-                  OnEditCluster="OpenEditClusterDialog"
-                  OnDeleteCluster="DeleteCluster"
-                  OnNavigateClusterDetail="NavigateToDetail"
-                  IsProcessing="isProcessing"
-                  @ref="tableComponent" />
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                @if (isBatchMode && selectedClusterIds.Count > 0)
+                {
+                    <MudPaper Class="pa-3 mt-2" Elevation="2">
+                        <MudStack Row="true" AlignItems="AlignItems.Center">
+                            <MudText>@selectedClusterIds.Count 个集群已选</MudText>
+                            <MudSpacer />
+                            <MudMenu Label="移动到分组" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.DriveFileMove">
+                                <MudMenuItem OnClick="@(() => MoveClustersAsync(0))">未分组</MudMenuItem>
+                                @foreach (var g in groups)
+                                {
+                                    var gid = g.Id;
+                                    <MudMenuItem OnClick="@(() => MoveClustersAsync(gid))">@g.Name</MudMenuItem>
+                                }
+                            </MudMenu>
+                            <MudButton Variant="Variant.Text" OnClick="ClearSelection" StartIcon="@Icons.Material.Filled.Clear">清空选择</MudButton>
+                        </MudStack>
+                    </MudPaper>
+                }
+            </Authorized>
+        </AuthorizeView>
+    </MudStack>
 </MudStack>
 
 @code {
@@ -70,19 +118,32 @@
 
     private ClusterQueryRequest query = new();
 
-    private bool isProcessing;
+    private HashSet<int> processingClusterIds = new();
+
+    private bool isRefreshingAll = false;
+
+    private int refreshAllCurrent = 0;
+
+    private int refreshAllTotal;
+
+    private int? selectedGroupId;
+
+    private int ungroupedCount;
+
+    private bool isBatchMode = false;
+
+    private HashSet<int> selectedClusterIds = new();
 
     private ClusterTable? tableComponent;
 
     protected override async Task OnInitializedAsync()
     {
+        NavigationManager.LocationChanged += OnLocationChanged;
+
         try
         {
-            var groupsTask = GroupService.GetGroupsAsync();
-            var versionsTask = ClusterService.GetAvailableVersionsAsync();
-            await Task.WhenAll(groupsTask, versionsTask);
-            groups = groupsTask.Result;
-            availableVersions = versionsTask.Result;
+            await LoadSidebarAndVersionsAsync();
+            ApplyGroupFromUrl();
         }
         catch (Exception ex)
         {
@@ -90,9 +151,112 @@
         }
     }
 
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+
+    private async Task LoadSidebarAndVersionsAsync()
+    {
+        var groupsTask = GroupService.GetGroupsAsync();
+        var versionsTask = ClusterService.GetAvailableVersionsAsync();
+        var ungroupedTask = GroupService.GetUngroupedClusterCountAsync();
+        await Task.WhenAll(groupsTask, versionsTask, ungroupedTask);
+        groups = groupsTask.Result;
+        availableVersions = versionsTask.Result;
+        ungroupedCount = ungroupedTask.Result;
+    }
+
+    private void ApplyGroupFromUrl()
+    {
+        var uri = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        var queryPart = uri.Contains('?') ? uri.Substring(uri.IndexOf('?') + 1) : "";
+        var parameters = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(queryPart);
+        if (parameters.TryGetValue("group", out var value) && int.TryParse(value, out var gid))
+        {
+            if (gid == 0 || groups.Any(g => g.Id == gid))
+            {
+                selectedGroupId = gid;
+                query.GroupId = gid;
+            }
+            else
+            {
+                Snackbar.Add("分组不存在", Severity.Warning);
+            }
+        }
+        else
+        {
+            selectedGroupId = null;
+            query.GroupId = null;
+        }
+    }
+
+    private async void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        ApplyGroupFromUrl();
+        await Task.WhenAll(LoadSidebarAndVersionsAsync(), tableComponent?.ReloadDataAsync() ?? Task.CompletedTask);
+        await InvokeAsync(StateHasChanged);
+    }
+
     private Task RefreshTable() => tableComponent?.ReloadDataAsync() ?? Task.CompletedTask;
 
     private Task ResetTable() => tableComponent?.ResetSortAsync() ?? Task.CompletedTask;
+
+    private void SelectGroup(int? id)
+    {
+        var url = "/clusters" + (id.HasValue ? "?group=" + id.Value : "");
+        NavigationManager.NavigateTo(url);
+        // State mutation is performed by OnLocationChanged, the single source of truth.
+    }
+
+    private void ToggleBatchMode()
+    {
+        isBatchMode = !isBatchMode;
+        if (!isBatchMode)
+        {
+            ClearSelection();
+        }
+    }
+
+    private Task OnSelectionChanged(HashSet<int> newSelection)
+    {
+        selectedClusterIds = newSelection;
+        return Task.CompletedTask;
+    }
+
+    private void ClearSelection()
+    {
+        selectedClusterIds.Clear();
+        tableComponent?.ClearSelection();
+    }
+
+    private async Task MoveClustersAsync(int targetGroupId)
+    {
+        if (selectedClusterIds.Count == 0) return;
+
+        if (targetGroupId != 0 && !groups.Any(g => g.Id == targetGroupId))
+        {
+            Snackbar.Add("目标分组不存在", Severity.Error);
+            return;
+        }
+
+        // targetGroupId == 0 → move to "未分组"; translate sentinel to null before service call.
+        int? effectiveGroupId = targetGroupId == 0 ? null : targetGroupId;
+
+        try
+        {
+            var affected = await GroupService.MoveClustersToGroupAsync(selectedClusterIds.ToList(), effectiveGroupId);
+            Snackbar.Add($"已移动 {affected} 个集群到分组", Severity.Success);
+            ClearSelection();
+            await LoadSidebarAndVersionsAsync();
+            StateHasChanged();   // force sidebar refresh
+            await tableComponent?.ReloadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"移动失败: {ex.Message}", Severity.Error);
+        }
+    }
 
     private async Task OpenAddClusterDialog()
     {
@@ -102,18 +266,35 @@
         if (result is not null && !result.Canceled)
         {
             await RefreshVersionsIfNeeded();
-            await tableComponent!.ReloadDataAsync();
+            await LoadSidebarAndVersionsAsync();
+            await tableComponent?.ReloadDataAsync();
         }
     }
 
     private async Task OpenCreateGroupDialog()
     {
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<CreateGroupDialog>("新建分组", options);
+        var dialog = await DialogService.ShowAsync<EditGroupDialog>("新建分组", options);
         var result = await dialog.Result;
         if (result is not null && !result.Canceled)
         {
-            groups = await GroupService.GetGroupsAsync();
+            await LoadSidebarAndVersionsAsync();
+        }
+    }
+
+    private async Task OpenRenameGroupDialog(ClusterGroupViewModel group)
+    {
+        var parameters = new DialogParameters
+        {
+            { "GroupId", group.Id },
+            { "InitialName", group.Name }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<EditGroupDialog>("重命名分组", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await LoadSidebarAndVersionsAsync();
         }
     }
 
@@ -126,29 +307,47 @@
         if (result is not null && !result.Canceled)
         {
             await RefreshVersionsIfNeeded();
-            await tableComponent!.ReloadDataAsync();
+            await tableComponent?.ReloadDataAsync();
         }
     }
 
-    private async Task OpenManageGroupsDialog()
+    private async Task DeleteGroup(ClusterGroupViewModel group)
     {
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<ManageGroupsDialog>("分组管理", options);
-        var result = await dialog.Result;
-        if (result is not null && !result.Canceled)
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "确认删除",
+            $"确认删除分组「{group.Name}」？分组内集群将变为未分组。",
+            yesText: "删除",
+            noText: "取消");
+
+        if (confirmed != true) return;
+
+        try
         {
-            groups = await GroupService.GetGroupsAsync();
-            
+            await GroupService.DeleteGroupAsync(group.Id);
+            Snackbar.Add("分组已删除", Severity.Success);
+
+            // If the deleted group was selected, reset the URL; the LocationChanged handler will reload.
+            if (selectedGroupId == group.Id)
+            {
+                SelectGroup(null);
+            }
+            await LoadSidebarAndVersionsAsync();
+            await tableComponent?.ReloadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"删除分组失败: {ex.Message}", Severity.Error);
         }
     }
 
     private async Task RefreshCluster(int id)
     {
-        isProcessing = true;
+        processingClusterIds.Add(id);
+        StateHasChanged();
         try
         {
             await ClusterService.RefreshClusterStatusAsync(id);
-            await tableComponent!.ReloadDataAsync();
+            await tableComponent?.ReloadDataAsync();
             Snackbar.Add("集群状态已刷新", Severity.Success);
         }
         catch (Exception ex)
@@ -157,7 +356,38 @@
         }
         finally
         {
-            isProcessing = false;
+            processingClusterIds.Remove(id);
+            StateHasChanged();
+        }
+    }
+
+    private async Task RefreshAllClustersAsync()
+    {
+        isRefreshingAll = true;
+        refreshAllCurrent = 0;
+        refreshAllTotal = 0;
+        StateHasChanged();
+        try
+        {
+            var progress = new Progress<(int current, int total)>(p =>
+            {
+                refreshAllCurrent = p.current;
+                refreshAllTotal = p.total;
+                StateHasChanged();
+            });
+            var succeeded = await ClusterService.RefreshAllClustersStatusAsync(progress);
+            await RefreshVersionsIfNeeded();
+            await tableComponent?.ReloadDataAsync();
+            Snackbar.Add($"已刷新 {succeeded} 个集群状态", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"刷新所有集群失败: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isRefreshingAll = false;
+            StateHasChanged();
         }
     }
 
@@ -171,13 +401,18 @@
 
         if (confirmed == true)
         {
-            isProcessing = true;
+            processingClusterIds.Add(cluster.Id);
+            StateHasChanged();
             try
             {
                 await ClusterService.DeleteClusterAsync(cluster.Id);
                 Snackbar.Add("集群已删除", Severity.Success);
                 await RefreshVersionsIfNeeded();
-                await tableComponent!.ReloadDataAsync();
+                await LoadSidebarAndVersionsAsync();
+                await tableComponent?.ReloadDataAsync();
+
+                // Remove from cross-page selection if previously selected.
+                selectedClusterIds.Remove(cluster.Id);
             }
             catch (Exception ex)
             {
@@ -185,7 +420,8 @@
             }
             finally
             {
-                isProcessing = false;
+                processingClusterIds.Remove(cluster.Id);
+                StateHasChanged();
             }
         }
     }

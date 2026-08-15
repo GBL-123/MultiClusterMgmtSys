@@ -1,0 +1,127 @@
+@using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Components.Clusters.Services
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+
+@inject ClusterService ClusterService
+@inject ISnackbar Snackbar
+
+<MudCard Elevation="1" Class="mb-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">概览</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <AuthorizeView Roles="Admin">
+                <Authorized>
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               OnClick="ToggleSecret">
+                        @(showSecret ? "隐藏密文" : "显示密文")
+                    </MudButton>
+                </Authorized>
+            </AuthorizeView>
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">名称</MudText>
+                <MudText Typo="Typo.body1">@Cluster.Name</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">版本</MudText>
+                <MudText Typo="Typo.body1">@(Cluster.Version ?? "—")</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">节点数</MudText>
+                <MudText Typo="Typo.body1">@Cluster.NodeCount</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">所属分组</MudText>
+                <MudText Typo="Typo.body1">@(Cluster.GroupName ?? "未分组")</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">连接方式</MudText>
+                <MudText Typo="Typo.body1">
+                    @(Cluster.ConnectionType == ConnectionType.KubeConfig ? "Kubeconfig" : "Token")
+                </MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">API Server</MudText>
+                <MudText Typo="Typo.body1">@(Cluster.ApiServer ?? "—")</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">创建时间</MudText>
+                <MudText Typo="Typo.body1">@Cluster.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">最后检测时间</MudText>
+                <MudText Typo="Typo.body1">@(Cluster.LastCheckedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
+            </MudItem>
+        </MudGrid>
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                @if (showSecret && editForSecret is not null)
+                {
+                    <MudDivider Class="my-3" />
+                    @if (editForSecret.ConnectionType == ConnectionType.KubeConfig)
+                    {
+                        <MudTextField @bind-Value="editForSecret.KubeConfig"
+                                      Label="KubeConfig"
+                                      ReadOnly="true"
+                                      Lines="6"
+                                      InputType="@(showSecretContent ? InputType.Text : InputType.Password)"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@(showSecretContent ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                      OnAdornmentClick="@(() => showSecretContent = !showSecretContent)"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense" />
+                    }
+                    else
+                    {
+                        <MudTextField @bind-Value="editForSecret.Token"
+                                      Label="Token"
+                                      ReadOnly="true"
+                                      Lines="2"
+                                      InputType="@(showSecretContent ? InputType.Text : InputType.Password)"
+                                      Adornment="Adornment.End"
+                                      AdornmentIcon="@(showSecretContent ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                                      OnAdornmentClick="@(() => showSecretContent = !showSecretContent)"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense" />
+                    }
+                }
+            </Authorized>
+        </AuthorizeView>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public ClusterDetailViewModel Cluster { get; set; } = default!;
+
+    private bool showSecret;
+    private bool showSecretContent;
+    private ClusterEditViewModel? editForSecret;
+
+    private async Task ToggleSecret()
+    {
+        showSecret = !showSecret;
+        if (showSecret && editForSecret is null)
+        {
+            try
+            {
+                editForSecret = await ClusterService.GetClusterForEditAsync(Cluster.Id);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"加载密文失败: {ex.Message}", Severity.Error);
+                showSecret = false;
+            }
+        }
+        if (!showSecret)
+        {
+            showSecretContent = false;
+        }
+    }
+}

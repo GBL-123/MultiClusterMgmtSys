@@ -1,0 +1,116 @@
+@using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Components.Clusters.Shared
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject IDialogService DialogService
+
+<MudCard Elevation="1" Class="mb-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">集群端点</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <AuthorizeView Roles="Admin">
+                <Authorized>
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Settings"
+                               OnClick="OpenManageDialog">
+                        管理
+                    </MudButton>
+                </Authorized>
+            </AuthorizeView>
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (Cluster.Endpoints.Count == 0)
+        {
+            <MudText Class="mud-text-secondary">未登记任何端点</MudText>
+            <AuthorizeView Roles="Admin">
+                <Authorized>
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="OpenManageDialog"
+                               Class="mt-2">
+                        管理
+                    </MudButton>
+                </Authorized>
+            </AuthorizeView>
+        }
+        else
+        {
+            @foreach (var kindGroup in Cluster.Endpoints.GroupBy(e => e.Kind).OrderBy(g => g.Key))
+            {
+                <MudText Typo="Typo.subtitle2" Class="mb-1 mt-3">@kindGroup.First().KindText</MudText>
+                <MudTable T="ClusterEndpointViewModel"
+                          Items="@kindGroup.OrderBy(e => e.SortOrder).ThenByDescending(e => e.IsPrimary).ToList()"
+                          Dense="true"
+                          Hover="true"
+                          Elevation="0">
+                    <HeaderContent>
+                        <MudTh>地址</MudTh>
+                        <MudTh>备注</MudTh>
+                        <MudTh Style="width:48px;">主</MudTh>
+                        <MudTh Style="width:48px;"></MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="地址">
+                            <MudText Style="font-family: monospace;">@context.Value</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="备注">@(context.Note ?? "—")</MudTd>
+                        <MudTd DataLabel="主">
+                            @if (context.IsPrimary)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">主</MudChip>
+                            }
+                        </MudTd>
+                        <MudTd>
+                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                           Size="Size.Small"
+                                           Title="复制到剪贴板"
+                                           OnClick="@(() => CopyToClipboard(context.Value))" />
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            }
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public ClusterDetailViewModel Cluster { get; set; } = default!;
+    [Parameter] public EventCallback OnEndpointsChanged { get; set; }
+
+    private async Task OpenManageDialog()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large, FullWidth = true };
+        var parameters = new DialogParameters<ClusterEndpointsDialog>
+        {
+            { d => d.ClusterId, Cluster.Id }
+        };
+        var dialog = await DialogService.ShowAsync<ClusterEndpointsDialog>("管理端点", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await OnEndpointsChanged.InvokeAsync();
+        }
+    }
+
+    private async Task CopyToClipboard(string value)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", value);
+            Snackbar.Add("已复制到剪贴板", Severity.Success);
+        }
+        catch (JSException ex)
+        {
+            Snackbar.Add($"复制失败: {ex.Message}", Severity.Error);
+        }
+    }
+}

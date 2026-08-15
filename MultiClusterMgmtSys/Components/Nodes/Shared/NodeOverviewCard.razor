@@ -1,0 +1,141 @@
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudCard Elevation="1" Class="mb-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">基本信息</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudChip T="string"
+                     Size="Size.Small"
+                     Color="GetNodeStatusColor(Node.Status)"
+                     Variant="Variant.Filled">
+                @Node.Status
+            </MudChip>
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">名称</MudText>
+                <MudText Typo="Typo.body1">@Node.Name</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">角色</MudText>
+                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.Roles) ? "—" : Node.Roles)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">Kubelet 版本</MudText>
+                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.KubeletVersion) ? "—" : Node.KubeletVersion)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">操作系统</MudText>
+                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.OsImage) ? "—" : Node.OsImage)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">调度性</MudText>
+                <MudChip T="string"
+                         Size="Size.Small"
+                         Color="@(Node.Unschedulable ? Color.Warning : Color.Success)"
+                         Variant="Variant.Filled">
+                    @(Node.Unschedulable ? "不可调度" : "可调度")
+                </MudChip>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">Phase</MudText>
+                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.Phase) ? "—" : Node.Phase)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">PodCIDR</MudText>
+                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.PodCIDR) ? "—" : Node.PodCIDR)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">创建时间</MudText>
+                <MudText Typo="Typo.body1">@(Node.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
+            </MudItem>
+        </MudGrid>
+
+        @if (Node.Addresses.Count > 0)
+        {
+            <MudText Typo="Typo.subtitle2" Class="mb-1 mt-3">地址</MudText>
+            <div class="d-flex justify-end mb-1">
+                <AuthorizeView Roles="Admin">
+                    <Authorized>
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.Settings"
+                                   OnClick="OpenManageDialog">
+                            管理
+                        </MudButton>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+            <MudTable Items="Node.Addresses"
+                      Dense="true" Hover="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>类型</MudTh>
+                    <MudTh>IP 地址</MudTh>
+                    <MudTh>备注</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="类型">@context.Type</MudTd>
+                    <MudTd DataLabel="IP 地址">
+                        <MudText Style="font-family: monospace;">@context.Address</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="备注">@(context.Note ?? "—")</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+
+        @if (Node.Taints.Count > 0)
+        {
+            <MudText Typo="Typo.subtitle2" Class="mb-1 mt-3">污点</MudText>
+            <MudTable Items="Node.Taints"
+                      Dense="true" Hover="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>键</MudTh>
+                    <MudTh>值</MudTh>
+                    <MudTh>效果</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="键">@context.Key</MudTd>
+                    <MudTd DataLabel="值">@(context.Value ?? "—")</MudTd>
+                    <MudTd DataLabel="效果">@context.Effect</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public ClusterNodeDetailViewModel Node { get; set; } = default!;
+    [Parameter] public EventCallback OnRemarksChanged { get; set; }
+
+    private async Task OpenManageDialog()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large, FullWidth = true };
+        var parameters = new DialogParameters<NodeIpNotesDialog>
+        {
+            { d => d.ClusterId, Node.ClusterId },
+            { d => d.NodeName, Node.Name },
+            { d => d.Addresses, Node.Addresses }
+        };
+        var dialog = await DialogService.ShowAsync<NodeIpNotesDialog>("管理节点 IP 备注", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await OnRemarksChanged.InvokeAsync();
+        }
+    }
+
+    private static Color GetNodeStatusColor(string status) => status switch
+    {
+        "Ready" => Color.Success,
+        "NotReady" => Color.Error,
+        _ => Color.Default
+    };
+}

@@ -13,6 +13,7 @@ using MultiClusterMgmtSys.Components.Auth.Services;
 using MultiClusterMgmtSys.Components.Clusters.Services;
 using MultiClusterMgmtSys.Components.Auth.Services.Identity;
 using MultiClusterMgmtSys.Components.Account.Services;
+using MultiClusterMgmtSys.Components.AuditLogs.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,13 +25,17 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ClusterRepository>();
 builder.Services.AddScoped<GroupRepository>();
+builder.Services.AddScoped<AuditLogRepository>();
 builder.Services.AddScoped<ClusterNodeService>();
 builder.Services.AddScoped<ConfigMapService>();
 builder.Services.AddScoped<ClusterService>();
 builder.Services.AddScoped<GroupService>();
+builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<ThemeManager>();
+builder.Services.AddScoped<ClusterSelectionState>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<RedirectManager>();

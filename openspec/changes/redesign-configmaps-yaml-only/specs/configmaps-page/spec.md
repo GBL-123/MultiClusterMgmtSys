@@ -1,39 +1,47 @@
 ## ADDED Requirements
 
-### Requirement: ConfigMap list page cluster fallback
+### Requirement: ConfigMap list page cluster selection sidebar and empty state
 
-The system SHALL render a "请先选择一个集群" fallback view when the user navigates to `/configmaps` without a `ClusterId` parameter, mirroring the `/nodes` fallback behavior. The fallback SHALL display a large secondary-colored icon, a secondary h6 message "请先选择一个集群", a body2 hint, and a 前往集群列表 button that navigates to `/clusters`.
+The system SHALL render the ConfigMap list page (`/configmaps`, `/configmaps/{ClusterId}`) as a two-column layout: a persistent left `ConfigMapClusterSidebar` component and a right content pane. The sidebar SHALL be a 240px `MudPaper` with a 集群选择 header and a `MudNavMenu` listing clusters grouped by `GroupName` ("未分组" last); each group SHALL be collapsible via its header; each cluster row SHALL show the cluster name with a status color-dot and SHALL receive an active-link highlight when it matches the current selection; the sidebar SHALL have NO search box. Clicking a cluster row SHALL `NavigateTo("/configmaps/{ClusterId}")`.
 
-If `ClusterSelectionState.SelectedClusterId` has a non-null value (because the user previously visited a cluster-scoped page in the same circuit), the fallback view SHALL NOT be rendered — the page SHALL instead `NavigateTo($"/configmaps/{SelectedClusterId}")` to restore the user's last active cluster context.
+The sidebar's cluster list SHALL be loaded once per page mount from `ClusterService.GetPagedAsync` (page size 1000, sorted by name); grouping happens inside the sidebar component. The page SHALL NOT issue additional cluster-loading calls on re-render.
+
+When the URL carries no `ClusterId`: if `ClusterSelectionState.SelectedClusterId` is null, the right pane SHALL render a vertically-centered "请从左侧选择一个集群" empty state (a large secondary-colored icon and a secondary h6 message). If a cluster id is remembered in `ClusterSelectionState`, the page SHALL load and render that cluster's ConfigMap list **in place** — the URL SHALL remain `/configmaps` (no redirect, no landing card) and the sidebar SHALL highlight the restored cluster row.
 
 #### Scenario: User opens the bare `/configmaps` route with no prior selection
 
 - **WHEN** an authenticated user navigates to `/configmaps` (no `ClusterId`) and `ClusterSelectionState.SelectedClusterId` is null
-- **THEN** the system renders the 请先选择一个集群 fallback inside a vertically-centered `<MudStack>`
-- **AND** the 前往集群列表 button navigates to `/clusters` on click
+- **THEN** the page renders the left `ConfigMapClusterSidebar` with the full grouped cluster list
+- **AND** the right pane renders the 请从左侧选择一个集群 empty state
+- **AND** no 前往集群列表 button is rendered
 
 #### Scenario: User opens the bare `/configmaps` route after previously selecting a cluster in the same circuit
 
 - **WHEN** the user navigates to `/configmaps` and `ClusterSelectionState.SelectedClusterId` is 3 (from a previous visit to `/clusters/3` or `/configmaps/3` in the same circuit)
-- **THEN** the system does NOT render the fallback view
-- **AND** the system `NavigateTo` to `/configmaps/3` before rendering
-- **AND** the user lands directly on the list page for cluster 3
+- **THEN** the URL remains `/configmaps` (no redirect)
+- **AND** the right pane renders cluster 3's ConfigMap list in place
+- **AND** the sidebar highlights cluster 3's row
 
 #### Scenario: User switches via Drawer between feature pages within the same circuit
 
-- **WHEN** a user is viewing `/configmaps/3` and then clicks the Drawer link to `/nodes`
-- **THEN** the `/nodes` page's fallback branch видит `ClusterSelectionState.SelectedClusterId` == 3 (because LoadAsync on `/configmaps/3` set it)
-- **AND** the system `NavigateTo` to `/nodes/3` instead of rendering the nodes fallback
+- **WHEN** a user is viewing `/configmaps/3` and then clicks the Drawer link to `/nodes`, and later clicks the Drawer link back to 配置管理
+- **THEN** the `/configmaps` page restores cluster 3's ConfigMap list in place (because `OnParametersSet` / `LoadAsync` on `/configmaps/3` set `ClusterSelectionState.SelectedClusterId` == 3)
+- **AND** the `/nodes` page analogously restores cluster 3 in place rather than rendering an empty state
 
 #### Scenario: User switches via Drawer to 配置管理 after viewing 集群详情
 
 - **WHEN** a user is viewing `/clusters/3` and then clicks the Drawer link to `/configmaps`
-- **THEN** the `/configmaps` page's fallback branch sees `ClusterSelectionState.SelectedClusterId` == 3 (because `ClusterDetail.razor::LoadAsync` set it)
-- **AND** the system `NavigateTo` to `/configmaps/3` instead of rendering the fallback
+- **THEN** the `/configmaps` page's right pane shows cluster 3's ConfigMap list in place (because `ClusterDetail.razor::LoadAsync` set `ClusterSelectionState.SelectedClusterId` == 3)
+- **AND** the URL remains `/configmaps` and the sidebar highlights cluster 3's row
+
+#### Scenario: User clicks a cluster in the sidebar
+
+- **WHEN** the user clicks cluster 5's row in `ConfigMapClusterSidebar` on the bare `/configmaps` route
+- **THEN** the system `NavigateTo("/configmaps/5")` and the right pane loads cluster 5's ConfigMap list
 
 ### Requirement: ConfigMap list page for a selected cluster
 
-The system SHALL render a ConfigMap list page at `/configmaps/{ClusterId}` in the project's current list-page visual vocabulary: a `MudPaper` toolbar (返回集群详情 + 集群名 h4 + status chip + 刷新), a `MudPaper` filter bar (命名空间 select + 名称 search + 新建 ConfigMap button), and a `MudTable` with client-side paging. The page SHALL call `ClusterService.GetClusterDetailAsync` to obtain the cluster context (for the toolbar chip and `IsReachable` gate) and `ConfigMapService.ListConfigMapsAsync` / `GetNamespacesAsync` to obtain the data.
+The system SHALL render a ConfigMap list page at `/configmaps/{ClusterId}` in the project's current list-page visual vocabulary, rendered in the right pane beside the persistent `ConfigMapClusterSidebar`: a `MudPaper` toolbar (返回集群详情 + 集群名 h4 + status chip + 刷新), a `MudPaper` filter bar (命名空间 select + 名称 search + 新建 ConfigMap button), and a `MudTable` with client-side paging. The page SHALL call `ClusterService.GetClusterDetailAsync` to obtain the cluster context (for the toolbar chip and `IsReachable` gate) and `ConfigMapService.ListConfigMapsAsync` / `GetNamespacesAsync` to obtain the data.
 
 #### Scenario: Cluster selected and reachable
 
@@ -57,7 +65,7 @@ The system SHALL render a ConfigMap list page at `/configmaps/{ClusterId}` in th
 The system SHALL provide a scoped DI service `ClusterSelectionState` (in `MultiClusterMgmtSys.Components.Common`) that records the most recently visited cluster id. The service SHALL expose `int? SelectedClusterId { get; }` (with private setter), `void Set(int clusterId)` that records the id, and `void Clear()` that nulls it. The service is registered as `AddScoped<ClusterSelectionState>()` in `Program.cs`.
 
 The following pages SHALL call `ClusterSelectionState.Set` when a `ClusterId` is in scope and the cluster load succeeded:
-- `ConfigMaps.razor`'s `LoadAsync` — after `ClusterService.GetClusterDetailAsync` returns a non-null cluster.
+- `ConfigMaps.razor`'s `OnParametersSet` — when `ClusterId.HasValue`; and its `LoadAsync` — after `ClusterService.GetClusterDetailAsync` returns a non-null cluster.
 - `ConfigMapDetail.razor`'s `OnInitializedAsync` — unconditionally on entry (the route parameter is trusted to identify a real cluster because the page gates the entire body behind `detail is not null` anyway).
 - `EditConfigMapYaml.razor`'s `OnInitializedAsync` — same as `ConfigMapDetail.razor`.
 - `ClusterDetail.razor`'s `LoadAsync` — after `ClusterService.GetClusterDetailAsync` returns a non-null cluster (this enables Drawer-driven switches from a directly-viewed cluster into the ConfigMaps or Nodes feature pages).
@@ -90,33 +98,6 @@ This requirement replaces the previous `NodeSelectionState` service (a Nodes-onl
 
 - **WHEN** the user navigates to `/nodes/2`
 - **THEN** `ClusterSelectionState.Set(2)` is called in `OnParametersSet` before any async load
-
-### Requirement: ClusterConfigMapsCard entry on the cluster detail page
-
-The system SHALL render a `ClusterConfigMapsCard` component on `Components/Clusters/Pages/ClusterDetail.razor` below `ClusterNodesCard`, mirroring `ClusterNodesCard`'s shape (MudCard header with a 查看全部 button + a short MudCardContent hint). The card SHALL NOT call any Kubernetes API at render time — it is a pure navigation affordance, no data preview.
-
-The 查看全部 button SHALL navigate to `/configmaps/{Cluster.Id}` via an injected `NavigationManager`. The button SHALL be Disabled when `!Cluster.IsReachable`.
-
-When the cluster is reachable, the card body SHALL display a single `mud-text-secondary` line: 点击"查看全部"进入 ConfigMap 列表. When the cluster is unreachable, the card body SHALL display: 集群不可达，无法进入配置管理.
-
-The component's `[Parameter]` is `ClusterDetailViewModel Cluster`. It uses `@using MultiClusterMgmtSys.Components.Clusters.ViewModels` and lives under the `MultiClusterMgmtSys.Components.Clusters.Shared` namespace (parts of the Clusters feature, NOT the Configmaps feature).
-
-#### Scenario: Reachable cluster shows enabled 查看全部 button
-
-- **WHEN** the user views `/clusters/3` for a reachable cluster
-- **THEN** the `ClusterConfigMapsCard` renders with the 查看全部 button enabled
-- **AND** clicking the button navigates to `/configmaps/3`
-
-#### Scenario: Unreachable cluster shows disabled 查看全部 button
-
-- **WHEN** the user views `/clusters/{Id}` for an unreachable cluster (`!Cluster.IsReachable`)
-- **THEN** the `ClusterConfigMapsCard`'s 查看全部 button is Disabled
-- **AND** the card body shows 集群不可达，无法进入配置管理
-
-#### Scenario: Card renders without any K8s API call
-
-- **WHEN** `ClusterDetail.razor` renders with the new `ClusterConfigMapsCard` below `ClusterNodesCard`
-- **THEN** the page makes no additional `KubernetesClient` calls beyond what `ClusterNodesCard` already requires (the new card only consumes `Cluster` and reads `Cluster.IsReachable` / `Cluster.Id` from the already-loaded `ClusterDetailViewModel`)
 
 ### Requirement: Optional cluster context refresh on the list page
 

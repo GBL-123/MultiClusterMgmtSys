@@ -1,85 +1,90 @@
-@* @attribute [Authorize(Roles = "Admin")]
+@attribute [Authorize(Roles = "Admin")]
 @page "/accounts"
 
+@using MultiClusterMgmtSys.Components.Account.Services
+@using MultiClusterMgmtSys.Components.Account.Shared
+@using MultiClusterMgmtSys.Components.Account.Requests
+@using MultiClusterMgmtSys.Features.Account.ViewModels
+
+@inject AccountService AccountSvc
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>账号管理</PageTitle>
 
-<MudStack>
-    <div class="d-flex align-center mb-4" style="justify-content: space-between;">
-        <MudText Typo="Typo.h4">账号管理</MudText>
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   StartIcon="@Icons.Material.Filled.PersonAdd"
-                   OnClick="OpenCreateDialog">
-            新建账号
-        </MudButton>
-    </div>
+<MudStack Class="flex-auto">
+    <MudPaper Class="pa-4">
+        <MudStack>
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.h5">账号管理</MudText>
+                <MudSpacer />
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Inherit"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="RefreshTable">
+                    刷新
+                </MudButton>
+                <MudButton Variant="@(isBatchMode ? Variant.Filled : Variant.Text)"
+                           Color="@(isBatchMode ? Color.Secondary : Color.Inherit)"
+                           StartIcon="@(isBatchMode ? Icons.Material.Filled.Close : Icons.Material.Filled.Checklist)"
+                           OnClick="ToggleBatchMode">
+                    @(isBatchMode ? "退出批量" : "批量操作")
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.PersonAdd"
+                           OnClick="OpenCreateDialog">
+                    新建账号
+                </MudButton>
+            </MudStack>
 
-    @if (loading)
+            <AccountFilterBar Query="@query"
+                              OnFilterChanged="RefreshTable"
+                              OnReset="ResetTable" />
+        </MudStack>
+    </MudPaper>
+
+    <AccountTable Query="@query"
+                  OnEditAccount="OpenEditDialog"
+                  OnResetPassword="OpenResetPasswordDialog"
+                  OnDeleteAccount="DeleteAccount"
+                  MultiSelectVisible="isBatchMode"
+                  SelectedIds="selectedAccountIds"
+                  OnSelectedIdsChanged="OnSelectionChanged"
+                  @ref="tableComponent" />
+
+    @if (isBatchMode && selectedAccountIds.Count > 0)
     {
-        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
-    }
-    else if (accounts.Length == 0)
-    {
-        <div class="d-flex flex-column align-center justify-center" style="min-height:300px;">
-            <MudText Class="mud-text-secondary">暂无账号</MudText>
-        </div>
-    }
-    else
-    {
-        <MudTable T="AccountViewModel"
-                  Items="@accounts"
-                  Dense="true"
-                  Hover="true"
-                  Elevation="0">
-            <HeaderContent>
-                <MudTh>用户名</MudTh>
-                <MudTh>显示名</MudTh>
-                <MudTh>角色</MudTh>
-                <MudTh>创建时间</MudTh>
-                <MudTh Style="width:240px;">操作</MudTh>
-            </HeaderContent>
-            <RowTemplate>
-                <MudTd DataLabel="用户名">@context.UserName</MudTd>
-                <MudTd DataLabel="显示名">@(context.DisplayName ?? "—")</MudTd>
-                <MudTd DataLabel="角色">
-                    <MudChip T="string" Size="Size.Small"
-                             Color="@(context.RoleName == "Admin" ? Color.Primary : Color.Default)"
-                             Variant="Variant.Outlined">
-                        @context.RoleName
-                    </MudChip>
-                </MudTd>
-                <MudTd DataLabel="创建时间">@context.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudTd>
-                <MudTd DataLabel="操作">
-                    <div @onclick:stopPropagation="true" class="d-flex gap-1" style="gap: 4px;">
-                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                       Size="Size.Small"
-                                       Title="编辑"
-                                       OnClick="@(() => OpenEditDialog(context))" />
-                        <MudIconButton Icon="@Icons.Material.Filled.LockReset"
-                                       Size="Size.Small"
-                                       Title="重置密码"
-                                       OnClick="@(() => OpenResetPasswordDialog(context))" />
-                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
-                                       Size="Size.Small"
-                                       Color="Color.Error"
-                                       Title="删除"
-                                       OnClick="@(() => DeleteAccount(context))" />
-                    </div>
-                </MudTd>
-            </RowTemplate>
-        </MudTable>
+        <MudPaper Class="pa-3 mt-2" Elevation="2">
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudText>@selectedAccountIds.Count 个账号已选</MudText>
+                <MudSpacer />
+                <MudMenu Label="批量改角色" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.SupervisorAccount">
+                    <MudMenuItem OnClick="@(() => BatchUpdateRoleAsync("Admin"))">Admin</MudMenuItem>
+                    <MudMenuItem OnClick="@(() => BatchUpdateRoleAsync("Member"))">Member</MudMenuItem>
+                </MudMenu>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.DeleteSweep"
+                           OnClick="BatchDelete">
+                    批量删除
+                </MudButton>
+                <MudButton Variant="Variant.Text" OnClick="ClearSelection" StartIcon="@Icons.Material.Filled.Clear">清空选择</MudButton>
+            </MudStack>
+        </MudPaper>
     }
 </MudStack>
 
 @code {
-    [Inject] private AccountService AccountSvc { get; set; } = default!;
-    [Inject] private IDialogService DialogService { get; set; } = default!;
-    [Inject] private ISnackbar Snackbar { get; set; } = default!;
-    [Inject] private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
+    private AccountQueryRequest query = new();
 
-    private AccountViewModel[] accounts = Array.Empty<AccountViewModel>();
-    private bool loading;
+    private bool isBatchMode;
+
+    private HashSet<int> selectedAccountIds = new();
+
+    private AccountTable? tableComponent;
+
     private int currentUserId;
 
     protected override async Task OnInitializedAsync()
@@ -87,24 +92,31 @@
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var idStr = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         int.TryParse(idStr, out currentUserId);
-        await LoadAsync();
     }
 
-    private async Task LoadAsync()
+    private Task RefreshTable() => tableComponent?.ReloadDataAsync() ?? Task.CompletedTask;
+
+    private Task ResetTable() => tableComponent?.ResetSortAsync() ?? Task.CompletedTask;
+
+    private void ToggleBatchMode()
     {
-        loading = true;
-        try
+        isBatchMode = !isBatchMode;
+        if (!isBatchMode)
         {
-            accounts = await AccountSvc.GetAllAccountsAsync();
+            ClearSelection();
         }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"加载账号失败: {ex.Message}", Severity.Error);
-        }
-        finally
-        {
-            loading = false;
-        }
+    }
+
+    private Task OnSelectionChanged(HashSet<int> newSelection)
+    {
+        selectedAccountIds = newSelection;
+        return Task.CompletedTask;
+    }
+
+    private void ClearSelection()
+    {
+        selectedAccountIds.Clear();
+        tableComponent?.ClearSelection();
     }
 
     private async Task OpenCreateDialog()
@@ -118,7 +130,7 @@
         var result = await dialog.Result;
         if (result is not null && !result.Canceled)
         {
-            await LoadAsync();
+            await RefreshTable();
         }
     }
 
@@ -133,7 +145,7 @@
         var result = await dialog.Result;
         if (result is not null && !result.Canceled)
         {
-            await LoadAsync();
+            await RefreshTable();
         }
     }
 
@@ -166,7 +178,7 @@
         if (result.Succeeded)
         {
             Snackbar.Add("账号已删除", Severity.Success);
-            await LoadAsync();
+            await RefreshTable();
         }
         else
         {
@@ -174,4 +186,53 @@
             Snackbar.Add(msg, Severity.Error);
         }
     }
-} *@
+
+    private async Task BatchDelete()
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "确认删除",
+            $"确认删除选中的 {selectedAccountIds.Count} 个账号？此操作不可撤销。",
+            yesText: "删除",
+            noText: "取消");
+        if (confirmed != true) return;
+
+        try
+        {
+            var result = await AccountSvc.BatchDeleteAsync(selectedAccountIds.ToList(), currentUserId);
+            ShowBatchResult(result, "已删除");
+            ClearSelection();
+            await RefreshTable();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"批量删除失败: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task BatchUpdateRoleAsync(string roleName)
+    {
+        try
+        {
+            var result = await AccountSvc.BatchUpdateRoleAsync(selectedAccountIds.ToList(), currentUserId, roleName);
+            ShowBatchResult(result, $"已设置为 {roleName}");
+            ClearSelection();
+            await RefreshTable();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"批量改角色失败: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void ShowBatchResult(AccountBatchResult result, string action)
+    {
+        if (result.Skipped > 0)
+        {
+            Snackbar.Add($"{action} {result.Processed} 个账号，跳过 {result.Skipped} 个受保护账号", Severity.Warning);
+        }
+        else
+        {
+            Snackbar.Add($"{action} {result.Processed} 个账号", Severity.Success);
+        }
+    }
+}

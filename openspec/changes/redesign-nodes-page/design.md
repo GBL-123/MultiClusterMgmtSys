@@ -59,7 +59,7 @@ The fully-commented `Nodes.razor` (418 lines) and `NodeDetail.razor` (532 lines)
 
 **Alternative considered:** keep the old files as `.razor.bak` for reference. Rejected — git history already preserves them, and leaving `.bak` files in a feature folder violates the "no loose files" norm.
 
-### Decision 2: New `Components/Nodes/Shared/` directory with 14 components.
+### Decision 2: New `Components/Nodes/Shared/` directory with 15 components.
 
 Mirror the `Components/Clusters/Shared/` decomposition pattern. Concrete file list:
 
@@ -67,7 +67,7 @@ Mirror the `Components/Clusters/Shared/` decomposition pattern. Concrete file li
 |---|---|---|
 | `NodeDetailToolbar.razor` | `ClusterDetailToolbar.razor` | `MudPaper pa-4 mb-4`: Back button + `node.Name` h4 + Ready chip + Refresh button. Params: `Node` (`ClusterNodeDetailViewModel`), `Processing` (bool), `OnBack`, `OnRefresh` EventCallbacks. |
 | `NodeListToolbar.razor` | (top of `Clusters.razor` toolbar) | `MudPaper pa-4 mb-4`顶部: Back-to-cluster-detail button + cluster name h4 + cluster status chip + Refresh button. Params: `Cluster` (`ClusterDetailViewModel`), `Processing`, `OnBack`, `OnRefresh`. |
-| `NodeClusterSidebar.razor` | `GroupSidebar.razor` | Left column of the list page. 240px `MudPaper`, header "集群选择", `MudNavMenu` listing clusters grouped by `GroupName` ("未分组" last). Each group is a collapsible section (per-group expand/collapse). Cluster rows: name + status color-dot (`ClusterStatus` → Success/Error/Default), active-link highlight for `SelectedClusterId`, click → `/nodes/{ClusterId}`. NO search box (user exclusion). Params: `Clusters` (`IReadOnlyList<ClusterViewModel>`), `SelectedClusterId` (`int?`), `OnClusterSelected` (`EventCallback<int>`). Data grouped internally (page passes the flat list from `ClusterService.GetClustersAsync()`). |
+| `NodeClusterSidebar.razor` | `GroupSidebar.razor` | Left column of the list page. 240px `MudPaper`, header "集群选择", `MudNavMenu` listing clusters grouped by `GroupName` ("未分组" last). Each group is a collapsible section (per-group expand/collapse, default expanded; header shows a count chip). Cluster rows: name + status color-dot (`ClusterStatus` → green/red/grey), active-link highlight for `SelectedClusterId`, click → `/nodes/{ClusterId}`. NO search box (user exclusion). Params: `Clusters` (`IReadOnlyList<ClusterViewModel>`), `SelectedClusterId` (`int?`), `OnClusterSelected` (`EventCallback<int>`). Data grouped internally (page passes the flat list from `ClusterService.GetPagedAsync(Page=1, PageSize=1000, SortBy=ClusterSortField.Name)` — `GetClustersAsync` no longer exists post cluster-query refactor). |
 | `NodeListFilterBar.razor` | `ClusterFilterBar.razor` | `MudStack Row` with four `MudSelect`-style filters: Name (text), Role (`MudSelect<string?>`), Status (`MudSelect<string?>`), Schedulability (`MudSelect<bool?>`). Binds to a `NodeListFilter` record held by the parent page; emits `OnFilterChanged`. |
 | `NodeListTable.razor` | `ClusterTable.razor` (Items-mode half) | `MudTable<ClusterNodeViewModel>` with `Items="@FilteredNodes"`, `Dense`, `Hover`, `Pager` (client-side). Six columns matching old page: 名称 (clickable → detail), 状态 (chip), 角色, Kubelet 版本, 操作系统, 内网 IP. `NoRecordsContent` mirrors the empty-state copy. Exposes a row-click handler param. |
 | `NodeOverviewCard.razor` | `ClusterOverviewCard.razor` | Overview 6 fields: Name / Status (chip) / Roles / KubeletVersion / OsImage / InternalIP. |
@@ -97,10 +97,10 @@ NodeConditionsCard       xs=12 md=6  ┤  paired row
 NodeTaintsCard           xs=12 md=6  ┐
 NodeLabelsCard           xs=12 md=6  ┤  paired row
 NodeAnnotationsCard      xs=12 md=6  ┐
-NodeSystemInfoCard       xs=12 md=6  ┘  paired row (or SystemInfo full-width — design allows either; choose full-width to match the old 10-field grid)
+NodeSystemInfoCard       xs=12 md=6  ┘  paired row (final choice: half-width pairing with NodeAnnotationsCard — the earlier full-width preference was abandoned during implementation; the card's internal 10-field grid is `xs=12 sm=6 md=4`)
 ```
 
-To keep the page composed of pure stacked cards (mirroring `ClusterDetail`'s vertical rhythm) AND allow pairing, the page wraps paired cards in `<MudGrid><MudItem xs=12 md=6>...</MudItem><MudItem xs=12 md=6>...</MudItem></MudGrid>`, while full-width cards stay direct children of the outer `MudStack`. `NodeSystemInfoCard` is full width because the old page put it on a 10-column grid that reads better as one wide block.
+To keep the page composed of pure stacked cards (mirroring `ClusterDetail`'s vertical rhythm) AND allow pairing, the page wraps paired cards in `<MudGrid><MudItem xs=12 md=6>...</MudItem><MudItem xs=12 md=6>...</MudItem></MudGrid>`, while full-width cards stay direct children of the outer `MudStack`. `NodeSystemInfoCard` renders half-width (`md=6`) in the final paired row, as implemented.
 
 ### Decision 4: List page layout — two-column shell mirroring `Clusters.razor`.
 

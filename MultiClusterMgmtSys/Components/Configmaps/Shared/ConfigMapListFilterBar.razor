@@ -1,0 +1,54 @@
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+@namespace MultiClusterMgmtSys.Features.Configmaps.Shared
+
+<MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Class="pa-4 mb-4">
+    <MudSelect T="string?"
+               Value="SelectedNamespace"
+               ValueChanged="OnSelectedNamespaceChanged"
+               Label="命名空间"
+               Variant="Variant.Outlined"
+               Margin="Margin.Dense"
+               Dense="true"
+               Style="min-width:160px;">
+        <MudSelectItem Value="@((string?)null)">全部命名空间</MudSelectItem>
+        @foreach (var ns in Namespaces)
+        {
+            <MudSelectItem Value="@ns">@ns</MudSelectItem>
+        }
+    </MudSelect>
+
+    <MudTextField T="string"
+                  Value="SearchName"
+                  ValueChanged="OnSearchNameChanged"
+                  Label="搜索名称"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  Dense="true"
+                  Style="min-width:200px; flex:1;" />
+
+    <MudSpacer />
+
+    <AuthorizeView Roles="Admin">
+        <Authorized>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="OnCreate"
+                       Disabled="@(Cluster is null || !Cluster.IsReachable)">
+                新建 ConfigMap
+            </MudButton>
+        </Authorized>
+    </AuthorizeView>
+</MudStack>
+
+@code {
+    [Parameter] public ClusterDetailViewModel? Cluster { get; set; }
+    [Parameter] public List<string> Namespaces { get; set; } = new();
+    [Parameter] public string? SelectedNamespace { get; set; }
+    [Parameter] public string SearchName { get; set; } = "";
+    [Parameter] public EventCallback<string?> OnSelectedNamespaceChanged { get; set; }
+    [Parameter] public EventCallback<string> OnSearchNameChanged { get; set; }
+    [Parameter] public EventCallback OnCreate { get; set; }
+}

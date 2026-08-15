@@ -28,7 +28,7 @@ The node management pages (`/nodes/{ClusterId}` and `/nodes/{ClusterId}/{NodeNam
 - **Code**:
   - `Components/Nodes/Pages/Nodes.razor` — rewrite (currently commented).
   - `Components/Nodes/Pages/NodeDetail.razor` — rewrite (currently commented).
-  - `Components/Nodes/Shared/` — new directory containing 14 shared Razor components (4 list-page helpers + 10 detail cards + 2 toolbars; see design.md for exact list).
+  - `Components/Nodes/Shared/` — new directory containing 15 shared Razor components (5 list-page helpers — `NodeClusterSidebar` + 2 toolbars + filter bar + table — + 10 detail cards; see design.md for exact list).
   - `Components/Clusters/Shared/ClusterNodesCard.razor` — no code change (its existing "查看全部" link target becomes live again).
 - **Namespaces**: new files follow the existing `Components/Nodes/**` rule — `MultiClusterMgmtSys.Components.Nodes.*` (matches physical path, NOT `Features.*` per AGENTS.md). `_Imports.razor` is unchanged; each new page/component carries explicit `@using MultiClusterMgmtSys.Components.Nodes.Services` / `...Clusters.Services` / `...Clusters.ViewModels` / `...Nodes.ViewModels` as needed, mirroring `ClusterDetail.razor`.
 - **Services/APIs**: `ClusterNodeService` reused unmodified; one additive field on `ClusterNodeViewModel` (`Unschedulable`), populated by a one-line setter addition in `ClusterNodeService.MapNode`. `ClusterService`, `ClusterNodeDetailViewModel`, `NodeAddressViewModel`, `NodeConditionViewModel`, `NodeTaintViewModel`, `NodeSystemInfoViewModel` reused unmodified. Shared scoped `ClusterSelectionState` already registered in `Program.cs` (no registration change needed).

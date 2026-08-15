@@ -4,18 +4,24 @@ The cluster feature established two visual templates during the in-flight `redes
 
 **List page template** (see `Components/Nodes/Pages/Nodes.razor` for the canonical reference):
 ```
-<MudStack Class="d-flex flex-auto">
-  @if (!ClusterId.HasValue) {  <fallback: 请先选择一个集群 + 前往集群列表 button → /clusters> }
-  else if (loading) { <MudProgressLinear/> }
-  else if (cluster is null) { <未找到该集群 + 返回集群列表 button> }
-  else if (!cluster.IsReachable) { <集群不可达 message> }
-  else {
-    <NodeListToolbar .../>        ← MudPaper pa-4 mb-4
-    <NodeListFilterBar .../>      ← MudPaper pa-4 mb-4 (or merged into toolbar paper in compact variants)
-    <NodeListTable .../>          ← MudTable Items + client Pager + NoRecords
-  }
+<MudStack Row="true" Class="d-flex flex-auto">
+  <NodeClusterSidebar .../>        ← 240px MudPaper: 集群选择 | 分组(可折叠) → 集群行 | 选中高亮 | 状态色点 | 无搜索框
+  <MudStack Class="flex-auto">
+    @if (!EffectiveClusterId.HasValue) {  <请从左侧选择一个集群 empty state> }
+    else if (loading) { <MudProgressLinear/> }
+    else if (cluster is null) { <未找到该集群 + 返回集群列表 button> }
+    else {
+      <NodeListToolbar .../>        ← MudPaper pa-4 mb-4
+      @if (!cluster.IsReachable) { <集群不可达 message> }
+      else {
+        <NodeListFilterBar .../>      ← MudPaper pa-4 mb-4
+        <NodeListTable .../>          ← MudTable Items + client Pager + NoRecords
+      }
+    }
+  </MudStack>
 </MudStack>
 ```
+Note: the Nodes change's third iteration retired the landing card + URL auto-redirect in favor of this persistent-sidebar + in-place-restore shape (Nodes design Decisions 4 / 8); this change mirrors that final shape.
 
 **Detail page template** (`Components/Clusters/Pages/ClusterDetail.razor`):
 ```
@@ -61,7 +67,7 @@ Namespace rule (from AGENTS.md): `Components/Configmaps/**` uses `MultiClusterMg
 - No Secret support — ConfigMap is the only resource type scoped in. A future `add-secret-page` change can reuse the visual scaffolding.
 - No cross-cluster capability — list/detail/edit/create are all single-cluster contexts scoped by `ClusterId`. A future `configmaps-cross-cluster-diff` change is on the table.
 - No server-side paging of ConfigMaps — K8s `ListNamespacedConfigMap` returns the whole namespace in one call (--tens to low hundreds of ConfigMaps); client-side paging inside `MudTable` is sufficient (matches the Nodes page decision).
-- No sidebar on the list page — ConfigMaps belong to exactly one cluster (already chosen via the URL), so there is no equivalent of `GroupSidebar`.
+- No search box inside the cluster sidebar — the sidebar lists clusters grouped by `GroupName` and nothing more (mirrors the Nodes iteration exclusion).
 - No introduction of monaco / codemirror / syntax-highlight editor — the YAML editor is a plain `MudTextField` (Lines=30, monospace, RO/RW). A future `configmaps-yaml-editor-upgrade` change can pick that up.
 - No undo on delete — a 2-step confirm dialog followed by immediate K8s delete (matches the user's explicit "先不做 undo" decision; mirrors current behavior).
 - No edits to `_Imports.razor`. No edits to `ClusterService`, `ClusterDetailViewModel`, or any non-Configmaps file. No DB schema change (ConfigMaps remain a live K8s read/write; `ClusterInfo` is the only persisted entity, unchanged). No new NuGet packages (uses `KubernetesYaml` already pulled in by `KubernetesClient` 19).
@@ -81,36 +87,49 @@ Concrete file list:
 
 | File | Mirrors | Purpose |
 |---|---|---|
-| `ConfigMapListToolbar.razor` | `NodeListToolbar.razor` | `MudPaper pa-4 mb-4`: 返回集群详情 button (→ `/clusters/{ClusterId}`) + cluster name h4 + status `MudChip` + 刷新 `MudButton`. Params: `Cluster` (`ClusterDetailViewModel`), `Processing` (bool), `OnBack`, `OnRefresh` `EventCallback`. |
+| `ConfigMapListToolbar.razor` | `NodeListToolbar.razor` | `MudPaper pa-4 mb-4`: 返回集群详情 button (→ `/clusters/{ClusterId}`) + cluster name h4 + status `MudChip` + 刷新 `MudButton`. Params: `Cluster` (`ClusterDetailViewModel`), `Processing` (bool), `OnRefresh` `EventCallback`. |
+| `ConfigMapClusterSidebar.razor` | `NodeClusterSidebar.razor` | Left column of the list page. 240px `MudPaper`, header 集群选择, `MudNavMenu` listing clusters grouped by `GroupName` ("未分组" last), each group collapsible (per-group expand/collapse). Cluster rows: name + status color-dot (`ClusterStatus` → hex green/red/gray), active-link highlight for `SelectedClusterId`, click → `/configmaps/{ClusterId}`. NO search box. Params: `Clusters` (`IReadOnlyList<ClusterViewModel>`), `SelectedClusterId` (`int?`), `OnClusterSelected` (`EventCallback<int>`). Byte-for-byte mirror of `NodeClusterSidebar.razor` except the CSS class prefix (`configmap-*`) and the explicit `@namespace MultiClusterMgmtSys.Features.Configmaps.Shared`. |
 | `ConfigMapListFilterBar.razor` | `NodeListFilterBar.razor` | `MudPaper pa-4 mb-4`: 命名空间 `MudSelect<string?>` (options from `ConfigMapService.GetNamespacesAsync`, with empty-selection = 全部命名空间) + 名称 `MudTextField<string>` (客户端过滤) + 新建 ConfigMap `MudButton` (inside `<AuthorizeView Roles="Admin">`, Disabled when `cluster is null \|\| !cluster.IsReachable`). Params: `Cluster`, `Namespaces` (`List<string>`), `Filter` (record bound to page state), `OnFilterChanged`, `OnCreate` `EventCallback`. |
 | `ConfigMapListTable.razor` | `NodeListTable.razor` | `MudTable<ConfigMapListViewModel>` Items=`@FilteredConfigMaps` + Dense + Hover + client `Pager` + `NoRecordsContent` mirroring the empty-state copy from old `ConfigMaps.razor:212-228`. Six columns: 名称 (clickable → detail route), 命名空间 (`MudChip Small`), Data 键数, 键名预览 (ellipsis cell), 创建时间 (`yyyy-MM-dd HH:mm`), 操作 (icon buttons: 详情跳列表内导航 / 编辑 YAML Admin-gated / 删除 Admin-gated). Params: `Items`, `OnNavigateDetail(ns,name)`, `OnNavigateEditYaml(ns,name)`, `OnDelete(ns,name)` callbacks. |
-| `ConfigMapDetailToolbar.razor` | `NodeDetailToolbar.razor` | `MudPaper pa-4 mb-4`: 返回列表 button (→ `/configmaps/{ClusterId}`) + `{cm.Name}` h4 + `MudChip` showing "Data 键数: {n}" (computed from `detail.Data.Count`) + 编辑 YAML `MudButton` (inside `<AuthorizeView Roles="Admin">`) + 刷新 `MudButton`. Params: `ClusterId` (int), `Name` (string), `Detail` (`ConfigMapDetailViewModel`), `Processing`, `OnBack`, `OnRefresh`, `OnEditYaml` `EventCallback`. |
+| `ConfigMapDetailToolbar.razor` | `NodeDetailToolbar.razor` | `MudPaper pa-4 mb-4`: 返回列表 button (→ `/configmaps/{ClusterId}`, handled internally via injected `NavigationManager`) + `{Name}` h4 + `MudChip` showing "Data 键数: {n}" (computed from `Detail.Data.Count`) + 编辑 YAML `MudButton` (inside `<AuthorizeView Roles="Admin">`) + 刷新 `MudButton`. Params: `ClusterId` (int), `Name` (string), `Detail` (`ConfigMapDetailViewModel?`), `Processing`, `OnRefresh`, `OnEditYaml` `EventCallback`. |
 | `ConfigMapYamlViewCard.razor` | (no Nodes analog — Nodes detail has no large read-only text block; closest is `ClusterOverviewCard` grid) | `MudCard Elevation=1 Class="mb-4"` containing `<MudCardContent>` with a read-only `MudTextField<string>` Lines=30 monospace, `Value="@Yaml"`, `ReadOnly="true"`. Renders nothing if `Yaml` is null/empty (a "暂无 YAML" empty-state). Params: `Yaml` (string). |
 | `ConfigMapYamlEditCard.razor` | (par. of `ConfigMapYamlViewCard`) | `MudCard Elevation=1 Class="mb-4"` containing `<MudCardContent>` with an editable `MudTextField<string>` Lines=30 monospace, `@bind-Value="Yaml"`. Save handler lives in the parent page (toolbar), not in the card. Params: `Yaml` (string, bindable two-way via `YamlChanged` `EventCallback<string>`). |
 | `CreateConfigMapDialog.razor` (rewritten in place) | (rewrite of the existing dialog file, not a new component) | `MudDialog` body containing a single `MudTextField<string>` Lines=25 monospace `@bind-Value="yamlContent"` pre-filled on init with the minimal `V1ConfigMap` template (see Decision 6). `DialogActions`: 取消 + 创建. Submit handler pre-parses with `KubernetesYaml.Deserialize<V1ConfigMap>`; on success calls `ConfigMapService.CreateConfigMapFromYamlAsync(ClusterId, yamlContent)` and closes the dialog; on parse failure shows the exception text via `Snackbar` and does not close. Params: `ClusterId` (int), `Dialog` (`IMudDialogInstance` via `[CascadingParameter]`). |
 
 All shared components follow the same parameter convention as `ClusterNodesCard.razor` / `NodeListToolbar.razor`: a `[Parameter]` per needed datum, and `EventCallback` per action the parent owns. The parent page owns data loading, snackbar, navigation, and dialog coordination — components are stateless renderers.
 
-### Decision 3: List page layout, sans sidebar.
+### Decision 3: List page layout — two-column shell mirroring `Nodes.razor` (with cluster sidebar).
 
 ```
-<MudStack Class="d-flex flex-auto">
-  @if (!ClusterId.HasValue) {
-    <请先选择一个集群 fallback: icon + h6 + body2 + 前往集群列表 button → /clusters>
-  }
-  else if (loading) { <MudProgressLinear Indeterminate="true" Class="my-4"/> }
-  else if (cluster is null) { <未找到该集群 + 返回集群列表 button → /clusters> }
-  else if (!cluster.IsReachable) { <MudCard>集群不可达，无法获取 ConfigMap</MudCard> }
-  else {
-    <ConfigMapListToolbar Cluster="@cluster" Processing="@loading" OnBack=... OnRefresh=.../>
-    <ConfigMapListFilterBar Cluster="@cluster" Namespaces="@namespaces" Filter="@filter"
-                            OnFilterChanged=... OnCreate=.../>
-    <ConfigMapListTable Items="@filteredConfigMaps" ...callbacks.../>
-  }
+<MudStack Row="true" Class="d-flex flex-auto">
+  <ConfigMapClusterSidebar Clusters="@clusters"
+                           SelectedClusterId="@EffectiveClusterId"
+                           OnClusterSelected="SelectCluster" />   ← 240px MudPaper
+  <MudStack Class="flex-auto">
+    @if (!EffectiveClusterId.HasValue) {  <请从左侧选择一个集群 empty state: icon + h6> }
+    else if (loading) { <MudProgressLinear Indeterminate="true" Class="my-4"/> }
+    else if (cluster is null) { <未找到该集群 + 返回集群列表 button → /clusters> }
+    else {
+      <ConfigMapListToolbar Cluster="@cluster" Processing="@loading" OnRefresh=.../>
+      @if (!cluster.IsReachable) { <MudCard>集群不可达，无法获取 ConfigMap</MudCard> }
+      else {
+        <ConfigMapListFilterBar Cluster="@cluster" Namespaces="@namespaces"
+                                SelectedNamespace="@selectedNamespace" SearchName="@searchName"
+                                OnSelectedNamespaceChanged=... OnSearchNameChanged=... OnCreate=.../>
+        <ConfigMapListTable Items="@filteredConfigMaps" ...callbacks.../>
+      }
+    }
+  </MudStack>
 </MudStack>
 ```
 
-No `GroupSidebar` analog — the cluster is fixed by URL, mirroring the Nodes decision. The `/configmaps` (no `ClusterId`) variant renders the fallback (mirrors `Nodes.razor:14-27`), satisfying the user's "和 /nodes 的逻辑一样" decision.
+`EffectiveClusterId => ClusterId ?? ClusterSelection.SelectedClusterId` — the URL parameter wins; the parameterless route restores the remembered selection **in place**: the right pane renders that cluster's ConfigMap list, the URL stays `/configmaps`, and the sidebar highlights the restored row. No `NavigateTo` redirect and no landing card — exactly the Nodes final shape (Nodes design Decision 8's "why not auto-redirect" reasoning applies verbatim: the user rejected landing cards and URL changes as "怪怪的").
+
+**First-frame guard** (must preserve; same trap as Nodes): `if (ClusterId == previousClusterId && hasInitialized) return;` with `hasInitialized` set at the bottom of the first `OnParametersSetAsync` run — both sides default to `null` for `int?`, so a naive diff skips the very first frame.
+
+**Sidebar data**: the page loads the flat cluster list once per mount in `OnInitializedAsync` via `ClusterService.GetPagedAsync(new ClusterQueryRequest { Page = 1, PageSize = 1000, SortBy = ClusterSortField.Name, SortDescending = false })` (same as `Nodes.razor`), and `ConfigMapClusterSidebar` groups it internally ("未分组" last). Sidebar click → `NavigateTo($"/configmaps/{id}")`. No per-render K8s calls.
+
+**Layout evolution record (kept for archive trace):** (1) the original plan had NO sidebar — single-column page because "the cluster is fixed by URL"; (2) a landing-card fallback ("请先选择一个集群" + 前往集群列表 button → `/clusters`) with URL auto-redirect via `ClusterSelectionState` was added; (3) the user requested the current Nodes shape — a persistent left cluster-selection sidebar with the right pane showing either the remembered cluster's ConfigMap list or the "请从左侧选择一个集群" empty state. The landing card, the 前往集群列表 button, and the auto-redirect are all retired.
 
 ### Decision 4: Detail page = single read-only YAML view.
 
@@ -217,7 +236,7 @@ This resolves the user's "(c) textarea + 保存前 KubernetesYaml.Deserialize �
 
 The pre-parse code lives in the page/dialog `@code` block, not in the service — keeping the service a thin wrapper over `KubernetesClient` calls. Failure of step 1 does not modify any state (`yamlContent` stays, dialog stays open, user can fix and resubmit).
 
-### Decision 12: Cluster-configmaps entrypoint + ClusterSelectionState refactor (discovered during apply).
+### Decision 12: ClusterSelectionState refactor (discovered during apply).
 
 During apply, the user reported that after picking a cluster and navigating away via the Drawer, returning to `/configmaps` (or `/nodes`) re-shows the 请先选择一个集群 fallback — the cross-feature context was not persisted. Investigation surfaced that `Components/Common/NodeSelectionState.cs` already existed as a scoped service implementing this for Nodes (renamed here to reflect generalisation below), but the `ConfigMaps.razor` rewrite initially copied only Nodes' fallback UI without the corresponding `selected-cluster-id` recovery logic. The same gap is also closed on the Nodes side because we centralise on a single shared service.
 
@@ -225,17 +244,11 @@ During apply, the user reported that after picking a cluster and navigating away
 
 1. **Rename `NodeSelectionState` → `ClusterSelectionState`** (file `Components/Common/NodeSelectionState.cs` → `ClusterSelectionState.cs`, class name same). The original name implied a Nodes-only concern; the service is purely "most recent cluster id visited", a generic feature-page-context primitive. DI registration in `Program.cs` and all 4 existing call sites (`Nodes.razor`, `NodeDetail.razor`, plus now `ConfigMaps.razor`, `ConfigMapDetail.razor`, `EditConfigMapYaml.razor`, `ClusterDetail.razor`) update to the new name. No behaviour change for Nodes — the underlying service implementation is byte-for-byte identical.
 
-2. **`ConfigMaps.razor` invokes `ClusterSelectionState.Set` and recovers** — `LoadAsync` calls `ClusterSelection.Set(ClusterId.Value)` after a successful `GetClusterDetailAsync`. The existing fallback branch (the `else` when `!ClusterId.HasValue`) now reads `ClusterSelection.SelectedClusterId` and `NavigateTo($"/configmaps/{id}")` instead of rendering the static fallback. Mirrors `Nodes.razor:124-148` exactly.
+2. **`ConfigMaps.razor` invokes `ClusterSelectionState.Set` and recovers in place** — `OnParametersSet` calls `ClusterSelection.Set(ClusterId.Value)` when `ClusterId.HasValue`, and `LoadAsync` also sets it after `GetClusterDetailAsync` returns non-null. The parameterless route reads `ClusterSelection.SelectedClusterId` through `EffectiveClusterId` and renders that cluster's ConfigMap list **in place** — no `NavigateTo`, the URL stays `/configmaps` (mirrors the Nodes in-place restore; the earlier draft's `NavigateTo($"/configmaps/{id}")` auto-redirect is retired together with Decision 3's landing card).
 
 3. **`ClusterDetail.razor` records the cluster id too** — its `LoadAsync` now calls `ClusterSelection.Set(Id)` after a successful detail load. This means a user who lands on `/clusters/3` (e.g. via Search or a Clusters list selection) and then clicks the Drawer's `/nodes` or `/configmaps` link receives the auto-recovery for free — without it, the user would have to first deep-link into a Nodes/ConfigMaps page before the service could record the id. Belt-and-suspenders: `ConfigMapDetail.razor` and `EditConfigMapYaml.razor`'s `OnInitializedAsync` also call `ClusterSelection.Set(ClusterId)` at entry; matches `NodeDetail.razor:96-99`'s pattern.
 
-**New `ClusterConfigMapsCard`** entry component under `Components/Clusters/Shared/`, mirrored from `ClusterNodesCard.razor` minus the K8s list preview (Decision: pure navigation affordance, no extra K8s calls). The card sits below `ClusterNodesCard` on the `ClusterDetail.razor` page and exposes a 查看全部 (→ `/configmaps/{Cluster.Id}`) button. The button is `Disabled="@(!Cluster.IsReachable)"`. This answers the user's discovery question "怎么跳过来呢" (how does one reach the feature after selecting a cluster) without forcing users to enter via the Drawer's feature-fallback → cluster-list → cluster-detail dance.
-
-**Alternative considered for the entry:** add a 配置管理 button directly to `ClusterDetailToolbar` instead of a new card. Rejected — `ClusterNodesCard` is the established convention for "feature entry from cluster detail", and adding a toolbar button breaks the visual rhythm. The card pattern keeps the detail page's stacked-card shape intact and gives future feature pages (Secrets, workloads, etc.) a consistent extension pattern.
-
 **Alternative considered for the state service:** introduce a new `ConfigMapSelectionState` scoped service (a fork of `NodeSelectionState`) to avoid renaming a service used by the Nodes feature. Rejected — it would defeat the point of the cross-feature UX consistency goal (the user's complaint was specifically "回退到 Nodes 后切到 ConfigMaps 也应该记得同一个集群"). One service per concept; renaming is small and matches the new conceptual boundary.
-
-**Alternative considered for K8s preview on `ClusterConfigMapsCard`:** mirror `ClusterNodesCard`'s `Cluster.Nodes.Take(5).ToList()` preview. Rejected — `ClusterDetailViewModel.Nodes` is pre-populated but there is no equivalent `ClusterDetailViewModel.ConfigMaps` field; adding one would require `ClusterService.GetClusterDetailAsync` to fire an additional `ListConfigMapForAllNamespacesAsync` K8s call on every cluster detail load, even when the user never opens ConfigMaps. The card is a pure entry affordance; users click 查看全部 to incur the K8s round-trip. Recorded here so a future `cluster-detail-configmaps-preview` change can revive the question if preview UX becomes important.
 
 ## Risks / Trade-offs
 

@@ -34,4 +34,14 @@ public class GroupRepository(ApplicationDbContext db)
             await db.SaveChangesAsync();
         }
     }
+
+    public async Task RenameAsync(int id, string newName)
+    {
+        var entity = await db.ClusterGroups.FindAsync(id);
+        if (entity is not null)
+        {
+            entity.Name = newName;
+            await db.SaveChangesAsync();
+        }
+    }
 }

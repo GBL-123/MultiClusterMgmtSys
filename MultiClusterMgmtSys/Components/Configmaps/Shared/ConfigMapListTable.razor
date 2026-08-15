@@ -1,0 +1,72 @@
+@using MultiClusterMgmtSys.Features.Configmaps.ViewModels
+@namespace MultiClusterMgmtSys.Features.Configmaps.Shared
+
+<MudTable T="ConfigMapListViewModel"
+          Items="@Items"
+          Dense="true"
+          Hover="true"
+          Elevation="0">
+    <HeaderContent>
+        <MudTh>名称</MudTh>
+        <MudTh>命名空间</MudTh>
+        <MudTh>Data 键数</MudTh>
+        <MudTh>键名预览</MudTh>
+        <MudTh>创建时间</MudTh>
+        <MudTh>操作</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="名称">
+            <MudText Color="Color.Primary"
+                     Style="cursor:pointer; text-decoration: underline;"
+                     @onclick="() => OnNavigateDetail.InvokeAsync((context.Namespace, context.Name))">
+                @context.Name
+            </MudText>
+        </MudTd>
+        <MudTd DataLabel="命名空间">
+            <MudChip T="string" Size="Size.Small">@context.Namespace</MudChip>
+        </MudTd>
+        <MudTd DataLabel="Data 键数">@context.DataKeyCount</MudTd>
+        <MudTd DataLabel="键名预览">
+            <MudText Style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+                     Title="@context.DataKeyPreview">
+                @context.DataKeyPreview
+            </MudText>
+        </MudTd>
+        <MudTd DataLabel="创建时间">@(context.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudTd>
+        <MudTd DataLabel="操作">
+            <div class="d-flex" style="gap: 4px;">
+                <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                               Size="Size.Small"
+                               Color="Color.Primary"
+                               Title="详情"
+                               OnClick="@(() => OnNavigateDetail.InvokeAsync((context.Namespace, context.Name)))" />
+                <AuthorizeView Roles="Admin">
+                    <Authorized Context="authContext">
+                        <MudIconButton Icon="@Icons.Material.Filled.Code"
+                                       Size="Size.Small"
+                                       Title="编辑 YAML"
+                                       OnClick="@(() => OnNavigateEditYaml.InvokeAsync((context.Namespace, context.Name)))" />
+                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       Title="删除"
+                                       OnClick="@(() => OnDelete.InvokeAsync((context.Namespace, context.Name)))" />
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager RowsPerPageString="每页条数：" InfoFormat="共 {all_items} 条" />
+    </PagerContent>
+    <NoRecordsContent>
+        <MudText>暂无 ConfigMap</MudText>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    [Parameter] public IReadOnlyList<ConfigMapListViewModel> Items { get; set; } = new List<ConfigMapListViewModel>();
+    [Parameter] public EventCallback<(string Namespace, string Name)> OnNavigateDetail { get; set; }
+    [Parameter] public EventCallback<(string Namespace, string Name)> OnNavigateEditYaml { get; set; }
+    [Parameter] public EventCallback<(string Namespace, string Name)> OnDelete { get; set; }
+}

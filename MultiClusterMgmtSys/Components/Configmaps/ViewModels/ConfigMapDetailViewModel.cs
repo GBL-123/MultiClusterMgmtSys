@@ -6,6 +6,6 @@ public class ConfigMapDetailViewModel
     public string Namespace { get; set; } = "";
     public string Uid { get; set; } = "";
     public DateTime? CreatedAt { get; set; } = null;
-    public List<ConfigMapDataEntryViewModel> Data { get; set; } = new();
+    public Dictionary<string, string> Data { get; set; } = new();
     public string Yaml { get; set; } = "";
 }

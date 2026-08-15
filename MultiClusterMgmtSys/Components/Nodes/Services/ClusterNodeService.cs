@@ -1,8 +1,10 @@
 using k8s;
 using k8s.Models;
 using MultiClusterMgmtSys.Common.Enums;
+using MultiClusterMgmtSys.Components.AuditLogs.Services;
 using MultiClusterMgmtSys.Components.Clusters.Services;
 using MultiClusterMgmtSys.Components.Clusters.ViewModels;
+using MultiClusterMgmtSys.Components.Nodes.Requests;
 using MultiClusterMgmtSys.Components.Nodes.ViewModels;
 using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Data.Repositories;
@@ -13,21 +15,34 @@ namespace MultiClusterMgmtSys.Components.Nodes.Services;
 /// <summary>
 /// 节点维度的查询服务：从 k8s 实时拉取节点列表与节点详情。
 /// 与 <see cref="ClusterService"/> 解耦，后者负责集群 CRUD 与连通性探测。
+/// 节点 IP 备注（<see cref="NodeIpRemark"/>）在读取时合并进地址数据。
 /// </summary>
-public class ClusterNodeService(ClusterRepository repo)
+public class ClusterNodeService(ClusterRepository repo, AuditService auditService, ILogger<ClusterNodeService> logger)
 {
     private readonly ClusterRepository repo = repo;
+    private readonly AuditService auditService = auditService;
+    private readonly ILogger<ClusterNodeService> logger = logger;
+
+    private static readonly string[] IpAddressTypes = ["InternalIP", "ExternalIP"];
 
     public async Task<List<ClusterNodeViewModel>> GetClusterNodesAsync(int id)
     {
+        logger.LogInformation("GetClusterNodes clusterId={ClusterId}", id);
         var entity = await repo.GetByIdAsync(id);
         if (entity is null)
+        {
+            logger.LogWarning("Cluster {ClusterId} not found", id);
             throw new InvalidOperationException($"Cluster {id} not found");
+        }
+
+        var remarks = BuildRemarkLookup(entity);
 
         var config = BuildConfig(entity);
         using var client = new Kubernetes(config);
         var nodeList = await client.CoreV1.ListNodeAsync();
-        return nodeList.Items.Select(MapNode).ToList();
+        var result = nodeList.Items.Select(n => MapNode(n, remarks)).ToList();
+        logger.LogInformation("GetClusterNodes done clusterId={ClusterId} count={Count}", id, result.Count);
+        return result;
     }
 
     public async Task<ClusterNodeDetailViewModel?> GetNodeDetailAsync(int clusterId, string nodeName)
@@ -45,14 +60,71 @@ public class ClusterNodeService(ClusterRepository repo)
             };
         }
 
+        var remarks = BuildRemarkLookup(entity);
+
         var config = BuildConfig(entity);
         using var client = new Kubernetes(config);
         var node = await client.CoreV1.ReadNodeAsync(nodeName);
-        var vm = MapNodeDetail(node, entity);
+        var vm = MapNodeDetail(node, entity, remarks);
         vm.ClusterId = clusterId;
         vm.ClusterName = entity.Name;
         vm.IsReachable = true;
         return vm;
+    }
+
+    public async Task UpdateNodeIpNotesAsync(int clusterId, string nodeName, List<NodeIpNoteEditItem> items)
+    {
+        logger.LogInformation("UpdateNodeIpNotes clusterId={ClusterId} node={NodeName} count={Count}", clusterId, nodeName, items.Count);
+        var entity = await repo.GetByIdAsync(clusterId);
+        if (entity is null)
+        {
+            logger.LogWarning("Cluster {ClusterId} not found", clusterId);
+            throw new InvalidOperationException($"Cluster {clusterId} not found");
+        }
+
+        var incoming = items
+            .Where(i => !string.IsNullOrWhiteSpace(i.Address))
+            .ToDictionary(i => i.Address, i => i.Note);
+
+        var existing = entity.NodeIpRemarks
+            .Where(r => r.NodeName == nodeName)
+            .ToDictionary(r => r.Address);
+
+        foreach (var (address, note) in incoming)
+        {
+            if (note is not null && note.Length > 64)
+            {
+                logger.LogWarning("NodeIpRemark note too long node={NodeName} address={Address}", nodeName, address);
+                throw new InvalidOperationException($"备注长度不能超过 64 个字符");
+            }
+
+            if (existing.TryGetValue(address, out var remark))
+            {
+                remark.Note = note;
+            }
+            else if (note is not null)
+            {
+                entity.NodeIpRemarks.Add(new NodeIpRemark
+                {
+                    ClusterId = clusterId,
+                    NodeName = nodeName,
+                    Address = address,
+                    Note = note
+                });
+            }
+        }
+
+        foreach (var (address, remark) in existing)
+        {
+            if (!incoming.ContainsKey(address))
+            {
+                entity.NodeIpRemarks.Remove(remark);
+            }
+        }
+
+        await repo.UpdateAsync(entity);
+        logger.LogInformation("UpdateNodeIpNotes persisted clusterId={ClusterId} node={NodeName}", clusterId, nodeName);
+        await auditService.LogAsync(AuditCategory.Node, AuditAction.Update, $"节点: {nodeName} @ 集群 {entity.Name}");
     }
 
     // ---- Private k8s helpers ----
@@ -73,16 +145,35 @@ public class ClusterNodeService(ClusterRepository repo)
         };
     }
 
-    private static ClusterNodeViewModel MapNode(V1Node node)
+    private static Dictionary<(string NodeName, string Address), string?> BuildRemarkLookup(ClusterInfo cluster)
     {
+        return cluster.NodeIpRemarks.ToDictionary(
+            r => (r.NodeName, r.Address),
+            r => (string?)r.Note);
+    }
+
+    private static bool IsIpClassAddress(string type)
+        => IpAddressTypes.Contains(type);
+
+    private static ClusterNodeViewModel MapNode(V1Node node, Dictionary<(string, string), string?> remarks)
+    {
+        var nodeName = node.Metadata?.Name ?? "";
         return new ClusterNodeViewModel
         {
-            Name = node.Metadata?.Name ?? "",
+            Name = nodeName,
             Status = ComputeNodeStatus(node),
             Roles = ComputeRoles(node),
             KubeletVersion = node.Status?.NodeInfo?.KubeletVersion ?? "",
             OsImage = node.Status?.NodeInfo?.OsImage ?? "",
-            InternalIP = ComputeInternalIP(node)
+            Unschedulable = node.Spec?.Unschedulable ?? false,
+            IpAddresses = node.Status?.Addresses
+                ?.Where(a => IsIpClassAddress(a.Type ?? ""))
+                .Select(a => new NodeIpViewModel
+                {
+                    Address = a.Address ?? "",
+                    Note = remarks.GetValueOrDefault((nodeName, a.Address ?? ""))
+                })
+                .ToList() ?? new()
         };
     }
 
@@ -104,25 +195,19 @@ public class ClusterNodeService(ClusterRepository repo)
         return string.Join(",", roleLabels);
     }
 
-    private static string ComputeInternalIP(V1Node node)
+    private static ClusterNodeDetailViewModel MapNodeDetail(V1Node node, ClusterInfo cluster, Dictionary<(string, string), string?> remarks)
     {
-        return node.Status?.Addresses?.FirstOrDefault(a => a.Type == "InternalIP")?.Address ?? "";
-    }
-
-    private static ClusterNodeDetailViewModel MapNodeDetail(V1Node node, ClusterInfo cluster)
-    {
+        var nodeName = node.Metadata?.Name ?? "";
         var vm = new ClusterNodeDetailViewModel
         {
             // 概要
-            Name = node.Metadata?.Name ?? "",
+            Name = nodeName,
             Status = ComputeNodeStatus(node),
             Roles = ComputeRoles(node),
             KubeletVersion = node.Status?.NodeInfo?.KubeletVersion ?? "",
             OsImage = node.Status?.NodeInfo?.OsImage ?? "",
-            InternalIP = ComputeInternalIP(node),
 
             // 元数据
-            Uid = node.Metadata?.Uid ?? "",
             CreatedAt = node.Metadata?.CreationTimestamp,
             Unschedulable = node.Spec?.Unschedulable ?? false,
             PodCIDR = node.Spec?.PodCIDR ?? "",
@@ -132,7 +217,10 @@ public class ClusterNodeService(ClusterRepository repo)
             Addresses = node.Status?.Addresses?.Select(a => new NodeAddressViewModel
             {
                 Type = a.Type ?? "",
-                Address = a.Address ?? ""
+                Address = a.Address ?? "",
+                Note = IsIpClassAddress(a.Type ?? "")
+                    ? remarks.GetValueOrDefault((nodeName, a.Address ?? ""))
+                    : null
             }).ToList() ?? new(),
 
             // 条件

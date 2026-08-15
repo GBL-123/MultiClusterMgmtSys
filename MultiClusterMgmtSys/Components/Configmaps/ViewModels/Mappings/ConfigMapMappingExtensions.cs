@@ -30,11 +30,7 @@ public static class ConfigMapMappingExtensions
             Namespace = cm.Metadata?.NamespaceProperty ?? "",
             Uid = cm.Metadata?.Uid ?? "",
             CreatedAt = cm.Metadata?.CreationTimestamp,
-            Data = cm.Data?.Select(kvp => new ConfigMapDataEntryViewModel
-            {
-                Key = kvp.Key,
-                Value = kvp.Value ?? ""
-            }).ToList() ?? new(),
+            Data = cm.Data?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value ?? "") ?? new(),
             Yaml = KubernetesYaml.Serialize(cm)
         };
     }

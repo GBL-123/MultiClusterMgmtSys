@@ -1,0 +1,86 @@
+@using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+
+<MudStack Spacing="2">
+    @foreach (var row in Items)
+    {
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" @key="row">
+            <MudSelect T="ClusterEndpointKind"
+                       Value="row.Kind"
+                       ValueChanged="@(k => row.Kind = k)"
+                       Label="类型"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                       Style="width:110px; flex-shrink:0;">
+                <MudSelectItem Value="@ClusterEndpointKind.Vip">VIP</MudSelectItem>
+                <MudSelectItem Value="@ClusterEndpointKind.Domain">域名</MudSelectItem>
+            </MudSelect>
+
+            <MudTextField T="string"
+                          @bind-Value="row.Value"
+                          Label="地址"
+                          Required="true"
+                          RequiredError="请填写端点地址"
+                          MaxLength="256"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Style="flex:2;" />
+
+            <MudTextField T="string"
+                          @bind-Value="row.Note"
+                          Label="备注"
+                          MaxLength="64"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Style="flex:1;" />
+
+            <MudTextField T="int"
+                          @bind-Value="row.SortOrder"
+                          Label="排序"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Style="width:80px; flex-shrink:0;" />
+
+            <MudCheckBox T="bool"
+                         Value="row.IsPrimary"
+                         ValueChanged="@(v => OnPrimaryChanged(row, v))"
+                         Label="主"
+                         Color="Color.Primary" />
+
+            <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
+                           Size="Size.Small"
+                           Color="Color.Error"
+                           OnClick="@(() => Items.Remove(row))" />
+        </MudStack>
+    }
+
+    <MudButton Variant="Variant.Outlined"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="@(() => Items.Add(new ClusterEndpointEditItem { Kind = ClusterEndpointKind.Vip, SortOrder = Items.Count }))">
+        添加端点
+    </MudButton>
+</MudStack>
+
+@code {
+    [Parameter] public List<ClusterEndpointEditItem> Items { get; set; } = new();
+
+    /// <summary>
+    /// 主端点在同一 Kind 内互斥：选中某行为主时，清除同 Kind 其他行的主标记。
+    /// 服务端 ApplyEndpoints 仍会做最终校验，这里只是 UI 层的提前收敛。
+    /// </summary>
+    private void OnPrimaryChanged(ClusterEndpointEditItem row, bool value)
+    {
+        if (value)
+        {
+            foreach (var other in Items)
+            {
+                if (!ReferenceEquals(other, row) && other.Kind == row.Kind)
+                {
+                    other.IsPrimary = false;
+                }
+            }
+        }
+        row.IsPrimary = value;
+    }
+}

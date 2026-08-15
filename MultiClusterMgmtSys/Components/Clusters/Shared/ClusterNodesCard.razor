@@ -1,0 +1,99 @@
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+
+@inject NavigationManager NavigationManager
+
+<MudCard Elevation="1">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">节点列表</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       EndIcon="@Icons.Material.Filled.ArrowForward"
+                       OnClick="@(() => NavigationManager.NavigateTo($"/nodes/{Cluster.Id}"))">
+                查看全部
+            </MudButton>
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (!Cluster.IsReachable)
+        {
+            <MudText Class="mud-text-secondary">集群不可达，无法获取节点列表</MudText>
+        }
+        else if (Cluster.Nodes.Any())
+        {
+            <MudTable T="ClusterNodeViewModel"
+                      Items="@Cluster.Nodes.Take(5).ToList()"
+                      Dense="true"
+                      Hover="true"
+                      Striped="true"
+                      Elevation="0">
+                <HeaderContent>
+                    <MudTh>名称</MudTh>
+                    <MudTh>状态</MudTh>
+                    <MudTh>角色</MudTh>
+                    <MudTh>Kubelet 版本</MudTh>
+                    <MudTh>操作系统</MudTh>
+                    <MudTh>IP 地址</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="名称">
+                        <MudText Color="Color.Primary"
+                                 Style="cursor:pointer; text-decoration: underline;"
+                                 @onclick="@(async () => NavigationManager.NavigateTo($"/nodes/{Cluster.Id}/{context.Name}"))">
+                            @context.Name
+                        </MudText>
+                    </MudTd>
+                    <MudTd DataLabel="状态">
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Color="GetNodeStatusColor(context.Status)">
+                            @context.Status
+                        </MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="角色">@context.Roles</MudTd>
+                    <MudTd DataLabel="Kubelet 版本">@context.KubeletVersion</MudTd>
+                    <MudTd DataLabel="操作系统">@context.OsImage</MudTd>
+                    <MudTd DataLabel="IP 地址">
+                        @if (context.IpAddresses.Count == 0)
+                        {
+                            <span>—</span>
+                        }
+                        else
+                        {
+                            <div style="display:flex; flex-direction:column;">
+                                @foreach (var ip in context.IpAddresses)
+                                {
+                                    <span style="font-family: monospace; white-space:nowrap;">
+                                        @ip.Address
+                                        @if (!string.IsNullOrEmpty(ip.Note))
+                                        {
+                                            <span class="mud-text-secondary">@ip.Note</span>
+                                        }
+                                    </span>
+                                }
+                            </div>
+                        }
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+        else
+        {
+            <MudText Class="mud-text-secondary">暂无节点数据</MudText>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public ClusterDetailViewModel Cluster { get; set; } = default!;
+
+    private static Color GetNodeStatusColor(string status) => status switch
+    {
+        "Ready" => Color.Success,
+        "NotReady" => Color.Error,
+        _ => Color.Default
+    };
+}

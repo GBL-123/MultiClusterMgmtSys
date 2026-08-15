@@ -97,6 +97,10 @@
                              HelperText="自签证书建议勾选（有安全风险）"
                              Color="Color.Warning" />
             }
+
+            <MudDivider Class="my-3" />
+            <MudText Typo="Typo.subtitle2" Class="mb-2">集群端点</MudText>
+            <ClusterEndpointEditor Items="@endpoints" />
         </MudForm>
     </DialogContent>
     <DialogActions>
@@ -137,6 +141,7 @@
     private bool saving;
     private KubeConfigInputMode kubeConfigInputMode = KubeConfigInputMode.Paste;
     private string? kubeConfigFileName;
+    private List<ClusterEndpointEditItem> endpoints = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -179,7 +184,8 @@
                 ApiServer = string.IsNullOrWhiteSpace(ApiServer) ? null : ApiServer,
                 KubeConfig = connectionType == ConnectionType.KubeConfig ? KubeConfig : null,
                 Token = connectionType == ConnectionType.Token ? Token : null,
-                SkipTlsVerify = SkipTlsVerify
+                SkipTlsVerify = SkipTlsVerify,
+                Endpoints = endpoints
             };
 
             await ClusterService.AddClusterAsync(vm);

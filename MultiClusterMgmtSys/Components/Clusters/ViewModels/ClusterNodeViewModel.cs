@@ -1,3 +1,5 @@
+using MultiClusterMgmtSys.Components.Nodes.ViewModels;
+
 namespace MultiClusterMgmtSys.Components.Clusters.ViewModels;
 
 public class ClusterNodeViewModel
@@ -7,5 +9,6 @@ public class ClusterNodeViewModel
     public string Roles { get; set; } = "";
     public string KubeletVersion { get; set; } = "";
     public string OsImage { get; set; } = "";
-    public string InternalIP { get; set; } = "";
+    public bool Unschedulable { get; set; }
+    public List<NodeIpViewModel> IpAddresses { get; set; } = new();
 }

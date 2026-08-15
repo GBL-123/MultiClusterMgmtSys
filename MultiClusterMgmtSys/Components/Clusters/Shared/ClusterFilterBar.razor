@@ -1,7 +1,6 @@
 @using MultiClusterMgmtSys.Common.Enums
 @using MultiClusterMgmtSys.Common.Queries
 @using MultiClusterMgmtSys.Components.Clusters.Requests
-@using MultiClusterMgmtSys.Components.Clusters.ViewModels
 
 <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
     <MudStack Row="true" Class="flex-auto">
@@ -11,17 +10,6 @@
                       Margin="Margin.Dense"
                       Placeholder="请输入集群名称"
                       Style="min-width:200px;" />
-        <MudSelect @bind-Value="Query.GroupId"
-                   Label="分组"
-                   Variant="Variant.Outlined"
-                   Margin="Margin.Dense"
-                   Style="min-width:150px;">
-            <MudSelectItem Value="@((int?)null)">全部分组</MudSelectItem>
-            @foreach (var group in Groups)
-            {
-                <MudSelectItem Value="@((int?)group.Id)">@group.Name</MudSelectItem>
-            }
-        </MudSelect>
         <MudSelect @bind-Value="Query.Status"
                    Label="状态"
                    Variant="Variant.Outlined"
@@ -77,9 +65,6 @@
     public ClusterQueryRequest Query { get; set; } = new();
 
     [Parameter]
-    public IReadOnlyList<ClusterGroupViewModel> Groups { get; set; } = [];
-
-    [Parameter]
     public IReadOnlyList<string> AvailableVersions { get; set; } = [];
 
     [Parameter]
@@ -96,7 +81,6 @@
     private Task ResetFilter()
     {
         Query.Name = null;
-        Query.GroupId = null;
         Query.Status = null;
         Query.VersionSelection = VersionFilterSentinel.All;
         Query.DateRange = new DateRange(null, null);

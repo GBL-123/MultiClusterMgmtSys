@@ -1,5 +1,5 @@
+@using MultiClusterMgmtSys.Components.Clusters.Requests
 @using MultiClusterMgmtSys.Components.Clusters.Services
-@using MultiClusterMgmtSys.Components.Clusters.ViewModels
 
 @inject GroupService GroupService
 @inject ISnackbar Snackbar
@@ -10,14 +10,11 @@
             <MudTextField @bind-Value="Name"
                           Label="分组名称"
                           Required="true"
+                          RequiredError="请输入分组名称"
+                          Immediate="true"
                           Variant="Variant.Outlined"
                           Margin="Margin.Dense"
-                          Class="mb-3" />
-
-            <MudTextField @bind-Value="Description"
-                          Label="描述（可选）"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense" />
+                          Class="mb-2" />
         </MudForm>
     </DialogContent>
     <DialogActions>
@@ -30,51 +27,55 @@
                    Color="Color.Primary"
                    Variant="Variant.Filled"
                    Disabled="saving"
-                   StartIcon="@((saving ? "" : Icons.Material.Filled.CreateNewFolder))">
+                   StartIcon="@(saving ? null : (IsRename ? Icons.Material.Filled.Save : Icons.Material.Filled.Add))">
             @if (saving)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
             }
-            创建
+            @(IsRename ? "保存" : "添加")
         </MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
-    [CascadingParameter]
-    public IMudDialogInstance Dialog { get; set; } = default!;
+    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
 
-    
+    [Parameter] public int? GroupId { get; set; }
+    [Parameter] public string? InitialName { get; set; }
 
     private MudForm form = default!;
-
     private string Name = "";
-    private string Description = "";
     private bool saving;
+    private bool IsRename => GroupId.HasValue;
+
+    protected override void OnInitialized()
+    {
+        Name = InitialName ?? "";
+    }
 
     private async Task Submit()
     {
         await form.ValidateAsync();
-        if (!form.IsValid)
-        {
-            return;
-        }
+        if (!form.IsValid) return;
 
         saving = true;
         try
         {
-            var vm = new GroupCreateViewModel
+            if (GroupId is null)
             {
-                Name = Name,
-                Description = string.IsNullOrEmpty(Description) ? null : Description
-            };
-            await GroupService.AddGroupAsync(vm);
-            Snackbar.Add("分组创建成功", Severity.Success);
+                await GroupService.AddGroupAsync(new GroupCreateRequest { Name = Name });
+                Snackbar.Add("分组已创建", Severity.Success);
+            }
+            else
+            {
+                await GroupService.RenameGroupAsync(GroupId.Value, Name);
+                Snackbar.Add("分组已重命名", Severity.Success);
+            }
             Dialog.Close(DialogResult.Ok(true));
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"创建失败: {ex.Message}", Severity.Error);
+            Snackbar.Add($"保存失败: {ex.Message}", Severity.Error);
         }
         finally
         {

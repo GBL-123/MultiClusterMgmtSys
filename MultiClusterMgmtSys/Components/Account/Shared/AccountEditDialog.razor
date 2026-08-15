@@ -1,4 +1,6 @@
-@* @using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Identity
+@using MultiClusterMgmtSys.Components.Account.Services
+@using MultiClusterMgmtSys.Features.Account.ViewModels
 
 <MudDialog>
     <DialogContent>
@@ -23,19 +25,22 @@
                 <MudSelectItem Value="@("Member")">Member</MudSelectItem>
             </MudSelect>
 
-            <MudTextField @bind-Value="password"
-                          Label="@(isEdit ? "新密码（留空表示不修改）" : "初始密码")"
-                          Required="@(!isEdit)"
-                          RequiredError="@(isEdit ? "" : "请输入初始密码")"
-                          Immediate="true"
-                          InputType="@(showPassword ? InputType.Text : InputType.Password)"
-                          Adornment="Adornment.End"
-                          AdornmentIcon="@(showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
-                          OnAdornmentClick="@(() => showPassword = !showPassword)"
-                          HelperText="@(isEdit ? "留空表示不修改，至少 8 位且包含字母和数字" : "至少 8 位且包含字母和数字")"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
-                          Class="mb-2" />
+            @if (!isEdit)
+            {
+                <MudTextField @bind-Value="password"
+                              Label="初始密码"
+                              Required="true"
+                              RequiredError="请输入初始密码"
+                              Immediate="true"
+                              InputType="@(showPassword ? InputType.Text : InputType.Password)"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@(showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                              OnAdornmentClick="@(() => showPassword = !showPassword)"
+                              HelperText="至少 8 位且包含字母和数字"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Class="mb-2" />
+            }
         </MudForm>
     </DialogContent>
     <DialogActions>
@@ -89,50 +94,16 @@
         saving = true;
         try
         {
-            if (isEdit)
+            var result = isEdit
+                ? await AccountSvc.UpdateAccountAsync(EditingAccount!.Id, roleName)
+                : await AccountSvc.CreateAccountAsync(userName, password, roleName);
+            if (result.Succeeded)
             {
-                if (string.IsNullOrWhiteSpace(password))
-                {
-                    var result = await AccountSvc.UpdateAccountAsync(EditingAccount!.Id, roleName);
-                    if (result.Succeeded)
-                    {
-                        Dialog.Close(DialogResult.Ok(true));
-                    }
-                    else
-                    {
-                        ShowErrors(result);
-                    }
-                }
-                else
-                {
-                    var updateResult = await AccountSvc.UpdateAccountAsync(EditingAccount!.Id, roleName);
-                    if (!updateResult.Succeeded)
-                    {
-                        ShowErrors(updateResult);
-                        return;
-                    }
-                    var resetResult = await AccountSvc.ResetPasswordAsync(EditingAccount.Id, password);
-                    if (resetResult.Succeeded)
-                    {
-                        Dialog.Close(DialogResult.Ok(true));
-                    }
-                    else
-                    {
-                        ShowErrors(resetResult);
-                    }
-                }
+                Dialog.Close(DialogResult.Ok(true));
             }
             else
             {
-                var result = await AccountSvc.CreateAccountAsync(userName, password, roleName);
-                if (result.Succeeded)
-                {
-                    Dialog.Close(DialogResult.Ok(true));
-                }
-                else
-                {
-                    ShowErrors(result);
-                }
+                ShowErrors(result);
             }
         }
         finally
@@ -146,4 +117,4 @@
         var msg = string.Join("; ", result.Errors.Select(e => e.Description));
         Snackbar.Add(msg, Severity.Error);
     }
-} *@
+}

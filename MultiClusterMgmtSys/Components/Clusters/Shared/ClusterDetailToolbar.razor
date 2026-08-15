@@ -1,0 +1,64 @@
+@using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+
+<MudPaper Class="pa-4 mb-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center">
+        <MudButton Variant="Variant.Text"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="OnBack">
+            返回列表
+        </MudButton>
+        <MudText Typo="Typo.h4" Class="flex-auto ml-2">@Cluster.Name</MudText>
+        <MudChip T="string"
+                 Size="Size.Small"
+                 Color="GetStatusColor(Cluster.Status)"
+                 Variant="Variant.Filled">
+            @Cluster.StatusText
+        </MudChip>
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="OnRefresh"
+                           Disabled="Processing">
+                    @if (Processing)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
+                    }
+                    刷新状态
+                </MudButton>
+                <MudTooltip Text="编辑集群功能暂未实现">
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Warning"
+                               StartIcon="@Icons.Material.Filled.Edit"
+                               Disabled="true">
+                        编辑
+                    </MudButton>
+                </MudTooltip>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.DeleteOutline"
+                           OnClick="OnDelete"
+                           Disabled="Processing">
+                    删除
+                </MudButton>
+            </Authorized>
+        </AuthorizeView>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] public ClusterDetailViewModel Cluster { get; set; } = default!;
+    [Parameter] public bool Processing { get; set; }
+    [Parameter] public EventCallback OnBack { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+    [Parameter] public EventCallback OnDelete { get; set; }
+
+    private static Color GetStatusColor(ClusterStatus status) => status switch
+    {
+        ClusterStatus.Online => Color.Success,
+        ClusterStatus.Offline => Color.Error,
+        _ => Color.Default
+    };
+}

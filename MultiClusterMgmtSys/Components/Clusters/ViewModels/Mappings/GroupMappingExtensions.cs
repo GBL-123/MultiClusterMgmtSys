@@ -11,7 +11,6 @@ public static class GroupMappingExtensions
         {
             Id = g.Id,
             Name = g.Name,
-            Description = g.Description,
             ClusterCount = g.Clusters?.Count ?? 0,
             CreatedAt = g.CreatedAt
         };

@@ -1,0 +1,100 @@
+@using MultiClusterMgmtSys.Components.Nodes.Requests
+@using MultiClusterMgmtSys.Components.Nodes.Services
+@using MultiClusterMgmtSys.Components.Nodes.ViewModels
+
+@inject ClusterNodeService ClusterNodeService
+@inject ISnackbar Snackbar
+
+<AuthorizeView Roles="Admin">
+    <Authorized>
+        <MudDialog>
+            <DialogContent>
+                <MudText Typo="Typo.body2" Class="mud-text-secondary mb-3">
+                    为节点「@NodeName」的每个 IP 填写功能备注（如 管理口 / 数据口）。留空则清除该 IP 的备注。
+                </MudText>
+                <MudTable Items="@IpClassAddresses"
+                          Dense="true"
+                          Hover="true"
+                          Elevation="0">
+                    <HeaderContent>
+                        <MudTh>类型</MudTh>
+                        <MudTh>IP 地址</MudTh>
+                        <MudTh>备注</MudTh>
+                    </HeaderContent>
+                    <RowTemplate Context="addr">
+                        <MudTd DataLabel="类型">@addr.Type</MudTd>
+                        <MudTd DataLabel="IP 地址">
+                            <MudText Style="font-family: monospace;">@addr.Address</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="备注">
+                            <MudTextField @bind-Value="addr.Note"
+                                          Placeholder="请输入备注"
+                                          Margin="Margin.Dense"
+                                          Variant="Variant.Outlined"
+                                          MaxLength="64" />
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </DialogContent>
+            <DialogActions>
+                <MudButton OnClick="() => Dialog.Cancel()"
+                           Variant="Variant.Text"
+                           Disabled="saving">
+                    取消
+                </MudButton>
+                <MudButton OnClick="Submit"
+                           Color="Color.Primary"
+                           Variant="Variant.Filled"
+                           Disabled="saving"
+                           StartIcon="@(!saving ? Icons.Material.Filled.Save : null)">
+                    @if (saving)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    保存
+                </MudButton>
+            </DialogActions>
+        </MudDialog>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    [Parameter] public int ClusterId { get; set; }
+    [Parameter] public string NodeName { get; set; } = "";
+    [Parameter] public List<NodeAddressViewModel> Addresses { get; set; } = new();
+    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
+
+    private bool saving;
+
+    private List<NodeAddressViewModel> IpClassAddresses =>
+        Addresses.Where(a => a.Type == "InternalIP" || a.Type == "ExternalIP").ToList();
+
+    private async Task Submit()
+    {
+        saving = true;
+        try
+        {
+            var items = IpClassAddresses.Select(a => new NodeIpNoteEditItem
+            {
+                Address = a.Address,
+                Note = string.IsNullOrWhiteSpace(a.Note) ? null : a.Note.Trim()
+            }).ToList();
+
+            await ClusterNodeService.UpdateNodeIpNotesAsync(ClusterId, NodeName, items);
+            Snackbar.Add("节点 IP 备注已更新", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Warning);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"更新失败: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

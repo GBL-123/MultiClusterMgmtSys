@@ -1,0 +1,52 @@
+@using MultiClusterMgmtSys.Features.Configmaps.ViewModels
+@namespace MultiClusterMgmtSys.Features.Configmaps.Shared
+@inject NavigationManager NavigationManager
+
+<MudPaper Class="pa-4 mb-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center">
+        <MudButton Variant="Variant.Text"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="@(() => NavigationManager.NavigateTo($"/configmaps/{ClusterId}"))">
+            返回列表
+        </MudButton>
+        <MudText Typo="Typo.h4" Class="flex-auto ml-2">@Name</MudText>
+        @if (Detail is not null)
+        {
+            <MudChip T="string"
+                     Size="Size.Small"
+                     Variant="Variant.Filled">
+                Data 键数: @Detail.Data.Count
+            </MudChip>
+        }
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Code"
+                           OnClick="OnEditYaml">
+                    编辑 YAML
+                </MudButton>
+            </Authorized>
+        </AuthorizeView>
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="OnRefresh"
+                   Disabled="Processing">
+            @if (Processing)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
+            }
+            刷新
+        </MudButton>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] public int ClusterId { get; set; }
+    [Parameter] public string Name { get; set; } = "";
+    [Parameter] public ConfigMapDetailViewModel? Detail { get; set; }
+    [Parameter] public bool Processing { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+    [Parameter] public EventCallback OnEditYaml { get; set; }
+}

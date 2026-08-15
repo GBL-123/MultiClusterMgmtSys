@@ -1,277 +1,55 @@
-@* @attribute [Authorize]
+@attribute [Authorize]
 @page "/clusters/{Id:int}"
 
-@using MultiClusterMgmtSys.Models
+@using MultiClusterMgmtSys.Components.Clusters.Services
+@using MultiClusterMgmtSys.Components.Clusters.Shared
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+@using MultiClusterMgmtSys.Components.Common
 
 <PageTitle>集群详情</PageTitle>
 
-<MudStack>
-    <MudText Typo="Typo.h4" Class="flex-auto">集群详情</MudText>
-    <MudButton Variant="Variant.Text"
-               Color="Color.Default"
-               StartIcon="@Icons.Material.Filled.ArrowBack"
-                OnClick='@(() => NavigationManager.NavigateTo("/clusters"))'>
-        返回列表
-    </MudButton>
+<MudStack Class="flex-auto">
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else if (cluster is null)
+    {
+        <MudCard Class="pa-8" Elevation="2">
+            <MudCardContent>
+                <MudText Align="Align.Center" Class="mud-text-secondary">未找到该集群</MudText>
+                <div class="d-flex justify-center mt-4">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.ArrowBack"
+                               OnClick='@(() => NavigationManager.NavigateTo("/clusters"))'>
+                        返回集群列表
+                    </MudButton>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    }
+    else
+    {
+        <ClusterDetailToolbar Cluster="@cluster"
+                             Processing="processing"
+                             OnBack="@(() => NavigationManager.NavigateTo("/clusters"))"
+                             OnRefresh="RefreshStatus"
+                             OnDelete="DeleteCluster" />
 
-@if (loading)
-{
-    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
-}
-else if (cluster is null)
-{
-    <MudCard Class="pa-8" Elevation="2">
-        <MudCardContent>
-            <MudText Align="Align.Center" Class="mud-text-secondary">未找到该集群</MudText>
-            <div class="d-flex justify-center mt-4">
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.ArrowBack"
-                           OnClick='@(() => NavigationManager.NavigateTo("/clusters"))'>
-                    返回集群列表
-                </MudButton>
-            </div>
-        </MudCardContent>
-    </MudCard>
-}
-else
-{
-    <MudGrid Spacing="3">
-        <!-- 基本信息 -->
-        <MudItem xs="12">
-            <MudCard Elevation="2">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">基本信息</MudText>
-                    </CardHeaderContent>
-                    <CardHeaderActions>
-                        <MudChip T="string"
-                                 Size="Size.Small"
-                                 Color="GetStatusColor(cluster.Status)"
-                                 Variant="Variant.Filled">
-                            @cluster.StatusText
-                        </MudChip>
-                    </CardHeaderActions>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudGrid Spacing="2">
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">名称</MudText>
-                            <MudText Typo="Typo.body1">@cluster.Name</MudText>
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">版本</MudText>
-                            <MudText Typo="Typo.body1">@(cluster.Version ?? "—")</MudText>
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">节点数</MudText>
-                            <MudText Typo="Typo.body1">@cluster.NodeCount</MudText>
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">所属分组</MudText>
-                            <MudText Typo="Typo.body1">@(cluster.GroupName ?? "未分组")</MudText>
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">API Server</MudText>
-                            <MudText Typo="Typo.body1">@(cluster.ApiServer ?? "—")</MudText>
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">创建时间</MudText>
-                            <MudText Typo="Typo.body1">@cluster.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudText>
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">最后检测时间</MudText>
-                            <MudText Typo="Typo.body1">@(cluster.LastCheckedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
-                        </MudItem>
-                    </MudGrid>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
+        <ClusterOverviewCard Cluster="@cluster" />
 
-        <!-- 连接信息 -->
-        <MudItem xs="12">
-            <MudCard Elevation="2">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">连接信息</MudText>
-                    </CardHeaderContent>
-                    <CardHeaderActions>
-                        <AuthorizeView Roles="Admin">
-                            <Authorized>
-                                <MudButton Variant="Variant.Text"
-                                           Color="Color.Primary"
-                                           Size="Size.Small"
-                                           OnClick="ToggleSecret">
-                                    @(showSecret ? "隐藏密文" : "显示密文")
-                                </MudButton>
-                            </Authorized>
-                        </AuthorizeView>
-                    </CardHeaderActions>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudGrid Spacing="2">
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">连接方式</MudText>
-                            <MudText Typo="Typo.body1">
-                                @(cluster.ConnectionType == Models.ConnectionType.KubeConfig ? "Kubeconfig" : "Token")
-                            </MudText>
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">API Server</MudText>
-                            <MudText Typo="Typo.body1">@(cluster.ApiServer ?? "—")</MudText>
-                        </MudItem>
-                        @if (showSecret && editForSecret is not null)
-                        {
-                            <MudItem xs="12">
-                                @if (editForSecret.ConnectionType == Models.ConnectionType.KubeConfig)
-                                {
-                                    <MudTextField @bind-Value="editForSecret.KubeConfig"
-                                                  Label="KubeConfig"
-                                                  ReadOnly="true"
-                                                  Lines="6"
-                                                  InputType="@(showSecretContent ? InputType.Text : InputType.Password)"
-                                                  Adornment="Adornment.End"
-                                                  AdornmentIcon="@(showSecretContent ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
-                                                  OnAdornmentClick="@(() => showSecretContent = !showSecretContent)"
-                                                  Variant="Variant.Outlined"
-                                                  Margin="Margin.Dense" />
-                                }
-                                else
-                                {
-                                    <MudTextField @bind-Value="editForSecret.Token"
-                                                  Label="Token"
-                                                  ReadOnly="true"
-                                                  Lines="2"
-                                                  InputType="@(showSecretContent ? InputType.Text : InputType.Password)"
-                                                  Adornment="Adornment.End"
-                                                  AdornmentIcon="@(showSecretContent ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
-                                                  OnAdornmentClick="@(() => showSecretContent = !showSecretContent)"
-                                                  Variant="Variant.Outlined"
-                                                  Margin="Margin.Dense" />
-                                }
-                            </MudItem>
-                        }
-                    </MudGrid>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
+        <ClusterEndpointsCard Cluster="@cluster"
+                              OnEndpointsChanged="LoadAsync" />
 
-        <!-- 节点列表 -->
-        <MudItem xs="12">
-            <MudCard Elevation="2">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">节点列表</MudText>
-                    </CardHeaderContent>
-                    <CardHeaderActions>
-                        <MudButton Variant="Variant.Text"
-                                   Color="Color.Primary"
-                                   Size="Size.Small"
-                                   EndIcon="@Icons.Material.Filled.ArrowForward"
-                                   OnClick="@(() => NavigationManager.NavigateTo($"/nodes/{Id}"))">
-                            查看全部
-                        </MudButton>
-                    </CardHeaderActions>
-                </MudCardHeader>
-                <MudCardContent>
-                    @if (loading)
-                    {
-                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
-                    }
-                    else if (!cluster.IsReachable)
-                    {
-                        <MudText Class="mud-text-secondary">集群不可达，无法获取节点列表</MudText>
-                    }
-                    else if (cluster.Nodes.Any())
-                    {
-                        <MudTable Items="cluster.Nodes"
-                                  Dense="true"
-                                  Hover="true"
-                                  Striped="true"
-                                  Elevation="0">
-                            <HeaderContent>
-                                <MudTh>名称</MudTh>
-                                <MudTh>状态</MudTh>
-                                <MudTh>角色</MudTh>
-                                <MudTh>Kubelet 版本</MudTh>
-                                <MudTh>操作系统</MudTh>
-                                <MudTh>内网 IP</MudTh>
-                            </HeaderContent>
-                            <RowTemplate>
-                                <MudTd DataLabel="名称">
-                                    <MudText Color="Color.Primary"
-                                             Style="cursor:pointer; text-decoration: underline;"
-                                             @onclick="() => NavigateToNode(context.Name)">
-                                        @context.Name
-                                    </MudText>
-                                </MudTd>
-                                <MudTd DataLabel="状态">
-                                    <MudChip T="string"
-                                             Size="Size.Small"
-                                             Color="GetNodeStatusColor(context.Status)">
-                                        @context.Status
-                                    </MudChip>
-                                </MudTd>
-                                <MudTd DataLabel="角色">@context.Roles</MudTd>
-                                <MudTd DataLabel="Kubelet 版本">@context.KubeletVersion</MudTd>
-                                <MudTd DataLabel="操作系统">@context.OsImage</MudTd>
-                                <MudTd DataLabel="内网 IP">@context.InternalIP</MudTd>
-                            </RowTemplate>
-                        </MudTable>
-                    }
-                    else
-                    {
-                        <MudText Class="mud-text-secondary">暂无节点数据</MudText>
-                    }
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-
-        <!-- 操作 -->
-        <MudItem xs="12">
-            <MudCard Elevation="2">
-                <MudCardContent>
-                    <AuthorizeView Roles="Admin">
-                        <Authorized>
-                            <MudButton Variant="Variant.Outlined"
-                                       Color="Color.Primary"
-                                       StartIcon="@Icons.Material.Filled.Refresh"
-                                       OnClick="RefreshStatus"
-                                       Disabled="processing"
-                                       Class="mr-2">
-                                @if (processing)
-                                {
-                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
-                                }
-                                刷新状态
-                            </MudButton>
-                            <MudButton Variant="Variant.Outlined"
-                                       Color="Color.Warning"
-                                       StartIcon="@Icons.Material.Filled.Edit"
-                                       OnClick="OpenEditClusterDialog"
-                                       Disabled="processing"
-                                       Class="mr-2">
-                                编辑
-                            </MudButton>
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Error"
-                                       StartIcon="@Icons.Material.Filled.DeleteOutline"
-                                       OnClick="DeleteCluster"
-                                       Disabled="processing">
-                                删除
-                            </MudButton>
-                        </Authorized>
-                    </AuthorizeView>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-    </MudGrid>
-}
+        <ClusterNodesCard Cluster="@cluster" />
+    }
 </MudStack>
 
 @code {
     [Parameter] public int Id { get; set; }
     [Inject] private ClusterService ClusterService { get; set; } = default!;
+    [Inject] private ClusterSelectionState ClusterSelection { get; set; } = default!;
     [Inject] private IDialogService DialogService { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
@@ -279,9 +57,6 @@ else
     private ClusterDetailViewModel? cluster;
     private bool loading;
     private bool processing;
-    private bool showSecret;
-    private bool showSecretContent;
-    private ClusterEditViewModel? editForSecret;
 
     protected override async Task OnInitializedAsync()
     {
@@ -291,12 +66,13 @@ else
     private async Task LoadAsync()
     {
         loading = true;
-        editForSecret = null;
-        showSecret = false;
-        showSecretContent = false;
         try
         {
             cluster = await ClusterService.GetClusterDetailAsync(Id);
+            if (cluster is not null)
+            {
+                ClusterSelection.Set(Id);
+            }
         }
         catch (Exception ex)
         {
@@ -305,27 +81,6 @@ else
         finally
         {
             loading = false;
-        }
-    }
-
-    private async Task ToggleSecret()
-    {
-        showSecret = !showSecret;
-        if (showSecret && editForSecret is null)
-        {
-            try
-            {
-                editForSecret = await ClusterService.GetClusterForEditAsync(Id);
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add($"加载密文失败: {ex.Message}", Severity.Error);
-                showSecret = false;
-            }
-        }
-        if (!showSecret)
-        {
-            showSecretContent = false;
         }
     }
 
@@ -345,21 +100,6 @@ else
         finally
         {
             processing = false;
-        }
-    }
-
-    private async Task OpenEditClusterDialog()
-    {
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
-        var parameters = new DialogParameters<EditClusterDialog>
-        {
-            { dialog => dialog.ClusterId, Id }
-        };
-        var dialog = await DialogService.ShowAsync<EditClusterDialog>("编辑集群", parameters, options);
-        var result = await dialog.Result;
-        if (result is not null && !result.Canceled)
-        {
-            await LoadAsync();
         }
     }
 
@@ -390,23 +130,4 @@ else
             }
         }
     }
-
-    private static Color GetStatusColor(ClusterStatus status) => status switch
-    {
-        ClusterStatus.Online => Color.Success,
-        ClusterStatus.Offline => Color.Error,
-        _ => Color.Default
-    };
-
-    private void NavigateToNode(string nodeName)
-    {
-        NavigationManager.NavigateTo($"/nodes/{Id}/{nodeName}");
-    }
-
-    private static Color GetNodeStatusColor(string status) => status switch
-    {
-        "Ready" => Color.Success,
-        "NotReady" => Color.Error,
-        _ => Color.Default
-    };
-} *@
+}

@@ -1,0 +1,60 @@
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+
+<MudCard Elevation="1" Class="mb-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">条件</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (Node.Conditions.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">—</MudText>
+        }
+        else
+        {
+            <MudTable Items="Node.Conditions"
+                      Dense="true" Hover="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>类型</MudTh>
+                    <MudTh>状态</MudTh>
+                    <MudTh>原因</MudTh>
+                    <MudTh>消息</MudTh>
+                    <MudTh>最近心跳</MudTh>
+                    <MudTh>最近转换</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="类型">@context.Type</MudTd>
+                    <MudTd DataLabel="状态">
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Color="GetConditionColor(context.Type, context.Status)"
+                                 Variant="Variant.Filled">
+                            @context.Status
+                        </MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="原因">@(context.Reason ?? "—")</MudTd>
+                    <MudTd DataLabel="消息">
+                        <span style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;"
+                              title="@context.Message">
+                            @(context.Message ?? "—")
+                        </span>
+                    </MudTd>
+                    <MudTd DataLabel="最近心跳">@(context.LastHeartbeatTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")</MudTd>
+                    <MudTd DataLabel="最近转换">@(context.LastTransitionTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public ClusterNodeDetailViewModel Node { get; set; } = default!;
+
+    private static Color GetConditionColor(string type, string status)
+    {
+        if (status == "Unknown") return Color.Default;
+        var isHealthy = type == "Ready" ? status == "True" : status == "False";
+        return isHealthy ? Color.Success : Color.Error;
+    }
+}

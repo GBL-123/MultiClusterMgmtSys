@@ -1,0 +1,57 @@
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+
+<MudCard Elevation="1" Class="mb-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">系统信息</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">Architecture</MudText>
+                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.SystemInfo.Architecture) ? "—" : Node.SystemInfo.Architecture)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">BootID</MudText>
+                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.SystemInfo.BootID) ? "—" : Node.SystemInfo.BootID)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">ContainerRuntimeVersion</MudText>
+                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.SystemInfo.ContainerRuntimeVersion) ? "—" : Node.SystemInfo.ContainerRuntimeVersion)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">KernelVersion</MudText>
+                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.SystemInfo.KernelVersion) ? "—" : Node.SystemInfo.KernelVersion)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">KubeProxyVersion</MudText>
+                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.SystemInfo.KubeProxyVersion) ? "—" : Node.SystemInfo.KubeProxyVersion)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">KubeletVersion</MudText>
+                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.SystemInfo.KubeletVersion) ? "—" : Node.SystemInfo.KubeletVersion)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">MachineID</MudText>
+                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.SystemInfo.MachineID) ? "—" : Node.SystemInfo.MachineID)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">OperatingSystem</MudText>
+                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.SystemInfo.OperatingSystem) ? "—" : Node.SystemInfo.OperatingSystem)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">OsImage</MudText>
+                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.SystemInfo.OsImage) ? "—" : Node.SystemInfo.OsImage)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">SystemUUID</MudText>
+                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.SystemInfo.SystemUUID) ? "—" : Node.SystemInfo.SystemUUID)</MudText>
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public ClusterNodeDetailViewModel Node { get; set; } = default!;
+}

@@ -13,7 +13,8 @@ public static class AccountMappingExtensions
             UserName = user.UserName ?? "",
             RoleName = roleName,
             CreatedAt = user.CreatedAt,
-            UpdatedAt = user.UpdatedAt
+            UpdatedAt = user.UpdatedAt,
+            LastLoginAt = user.LastLoginAt
         };
     }
 }

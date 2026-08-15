@@ -1,0 +1,59 @@
+@using MultiClusterMgmtSys.Components.Account.Requests
+
+<MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
+    <MudStack Row="true" Class="flex-auto">
+        <MudTextField @bind-Value="Query.SearchName"
+                      Label="用户名"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Placeholder="请输入用户名"
+                      Style="min-width:200px;" />
+        <MudSelect @bind-Value="Query.RoleFilter"
+                   Label="角色"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   Style="min-width:120px;">
+            <MudSelectItem Value="@((string?)null)">全部</MudSelectItem>
+            <MudSelectItem Value="@("Admin")">Admin</MudSelectItem>
+            <MudSelectItem Value="@("Member")">Member</MudSelectItem>
+        </MudSelect>
+    </MudStack>
+    <MudSpacer />
+    <MudStack Row="true">
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Search"
+                   OnClick="Search">
+            查询
+        </MudButton>
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Secondary"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="ResetFilter">
+            重置
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter]
+    public AccountQueryRequest Query { get; set; } = new();
+
+    [Parameter]
+    public EventCallback OnFilterChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnReset { get; set; }
+
+    private Task Search()
+    {
+        return OnFilterChanged.InvokeAsync();
+    }
+
+    private Task ResetFilter()
+    {
+        Query.SearchName = null;
+        Query.RoleFilter = null;
+        return OnReset.InvokeAsync();
+    }
+}

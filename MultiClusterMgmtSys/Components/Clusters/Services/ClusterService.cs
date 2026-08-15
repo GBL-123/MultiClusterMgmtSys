@@ -10,13 +10,15 @@ using MultiClusterMgmtSys.Components.Clusters.ViewModels;
 using MultiClusterMgmtSys.Components.Nodes.Services;
 using MultiClusterMgmtSys.Common.ViewModels;
 using MultiClusterMgmtSys.Components.Clusters.Requests;
+using MultiClusterMgmtSys.Components.AuditLogs.Services;
 
 namespace MultiClusterMgmtSys.Components.Clusters.Services;
 
-public class ClusterService(ClusterRepository repo, ClusterNodeService nodeService, ILogger<ClusterService> logger)
+public class ClusterService(ClusterRepository repo, ClusterNodeService nodeService, AuditService auditService, ILogger<ClusterService> logger)
 {
     private readonly ClusterRepository repo = repo;
     private readonly ClusterNodeService nodeService = nodeService;
+    private readonly AuditService auditService = auditService;
     private readonly ILogger<ClusterService> logger = logger;
 
     public async Task<PagedResult<ClusterViewModel>> GetPagedAsync(ClusterQueryRequest request)
@@ -97,9 +99,11 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
 
         await repo.AddAsync(entity);
         logger.LogInformation("AddCluster created id={ClusterId}", entity.Id);
+        entity.ApplyEndpoints(vm.Endpoints);
         await ProbeAsync(entity);
         logger.LogInformation("AddCluster probed id={ClusterId} status={Status}", entity.Id, entity.Status);
         await repo.UpdateAsync(entity);
+        await auditService.LogAsync(AuditCategory.Cluster, AuditAction.Create, $"集群: {entity.Name}");
         return entity.ToViewModel();
     }
 
@@ -134,13 +138,35 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         }
 
         await repo.UpdateAsync(entity);
+        await auditService.LogAsync(AuditCategory.Cluster, AuditAction.Update, $"集群: {entity.Name}");
         return entity.ToViewModel();
     }
 
     public async Task DeleteClusterAsync(int id)
     {
         logger.LogInformation("DeleteCluster id={ClusterId}", id);
-        await repo.DeleteAsync(id);
+        var entity = await repo.GetByIdAsync(id);
+        if (entity is not null)
+        {
+            await repo.DeleteAsync(id);
+            await auditService.LogAsync(AuditCategory.Cluster, AuditAction.Delete, $"集群: {entity.Name}");
+        }
+    }
+
+    public async Task UpdateClusterEndpointsAsync(int clusterId, List<ClusterEndpointEditItem> items)
+    {
+        logger.LogInformation("UpdateClusterEndpoints id={ClusterId} count={Count}", clusterId, items.Count);
+        var entity = await repo.GetByIdAsync(clusterId);
+        if (entity is null)
+        {
+            logger.LogWarning("Cluster {ClusterId} not found", clusterId);
+            throw new InvalidOperationException($"Cluster {clusterId} not found");
+        }
+
+        entity.ApplyEndpoints(items);
+        await repo.UpdateAsync(entity);
+        logger.LogInformation("UpdateClusterEndpoints persisted id={ClusterId}", clusterId);
+        await auditService.LogAsync(AuditCategory.Cluster, AuditAction.Update, $"集群: {entity.Name} 端点");
     }
 
     public async Task<ClusterViewModel> RefreshClusterStatusAsync(int id)
@@ -156,6 +182,31 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         logger.LogInformation("RefreshClusterStatus id={ClusterId} status={Status}", id, entity.Status);
         await repo.UpdateAsync(entity);
         return entity.ToViewModel();
+    }
+
+    public async Task<int> RefreshAllClustersStatusAsync(IProgress<(int current, int total)>? progress = null)
+    {
+        logger.LogInformation("RefreshAllClustersStatus start");
+        var ids = await repo.GetAllIdsAsync();
+        var total = ids.Count;
+        var succeeded = 0;
+        var current = 0;
+        foreach (var id in ids)
+        {
+            try
+            {
+                await RefreshClusterStatusAsync(id);
+                succeeded++;
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "RefreshAllClustersStatus id={ClusterId} failed", id);
+            }
+            current++;
+            progress?.Report((current, total));
+        }
+        logger.LogInformation("RefreshAllClustersStatus done succeeded={Succeeded} of {Total}", succeeded, total);
+        return succeeded;
     }
 
     // ---- Private k8s helpers ----
@@ -209,6 +260,7 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
 
     private static ClusterPageQuery ToPageQuery(ClusterQueryRequest r)
     {
+        // GroupId sentinel: null = no filter; 0 = ungrouped (translated by ClusterRepository to WHERE GroupId IS NULL); >0 = equality.
         string? version = r.VersionSelection switch
         {
             VersionFilterSentinel.All => null,
@@ -223,17 +275,18 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
             ? DateTime.SpecifyKind(r.DateRange.End.Value, DateTimeKind.Utc)
             : null;
 
-        return new ClusterPageQuery(
-            r.GroupId,
-            r.Name,
-            r.Status,
-            version,
-            createdAfter,
-            createdBefore,
-            r.SortBy,
-            r.SortDescending,
-            Math.Max(r.Page, 1),
-            Math.Max(r.PageSize, 1)
-        );
+        return new ClusterPageQuery
+        {
+            GroupId = r.GroupId,
+            NameContains = r.Name,
+            Status = r.Status,
+            Version = version,
+            CreatedAfter = createdAfter,
+            CreatedBefore = createdBefore,
+            SortBy = r.SortBy,
+            SortDescending = r.SortDescending,
+            Page = Math.Max(r.Page, 1),
+            PageSize = Math.Max(r.PageSize, 1)
+        };
     }
 }

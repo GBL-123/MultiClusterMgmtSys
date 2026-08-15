@@ -1,16 +1,41 @@
-@* @attribute [Authorize]
+@attribute [Authorize]
 @page "/profile"
+
+@using MultiClusterMgmtSys.Components.Account.Services
 
 <PageTitle>个人资料</PageTitle>
 
 <MudStack Style="max-width: 600px;">
     <MudText Typo="Typo.h4" Class="mb-2">个人资料</MudText>
-    <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">修改显示名与密码</MudText>
+    <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">查看账号信息与修改密码</MudText>
 
     @if (loading)
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
     }
+
+    <MudPaper Class="pa-4" Elevation="1">
+        <MudText Typo="Typo.h6" Class="mb-3">账号信息</MudText>
+
+        <MudStack Spacing="2">
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary" Style="width: 120px;">用户名</MudText>
+                <MudText Typo="Typo.body1">@currentUserName</MudText>
+            </MudStack>
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary" Style="width: 120px;">角色</MudText>
+                <MudText Typo="Typo.body1">@currentUserRole</MudText>
+            </MudStack>
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary" Style="width: 120px;">注册时间</MudText>
+                <MudText Typo="Typo.body1">@(createdAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
+            </MudStack>
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary" Style="width: 120px;">最后登录</MudText>
+                <MudText Typo="Typo.body1">@(lastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
+            </MudStack>
+        </MudStack>
+    </MudPaper>
 
     <MudCard Class="pa-4" Elevation="1">
         <MudText Typo="Typo.h6" Class="mb-3">修改密码</MudText>
@@ -69,8 +94,10 @@
     private string newPassword = "";
     private string confirmPassword = "";
     private string currentUserName = "";
+    private string currentUserRole = "";
+    private DateTime? createdAt;
+    private DateTime? lastLoginAt;
     private bool loading;
-    private bool savingDisplayName;
     private bool savingPassword;
 
     protected override async Task OnInitializedAsync()
@@ -80,7 +107,13 @@
         {
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
             currentUserName = authState.User.Identity?.Name ?? "";
+            currentUserRole = authState.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
             var user = await AccountSvc.GetUserByNameAsync(currentUserName);
+            if (user is not null)
+            {
+                createdAt = user.CreatedAt;
+                lastLoginAt = user.LastLoginAt;
+            }
         }
         catch (Exception ex)
         {
@@ -89,29 +122,6 @@
         finally
         {
             loading = false;
-        }
-    }
-
-    private async Task SaveDisplayName()
-    {
-        if (string.IsNullOrEmpty(currentUserName)) return;
-        savingDisplayName = true;
-        try
-        {
-            var result = await AccountSvc.UpdateProfileAsync(currentUserName);
-            if (result.Succeeded)
-            {
-                Snackbar.Add("资料已更新", Severity.Success);
-            }
-            else
-            {
-                var msg = result.Errors.FirstOrDefault()?.Description ?? "更新失败";
-                Snackbar.Add(msg, Severity.Error);
-            }
-        }
-        finally
-        {
-            savingDisplayName = false;
         }
     }
 
@@ -148,4 +158,4 @@
             savingPassword = false;
         }
     }
-} *@
+}

@@ -1,79 +1,26 @@
-@* <MudDialog>
+@using k8s
+@using k8s.Models
+@using MultiClusterMgmtSys.Features.Configmaps.Services
+@namespace MultiClusterMgmtSys.Features.Configmaps.Shared
+<MudDialog>
     <DialogContent>
-        <MudForm @ref="form">
-            <MudTextField @bind-Value="name"
-                          Label="名称"
-                          Required="true"
-                          RequiredError="请输入名称"
-                          Validation="ValidateName"
-                          Immediate="true"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
-                          Class="mb-3"
-                          HelperText="小写字母、数字和 - 组成，以字母数字开头结尾" />
-
-            <MudSelect T="string"
-                       @bind-Value="selectedNamespace"
-                       Label="命名空间"
-                       Required="true"
-                       RequiredError="请选择命名空间"
-                       Variant="Variant.Outlined"
-                       Margin="Margin.Dense"
-                       Class="mb-3">
-                @foreach (var ns in namespaces)
-                {
-                    <MudSelectItem Value="@ns">@ns</MudSelectItem>
-                }
-            </MudSelect>
-            @if (!namespaces.Any() && !loadingNamespaces)
-            {
-                <MudTextField @bind-Value="selectedNamespace"
-                              Label="命名空间（手动输入）"
-                              Required="true"
-                              RequiredError="请输入命名空间"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense"
-                              Class="mb-3" />
-            }
-
-            <MudText Typo="Typo.h6" Class="mb-2">Data 键值对</MudText>
-            @for (int i = 0; i < dataEntries.Count; i++)
-            {
-                var index = i;
-                <MudCard Elevation="1" Class="mb-2">
-                    <MudCardContent Class="pa-3">
-                        <div class="d-flex align-center mb-2">
-                            <MudTextField T="string"
-                                          @bind-Value="dataEntries[index].Key"
-                                          Label="键"
-                                          Variant="Variant.Outlined"
-                                          Margin="Margin.Dense"
-                                          Style="flex:1;" />
-                            <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
-                                           Color="Color.Error"
-                                           Size="Size.Small"
-                                           OnClick="@(() => dataEntries.RemoveAt(index))" />
-                        </div>
-                        <MudTextField T="string"
-                                      @bind-Value="dataEntries[index].Value"
-                                      Label="值"
-                                      Lines="4"
-                                      Variant="Variant.Outlined"
-                                      Margin="Margin.Dense"
-                                      Style="font-family: monospace;" />
-                    </MudCardContent>
-                </MudCard>
-            }
-            <MudButton Variant="Variant.Text"
-                       StartIcon="@Icons.Material.Filled.Add"
-                       OnClick="AddDataEntry">添加键值对</MudButton>
-        </MudForm>
+        <MudText Typo="Typo.h6" Class="mb-2">新建 ConfigMap</MudText>
+        <MudTextField T="string"
+                      @bind-Value="yamlContent"
+                      Label="YAML"
+                      Lines="25"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Style="font-family: monospace;" />
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="() => Dialog.Cancel()" Variant="Variant.Text" Disabled="saving">取消</MudButton>
+        <MudButton OnClick="Cancel" Variant="Variant.Text" Disabled="saving">取消</MudButton>
         <MudButton OnClick="Submit" Color="Color.Primary" Variant="Variant.Filled" Disabled="saving"
                    StartIcon="@(saving ? null : Icons.Material.Filled.Save)">
-            @if (saving) { <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" /> }
+            @if (saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
             创建
         </MudButton>
     </DialogActions>
@@ -86,69 +33,40 @@
 
     [Parameter] public int ClusterId { get; set; }
 
-    private MudForm form = default!;
-    private List<string> namespaces = new();
-    private bool loadingNamespaces = true;
-    private string name = "";
-    private string selectedNamespace = "";
-    private List<ConfigMapDataEntryViewModel> dataEntries = new();
+    private string yamlContent = "";
     private bool saving;
 
-    protected override async Task OnInitializedAsync()
+    private const string MinimalTemplate = @"apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: 
+  namespace: 
+data: {}
+";
+
+    protected override void OnInitialized()
     {
-        try
-        {
-            namespaces = await ConfigMapService.GetNamespacesAsync(ClusterId);
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"加载命名空间失败: {ex.Message}", Severity.Warning);
-        }
-        finally
-        {
-            loadingNamespaces = false;
-        }
+        yamlContent = MinimalTemplate;
     }
 
-    private void AddDataEntry()
-    {
-        dataEntries.Add(new ConfigMapDataEntryViewModel());
-    }
-
-    private IEnumerable<string> ValidateName(string v)
-    {
-        if (string.IsNullOrWhiteSpace(v))
-            yield return "请输入名称";
-        else if (!System.Text.RegularExpressions.Regex.IsMatch(v, @"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"))
-            yield return "名称只能包含小写字母、数字和 -，且以字母数字开头结尾";
-        else if (v.Length > 253)
-            yield return "名称不能超过 253 字符";
-    }
+    private void Cancel() => Dialog.Cancel();
 
     private async Task Submit()
     {
-        await form.ValidateAsync();
-        if (!form.IsValid) return;
-
-        // Check for duplicate keys
-        var keys = dataEntries.Where(e => !string.IsNullOrWhiteSpace(e.Key)).Select(e => e.Key).ToList();
-        if (keys.Distinct().Count() != keys.Count)
+        try
         {
-            Snackbar.Add("存在重复的键名", Severity.Warning);
+            KubernetesYaml.Deserialize<V1ConfigMap>(yamlContent);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"YAML 格式错误: {ex.Message}", Severity.Error);
             return;
         }
 
         saving = true;
         try
         {
-            var vm = new ConfigMapCreateViewModel
-            {
-                ClusterId = ClusterId,
-                Name = name,
-                Namespace = selectedNamespace,
-                DataEntries = dataEntries.Where(e => !string.IsNullOrWhiteSpace(e.Key)).ToList()
-            };
-            await ConfigMapService.CreateConfigMapAsync(ClusterId, vm);
+            await ConfigMapService.CreateConfigMapFromYamlAsync(ClusterId, yamlContent);
             Snackbar.Add("创建成功", Severity.Success);
             Dialog.Close(DialogResult.Ok(true));
         }
@@ -165,4 +83,4 @@
             saving = false;
         }
     }
-} *@
+}

@@ -1,0 +1,30 @@
+@using MultiClusterMgmtSys.Features.Configmaps.ViewModels
+@namespace MultiClusterMgmtSys.Features.Configmaps.Shared
+
+<MudCard Elevation="1" Class="mb-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">YAML</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (string.IsNullOrEmpty(Yaml))
+        {
+            <MudText Class="mud-text-secondary" Align="Align.Center">暂无 YAML</MudText>
+        }
+        else
+        {
+            <MudTextField T="string"
+                          Value="@Yaml"
+                          ReadOnly="true"
+                          Lines="30"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Style="font-family: monospace;" />
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public string Yaml { get; set; } = "";
+}

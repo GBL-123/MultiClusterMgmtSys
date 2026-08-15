@@ -1,0 +1,38 @@
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+
+<MudCard Elevation="1" Class="mb-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">标签</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (Node.Labels.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">—</MudText>
+        }
+        else
+        {
+            <MudTable Items="@(Node.Labels.Select(kvp => new { Key = kvp.Key, Value = kvp.Value }).ToList())"
+                      Dense="true" Hover="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>键</MudTh>
+                    <MudTh>值</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="键">@context.Key</MudTd>
+                    <MudTd DataLabel="值">
+                        <span style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;"
+                              title="@context.Value">
+                            @context.Value
+                        </span>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public ClusterNodeDetailViewModel Node { get; set; } = default!;
+}

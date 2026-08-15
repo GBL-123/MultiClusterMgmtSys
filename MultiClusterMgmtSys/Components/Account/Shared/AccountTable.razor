@@ -1,0 +1,155 @@
+@using MultiClusterMgmtSys.Components.Account.Requests
+@using MultiClusterMgmtSys.Components.Account.Services
+@using MultiClusterMgmtSys.Features.Account.ViewModels
+
+@inject AccountService AccountSvc
+
+<MudTable ServerData="@LoadData"
+          Hover="true"
+          FixedHeader="true"
+          Class="accounts-table"
+          @key="tableKey"
+          @ref="table">
+    <HeaderContent>
+        @if (MultiSelectVisible)
+        {
+            <MudTh Style="width:48px;"></MudTh>
+        }
+        <MudTh>用户名</MudTh>
+        <MudTh>角色</MudTh>
+        <MudTh>创建时间</MudTh>
+        <MudTh>最后登录</MudTh>
+        <MudTh Style="width:160px;">操作</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        @if (MultiSelectVisible)
+        {
+            <MudTd Style="width:48px;">
+                <MudCheckBox T="bool"
+                             Value="@SelectedIds.Contains(context.Id)"
+                             Disabled="@IsBuiltInAdmin(context)"
+                             ValueChanged="@(v => OnRowCheckChanged(context.Id, v))" />
+            </MudTd>
+        }
+        <MudTd DataLabel="用户名">@context.UserName</MudTd>
+        <MudTd DataLabel="角色">
+            <MudChip T="string" Size="Size.Small"
+                     Color="@(context.RoleName == "Admin" ? Color.Primary : Color.Default)"
+                     Variant="Variant.Outlined">
+                @context.RoleName
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="创建时间">@context.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudTd>
+        <MudTd DataLabel="最后登录">@(context.LastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudTd>
+        <MudTd DataLabel="操作">
+            @if (IsBuiltInAdmin(context))
+            {
+                <MudTooltip Text="内置管理员不可修改">
+                    <MudIcon Icon="@Icons.Material.Filled.Lock" Color="Color.Default" />
+                </MudTooltip>
+            }
+            else
+            {
+                <div @onclick:stopPropagation="true" class="d-flex" style="gap: 4px;">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Size="Size.Small"
+                                   Title="编辑"
+                                   OnClick="@(() => OnEditAccount.InvokeAsync(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.LockReset"
+                                   Size="Size.Small"
+                                   Title="重置密码"
+                                   OnClick="@(() => OnResetPassword.InvokeAsync(context))" />
+                    <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
+                                   Size="Size.Small"
+                                   Color="Color.Error"
+                                   Title="删除"
+                                   OnClick="@(() => OnDeleteAccount.InvokeAsync(context))" />
+                </div>
+            }
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager RowsPerPageString="每页条数：" InfoFormat="共 {all_items} 条" />
+    </PagerContent>
+    <LoadingContent>
+        <MudText>正在加载...</MudText>
+    </LoadingContent>
+    <NoRecordsContent>
+        <MudText>暂无账号或没有符合筛选条件的账号</MudText>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    [Parameter]
+    public AccountQueryRequest Query { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<AccountViewModel> OnEditAccount { get; set; }
+
+    [Parameter]
+    public EventCallback<AccountViewModel> OnResetPassword { get; set; }
+
+    [Parameter]
+    public EventCallback<AccountViewModel> OnDeleteAccount { get; set; }
+
+    [Parameter]
+    public bool MultiSelectVisible { get; set; }
+
+    [Parameter]
+    public HashSet<int> SelectedIds { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<HashSet<int>> OnSelectedIdsChanged { get; set; }
+
+    [Parameter]
+    public string BuiltInAdminName { get; set; } = "admin";
+
+    private MudTable<AccountViewModel> table = new();
+
+    private int tableKey;
+
+    private bool IsBuiltInAdmin(AccountViewModel account) => account.UserName == BuiltInAdminName;
+
+    private async Task<TableData<AccountViewModel>> LoadData(TableState state, CancellationToken _)
+    {
+        var result = await AccountSvc.GetPagedAccountsAsync(state, Query);
+        return new TableData<AccountViewModel>
+        {
+            Items = result.Items,
+            TotalItems = result.Total
+        };
+    }
+
+    private async Task OnRowCheckChanged(int accountId, bool @checked)
+    {
+        var ids = SelectedIds;
+        if (@checked)
+        {
+            ids.Add(accountId);
+        }
+        else
+        {
+            ids.Remove(accountId);
+        }
+        await OnSelectedIdsChanged.InvokeAsync(ids);
+    }
+
+    public Task ReloadDataAsync() => table.ReloadServerData();
+
+    public Task ResetSortAsync()
+    {
+        tableKey++;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    public void ClearSelection()
+    {
+        foreach (var id in SelectedIds)
+        {
+            SelectedIds.Remove(id);
+        }
+        _ = OnSelectedIdsChanged.InvokeAsync(SelectedIds);
+        StateHasChanged();
+    }
+}

@@ -18,4 +18,5 @@ public class ClusterDetailViewModel
     public ConnectionType? ConnectionType { get; set; }
     public List<ClusterNodeViewModel> Nodes { get; set; } = new();
     public bool IsReachable { get; set; }
+    public List<ClusterEndpointViewModel> Endpoints { get; set; } = new();
 }

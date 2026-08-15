@@ -11,4 +11,5 @@ public class ClusterCreateViewModel
     public string? KubeConfig { get; set; }
     public string? Token { get; set; }
     public bool SkipTlsVerify { get; set; } = true;
+    public List<ClusterEndpointEditItem> Endpoints { get; set; } = new();
 }

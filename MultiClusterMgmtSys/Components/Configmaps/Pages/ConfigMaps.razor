@@ -1,340 +1,105 @@
-@* @attribute [Authorize]
+@attribute [Authorize]
 @page "/configmaps"
 @page "/configmaps/{ClusterId:int}"
 
-@using MultiClusterMgmtSys.Models
+@using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Components.Clusters.Requests
+@using MultiClusterMgmtSys.Components.Clusters.Services
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+@using MultiClusterMgmtSys.Components.Common
+@using MultiClusterMgmtSys.Features.Configmaps.Services
+@using MultiClusterMgmtSys.Features.Configmaps.ViewModels
+@using MultiClusterMgmtSys.Features.Configmaps.Shared
 
 <PageTitle>配置管理</PageTitle>
 
-<MudGrid Spacing="3" Class="flex-auto">
-    <!-- ============================================ -->
-    <!-- Left pane: Cluster selection                  -->
-    <!-- ============================================ -->
-    <MudItem xs="12" md="3" lg="2" Class="d-flex">
-        <MudCard Elevation="1" Class="flex-auto d-flex flex-column">
-            <MudCardContent Class="d-flex flex-column pa-4">
-                <MudText Typo="Typo.h6" Class="mb-2">集群选择</MudText>
+<MudStack Row="true" Spacing="3" Class="d-flex flex-auto">
+    <ConfigMapClusterSidebar Clusters="@clusters"
+                              SelectedClusterId="@EffectiveClusterId"
+                              OnClusterSelected="SelectCluster" />
 
-                <MudTextField T="string"
-                              @bind-Value="clusterSearch"
-                              Label="搜索集群"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense"
-                              Adornment="Adornment.End"
-                              AdornmentIcon="@Icons.Material.Filled.Search"
-                              Class="mb-2 cursor-pointer" />
-
-                    @if (loadingClusters)
-                    {
-                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
-                    }
-                    else if (!clusters.Any())
-                    {
-                        <MudText Class="mud-text-secondary" Align="Align.Center">暂无集群</MudText>
-                    }
-                    else if (!groupedClusters.Any())
-                    {
-                        <MudText Class="mud-text-secondary" Align="Align.Center">没有匹配的集群</MudText>
-                    }
-                    else
-                    {
-                        <MudTreeView T="int" ExpandOnClick="true" Class="nodes-cluster-tree">
-                            @foreach (var g in groupedClusters)
-                            {
-                                <MudTreeViewItem T="int"
-                                                 Text="@g.Name"
-                                                 Icon="@Icons.Material.Filled.Folder"
-                                                 IconExpanded="@Icons.Material.Filled.FolderOpen"
-                                                 Expanded="true">
-                                    @foreach (var c in g.Clusters)
-                                    {
-                                        <MudTreeViewItem T="int"
-                                                         Text="@c.Name"
-                                                         Value="@c.Id"
-                                                         EndIcon="@GetClusterStatusIcon(c.Status)"
-                                                         EndIconColor="@GetClusterStatusColor(c.Status)"
-                                                         OnClick="@(() => SelectCluster(c.Id))" />
-                                    }
-                                </MudTreeViewItem>
-                            }
-                        </MudTreeView>
-                    }
-            </MudCardContent>
-        </MudCard>
-    </MudItem>
-
-    <!-- ============================================ -->
-    <!-- Right pane: Content area                      -->
-    <!-- ============================================ -->
-    <MudItem xs="12" md="9" lg="10">
-        @if (!ClusterId.HasValue)
+    <MudStack Class="flex-auto">
+        @if (!EffectiveClusterId.HasValue)
         {
-            <!-- Empty state: no cluster selected -->
-            <div class="d-flex flex-column align-center justify-center" style="min-height:400px;">
+            <div class="d-flex flex-column align-center justify-center" style="min-height:60vh;">
                 <MudIcon Icon="@Icons.Material.Filled.Settings" Size="Size.Large" Class="mud-text-secondary mb-4" />
                 <MudText Typo="Typo.h6" Class="mud-text-secondary">请从左侧选择一个集群</MudText>
             </div>
         }
-        else
+        else if (loading)
         {
-            <!-- 1. Title row -->
-            <div class="d-flex align-center mb-4">
-                <MudText Typo="Typo.h4" Class="flex-auto">配置管理</MudText>
-                <MudButton Variant="Variant.Text"
-                           StartIcon="@Icons.Material.Filled.ArrowBack"
-                           OnClick="@(() => NavigationManager.NavigateTo($"/clusters/{ClusterId}"))">
-                    返回集群详情
-                </MudButton>
-            </div>
-
-            <!-- 2. Cluster context summary card -->
-            @if (cluster is not null)
-            {
-                <MudCard Elevation="1" Class="mb-4">
-                    <MudCardHeader>
-                        <CardHeaderContent>
-                            <MudText Typo="Typo.h6">集群上下文</MudText>
-                        </CardHeaderContent>
-                        <CardHeaderActions>
-                            <MudChip T="string"
-                                     Size="Size.Small"
-                                     Color="GetClusterStatusColor(cluster.Status)"
-                                     Variant="Variant.Filled">
-                                @cluster.StatusText
-                            </MudChip>
-                        </CardHeaderActions>
-                    </MudCardHeader>
-                    <MudCardContent>
-                        <MudGrid Spacing="2">
-                            <MudItem xs="12" sm="6" md="3">
-                                <MudText Typo="Typo.body2" Class="mud-text-secondary">名称</MudText>
-                                <MudText Typo="Typo.body1">@cluster.Name</MudText>
-                            </MudItem>
-                            <MudItem xs="12" sm="6" md="3">
-                                <MudText Typo="Typo.body2" Class="mud-text-secondary">状态</MudText>
-                                <MudChip T="string"
-                                         Size="Size.Small"
-                                         Color="GetClusterStatusColor(cluster.Status)"
-                                         Variant="Variant.Filled">
-                                    @cluster.StatusText
-                                </MudChip>
-                            </MudItem>
-                            <MudItem xs="12" sm="6" md="3">
-                                <MudText Typo="Typo.body2" Class="mud-text-secondary">节点数</MudText>
-                                <MudText Typo="Typo.body1">@cluster.NodeCount</MudText>
-                            </MudItem>
-                            <MudItem xs="12" sm="6" md="3">
-                                <MudText Typo="Typo.body2" Class="mud-text-secondary">API Server</MudText>
-                                <MudText Typo="Typo.body1"
-                                         Style="max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
-                                         Title="@cluster.ApiServer">
-                                    @(cluster.ApiServer ?? "—")
-                                </MudText>
-                            </MudItem>
-                        </MudGrid>
-                    </MudCardContent>
-                </MudCard>
-            }
-
-            <!-- 3. Toolbar -->
-            <div class="d-flex flex-wrap align-center gap-3 mb-4">
-                <MudSelect T="string?"
-                           Value="selectedNamespace"
-                           ValueChanged="OnNamespaceValueChanged"
-                           Label="命名空间"
-                           Variant="Variant.Outlined"
-                           Margin="Margin.Dense"
-                           Dense="true"
-                           Style="min-width:160px;">
-                    <MudSelectItem Value="@((string?)null)">全部命名空间</MudSelectItem>
-                    @foreach (var ns in namespaces)
-                    {
-                        <MudSelectItem Value="@ns">@ns</MudSelectItem>
-                    }
-                </MudSelect>
-
-                <MudTextField T="string"
-                              @bind-Value="searchName"
-                              Label="搜索名称"
-                              Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Filled.Search"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense"
-                              Style="min-width:200px; flex:1;" />
-
-                <MudButton Variant="Variant.Outlined"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.Refresh"
-                           OnClick="RefreshConfigMaps"
-                           Disabled="loading">
-                    刷新
-                </MudButton>
-
-                <AuthorizeView Roles="Admin">
-                    <Authorized>
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+        }
+        else if (cluster is null)
+        {
+            <MudCard Class="pa-8" Elevation="2">
+                <MudCardContent>
+                    <MudText Align="Align.Center" Class="mud-text-secondary">未找到该集群</MudText>
+                    <div class="d-flex justify-center mt-4">
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Primary"
-                                   StartIcon="@Icons.Material.Filled.Add"
-                                   OnClick="OpenCreateDialog"
-                                   Disabled="@(cluster is null || !cluster.IsReachable)">
-                            新建 ConfigMap
+                                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                                   OnClick="@(() => NavigationManager.NavigateTo("/clusters"))">
+                            返回集群列表
                         </MudButton>
-                    </Authorized>
-                </AuthorizeView>
-            </div>
-
-            <!-- 4. Content area -->
-            @if (loading)
-            {
-                <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
-            }
-            else if (cluster is null)
-            {
-                <!-- Cluster not found -->
-                <MudCard Class="pa-8" Elevation="2">
-                    <MudCardContent>
-                        <MudText Align="Align.Center" Class="mud-text-secondary">未找到该集群</MudText>
-                        <div class="d-flex justify-center mt-4">
-                            <MudButton Variant="Variant.Filled"
-                                       Color="Color.Primary"
-                                       StartIcon="@Icons.Material.Filled.ArrowBack"
-                                       OnClick="@(() => NavigationManager.NavigateTo("/configmaps"))">
-                                返回配置管理
-                            </MudButton>
-                        </div>
-                    </MudCardContent>
-                </MudCard>
-            }
-            else if (!cluster.IsReachable)
-            {
-                <MudText Class="mud-text-secondary" Align="Align.Center">集群不可达，无法获取 ConfigMap</MudText>
-            }
-            else if (!configMaps.Any())
-            {
-                <div class="d-flex flex-column align-center justify-center" style="min-height:200px;">
-                    <MudText Class="mud-text-secondary" Align="Align.Center">暂无 ConfigMap</MudText>
-                </div>
-            }
-            else if (!filteredConfigMaps.Any())
-            {
-                <div class="d-flex flex-column align-center justify-center" style="min-height:200px;">
-                    <MudText Class="mud-text-secondary" Align="Align.Center">未找到匹配的 ConfigMap</MudText>
-                    <MudButton Variant="Variant.Text"
-                               Color="Color.Secondary"
-                               OnClick="@(() => searchName = "")"
-                               Class="mt-2">
-                        重置筛选
-                    </MudButton>
-                </div>
-            }
-            else
-            {
-                <MudTable T="ConfigMapListViewModel"
-                          Items="@filteredConfigMaps"
-                          Dense="true"
-                          Hover="true"
-                          Elevation="0">
-                    <HeaderContent>
-                        <MudTh>名称</MudTh>
-                        <MudTh>命名空间</MudTh>
-                        <MudTh>Data 键数</MudTh>
-                        <MudTh>键名预览</MudTh>
-                        <MudTh>创建时间</MudTh>
-                        <MudTh>操作</MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd DataLabel="名称">
-                            <MudText Color="Color.Primary"
-                                     Style="cursor:pointer; text-decoration: underline;"
-                                     @onclick="() => NavigateToDetail(context.Namespace, context.Name)">
-                                @context.Name
-                            </MudText>
-                        </MudTd>
-                        <MudTd DataLabel="命名空间">
-                            <MudChip T="string" Size="Size.Small">@context.Namespace</MudChip>
-                        </MudTd>
-                        <MudTd DataLabel="Data 键数">@context.DataKeyCount</MudTd>
-                        <MudTd DataLabel="键名预览">
-                            <MudText Style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
-                                     Title="@context.DataKeyPreview">
-                                @context.DataKeyPreview
-                            </MudText>
-                        </MudTd>
-                        <MudTd DataLabel="创建时间">@(context.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudTd>
-                        <MudTd DataLabel="操作">
-                            <div class="d-flex gap-2" style="gap: 4px;">
-                                <AuthorizeView Roles="Admin">
-                                    <Authorized Context="authContext">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                                       Size="Size.Small"
-                                                       OnClick="@(() => NavigateToEdit(context.Namespace, context.Name))" />
-                                        <MudIconButton Icon="@Icons.Material.Filled.Code"
-                                                       Size="Size.Small"
-                                                       OnClick="@(() => NavigateToYamlEdit(context.Namespace, context.Name))" />
-                                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
-                                                       Size="Size.Small"
-                                                       Color="Color.Error"
-                                                       OnClick="@(() => DeleteConfigMap(context.Namespace, context.Name))" />
-                                    </Authorized>
-                                </AuthorizeView>
-                            </div>
-                        </MudTd>
-                    </RowTemplate>
-                </MudTable>
-            }
+                    </div>
+                </MudCardContent>
+            </MudCard>
         }
-    </MudItem>
-</MudGrid>
+        else if (!cluster.IsReachable)
+        {
+            <ConfigMapListToolbar Cluster="@cluster" Processing="@loading" OnRefresh="@(() => LoadAsync(EffectiveClusterId!.Value))" />
+            <MudCard Elevation="1">
+                <MudCardContent>
+                    <MudText Align="Align.Center" Class="mud-text-secondary">集群不可达，无法获取 ConfigMap</MudText>
+                </MudCardContent>
+            </MudCard>
+        }
+        else
+        {
+            <ConfigMapListToolbar Cluster="@cluster"
+                                  Processing="@loading"
+                                  OnRefresh="@(() => LoadAsync(EffectiveClusterId!.Value))" />
+            <ConfigMapListFilterBar Cluster="@cluster"
+                                    Namespaces="@namespaces"
+                                    SelectedNamespace="@selectedNamespace"
+                                    SearchName="@searchName"
+                                    OnSelectedNamespaceChanged="OnNamespaceValueChanged"
+                                    OnSearchNameChanged="OnSearchNameChanged"
+                                    OnCreate="OpenCreateDialog" />
+            <ConfigMapListTable Items="@filteredConfigMaps"
+                                OnNavigateDetail="NavigateToDetail"
+                                OnNavigateEditYaml="NavigateToYamlEdit"
+                                OnDelete="DeleteConfigMap" />
+        }
+    </MudStack>
+</MudStack>
 
 @code {
     [Parameter] public int? ClusterId { get; set; }
 
     [Inject] private ClusterService ClusterService { get; set; } = default!;
     [Inject] private ConfigMapService ConfigMapService { get; set; } = default!;
+    [Inject] private ClusterSelectionState ClusterSelection { get; set; } = default!;
     [Inject] private IDialogService DialogService { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
 
-    // State
     private List<ClusterViewModel> clusters = new();
+    private ClusterDetailViewModel? cluster;
     private List<ConfigMapListViewModel> configMaps = new();
     private List<string> namespaces = new();
-    private ClusterDetailViewModel? cluster;
-    private bool loadingClusters;
     private bool loading;
     private string searchName = "";
-    private string clusterSearch = "";
     private string? selectedNamespace;
     private int? previousClusterId;
+    private bool hasInitialized;
 
-    // Computed properties
-
-    private List<ClusterGroupNode> groupedClusters
-    {
-        get
-        {
-            var q = clusters.AsEnumerable();
-            if (!string.IsNullOrWhiteSpace(clusterSearch))
-                q = q.Where(c => c.Name.Contains(clusterSearch, StringComparison.OrdinalIgnoreCase));
-
-            return q
-                .GroupBy(c => c.GroupName ?? "未分组")
-                .Select(g => new ClusterGroupNode
-                {
-                    Name = g.Key,
-                    Clusters = g.OrderBy(c => c.Name).ToList()
-                })
-                .OrderBy(g => g.Name == "未分组" ? 1 : 0)
-                .ThenBy(g => g.Name)
-                .ToList();
-        }
-    }
-
-    private sealed class ClusterGroupNode
-    {
-        public string Name { get; set; } = "";
-        public List<ClusterViewModel> Clusters { get; set; } = new();
-    }
+    /// <summary>
+    /// The cluster currently being shown: the URL parameter when present,
+    /// otherwise the session-remembered selection (restored in place on /configmaps).
+    /// </summary>
+    private int? EffectiveClusterId => ClusterId ?? ClusterSelection.SelectedClusterId;
 
     private List<ConfigMapListViewModel> filteredConfigMaps
     {
@@ -347,56 +112,65 @@
         }
     }
 
-    // Lifecycle
-
     protected override async Task OnInitializedAsync()
     {
         await LoadClustersAsync();
     }
 
-    protected override async Task OnParametersSetAsync()
+    protected override void OnParametersSet()
     {
-        if (ClusterId != previousClusterId)
+        if (ClusterId.HasValue)
         {
-            if (ClusterId.HasValue)
-            {
-                await LoadConfigMapsAsync(ClusterId.Value);
-            }
-            else
-            {
-                configMaps = new();
-                namespaces = new();
-                cluster = null;
-            }
-            previousClusterId = ClusterId;
+            ClusterSelection.Set(ClusterId.Value);
         }
     }
 
-    // Data loading
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ClusterId == previousClusterId && hasInitialized)
+        {
+            return;
+        }
+        hasInitialized = true;
+        previousClusterId = ClusterId;
+
+        if (EffectiveClusterId.HasValue)
+        {
+            await LoadAsync(EffectiveClusterId.Value);
+        }
+        else
+        {
+            cluster = null;
+            configMaps = new();
+            namespaces = new();
+            loading = false;
+        }
+    }
 
     private async Task LoadClustersAsync()
     {
-        loadingClusters = true;
         try
         {
-            clusters = await ClusterService.GetClustersAsync();
+            var request = new ClusterQueryRequest { Page = 1, PageSize = 1000, SortBy = ClusterSortField.Name, SortDescending = false };
+            var result = await ClusterService.GetPagedAsync(request);
+            clusters = result.Items;
         }
         catch (Exception ex)
         {
             Snackbar.Add($"加载集群列表失败: {ex.Message}", Severity.Error);
         }
-        finally
-        {
-            loadingClusters = false;
-        }
     }
 
-    private async Task LoadConfigMapsAsync(int id)
+    private async Task LoadAsync(int id)
     {
         loading = true;
         try
         {
             cluster = await ClusterService.GetClusterDetailAsync(id);
+            if (cluster is not null)
+            {
+                ClusterSelection.Set(id);
+            }
             if (cluster is not null && cluster.IsReachable)
             {
                 try
@@ -433,70 +207,20 @@
         }
     }
 
-    // Actions
-
     private void SelectCluster(int id)
     {
         NavigationManager.NavigateTo($"/configmaps/{id}");
     }
 
-    private void NavigateToDetail(string ns, string name)
-    {
-        NavigationManager.NavigateTo($"/configmaps/{ClusterId!.Value}/{ns}/{name}");
-    }
-
-    private void NavigateToEdit(string ns, string name)
-    {
-        NavigationManager.NavigateTo($"/configmaps/{ClusterId!.Value}/{ns}/{name}/edit");
-    }
-
-    private void NavigateToYamlEdit(string ns, string name)
-    {
-        NavigationManager.NavigateTo($"/configmaps/{ClusterId!.Value}/{ns}/{name}/yaml");
-    }
-
-    private async Task DeleteConfigMap(string ns, string name)
-    {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "确认删除",
-            $"确认删除 ConfigMap「{name}」？此操作不可撤销。",
-            yesText: "删除",
-            noText: "取消");
-
-        if (confirmed == true)
-        {
-            try
-            {
-                await ConfigMapService.DeleteConfigMapAsync(ClusterId!.Value, name, ns);
-                Snackbar.Add("删除成功", Severity.Success);
-                await LoadConfigMapsAsync(ClusterId!.Value);
-            }
-            catch (Exception ex)
-            {
-                var msg = ex.Message;
-                if (msg.Contains("404") || msg.Contains("Not Found"))
-                    Snackbar.Add("ConfigMap 不存在或已被删除", Severity.Warning);
-                else
-                    Snackbar.Add($"删除失败: {ex.Message}", Severity.Error);
-            }
-        }
-    }
-
-    private async Task RefreshConfigMaps()
-    {
-        if (ClusterId.HasValue)
-            await LoadConfigMapsAsync(ClusterId.Value);
-    }
-
     private async Task OnNamespaceValueChanged(string? ns)
     {
         selectedNamespace = ns;
-        if (ClusterId.HasValue)
+        if (EffectiveClusterId.HasValue)
         {
             loading = true;
             try
             {
-                configMaps = await ConfigMapService.ListConfigMapsAsync(ClusterId.Value, selectedNamespace);
+                configMaps = await ConfigMapService.ListConfigMapsAsync(EffectiveClusterId.Value, selectedNamespace);
             }
             catch (Exception ex)
             {
@@ -509,29 +233,56 @@
         }
     }
 
+    private Task OnSearchNameChanged(string value)
+    {
+        searchName = value;
+        return Task.CompletedTask;
+    }
+
+    private void NavigateToDetail((string Namespace, string Name) args)
+    {
+        NavigationManager.NavigateTo($"/configmaps/{EffectiveClusterId!.Value}/{args.Namespace}/{args.Name}");
+    }
+
+    private void NavigateToYamlEdit((string Namespace, string Name) args)
+    {
+        NavigationManager.NavigateTo($"/configmaps/{EffectiveClusterId!.Value}/{args.Namespace}/{args.Name}/yaml");
+    }
+
+    private async Task DeleteConfigMap((string Namespace, string Name) args)
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "确认删除",
+            $"确认删除 ConfigMap「{args.Name}」？此操作不可撤销。",
+            yesText: "删除",
+            noText: "取消");
+
+        if (confirmed == true)
+        {
+            try
+            {
+                await ConfigMapService.DeleteConfigMapAsync(EffectiveClusterId!.Value, args.Name, args.Namespace);
+                Snackbar.Add("删除成功", Severity.Success);
+                await LoadAsync(EffectiveClusterId!.Value);
+            }
+            catch (Exception ex)
+            {
+                var msg = ex.Message;
+                if (msg.Contains("404") || msg.Contains("Not Found"))
+                    Snackbar.Add("ConfigMap 不存在或已被删除", Severity.Warning);
+                else
+                    Snackbar.Add($"删除失败: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
     private async Task OpenCreateDialog()
     {
-        var parameters = new DialogParameters { { "ClusterId", ClusterId!.Value } };
+        var parameters = new DialogParameters { { "ClusterId", EffectiveClusterId!.Value } };
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
         var dialog = await DialogService.ShowAsync<CreateConfigMapDialog>("新建 ConfigMap", parameters, options);
         var result = await dialog.Result;
         if (result is not null && !result.Canceled)
-            await LoadConfigMapsAsync(ClusterId!.Value);
+            await LoadAsync(EffectiveClusterId!.Value);
     }
-
-    // Helpers
-
-    private static Color GetClusterStatusColor(ClusterStatus status) => status switch
-    {
-        ClusterStatus.Online => Color.Success,
-        ClusterStatus.Offline => Color.Error,
-        _ => Color.Default
-    };
-
-    private static string GetClusterStatusIcon(ClusterStatus status) => status switch
-    {
-        ClusterStatus.Online => Icons.Material.Filled.CheckCircle,
-        ClusterStatus.Offline => Icons.Material.Filled.Cancel,
-        _ => Icons.Material.Filled.RemoveCircle
-    };
-} *@
+}

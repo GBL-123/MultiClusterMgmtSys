@@ -4,7 +4,7 @@ Repo-specific guidance for OpenCode agents working in `MultiClusterMgmtSys`.
 
 ## Stack
 
-- .NET 10 / ASP.NET Core, Blazor **interactive server** render mode, MudBlazor 9
+- .NET 10 / ASP.NET Core, Blazor **interactive server** render mode, MudBlazor 9 (plus `Extensions.MudBlazor.StaticInput` — its `MudBlazor.StaticInput` namespace appears in `_Imports.razor`, that's the package source)
 - EF Core 10 with **SQLite** (`Microsoft.EntityFrameworkCore.Sqlite`) + ASP.NET Identity (roles `Admin`/`Member`, keys `int`)
 - Kubernetes cluster access via `KubernetesClient` 19
 - UI strings are **Chinese** (e.g. `ChineseIdentityErrorDescriber`, service error messages). Keep new user-facing strings consistent.

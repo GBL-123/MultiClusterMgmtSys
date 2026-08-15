@@ -1,0 +1,76 @@
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+
+<MudTable T="ClusterNodeViewModel"
+          Items="@Nodes"
+          Dense="true"
+          Hover="true"
+          Elevation="0">
+    <HeaderContent>
+        <MudTh>名称</MudTh>
+        <MudTh>状态</MudTh>
+        <MudTh>角色</MudTh>
+        <MudTh>Kubelet 版本</MudTh>
+        <MudTh>操作系统</MudTh>
+        <MudTh>IP 地址</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="名称">
+            <MudText Color="Color.Primary"
+                     Style="cursor:pointer; text-decoration: underline;"
+                     @onclick="() => OnNavigateNode.InvokeAsync(context.Name)">
+                @context.Name
+            </MudText>
+        </MudTd>
+        <MudTd DataLabel="状态">
+            <MudChip T="string"
+                     Size="Size.Small"
+                     Color="GetNodeStatusColor(context.Status)"
+                     Variant="Variant.Filled">
+                @context.Status
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="角色">@(string.IsNullOrEmpty(context.Roles) ? "—" : context.Roles)</MudTd>
+        <MudTd DataLabel="Kubelet 版本">@(string.IsNullOrEmpty(context.KubeletVersion) ? "—" : context.KubeletVersion)</MudTd>
+        <MudTd DataLabel="操作系统">@(string.IsNullOrEmpty(context.OsImage) ? "—" : context.OsImage)</MudTd>
+        <MudTd DataLabel="IP 地址">
+            @if (context.IpAddresses.Count == 0)
+            {
+                <span>—</span>
+            }
+            else
+            {
+                <div style="display:flex; flex-direction:column;">
+                    @foreach (var ip in context.IpAddresses)
+                    {
+                        <span style="font-family: monospace; white-space:nowrap;">
+                            @ip.Address
+                            @if (!string.IsNullOrEmpty(ip.Note))
+                            {
+                                <span class="mud-text-secondary">@ip.Note</span>
+                            }
+                        </span>
+                    }
+                </div>
+            }
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager RowsPerPageString="每页条数：" InfoFormat="共 {all_items} 条" />
+    </PagerContent>
+    <NoRecordsContent>
+        <MudText>@(FilterActive ? "没有符合当前筛选条件的节点" : "暂无节点数据")</MudText>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    [Parameter] public IReadOnlyList<ClusterNodeViewModel> Nodes { get; set; } = new List<ClusterNodeViewModel>();
+    [Parameter] public bool FilterActive { get; set; }
+    [Parameter] public EventCallback<string> OnNavigateNode { get; set; }
+
+    private static Color GetNodeStatusColor(string status) => status switch
+    {
+        "Ready" => Color.Success,
+        "NotReady" => Color.Error,
+        _ => Color.Default
+    };
+}

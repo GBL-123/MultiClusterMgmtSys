@@ -2,7 +2,7 @@
 
 ### Requirement: Node list page route and layout
 
-The system SHALL serve the node list page from a single `Components/Nodes/Pages/Nodes.razor` component that declares two routes: a parameterless `/nodes` route and a parameterized `/nodes/{ClusterId:int}` route. The `ClusterId` route parameter MUST be `int?` so the same component handles both routes. The page SHALL use a two-column layout mirroring the cluster management page (`Clusters.razor`): a fixed-width cluster-selection sidebar on the left (`NodeClusterSidebar`, see the dedicated requirement below) and a flexible content pane on the right. The right pane, when a `ClusterId` is present, displays the live nodes of the selected cluster using the project's current list-page visual vocabulary: a top toolbar `MudPaper` (back to cluster detail + cluster name + cluster status chip + refresh), a filter bar `MudPaper`, and a single client-paged `MudTable` listing `ClusterNodeViewModel` rows. The page MUST gate node loading on the cluster being reachable (`IsReachable == true`). The parameterless `/nodes` route is what the Drawer's "节点管理" navigation (`Href="/nodes"`) targets; its right pane behavior is defined by the "Cluster-selection empty state" requirement and the cluster-selection memory behavior.
+The system SHALL serve the node list page from a single `Components/Nodes/Pages/Nodes.razor` component that declares two routes: a parameterless `/nodes` route and a parameterized `/nodes/{ClusterId:int}` route. The `ClusterId` route parameter MUST be `int?` so the same component handles both routes. The page SHALL use a two-column layout mirroring the cluster management page (`Clusters.razor`): a fixed-width cluster-selection sidebar on the left (`NodeClusterSidebar`, see the dedicated requirement below) and a flexible content pane on the right. The right pane, when a `ClusterId` is present, displays the live nodes of the selected cluster using the project's current list-page visual vocabulary: a top toolbar `MudPaper` (back to cluster detail + cluster name + cluster status chip + refresh), a filter bar `MudPaper`, and a single client-paged `MudTable` listing `ClusterNodeViewModel` rows. The page MUST gate node loading on the cluster being reachable (`IsReachable == true`). While a load is in flight the pane SHALL show an indeterminate `MudProgressLinear`; when `GetClusterDetailAsync` returns `null` for the effective cluster id, the pane SHALL render a "未找到该集群" card with a "返回集群列表" button navigating to `/clusters`. The parameterless `/nodes` route is what the Drawer's "节点管理" navigation (`Href="/nodes"`) targets; its right pane behavior is defined by the "Cluster-selection empty state" requirement and the cluster-selection memory behavior.
 
 #### Scenario: Parameterized route resolves to the cluster node list
 - **WHEN** an authenticated user navigates to `/nodes/{ClusterId}`
@@ -30,9 +30,18 @@ The system SHALL serve the node list page from a single `Components/Nodes/Pages/
 - **WHEN** the user clicks the toolbar "刷新" button
 - **THEN** the page calls `ClusterService.GetClusterDetailAsync(ClusterId)` and, if reachable, `ClusterNodeService.GetClusterNodesAsync(ClusterId)`, then re-renders
 
+#### Scenario: Loading state shows a progress bar
+- **WHEN** the right pane begins loading the cluster context and node list (initial load or refresh)
+- **THEN** it renders an indeterminate `MudProgressLinear` until the load completes, replacing the toolbar/filter/table region while in flight
+
+#### Scenario: Cluster not found
+- **WHEN** `ClusterService.GetClusterDetailAsync` returns `null` for the effective cluster id
+- **THEN** the right pane renders a "未找到该集群" card with a "返回集群列表" button
+- **AND** clicking the button navigates to `/clusters`
+
 ### Requirement: Node cluster sidebar with collapsible groups
 
-The system SHALL render a `NodeClusterSidebar` component (under `Components/Nodes/Shared/`) as the left column of the node list page. Its visual design SHALL mirror `Components/Clusters/Shared/GroupSidebar.razor` (fixed 240px `MudPaper`, header title, `MudNavMenu` list). It SHALL list the user's clusters grouped by their `GroupName` (ungrouped clusters under a "未分组" section), and each group section SHALL be collapsible/expandable — collapsed by default or remembered per interaction, at the implementer's choice, but collapse state MUST be per-group and toggleable by the user. Each cluster row SHALL show the cluster name and a status indicator colored by `ClusterStatus` (`Online` → Success, `Offline` → Error, otherwise Default); the row for the currently selected cluster (`SelectedClusterId`) SHALL be visually highlighted (primary background + primary-text color, same treatment as `GroupSidebar`'s active link). Clicking a cluster row SHALL navigate to `/nodes/{ClusterId}`. The sidebar SHALL NOT contain a cluster search box in this iteration.
+The system SHALL render a `NodeClusterSidebar` component (under `Components/Nodes/Shared/`) as the left column of the node list page. Its visual design SHALL mirror `Components/Clusters/Shared/GroupSidebar.razor` (fixed 240px `MudPaper`, header title, `MudNavMenu` list). It SHALL list the user's clusters grouped by their `GroupName` (ungrouped clusters under a "未分组" section), and each group section SHALL be collapsible/expandable — collapse state MUST be per-group, toggleable by the user, and defaults to expanded. Each group header SHALL show a small `MudChip` with the number of clusters in the group; when the user has no clusters at all, the sidebar SHALL render a disabled "暂无集群" nav item instead of the group sections. Each cluster row SHALL show the cluster name and a status indicator colored by `ClusterStatus` (green dot for `Online`, red for `Offline`, grey otherwise); the row for the currently selected cluster (`SelectedClusterId`) SHALL be visually highlighted (primary background + primary-text color, same treatment as `GroupSidebar`'s active link). Clicking a cluster row SHALL navigate to `/nodes/{ClusterId}`. The sidebar SHALL NOT contain a cluster search box in this iteration. The sidebar's cluster data is supplied by the page: `Nodes.razor` loads the flat list in `OnInitializedAsync` via `ClusterService.GetPagedAsync` (Page=1, PageSize=1000, SortBy=`ClusterSortField.Name`, ascending) and passes it as the `Clusters` parameter; a load failure surfaces a "加载集群列表失败" snackbar.
 
 #### Scenario: Groups render as collapsible sections with clusters underneath
 - **WHEN** the user has clusters in groups "生产" and "测试" plus one ungrouped cluster
@@ -41,9 +50,17 @@ The system SHALL render a `NodeClusterSidebar` component (under `Components/Node
 
 #### Scenario: Cluster rows carry a status indicator
 - **WHEN** a cluster row renders for an online cluster
-- **THEN** the row shows the cluster name with a green (Success) status indicator
+- **THEN** the row shows the cluster name with a green status indicator
 - **WHEN** the row is for an offline cluster
-- **THEN** the indicator is red (Error)
+- **THEN** the indicator is red
+
+#### Scenario: Group headers show a cluster count
+- **WHEN** a group section header renders
+- **THEN** it shows a small `MudChip` displaying the number of clusters in that group
+
+#### Scenario: No clusters available
+- **WHEN** the user has no clusters
+- **THEN** the sidebar renders a disabled "暂无集群" nav item instead of the group sections
 
 #### Scenario: Selected cluster is highlighted
 - **WHEN** the page is at `/nodes/{ClusterId}` and the sidebar renders
@@ -99,7 +116,7 @@ The selected cluster for the node list page SHALL be expressed by the URL path (
 
 ### Requirement: Node list filter bar with four filters
 
-The list page SHALL render `NodeListFilterBar` containing exactly four filter controls bound to a single `NodeListFilter` state record held by the page: a free-text Name field, a Role drop-down, a Status drop-down, and a Schedulability drop-down. Filtering MUST be performed client-side against the loaded `List<ClusterNodeViewModel>` — no new server round-trip is introduced when a filter changes.
+The list page SHALL render `NodeListFilterBar` containing exactly four filter controls bound to a single `NodeListFilter` state record held by the page: a free-text Name field, a Role drop-down, a Status drop-down, and a Schedulability drop-down, followed by a "重置" outlined button that clears the filter state and invokes `OnReset`. Filtering MUST be performed client-side against the loaded `List<ClusterNodeViewModel>` — no new server round-trip is introduced when a filter changes.
 
 #### Scenario: Name filter matches by substring (case-insensitive)
 - **WHEN** `NodeListFilter.Name` is a non-empty string
@@ -157,7 +174,7 @@ The list page SHALL render `NodeListFilterBar` containing exactly four filter co
 
 ### Requirement: Node detail page route and layout
 
-The system SHALL serve a node detail page at `/nodes/{ClusterId}/{NodeName}` that displays a single node using the project's current detail-page visual vocabulary: a `NodeDetailToolbar` `MudPaper` followed by a `MudStack flex-auto` of focused MudCards. Each card wraps one section of `ClusterNodeDetailViewModel`. The page MUST NOT render the legacy self-contained heading + flat `MudGrid` layout.
+The system SHALL serve a node detail page at `/nodes/{ClusterId}/{NodeName}` that displays a single node using the project's current detail-page visual vocabulary: a `NodeDetailToolbar` `MudPaper` followed by a `MudStack flex-auto` of focused MudCards. Each card wraps one section of `ClusterNodeDetailViewModel`. The page MUST NOT render the legacy self-contained heading + flat `MudGrid` layout. While a load is in flight the page SHALL show an indeterminate `MudProgressLinear`.
 
 #### Scenario: Route resolves and loads the node
 - **WHEN** an authenticated user navigates to `/nodes/{ClusterId}/{NodeName}`
@@ -166,11 +183,11 @@ The system SHALL serve a node detail page at `/nodes/{ClusterId}/{NodeName}` tha
 
 #### Scenario: Node not found
 - **WHEN** `GetNodeDetailAsync` returns `null`
-- **THEN** the page renders a "未找到该节点" card with a "返回节点列表" button targeting `/nodes/{ClusterId}`
+- **THEN** the page renders a "未找到该节点" card with the subtitle "集群不存在、集群离线或节点已移除" and a "返回节点列表" button targeting `/nodes/{ClusterId}`
 
 #### Scenario: Cluster unreachable detail
 - **WHEN** `GetNodeDetailAsync` returns a `ClusterNodeDetailViewModel` whose `IsReachable == false`
-- **THEN** the page renders a "集群不可达" message card and does not render the per-section cards
+- **THEN** the page renders a "集群不可达，无法获取节点详情" message card with a "返回节点列表" button and does not render the per-section cards
 
 #### Scenario: Card composition order
 - **WHEN** a reachable node is rendered
@@ -178,7 +195,7 @@ The system SHALL serve a node detail page at `/nodes/{ClusterId}/{NodeName}` tha
 
 ### Requirement: Node detail toolbar
 
-`NodeDetailToolbar` SHALL render a `MudPaper pa-4 mb-4` containing: a "返回节点列表" text button (target `/nodes/{ClusterId}`), the node's `Name` as an `h4` heading, a `MudChip` colored by the node status color helper showing `node.Status`, and a "刷新" outlined button. The toolbar MUST NOT be gated by `AuthorizeView` (Refresh is a read action).
+`NodeDetailToolbar` SHALL render a `MudPaper pa-4 mb-4` containing: a "返回节点列表" text button (target `/nodes/{ClusterId}`), the node's `Name` as an `h4` heading, a `MudChip` colored by the node status color helper showing `node.Status`, and a "刷新" outlined button (disabled while `Processing`, with a small inline progress spinner while processing). The toolbar MUST NOT be gated by `AuthorizeView` (Refresh is a read action).
 
 #### Scenario: Refresh is always available
 - **WHEN** the page is viewed by any authenticated user (Admin or Member)
@@ -190,7 +207,7 @@ The system SHALL serve a node detail page at `/nodes/{ClusterId}/{NodeName}` tha
 
 ### Requirement: Node detail cards render specific view-model sections
 
-Each shared detail card component under `Components/Nodes/Shared/` SHALL render exactly one section of `ClusterNodeDetailViewModel` and accept that VM (or a child VM) as a `[Parameter]`. The cards MUST replicate the field-level layout of the legacy `NodeDetail.razor` sections, including status-chip coloring, `yyyy-MM-dd HH:mm` date formatting, and ellipsis-on-long-value cells for label/annotation/message strings.
+Each shared detail card component under `Components/Nodes/Shared/` SHALL render exactly one section of `ClusterNodeDetailViewModel` and accept that VM (or a child VM) as a `[Parameter]`. The cards MUST replicate the field-level layout of the legacy `NodeDetail.razor` sections, including status-chip coloring, `yyyy-MM-dd HH:mm` creation-time formatting (condition timestamps use `yyyy-MM-dd HH:mm:ss`), and ellipsis-on-long-value cells for label/annotation/message strings.
 
 #### Scenario: Overview card
 - **WHEN** `NodeOverviewCard` renders
@@ -218,9 +235,9 @@ Each shared detail card component under `Components/Nodes/Shared/` SHALL render 
 - **WHEN** `NodeLabelsCard` or `NodeAnnotationsCard` renders a value whose rendered width exceeds its cell
 - **THEN** the value cell uses `overflow:hidden; text-overflow:ellipsis; white-space:nowrap` and exposes the full value via the element's `title` attribute
 
-#### Scenario: System info card is full width
+#### Scenario: System info card is half width in the final paired row
 - **WHEN** the detail page composes its card grid
-- **THEN** `NodeSystemInfoCard` occupies `xs=12` (full width) and renders the 10 fields of `NodeSystemInfoViewModel` in a `MudGrid` of `xs=12 sm=6 md=4` items, using `—` for any empty field
+- **THEN** `NodeSystemInfoCard` occupies `xs=12 md=6` in the final paired row with `NodeAnnotationsCard` and renders the 10 fields of `NodeSystemInfoViewModel` in a `MudGrid` of `xs=12 sm=6 md=4` items, using `—` for any empty field
 
 ### Requirement: ClusterNodesCard entry point remains intact
 

@@ -1,0 +1,59 @@
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+
+<MudCard Elevation="1" Class="mb-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">资源容量</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Capacity（容量）</MudText>
+                @if (Node.Capacity.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">—</MudText>
+                }
+                else
+                {
+                    <MudTable Items="@(Node.Capacity.Select(kvp => new { Key = kvp.Key, Value = kvp.Value }).ToList())"
+                              Dense="true" Hover="true" Elevation="0">
+                        <HeaderContent>
+                            <MudTh>资源</MudTh>
+                            <MudTh>数量</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="资源">@context.Key</MudTd>
+                            <MudTd DataLabel="数量">@context.Value</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Allocatable（可分配）</MudText>
+                @if (Node.Allocatable.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">—</MudText>
+                }
+                else
+                {
+                    <MudTable Items="@(Node.Allocatable.Select(kvp => new { Key = kvp.Key, Value = kvp.Value }).ToList())"
+                              Dense="true" Hover="true" Elevation="0">
+                        <HeaderContent>
+                            <MudTh>资源</MudTh>
+                            <MudTh>数量</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="资源">@context.Key</MudTd>
+                            <MudTd DataLabel="数量">@context.Value</MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter] public ClusterNodeDetailViewModel Node { get; set; } = default!;
+}

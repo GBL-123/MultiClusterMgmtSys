@@ -10,10 +10,8 @@ public class ClusterNodeDetailViewModel
     public string Roles { get; set; } = "";
     public string KubeletVersion { get; set; } = "";
     public string OsImage { get; set; } = "";
-    public string InternalIP { get; set; } = "";
 
     // 元数据
-    public string Uid { get; set; } = "";
     public DateTime? CreatedAt { get; set; }
     public bool Unschedulable { get; set; }
     public string PodCIDR { get; set; } = "";

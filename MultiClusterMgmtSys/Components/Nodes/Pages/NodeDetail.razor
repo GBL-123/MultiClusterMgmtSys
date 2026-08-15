@@ -1,476 +1,79 @@
-@* @attribute [Authorize]
+@attribute [Authorize]
 @page "/nodes/{ClusterId:int}/{NodeName}"
+
+@using MultiClusterMgmtSys.Components.Clusters.Services
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+@using MultiClusterMgmtSys.Components.Common
+@using MultiClusterMgmtSys.Components.Nodes.Services
+@using MultiClusterMgmtSys.Components.Nodes.Shared
+@using MultiClusterMgmtSys.Components.Nodes.ViewModels
 
 <PageTitle>节点详情: @NodeName</PageTitle>
 
-<div class="d-flex align-center mb-4">
-    <MudText Typo="Typo.h4" Class="flex-auto">节点详情: @NodeName</MudText>
-    <MudButton Variant="Variant.Text"
-               StartIcon="@Icons.Material.Filled.ArrowBack"
-               OnClick="@(() => NavigationManager.NavigateTo($"/nodes/{ClusterId}"))">
-        返回节点列表
-    </MudButton>
-</div>
-
-@if (loading)
-{
-    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
-}
-else if (node is null)
-{
-    <MudCard Class="pa-8" Elevation="2">
-        <MudCardContent>
-            <MudText Align="Align.Center" Class="mud-text-secondary">未找到该节点</MudText>
-            <MudText Align="Align.Center" Class="mud-text-secondary" Typo="Typo.body2">集群不存在、集群离线或节点已移除</MudText>
-            <div class="d-flex justify-center mt-4">
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.ArrowBack"
-                           OnClick="@(() => NavigationManager.NavigateTo($"/nodes/{ClusterId}"))">
-                    返回节点列表
-                </MudButton>
-            </div>
-        </MudCardContent>
-    </MudCard>
-}
-else
-{
-    <MudGrid Spacing="3">
-        <!-- 概要 -->
-        <MudItem xs="12">
-            <MudCard Elevation="1">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">概要</MudText>
-                    </CardHeaderContent>
-                    <CardHeaderActions>
-                        <MudChip T="string"
-                                 Size="Size.Small"
-                                 Color="GetNodeStatusColor(node.Status)"
-                                 Variant="Variant.Filled">
-                            @node.Status
-                        </MudChip>
-                    </CardHeaderActions>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudGrid Spacing="2">
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">名称</MudText>
-                            <MudText Typo="Typo.body1">@node.Name</MudText>
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">状态</MudText>
-                            <MudChip T="string"
-                                     Size="Size.Small"
-                                     Color="GetNodeStatusColor(node.Status)"
-                                     Variant="Variant.Filled">
-                                @node.Status
-                            </MudChip>
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">角色</MudText>
-                            <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(node.Roles) ? "—" : node.Roles)</MudText>
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">Kubelet 版本</MudText>
-                            <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(node.KubeletVersion) ? "—" : node.KubeletVersion)</MudText>
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">操作系统</MudText>
-                            <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(node.OsImage) ? "—" : node.OsImage)</MudText>
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">内网 IP</MudText>
-                            <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(node.InternalIP) ? "—" : node.InternalIP)</MudText>
-                        </MudItem>
-                    </MudGrid>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-
-        <!-- 调度信息 -->
-        <MudItem xs="12" md="6">
-            <MudCard Elevation="1">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">调度信息</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudGrid Spacing="2">
-                        <MudItem xs="12" sm="6">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">不可调度</MudText>
-                            <MudChip T="string"
-                                     Size="Size.Small"
-                                     Color="@(node.Unschedulable ? Color.Warning : Color.Success)"
-                                     Variant="Variant.Filled">
-                                @(node.Unschedulable ? "不可调度" : "可调度")
-                            </MudChip>
-                        </MudItem>
-                        <MudItem xs="12" sm="6">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">Phase</MudText>
-                            <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(node.Phase) ? "—" : node.Phase)</MudText>
-                        </MudItem>
-                        <MudItem xs="12" sm="6">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">PodCIDR</MudText>
-                            <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(node.PodCIDR) ? "—" : node.PodCIDR)</MudText>
-                        </MudItem>
-                    </MudGrid>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-
-        <!-- 元数据 -->
-        <MudItem xs="12" md="6">
-            <MudCard Elevation="1">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">元数据</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudGrid Spacing="2">
-                        <MudItem xs="12">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">Uid</MudText>
-                            <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(node.Uid) ? "—" : node.Uid)</MudText>
-                        </MudItem>
-                        <MudItem xs="12" sm="6">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">创建时间</MudText>
-                            <MudText Typo="Typo.body1">@(node.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
-                        </MudItem>
-                    </MudGrid>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-
-        <!-- 资源容量 -->
-        <MudItem xs="12">
-            <MudCard Elevation="1">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">资源容量</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudGrid Spacing="2">
-                        <MudItem xs="12" md="6">
-                            <MudText Typo="Typo.subtitle2" Class="mb-2">Capacity（容量）</MudText>
-                            @if (node.Capacity.Count == 0)
-                            {
-                                <MudText Typo="Typo.body2" Class="mud-text-secondary">—</MudText>
-                            }
-                            else
-                            {
-                                <MudTable Items="@(node.Capacity.Select(kvp => new { Key = kvp.Key, Value = kvp.Value }).ToList())"
-                                          Dense="true" Hover="true" Striped="true" Elevation="0">
-                                    <HeaderContent>
-                                        <MudTh>资源</MudTh>
-                                        <MudTh>数量</MudTh>
-                                    </HeaderContent>
-                                    <RowTemplate>
-                                        <MudTd DataLabel="资源">@context.Key</MudTd>
-                                        <MudTd DataLabel="数量">@context.Value</MudTd>
-                                    </RowTemplate>
-                                </MudTable>
-                            }
-                        </MudItem>
-                        <MudItem xs="12" md="6">
-                            <MudText Typo="Typo.subtitle2" Class="mb-2">Allocatable（可分配）</MudText>
-                            @if (node.Allocatable.Count == 0)
-                            {
-                                <MudText Typo="Typo.body2" Class="mud-text-secondary">—</MudText>
-                            }
-                            else
-                            {
-                                <MudTable Items="@(node.Allocatable.Select(kvp => new { Key = kvp.Key, Value = kvp.Value }).ToList())"
-                                          Dense="true" Hover="true" Striped="true" Elevation="0">
-                                    <HeaderContent>
-                                        <MudTh>资源</MudTh>
-                                        <MudTh>数量</MudTh>
-                                    </HeaderContent>
-                                    <RowTemplate>
-                                        <MudTd DataLabel="资源">@context.Key</MudTd>
-                                        <MudTd DataLabel="数量">@context.Value</MudTd>
-                                    </RowTemplate>
-                                </MudTable>
-                            }
-                        </MudItem>
-                    </MudGrid>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-
-        <!-- 地址列表 -->
-        <MudItem xs="12" md="6">
-            <MudCard Elevation="1">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">地址</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    @if (node.Addresses.Count == 0)
-                    {
-                        <MudText Typo="Typo.body2" Class="mud-text-secondary">—</MudText>
-                    }
-                    else
-                    {
-                        <MudTable Items="node.Addresses"
-                                  Dense="true" Hover="true" Striped="true" Elevation="0">
-                            <HeaderContent>
-                                <MudTh>类型</MudTh>
-                                <MudTh>地址</MudTh>
-                            </HeaderContent>
-                            <RowTemplate>
-                                <MudTd DataLabel="类型">@context.Type</MudTd>
-                                <MudTd DataLabel="地址">@context.Address</MudTd>
-                            </RowTemplate>
-                        </MudTable>
-                    }
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-
-        <!-- 条件列表 -->
-        <MudItem xs="12" md="6">
-            <MudCard Elevation="1">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">条件</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    @if (node.Conditions.Count == 0)
-                    {
-                        <MudText Typo="Typo.body2" Class="mud-text-secondary">—</MudText>
-                    }
-                    else
-                    {
-                        <MudTable Items="node.Conditions"
-                                  Dense="true" Hover="true" Striped="true" Elevation="0">
-                            <HeaderContent>
-                                <MudTh>类型</MudTh>
-                                <MudTh>状态</MudTh>
-                                <MudTh>原因</MudTh>
-                                <MudTh>消息</MudTh>
-                                <MudTh>最近心跳</MudTh>
-                                <MudTh>最近转换</MudTh>
-                            </HeaderContent>
-                            <RowTemplate>
-                                <MudTd DataLabel="类型">@context.Type</MudTd>
-                                <MudTd DataLabel="状态">
-                                    <MudChip T="string"
-                                             Size="Size.Small"
-                                             Color="GetConditionColor(context.Type, context.Status)"
-                                             Variant="Variant.Filled">
-                                        @context.Status
-                                    </MudChip>
-                                </MudTd>
-                                <MudTd DataLabel="原因">@(context.Reason ?? "—")</MudTd>
-                                <MudTd DataLabel="消息">
-                                    <span style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;"
-                                          title="@context.Message">
-                                        @(context.Message ?? "—")
-                                    </span>
-                                </MudTd>
-                                <MudTd DataLabel="最近心跳">@(context.LastHeartbeatTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")</MudTd>
-                                <MudTd DataLabel="最近转换">@(context.LastTransitionTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")</MudTd>
-                            </RowTemplate>
-                        </MudTable>
-                    }
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-
-        <!-- 污点列表 -->
-        <MudItem xs="12" md="6">
-            <MudCard Elevation="1">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">污点</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    @if (node.Taints.Count == 0)
-                    {
-                        <MudText Typo="Typo.body2" Class="mud-text-secondary">无污点</MudText>
-                    }
-                    else
-                    {
-                        <MudTable Items="node.Taints"
-                                  Dense="true" Hover="true" Striped="true" Elevation="0">
-                            <HeaderContent>
-                                <MudTh>键</MudTh>
-                                <MudTh>值</MudTh>
-                                <MudTh>效果</MudTh>
-                            </HeaderContent>
-                            <RowTemplate>
-                                <MudTd DataLabel="键">@context.Key</MudTd>
-                                <MudTd DataLabel="值">@(context.Value ?? "—")</MudTd>
-                                <MudTd DataLabel="效果">@context.Effect</MudTd>
-                            </RowTemplate>
-                        </MudTable>
-                    }
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-
-        <!-- 标签 -->
-        <MudItem xs="12" md="6">
-            <MudCard Elevation="1">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">标签</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    @if (node.Labels.Count == 0)
-                    {
-                        <MudText Typo="Typo.body2" Class="mud-text-secondary">—</MudText>
-                    }
-                    else
-                    {
-                        <MudTable Items="@(node.Labels.Select(kvp => new { Key = kvp.Key, Value = kvp.Value }).ToList())"
-                                  Dense="true" Hover="true" Striped="true" Elevation="0">
-                            <HeaderContent>
-                                <MudTh>键</MudTh>
-                                <MudTh>值</MudTh>
-                            </HeaderContent>
-                            <RowTemplate>
-                                <MudTd DataLabel="键">@context.Key</MudTd>
-                                <MudTd DataLabel="值">
-                                    <span style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;"
-                                          title="@context.Value">
-                                        @context.Value
-                                    </span>
-                                </MudTd>
-                            </RowTemplate>
-                        </MudTable>
-                    }
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-
-        <!-- 注解 -->
-        <MudItem xs="12" md="6">
-            <MudCard Elevation="1">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">注解</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    @if (node.Annotations.Count == 0)
-                    {
-                        <MudText Typo="Typo.body2" Class="mud-text-secondary">—</MudText>
-                    }
-                    else
-                    {
-                        <MudTable Items="@(node.Annotations.Select(kvp => new { Key = kvp.Key, Value = kvp.Value }).ToList())"
-                                  Dense="true" Hover="true" Striped="true" Elevation="0">
-                            <HeaderContent>
-                                <MudTh>键</MudTh>
-                                <MudTh>值</MudTh>
-                            </HeaderContent>
-                            <RowTemplate>
-                                <MudTd DataLabel="键">@context.Key</MudTd>
-                                <MudTd DataLabel="值">
-                                    <span style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;"
-                                          title="@context.Value">
-                                        @context.Value
-                                    </span>
-                                </MudTd>
-                            </RowTemplate>
-                        </MudTable>
-                    }
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-
-        <!-- 系统信息 -->
-        <MudItem xs="12">
-            <MudCard Elevation="1">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h6">系统信息</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
-                    <MudGrid Spacing="2">
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">Architecture</MudText>
-                            <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(node.SystemInfo.Architecture) ? "—" : node.SystemInfo.Architecture)</MudText>
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">BootID</MudText>
-                            <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(node.SystemInfo.BootID) ? "—" : node.SystemInfo.BootID)</MudText>
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">ContainerRuntimeVersion</MudText>
-                            <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(node.SystemInfo.ContainerRuntimeVersion) ? "—" : node.SystemInfo.ContainerRuntimeVersion)</MudText>
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">KernelVersion</MudText>
-                            <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(node.SystemInfo.KernelVersion) ? "—" : node.SystemInfo.KernelVersion)</MudText>
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">KubeProxyVersion</MudText>
-                            <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(node.SystemInfo.KubeProxyVersion) ? "—" : node.SystemInfo.KubeProxyVersion)</MudText>
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">KubeletVersion</MudText>
-                            <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(node.SystemInfo.KubeletVersion) ? "—" : node.SystemInfo.KubeletVersion)</MudText>
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">MachineID</MudText>
-                            <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(node.SystemInfo.MachineID) ? "—" : node.SystemInfo.MachineID)</MudText>
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">OperatingSystem</MudText>
-                            <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(node.SystemInfo.OperatingSystem) ? "—" : node.SystemInfo.OperatingSystem)</MudText>
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">OsImage</MudText>
-                            <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(node.SystemInfo.OsImage) ? "—" : node.SystemInfo.OsImage)</MudText>
-                        </MudItem>
-                        <MudItem xs="12" sm="6" md="4">
-                            <MudText Typo="Typo.body2" Class="mud-text-secondary">SystemUUID</MudText>
-                            <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(node.SystemInfo.SystemUUID) ? "—" : node.SystemInfo.SystemUUID)</MudText>
-                        </MudItem>
-                    </MudGrid>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-
-        <!-- 操作 -->
-        <MudItem xs="12">
-            <MudCard Elevation="1">
-                <MudCardContent>
-                    <MudButton Variant="Variant.Outlined"
+<MudStack Class="flex-auto">
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else if (node is null)
+    {
+        <MudCard Class="pa-8" Elevation="2">
+            <MudCardContent>
+                <MudText Align="Align.Center" Class="mud-text-secondary">未找到该节点</MudText>
+                <MudText Align="Align.Center" Class="mud-text-secondary" Typo="Typo.body2">集群不存在、集群离线或节点已移除</MudText>
+                <div class="d-flex justify-center mt-4">
+                    <MudButton Variant="Variant.Filled"
                                Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.Refresh"
-                               OnClick="Refresh"
-                               Disabled="loading"
-                               Class="mr-2">
-                        刷新
-                    </MudButton>
-                    <MudButton Variant="Variant.Text"
                                StartIcon="@Icons.Material.Filled.ArrowBack"
                                OnClick="@(() => NavigationManager.NavigateTo($"/nodes/{ClusterId}"))">
                         返回节点列表
                     </MudButton>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-    </MudGrid>
-}
+                </div>
+            </MudCardContent>
+        </MudCard>
+    }
+    else if (!node.IsReachable)
+    {
+        <MudCard Elevation="1">
+            <MudCardContent>
+                <MudText Align="Align.Center" Class="mud-text-secondary">集群不可达，无法获取节点详情</MudText>
+                <div class="d-flex justify-center mt-4">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.ArrowBack"
+                               OnClick="@(() => NavigationManager.NavigateTo($"/nodes/{ClusterId}"))">
+                        返回节点列表
+                    </MudButton>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    }
+    else
+    {
+        <NodeDetailToolbar Node="@node"
+                           Processing="@loading"
+                           OnBack="@(() => NavigationManager.NavigateTo($"/nodes/{ClusterId}"))"
+                           OnRefresh="LoadAsync" />
+
+        <NodeOverviewCard Node="@node" OnRemarksChanged="LoadAsync" />
+        <NodeResourcesCard Node="@node" />
+        <NodeConditionsCard Node="@node" />
+
+        <MudGrid Spacing="3">
+            <MudItem xs="12" md="6"><NodeLabelsCard Node="@node" /></MudItem>
+            <MudItem xs="12" md="6"><NodeAnnotationsCard Node="@node" /></MudItem>
+        </MudGrid>
+
+        <NodeSystemInfoCard Node="@node" />
+    }
+</MudStack>
 
 @code {
     [Parameter] public int ClusterId { get; set; }
     [Parameter] public string NodeName { get; set; } = "";
 
-    [Inject] private ClusterService ClusterService { get; set; } = default!;
     [Inject] private ClusterNodeService ClusterNodeService { get; set; } = default!;
+    [Inject] private ClusterSelectionState ClusterSelection { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
 
@@ -482,6 +85,11 @@ else
     protected override async Task OnInitializedAsync()
     {
         await LoadAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        ClusterSelection.Set(ClusterId);
     }
 
     protected override async Task OnParametersSetAsync()
@@ -510,23 +118,4 @@ else
             loading = false;
         }
     }
-
-    private async Task Refresh()
-    {
-        await LoadAsync();
-    }
-
-    private static Color GetNodeStatusColor(string status) => status switch
-    {
-        "Ready" => Color.Success,
-        "NotReady" => Color.Error,
-        _ => Color.Default
-    };
-
-    private static Color GetConditionColor(string type, string status)
-    {
-        if (status == "Unknown") return Color.Default;
-        var isHealthy = type == "Ready" ? status == "True" : status == "False";
-        return isHealthy ? Color.Success : Color.Error;
-    }
-} *@
+}

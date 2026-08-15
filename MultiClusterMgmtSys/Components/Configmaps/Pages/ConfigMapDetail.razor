@@ -1,88 +1,45 @@
-@* @attribute [Authorize]
+@attribute [Authorize]
 @page "/configmaps/{ClusterId:int}/{Namespace}/{Name}"
+
+@using MultiClusterMgmtSys.Components.Common
+@using MultiClusterMgmtSys.Features.Configmaps.Services
+@using MultiClusterMgmtSys.Features.Configmaps.ViewModels
+@using MultiClusterMgmtSys.Features.Configmaps.Shared
 
 <PageTitle>ConfigMap 详情: @Name</PageTitle>
 
-<div class="d-flex align-center mb-4">
-    <MudText Typo="Typo.h4" Class="flex-auto">ConfigMap 详情: @Name</MudText>
-    <MudButton Variant="Variant.Text"
-               StartIcon="@Icons.Material.Filled.ArrowBack"
-               OnClick="@(() => NavigationManager.NavigateTo($"/configmaps/{ClusterId}"))">
-        返回列表
-    </MudButton>
-</div>
-
-@if (loading)
-{
-    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
-}
-else if (detail is null)
-{
-    <MudCard Class="pa-8" Elevation="2">
-        <MudCardContent>
-            <MudText Align="Align.Center" Class="mud-text-secondary">ConfigMap 不存在或已被删除</MudText>
-            <div class="d-flex justify-center mt-4">
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.ArrowBack"
-                           OnClick="@(() => NavigationManager.NavigateTo($"/configmaps/{ClusterId}"))">
-                    返回列表
-                </MudButton>
-            </div>
-        </MudCardContent>
-    </MudCard>
-}
-else
-{
-    <!-- Metadata card -->
-    <MudCard Elevation="1" Class="mb-4">
-        <MudCardContent>
-            <MudGrid Spacing="2">
-                <MudItem xs="12" sm="6">
-                    <MudText Typo="Typo.body2" Class="mud-text-secondary">名称</MudText>
-                    <MudText Typo="Typo.body1">@detail.Name</MudText>
-                </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudText Typo="Typo.body2" Class="mud-text-secondary">命名空间</MudText>
-                    <MudText Typo="Typo.body1">@detail.Namespace</MudText>
-                </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudText Typo="Typo.body2" Class="mud-text-secondary">创建时间</MudText>
-                    <MudText Typo="Typo.body1">@(detail.CreatedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")</MudText>
-                </MudItem>
-                <MudItem xs="12" sm="6">
-                    <MudText Typo="Typo.body2" Class="mud-text-secondary">UID</MudText>
-                    <MudText Typo="Typo.body1" Style="word-break: break-all;">@detail.Uid</MudText>
-                </MudItem>
-            </MudGrid>
-        </MudCardContent>
-    </MudCard>
-
-    <!-- Data tabs -->
-    <MudTabs Position="Position.Left">
-        @if (detail.Data.Any())
-        {
-            @foreach (var entry in detail.Data)
-            {
-                <MudTabPanel Text="@entry.Key">
-                    <MudTextField T="string"
-                                  Value="@entry.Value"
-                                  ReadOnly="true"
-                                  Lines="8"
-                                  Variant="Variant.Outlined"
-                                  Margin="Margin.Dense"
-                                  Style="font-family: monospace;" />
-                </MudTabPanel>
-            }
-        }
-        else
-        {
-            <MudTabPanel Text="Data">
-                <MudText Class="mud-text-secondary">暂无 Data</MudText>
-            </MudTabPanel>
-        }
-    </MudTabs>
-}
+<MudStack Class="flex-auto">
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else if (detail is null)
+    {
+        <MudCard Class="pa-8" Elevation="2">
+            <MudCardContent>
+                <MudText Align="Align.Center" Class="mud-text-secondary">ConfigMap 不存在或已被删除</MudText>
+                <div class="d-flex justify-center mt-4">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.ArrowBack"
+                               OnClick="@(() => NavigationManager.NavigateTo($"/configmaps/{ClusterId}"))">
+                        返回列表
+                    </MudButton>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    }
+    else
+    {
+        <ConfigMapDetailToolbar ClusterId="@ClusterId"
+                                Name="@Name"
+                                Detail="@detail"
+                                Processing="@loading"
+                                OnRefresh="LoadAsync"
+                                OnEditYaml="@(() => NavigationManager.NavigateTo($"/configmaps/{ClusterId}/{Namespace}/{Name}/yaml"))" />
+        <ConfigMapYamlViewCard Yaml="@detail.Yaml" />
+    }
+</MudStack>
 
 @code {
     [Parameter] public int ClusterId { get; set; }
@@ -90,6 +47,7 @@ else
     [Parameter] public string Name { get; set; } = "";
 
     [Inject] private ConfigMapService ConfigMapService { get; set; } = default!;
+    [Inject] private ClusterSelectionState ClusterSelection { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
 
@@ -98,6 +56,13 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        ClusterSelection.Set(ClusterId);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
         try
         {
             detail = await ConfigMapService.GetConfigMapAsync(ClusterId, Name, Namespace);
@@ -115,4 +80,4 @@ else
             loading = false;
         }
     }
-} *@
+}
