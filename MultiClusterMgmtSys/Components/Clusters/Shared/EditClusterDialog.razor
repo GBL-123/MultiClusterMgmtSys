@@ -1,4 +1,8 @@
-@* <MudDialog>
+@using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Components.Clusters.Services
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+
+<MudDialog>
     <DialogContent>
         <MudForm @ref="form">
             <MudToggleGroup @bind-Value="connectionType"
@@ -41,22 +45,43 @@
 
             @if (connectionType == ConnectionType.KubeConfig)
             {
-                <MudTextField @bind-Value="KubeConfig"
-                              Label="KubeConfig"
-                              Required="true"
-                              RequiredError="请填写 KubeConfig"
-                              Lines="10"
-                              Placeholder="粘贴 kubeconfig 内容"
-                              Variant="Variant.Outlined"
-                              Margin="Margin.Dense" />
+                <MudText Typo="Typo.body2" Class="mb-1">KubeConfig 输入方式</MudText>
+                <MudToggleGroup T="KubeConfigInputMode" @bind-Value="kubeConfigInputMode" Size="Size.Small" Class="mb-2">
+                    <MudToggleItem Value="@KubeConfigInputMode.Paste">粘贴文本</MudToggleItem>
+                    <MudToggleItem Value="@KubeConfigInputMode.Upload">上传文件</MudToggleItem>
+                </MudToggleGroup>
+
+                @if (kubeConfigInputMode == KubeConfigInputMode.Paste)
+                {
+                    <MudTextField @bind-Value="KubeConfig"
+                                  Label="KubeConfig"
+                                  Required="@SecretRequired"
+                                  RequiredError="请填写 KubeConfig"
+                                  Placeholder="@(isEdit ? "留空保持不变" : null)"
+                                  HelperText="@(isEdit ? "留空保持不变" : null)"
+                                  Lines="10"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense" />
+                }
+                else
+                {
+                    <InputFile OnChange="OnKubeConfigFileSelected" accept=".yaml,.yml,.config" style="width:100%;" />
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary mt-1">接受 .yaml/.yml/.config，最大 256KB</MudText>
+                    @if (!string.IsNullOrEmpty(kubeConfigFileName))
+                    {
+                        <MudText Typo="Typo.body2" Class="mt-2"><MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Class="mr-1" />@kubeConfigFileName</MudText>
+                    }
+                }
             }
 
             @if (connectionType == ConnectionType.Token)
             {
                 <MudTextField @bind-Value="Token"
                               Label="Token"
-                              Required="true"
+                              Required="@SecretRequired"
                               RequiredError="请填写 Token"
+                              Placeholder="@(isEdit ? "留空保持不变" : null)"
+                              HelperText="@(isEdit ? "留空保持不变" : null)"
                               Lines="4"
                               InputType="@(showToken ? InputType.Text : InputType.Password)"
                               Adornment="Adornment.End"
@@ -71,6 +96,21 @@
                              HelperText="自签证书建议勾选（有安全风险）"
                              Color="Color.Warning" />
             }
+
+            @if (isEdit)
+            {
+                <MudText Typo="Typo.caption"
+                         Class="mud-text-secondary mt-2">
+                    连接配置变更后保存将重新检测集群状态
+                </MudText>
+            }
+
+            @if (!isEdit)
+            {
+                <MudDivider Class="my-3" />
+                <MudText Typo="Typo.subtitle2" Class="mb-2">集群端点</MudText>
+                <ClusterEndpointEditor Items="@endpoints" />
+            }
         </MudForm>
     </DialogContent>
     <DialogActions>
@@ -83,18 +123,18 @@
                    Color="Color.Primary"
                    Variant="Variant.Filled"
                    Disabled="saving"
-                   StartIcon="@(!saving ? Icons.Material.Filled.Save : null)">
+                   StartIcon="@(saving ? null : (isEdit ? Icons.Material.Filled.Save : Icons.Material.Filled.Add))">
             @if (saving)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
             }
-            保存
+            @(isEdit ? "保存" : "添加")
         </MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
-    [Parameter] public int ClusterId { get; set; }
+    [Parameter] public int? ClusterId { get; set; }
     [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
     [Inject] private ClusterService ClusterService { get; set; } = default!;
     [Inject] private GroupService GroupService { get; set; } = default!;
@@ -104,6 +144,7 @@
     private List<ClusterGroupViewModel> groups = new();
 
     private ConnectionType connectionType = ConnectionType.KubeConfig;
+    private ConnectionType? originalConnectionType;
     private string Name = "";
     private int? GroupId;
     private string ApiServer = "";
@@ -112,26 +153,36 @@
     private bool SkipTlsVerify = true;
     private bool showToken;
     private bool saving;
+    private KubeConfigInputMode kubeConfigInputMode = KubeConfigInputMode.Paste;
+    private string? kubeConfigFileName;
+    private List<ClusterEndpointEditItem> endpoints = new();
+    private ClusterEditViewModel? editVm;
+
+    private bool isEdit => ClusterId.HasValue;
+
+    private bool SecretRequired => !isEdit || connectionType != originalConnectionType;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            var edit = await ClusterService.GetClusterForEditAsync(ClusterId);
-            if (edit is null)
+            if (isEdit)
             {
-                Snackbar.Add("未找到该集群", Severity.Error);
-                Dialog.Cancel();
-                return;
-            }
+                editVm = await ClusterService.GetClusterForEditAsync(ClusterId!.Value);
+                if (editVm is null)
+                {
+                    Snackbar.Add("未找到该集群", Severity.Error);
+                    Dialog.Cancel();
+                    return;
+                }
 
-            Name = edit.Name;
-            GroupId = edit.GroupId;
-            ApiServer = edit.ApiServer ?? "";
-            connectionType = edit.ConnectionType;
-            KubeConfig = edit.KubeConfig ?? "";
-            Token = edit.Token ?? "";
-            SkipTlsVerify = edit.SkipTlsVerify;
+                Name = editVm.Name;
+                GroupId = editVm.GroupId;
+                ApiServer = editVm.ApiServer ?? "";
+                connectionType = editVm.ConnectionType;
+                originalConnectionType = editVm.ConnectionType;
+                SkipTlsVerify = editVm.SkipTlsVerify;
+            }
 
             groups = await GroupService.GetGroupsAsync();
         }
@@ -148,44 +199,88 @@
         if (!form.IsValid)
             return;
 
-        if (connectionType == ConnectionType.KubeConfig && string.IsNullOrWhiteSpace(KubeConfig))
+        // 上传模式没有文本域触发 Required 校验，需要手动兜底
+        if (connectionType == ConnectionType.KubeConfig && string.IsNullOrWhiteSpace(KubeConfig) && SecretRequired)
         {
             Snackbar.Add("请填写 KubeConfig", Severity.Warning);
-            return;
-        }
-
-        if (connectionType == ConnectionType.Token && (string.IsNullOrWhiteSpace(Token) || string.IsNullOrWhiteSpace(ApiServer)))
-        {
-            Snackbar.Add("Token 模式需填写 API Server 与 Token", Severity.Warning);
             return;
         }
 
         saving = true;
         try
         {
-            var vm = new ClusterUpdateViewModel
+            if (isEdit)
             {
-                Id = ClusterId,
-                Name = Name,
-                GroupId = GroupId,
-                ConnectionType = connectionType,
-                ApiServer = string.IsNullOrWhiteSpace(ApiServer) ? null : ApiServer,
-                KubeConfig = connectionType == ConnectionType.KubeConfig ? KubeConfig : null,
-                Token = connectionType == ConnectionType.Token ? Token : null,
-                SkipTlsVerify = SkipTlsVerify
-            };
+                var vm = new ClusterUpdateViewModel
+                {
+                    Id = ClusterId!.Value,
+                    Name = Name,
+                    GroupId = GroupId,
+                    ConnectionType = connectionType,
+                    ApiServer = string.IsNullOrWhiteSpace(ApiServer) ? null : ApiServer,
+                    KubeConfig = connectionType == ConnectionType.KubeConfig
+                        ? (string.IsNullOrWhiteSpace(KubeConfig) ? editVm!.KubeConfig : KubeConfig)
+                        : null,
+                    Token = connectionType == ConnectionType.Token
+                        ? (string.IsNullOrWhiteSpace(Token) ? editVm!.Token : Token)
+                        : null,
+                    SkipTlsVerify = SkipTlsVerify
+                };
 
-            await ClusterService.UpdateClusterAsync(vm);
-            Snackbar.Add("集群已更新", Severity.Success);
+                await ClusterService.UpdateClusterAsync(vm);
+                Snackbar.Add("集群已更新", Severity.Success);
+            }
+            else
+            {
+                var vm = new ClusterCreateViewModel
+                {
+                    Name = Name,
+                    GroupId = GroupId,
+                    ConnectionType = connectionType,
+                    ApiServer = string.IsNullOrWhiteSpace(ApiServer) ? null : ApiServer,
+                    KubeConfig = connectionType == ConnectionType.KubeConfig ? KubeConfig : null,
+                    Token = connectionType == ConnectionType.Token ? Token : null,
+                    SkipTlsVerify = SkipTlsVerify,
+                    Endpoints = endpoints
+                };
+
+                await ClusterService.AddClusterAsync(vm);
+                Snackbar.Add("集群添加成功", Severity.Success);
+            }
+
             Dialog.Close(DialogResult.Ok(true));
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"更新失败: {ex.Message}", Severity.Error);
+            Snackbar.Add($"保存失败: {ex.Message}", Severity.Error);
         }
         finally
         {
             saving = false;
         }
     }
-} *@
+
+    private async Task OnKubeConfigFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null) return;
+        if (file.Size > 256 * 1024)
+        {
+            Snackbar.Add("文件超过 256KB 限制", Severity.Warning);
+            return;
+        }
+        try
+        {
+            using var reader = new StreamReader(file.OpenReadStream(maxAllowedSize: 256 * 1024));
+            KubeConfig = await reader.ReadToEndAsync();
+            kubeConfigFileName = file.Name;
+            Snackbar.Add($"已读取文件：{file.Name}", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"读取文件失败: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private enum KubeConfigInputMode { Paste, Upload }
+}

@@ -30,8 +30,8 @@
 **D5: 删除 `UpdateProfileAsync` 空壳。**
 实现前 grep 确认无调用方后删除。备选:保留 —— 无调用方的死代码,删除更干净。
 
-**D6: 页面结构对齐账号管理页视觉语言。**
-信息卡片用 `MudPaper`(类 `Accounts.razor` 头部),密码区用 `MudCard`;按钮在提交时禁用并显示 `MudProgressCircular`,加载期显示 `MudProgressLinear`,与现有页面状态处理一致。
+**D6: 页面结构对齐全站风格。**
+页面放入独立功能文件夹 `Components/Profile/Pages/`(遵循 `Components/<Feature>/{Pages,...}` 惯例,与账号管理解耦)。视觉上对齐现有页面:顶部 `MudPaper Class="pa-4"` 头部(标题 `Typo.h5` + 操作按钮行),内容区用 `MudCard Elevation="1"` + `MudCardHeader`(`Typo.h6` 标题)+ `MudCardContent`;只读字段用 `MudGrid Spacing="2"` 栅格,标签 `Typo.body2 mud-text-secondary`、值 `Typo.body1`,null 显示 "—"(参考 `NodeOverviewCard.razor`)。加载期用 `MudProgressLinear Class="my-4"`(对齐详情页),按钮提交时禁用并显示 `MudProgressCircular`。
 
 ## Risks / Trade-offs
 

@@ -40,14 +40,14 @@ The detail page SHALL render a top toolbar followed by exactly three cards in th
 - **WHEN** the Nodes Preview card renders and the cluster is reachable with at least one node
 - **THEN** the card shows a compact table of the first few nodes with a "查看全部" link navigating to `/nodes/{Id}` (the existing `Nodes.razor` route)
 
-### Requirement: Cluster Endpoints card composes endpoints by kind
+### Requirement: Cluster Endpoints card renders a single table with a type column
 
-The Cluster Endpoints card SHALL render the cluster's endpoints grouped by `Kind` (VIP first, then Domain), sorted by `SortOrder` within each group, then by `IsPrimary == true` first. Each row shows `Value`, `Note` (if present), a primary marker (filled chip for primary, dimmed for non-primary), and a one-click copy affordance for `Value`. An empty-endpoint cluster shows a placeholder message and, for Admin users, a "管理" button to open the management dialog.
+The Cluster Endpoints card SHALL render all of the cluster's endpoints in one `MudTable` — no per-kind group headers — with columns 类型, 地址, 备注, and a one-click copy affordance for `Value`. The 类型 column SHALL be a `MudChip` labeled with `KindText` ("VIP" / "域名"). Rows SHALL be sorted by `Kind` (VIP first, then Domain), then by `SortOrder` ascending. An empty-endpoint cluster shows a placeholder message and, for Admin users, a "管理" button to open the management dialog.
 
-#### Scenario: Groups render in a stable order
+#### Scenario: Rows render in a stable order in a single table
 
 - **WHEN** the Endpoints card renders with at least one `Vip` and one `Domain` row
-- **THEN** the VIP group appears above the Domain group, and within each group rows are sorted by `SortOrder` ascending, with `IsPrimary == true` rows sorted first as a tiebreaker
+- **THEN** a single `MudTable` renders both rows (no group headers), VIP rows appear above Domain rows, and within each kind rows are sorted by `SortOrder` ascending
 
 #### Scenario: Empty endpoints state
 

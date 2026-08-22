@@ -9,9 +9,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>(options)
 {
     public DbSet<ClusterGroup> ClusterGroups => Set<ClusterGroup>();
+
     public DbSet<ClusterInfo> Clusters => Set<ClusterInfo>();
+
     public DbSet<ClusterEndpoint> ClusterEndpoints => Set<ClusterEndpoint>();
+
     public DbSet<NodeIpRemark> NodeIpRemarks => Set<NodeIpRemark>();
+
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

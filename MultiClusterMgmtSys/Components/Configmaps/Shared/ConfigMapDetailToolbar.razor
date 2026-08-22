@@ -2,7 +2,7 @@
 @namespace MultiClusterMgmtSys.Features.Configmaps.Shared
 @inject NavigationManager NavigationManager
 
-<MudPaper Class="pa-4 mb-4">
+<MudPaper Class="pa-4">
     <MudStack Row="true" AlignItems="AlignItems.Center">
         <MudButton Variant="Variant.Text"
                    StartIcon="@Icons.Material.Filled.ArrowBack"
@@ -18,17 +18,7 @@
                 Data 键数: @Detail.Data.Count
             </MudChip>
         }
-        <AuthorizeView Roles="Admin">
-            <Authorized>
-                <MudButton Variant="Variant.Outlined"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.Code"
-                           OnClick="OnEditYaml">
-                    编辑 YAML
-                </MudButton>
-            </Authorized>
-        </AuthorizeView>
-        <MudButton Variant="Variant.Outlined"
+        <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Refresh"
                    OnClick="OnRefresh"
@@ -39,6 +29,16 @@
             }
             刷新
         </MudButton>
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Warning"
+                           StartIcon="@Icons.Material.Filled.Code"
+                           OnClick="OnEditYaml">
+                    编辑 YAML
+                </MudButton>
+            </Authorized>
+        </AuthorizeView>
     </MudStack>
 </MudPaper>
 

@@ -28,12 +28,12 @@ public class GroupService(
         return vms;
     }
 
-    public async Task<ClusterGroupViewModel> AddGroupAsync(GroupCreateRequest request)
+    public async Task<ClusterGroupViewModel> AddGroupAsync(string groupName)
     {
-        logger.LogInformation("AddGroup name={Name}", request.Name);
+        logger.LogInformation("AddGroup name={Name}", groupName);
         var entity = new ClusterGroup
         {
-            Name = request.Name,
+            Name = groupName,
             CreatedAt = DateTime.UtcNow
         };
 

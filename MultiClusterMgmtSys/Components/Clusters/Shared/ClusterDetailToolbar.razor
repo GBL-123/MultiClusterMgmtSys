@@ -1,7 +1,7 @@
 @using MultiClusterMgmtSys.Common.Enums
 @using MultiClusterMgmtSys.Components.Clusters.ViewModels
 
-<MudPaper Class="pa-4 mb-4">
+<MudPaper Class="pa-4">
     <MudStack Row="true" AlignItems="AlignItems.Center">
         <MudButton Variant="Variant.Text"
                    StartIcon="@Icons.Material.Filled.ArrowBack"
@@ -28,14 +28,13 @@
                     }
                     刷新状态
                 </MudButton>
-                <MudTooltip Text="编辑集群功能暂未实现">
-                    <MudButton Variant="Variant.Outlined"
-                               Color="Color.Warning"
-                               StartIcon="@Icons.Material.Filled.Edit"
-                               Disabled="true">
-                        编辑
-                    </MudButton>
-                </MudTooltip>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Warning"
+                           StartIcon="@Icons.Material.Filled.Edit"
+                           OnClick="OnEdit"
+                           Disabled="Processing">
+                    编辑
+                </MudButton>
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Error"
                            StartIcon="@Icons.Material.Filled.DeleteOutline"
@@ -53,6 +52,7 @@
     [Parameter] public bool Processing { get; set; }
     [Parameter] public EventCallback OnBack { get; set; }
     [Parameter] public EventCallback OnRefresh { get; set; }
+    [Parameter] public EventCallback OnEdit { get; set; }
     [Parameter] public EventCallback OnDelete { get; set; }
 
     private static Color GetStatusColor(ClusterStatus status) => status switch

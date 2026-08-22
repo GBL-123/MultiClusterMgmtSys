@@ -41,19 +41,26 @@ When the URL carries no `ClusterId`: if `ClusterSelectionState.SelectedClusterId
 
 ### Requirement: ConfigMap list page for a selected cluster
 
-The system SHALL render a ConfigMap list page at `/configmaps/{ClusterId}` in the project's current list-page visual vocabulary, rendered in the right pane beside the persistent `ConfigMapClusterSidebar`: a `MudPaper` toolbar (返回集群详情 + 集群名 h4 + status chip + 刷新), a `MudPaper` filter bar (命名空间 select + 名称 search + 新建 ConfigMap button), and a `MudTable` with client-side paging. The page SHALL call `ClusterService.GetClusterDetailAsync` to obtain the cluster context (for the toolbar chip and `IsReachable` gate) and `ConfigMapService.ListConfigMapsAsync` / `GetNamespacesAsync` to obtain the data.
+The system SHALL render a ConfigMap list page at `/configmaps/{ClusterId}` in the right pane beside the persistent `ConfigMapClusterSidebar`, with a list shell mirroring `Clusters.razor`: a single `MudPaper` containing a title row and the merged `ConfigMapListFilterBar`, followed by a `MudTable` styled like `ClusterTable`.
+
+The title row SHALL contain: a 配置管理 h5, a `MudChip` showing the selected cluster's name and status text, a 刷新 `MudButton`, and a 新建 ConfigMap `MudButton` wrapped in `<AuthorizeView Roles="Admin">`. No back button SHALL be rendered — the selected cluster is identified by the sidebar's active-row highlight, and the cluster detail page's `ClusterConfigMapsCard` provides the reverse navigation. The `ConfigMapListFilterBar` (命名空间 select + 名称 search + 查询 + 重置 buttons, see the namespace-filtering and name-search requirements) SHALL be rendered inside the same `MudPaper` below the title row.
+
+The `MudTable` SHALL use `Items` with client-side paging and SHALL match `ClusterTable`'s visual attributes: `Hover`, `FixedHeader`, `MudTableSortLabel` sortable headers for 名称 / 命名空间 / Data 键数 / 创建时间 (client-side sorting), a 正在加载... `LoadingContent` fed from the page's loading state, and a 暂无 ConfigMap 或没有符合筛选条件的 ConfigMap empty state.
+
+The page SHALL call `ClusterService.GetClusterDetailAsync` to obtain the cluster context (for the chip and `IsReachable` gate) and `ConfigMapService.ListConfigMapsAsync` / `GetNamespacesAsync` to obtain the data. The `ConfigMapListToolbar` component SHALL NOT exist — the title row is inlined in the page.
 
 #### Scenario: Cluster selected and reachable
 
 - **WHEN** an authenticated user navigates to `/configmaps/{ClusterId}` for a reachable cluster
-- **THEN** the page renders the toolbar, filter bar, and a `MudTable` of ConfigMaps in that cluster
+- **THEN** the page renders the `MudPaper` (title row with the cluster name/status chip and the merged filter bar) followed by a `MudTable` of ConfigMaps in that cluster
 - **AND** each row shows 名称 (clickable to detail), 命名空间, Data 键数, 键名预览 (ellipsis), 创建时间 (`yyyy-MM-dd HH:mm`), 操作 icons
+- **AND** the 名称, 命名空间, Data 键数, and 创建时间 column headers are sortable client-side
 
 #### Scenario: Cluster selected but unreachable
 
 - **WHEN** the cluster exists but `IsReachable` is false
-- **THEN** the page renders only the toolbar and a "集群不可达，无法获取 ConfigMap" empty card
-- **AND** no filter bar, table, or 新建 button is rendered
+- **THEN** the page renders the `MudPaper` title row (with 新建 ConfigMap visible but Disabled) and a 集群不可达，无法获取 ConfigMap empty card
+- **AND** no filter bar or table is rendered
 
 #### Scenario: Cluster not found
 
@@ -101,47 +108,58 @@ This requirement replaces the previous `NodeSelectionState` service (a Nodes-onl
 
 ### Requirement: Optional cluster context refresh on the list page
 
-The list page toolbar SHALL expose a 刷新 `MudButton` that re-runs the cluster detail + namespaces + ConfigMap list loads. Refresh SHALL NOT be gated by `AuthorizeView` — it is a read action.
+The list page's title row SHALL expose a 刷新 `MudButton` that re-runs the cluster detail + namespaces + ConfigMap list loads. Refresh SHALL NOT be gated by `AuthorizeView` — it is a read action.
 
-#### Scenario: User clicks 刷新 on the toolbar
+#### Scenario: User clicks 刷新 on the title row
 
-- **WHEN** an authenticated user clicks 刷新 on the list page toolbar
+- **WHEN** an authenticated user clicks 刷新 on the list page title row
 - **THEN** the page re-invokes `ClusterService.GetClusterDetailAsync`, `ConfigMapService.GetNamespacesAsync`, and `ConfigMapService.ListConfigMapsAsync`
-- **AND** the table, filter bar namespace list, and toolbar status chip reflect the latest server state
+- **AND** the table, filter bar namespace list, and title-row status chip reflect the latest server state
 
 ### Requirement: Namespace filtering on the list page
 
-The filter bar SHALL provide a 命名空间 `MudSelect<string?>` whose options come from `ConfigMapService.GetNamespacesAsync(ClusterId)`, with a leading 全部命名空间 (Value=`null`) option. Selecting a namespace SHALL re-invoke `ConfigMapService.ListConfigMapsAsync(ClusterId, selectedNamespace)` and refresh the table without changing the search-name filter.
+The filter bar SHALL provide a 命名空间 `MudSelect<string?>` whose options come from `ConfigMapService.GetNamespacesAsync(ClusterId)`, with a leading 全部命名空间 (Value=`null`) option. Changing the selection SHALL only update page state — it SHALL NOT trigger a fetch. Clicking the 查询 button SHALL re-invoke `ConfigMapService.ListConfigMapsAsync(ClusterId, selectedNamespace)` (or `ListConfigMapsAsync(ClusterId, null)` for 全部命名空间) and refresh the table. The 名称 search field SHALL retain its current value across namespace changes.
 
-#### Scenario: User selects a namespace
+#### Scenario: User selects a namespace and clicks 查询
 
-- **WHEN** the user selects namespace "default" in the filter bar
+- **WHEN** the user selects namespace "default" in the filter bar and clicks 查询
 - **THEN** the table re-fetches ConfigMaps for the "default" namespace only
 - **AND** the 名称 search field retains its current value
 
-#### Scenario: User selects "全部命名空间"
+#### Scenario: User changes the namespace without clicking 查询
 
-- **WHEN** the user selects 全部命名空间 (empty value)
+- **WHEN** the user selects a namespace but does not click 查询
+- **THEN** the table is not re-fetched and continues to show the previous results
+
+#### Scenario: User selects "全部命名空间" and clicks 查询
+
+- **WHEN** the user selects 全部命名空间 (empty value) and clicks 查询
 - **THEN** the table re-fetches ConfigMaps across all namespaces in the cluster
 
 ### Requirement: Client-side name search on the list page
 
-The filter bar SHALL provide a 名称 `MudTextField<string>` that filters the already-loaded ConfigMap list client-side using `string.Contains(..., StringComparison.OrdinalIgnoreCase)`. Typing SHALL NOT trigger a server round-trip.
+The filter bar SHALL provide a 名称 `MudTextField<string>` that, when the 查询 button is clicked, filters the already-loaded ConfigMap list client-side using `string.Contains(..., StringComparison.OrdinalIgnoreCase)`. Typing SHALL NOT trigger a server round-trip and SHALL NOT re-render the table — the filter applies only when 查询 is clicked. The 重置 button SHALL clear the namespace selection back to 全部命名空间 and the 名称 field to empty, then re-fetch the ConfigMap list.
 
-#### Scenario: User types in the 名称 field
+#### Scenario: User types in the 名称 field and clicks 查询
 
-- **WHEN** the user types "app" into the 名称 field
+- **WHEN** the user types "app" into the 名称 field and clicks 查询
 - **THEN** the table filters its rows to ConfigMaps whose `Name` contains "app" case-insensitively
-- **AND** no network call is made
+- **AND** no additional network call is made (the filter is applied to the already-loaded list)
+
+#### Scenario: User types without clicking 查询
+
+- **WHEN** the user types into the 名称 field but does not click 查询
+- **THEN** the table continues to show the unfiltered results
 
 #### Scenario: Search yields no rows
 
 - **WHEN** a name search filters out all rows
-- **THEN** the table renders a 未找到匹配的 ConfigMap empty state with a 重置筛选 button that clears the search field
+- **THEN** the table renders the 暂无 ConfigMap 或没有符合筛选条件的 ConfigMap empty state
+- **AND** clicking 重置 clears the namespace and 名称 fields and re-fetches the list
 
 ### Requirement: Admin-only "新建 ConfigMap" button on the list page
 
-The 新建 ConfigMap button in the filter bar SHALL be wrapped in `<AuthorizeView Roles="Admin">`. The button SHALL be Disabled when `cluster is null` or `!cluster.IsReachable`. Clicking the button SHALL open `CreateConfigMapDialog` via `DialogService.ShowAsync<CreateConfigMapDialog>` with `ClusterId` as a dialog parameter.
+The 新建 ConfigMap button in the list page's title row SHALL be wrapped in `<AuthorizeView Roles="Admin">`. The button SHALL be Disabled when `cluster is null` or `!cluster.IsReachable`. Clicking the button SHALL open `CreateConfigMapDialog` via `DialogService.ShowAsync<CreateConfigMapDialog>` with `ClusterId` as a dialog parameter.
 
 #### Scenario: Admin user on a reachable cluster
 
@@ -374,6 +392,6 @@ All new `.razor` files under `Components/Configmaps/Shared/` and all rewritten p
 
 #### Scenario: New shared component namespace
 
-- **WHEN** `ConfigMapListToolbar.razor` is created under `Components/Configmaps/Shared/`
+- **WHEN** `ConfigMapListFilterBar.razor` is created under `Components/Configmaps/Shared/`
 - **THEN** the `@code` block (or `@inherits` if used) declares a namespace under `MultiClusterMgmtSys.Features.Configmaps.*`
 - **AND** the file carries an explicit `@using MultiClusterMgmtSys.Features.Configmaps.Services` or whichever `Features.Configmaps.*` namespaces it consumes

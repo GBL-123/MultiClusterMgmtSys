@@ -19,8 +19,6 @@ public class ClusterEndpoint
 
     public string? Note { get; set; }
 
-    public bool IsPrimary { get; set; }
-
     public int SortOrder { get; set; }
 
     public ClusterInfo? Cluster { get; set; }

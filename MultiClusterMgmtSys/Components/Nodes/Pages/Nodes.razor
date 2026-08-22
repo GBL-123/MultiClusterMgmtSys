@@ -25,7 +25,7 @@
                 <MudText Typo="Typo.h6" Class="mud-text-secondary">请从左侧选择一个集群</MudText>
             </div>
         }
-        else if (loading)
+        else if (cluster is null && loading)
         {
             <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
         }
@@ -45,31 +45,32 @@
                 </MudCardContent>
             </MudCard>
         }
+        else if (!cluster.IsReachable)
+        {
+            <MudCard Elevation="1">
+                <MudCardContent>
+                    <MudText Align="Align.Center" Class="mud-text-secondary">集群不可达，无法获取节点列表</MudText>
+                </MudCardContent>
+            </MudCard>
+        }
         else
         {
-            <NodeListToolbar Cluster="@cluster"
-                             Processing="@loading"
-                             OnBack="@(() => NavigationManager.NavigateTo($"/clusters/{EffectiveClusterId}"))"
-                             OnRefresh="@(() => LoadAsync(EffectiveClusterId!.Value))" />
+            <MudPaper Class="pa-4">
+                <MudStack>
+                    <NodeListToolbar Cluster="@cluster"
+                                     Processing="@loading"
+                                     OnRefresh="@(() => LoadAsync(EffectiveClusterId!.Value))" />
 
-            @if (!cluster.IsReachable)
-            {
-                <MudCard Elevation="1">
-                    <MudCardContent>
-                        <MudText Align="Align.Center" Class="mud-text-secondary">集群不可达，无法获取节点列表</MudText>
-                    </MudCardContent>
-                </MudCard>
-            }
-            else
-            {
-                <NodeListFilterBar Filter="@filter"
-                                   OnFilterChanged="@(() => StateHasChanged())"
-                                   OnReset="ResetFilter" />
+                    <NodeListFilterBar Filter="@filter"
+                                       OnFilterChanged="@(() => StateHasChanged())"
+                                       OnReset="ResetFilter" />
+                </MudStack>
+            </MudPaper>
 
-                <NodeListTable Nodes="@filteredNodes"
-                               FilterActive="@filter.IsActive"
-                               OnNavigateNode="@(name => NavigationManager.NavigateTo($"/nodes/{EffectiveClusterId}/{name}"))" />
-            }
+            <NodeListTable Nodes="@filteredNodes"
+                           FilterActive="@filter.IsActive"
+                           Loading="@loading"
+                           OnNavigateNode="@(name => NavigationManager.NavigateTo($"/nodes/{EffectiveClusterId}/{name}"))" />
         }
     </MudStack>
 </MudStack>
@@ -145,6 +146,8 @@
 
         if (EffectiveClusterId.HasValue)
         {
+            cluster = null;
+            nodes = new();
             await LoadAsync(EffectiveClusterId.Value);
         }
         else

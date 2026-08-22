@@ -1,10 +1,9 @@
-@using MultiClusterMgmtSys.Components.Clusters.ViewModels
 @namespace MultiClusterMgmtSys.Features.Configmaps.Shared
 
-<MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Class="pa-4 mb-4">
+<MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
     <MudSelect T="string?"
                Value="SelectedNamespace"
-               ValueChanged="OnSelectedNamespaceChanged"
+               ValueChanged="OnNamespaceChanged"
                Label="命名空间"
                Variant="Variant.Outlined"
                Margin="Margin.Dense"
@@ -20,7 +19,8 @@
     <MudTextField T="string"
                   Value="SearchName"
                   ValueChanged="OnSearchNameChanged"
-                  Label="搜索名称"
+                  Label="名称"
+                  Placeholder="请输入名称"
                   Adornment="Adornment.Start"
                   AdornmentIcon="@Icons.Material.Filled.Search"
                   Variant="Variant.Outlined"
@@ -30,25 +30,30 @@
 
     <MudSpacer />
 
-    <AuthorizeView Roles="Admin">
-        <Authorized>
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.Add"
-                       OnClick="OnCreate"
-                       Disabled="@(Cluster is null || !Cluster.IsReachable)">
-                新建 ConfigMap
-            </MudButton>
-        </Authorized>
-    </AuthorizeView>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Search"
+               OnClick="OnQuery">
+        查询
+    </MudButton>
+    <MudButton Variant="Variant.Outlined"
+               Color="Color.Secondary"
+               StartIcon="@Icons.Material.Filled.Refresh"
+               OnClick="OnReset">
+        重置
+    </MudButton>
 </MudStack>
 
 @code {
-    [Parameter] public ClusterDetailViewModel? Cluster { get; set; }
     [Parameter] public List<string> Namespaces { get; set; } = new();
     [Parameter] public string? SelectedNamespace { get; set; }
+    [Parameter] public EventCallback<string?> SelectedNamespaceChanged { get; set; }
     [Parameter] public string SearchName { get; set; } = "";
-    [Parameter] public EventCallback<string?> OnSelectedNamespaceChanged { get; set; }
-    [Parameter] public EventCallback<string> OnSearchNameChanged { get; set; }
-    [Parameter] public EventCallback OnCreate { get; set; }
+    [Parameter] public EventCallback<string> SearchNameChanged { get; set; }
+    [Parameter] public EventCallback OnQuery { get; set; }
+    [Parameter] public EventCallback OnReset { get; set; }
+
+    private Task OnNamespaceChanged(string? ns) => SelectedNamespaceChanged.InvokeAsync(ns);
+
+    private Task OnSearchNameChanged(string value) => SearchNameChanged.InvokeAsync(value);
 }

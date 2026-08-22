@@ -12,7 +12,7 @@ The in-flight change `refactor-clusters-group-sidebar-layout` explicitly at `pro
 - Bring `/clusters/{id}` back to life as a usable "archive page."
 - Introduce `ClusterEndpoint` as a first-class per-cluster metadata child entity persisted in SQLite, readable even when the cluster is offline.
 - Ship endpoints management UI reusable from `AddClusterDialog` (capture at creation) and from the new dedicated `ClusterEndpointsDialog` (manage existing), both embedding a single `ClusterEndpointEditor` row component.
-- Lock the "at most one primary per kind" invariant and value-length invariants in `ClusterService` so they survive regardless of UI path.
+- Lock the value-length invariants in `ClusterService` so they survive regardless of UI path.
 - Stay consistent with repo conventions: repository exposes data, service composes logic, pages bind view models via `Mappings/*` extension methods.
 
 **Non-Goals:**
@@ -29,18 +29,18 @@ The in-flight change `refactor-clusters-group-sidebar-layout` explicitly at `pro
 
 Considered:
 1. Add `VirtualIPsJson` + `DomainsJson` JSON-serialized `string?` columns on `ClusterInfo`.
-2. Add a `ClusterEndpoint` child table (`Id`, `ClusterId`, `Kind`, `Value`, `Note`, `IsPrimary`, `SortOrder`).
+2. Add a `ClusterEndpoint` child table (`Id`, `ClusterId`, `Kind`, `Value`, `Note`, `SortOrder`).
 
 **Picked 2** — the child table.
 
-**Why:** The user said endpoints carry contextual notes ("主控", "API 入口"), need primary/secondary marking, and the data model is likely to extend (a third Kind like `Bastion` is plausible). A normalized child table makes `Note`, `IsPrimary`, `Kind`, and `SortOrder` first-class columns. Option 1 would either drop `Note`+`IsPrimary` or stuff them into JSON, removing service-layer validation surface and forcing clients to deserialize the whole blob back to mutate any row. With EF Core 10 + SQLite and `EnsureCreated()`, the child table costs nothing in added migration complexity over Option 1.
+**Why:** The user said endpoints carry contextual notes ("主控", "API 入口"), and the data model is likely to extend (a third Kind like `Bastion` is plausible). A normalized child table makes `Note`, `Kind`, and `SortOrder` first-class columns. Option 1 would either drop `Note` or stuff it into JSON, removing service-layer validation surface and forcing clients to deserialize the whole blob back to mutate any row. With EF Core 10 + SQLite and `EnsureCreated()`, the child table costs nothing in added migration complexity over Option 1.
 
 **Alternative considered and rejected:** Migrate the existing `ClusterInfo.ApiServer` into a row of `Kind = ApiServer`. Would inflate blast radius to "schema refactor of `ClusterInfo`" — saved for whatever change ends up resurrecting `EditClusterDialog.razor` or revisiting cluster identity. `ApiServer` stays its own column in this change; `ClusterEndpoint` is purely additive.
 
 ### Decision: Full-replace mutation strategy, not row diffing
 
 `ClusterService.UpdateClusterEndpointsAsync(clusterId, List<ClusterEndpointEditItem>)`:
-- Validates the incoming list (kind/value/note constraints + at-most-one-primary-per-kind).
+- Validates the incoming list (kind/value/note length constraints).
 - Eager-loads the cluster including its current `Endpoints` collection.
 - `entity.Endpoints.Clear()` → EF Core marks the old rows for deletion.
 - Projects each surviving `ClusterEndpointEditItem` to a new `ClusterEndpoint` and `entity.Endpoints.Add(...)`.
@@ -50,19 +50,13 @@ Considered:
 
 **Trade-off:** large endpoint sets would produce a chatty SaveChanges. Not a concern at expected scale.
 
-### Decision: The "primary per kind" invariant is a service rule, no DB unique index
-
-SQLite supports partial indexes, but EF Core 10's mapping needs explicit config in `OnModelCreating` and the existing convention in `Data/ApplicationDbContext.cs:23-34` is minimal config. The invariant is small enough to enforce in `ClusterService` before SaveChanges; violations surface as `ArgumentException` with a clear message. UI also de-selects other primaries within a kind via an `EventCallback` when a user marks a row primary, catching the case before round-trip.
-
-**Picked:** service-layer `ArgumentException` + UI radio-button grouping per `Kind`. No DB-level unique index.
-
 ### Decision: `ClusterEndpointEditor.razor` is a shared row editor reused by Add and Manage
 
-Takes `[Parameter] List<ClusterEndpointEditItem> Items` and mutates that list in place via `@bind`. Each row has: `Kind` (`MudSelect`), `Value` (`MudTextField`, required), `Note` (`MudTextField`, optional), `IsPrimary` (`MudCheckBox` whose value-changed handler deselects other rows of the same `Kind`), and a row delete button that removes the row from `Items`. Plus a "[+ 添加端点]" button appending a new row with `Kind = Vip`, `IsPrimary = false`.
+Takes `[Parameter] List<ClusterEndpointEditItem> Items` and mutates that list in place via `@bind`. Each row has: `Kind` (`MudSelect`), `Value` (`MudTextField`, required), `Note` (`MudTextField`, optional), and a row delete button that removes the row from `Items`. Plus a "[+ 添加端点]" button appending a new row with `Kind = Vip`.
 
 `AddClusterDialog.razor` embeds the editor directly with `Items = new()` initial state. `ClusterEndpointsDialog.razor` wraps the editor in a `MudDialog`, seeds `Items` on init from `ClusterService.GetClusterDetailAsync(ClusterId)` (no separate "list endpoints" service call needed), and on OK calls `UpdateClusterEndpointsAsync(ClusterId, Items)`.
 
-**Why one component:** consistent UX between create and manage, single point of truth for primary-per-kind/length validation UI.
+**Why one component:** consistent UX between create and manage, single point of truth for length validation UI.
 
 ### Decision: Detail page layout uses `MudCard` cards, not the list page's workbench `MudPaper`
 
@@ -89,7 +83,7 @@ MudBlazor 9 doesn't ship a first-class clipboard service in this stack. We use `
 
 ### Decision: Editor exposes `SortOrder` as a manual numeric input, no drag-and-drop in v1
 
-Drag-and-drop adds a significant JS layer for marginal value at single-digit endpoint counts. Each editor row carries a small numeric `SortOrder` input; the service sorts by `SortOrder` ascending with `IsPrimary == true` rows first as a tiebreaker within each `Kind` group.operators renumber manually.
+Drag-and-drop adds a significant JS layer for marginal value at single-digit endpoint counts. Each editor row carries a small numeric `SortOrder` input; the service sorts by `SortOrder` ascending within each `Kind` group. Operators renumber manually.
 
 ## Risks / Trade-offs
 
@@ -108,7 +102,7 @@ Drag-and-drop adds a significant JS layer for marginal value at single-digit end
 3. `dotnet build MultiClusterMgmtSys.slnx` — expected clean.
 4. `dotnet run --project MultiClusterMgmtSys` — first startup runs `EnsureCreated()` and rebuilds the schema including `ClusterEndpoints`; `AccountService.CreateAdminAsync()` reseeds `admin / Changeme_123`.
 5. Log in as `admin / Changeme_123`, navigate to `/clusters`, click a cluster row — `/clusters/{id}` renders the rebuilt detail page.
-6. Open the Endpoints card's "管理" dialog, add 2 VIPs and 2 domains, mark one of each as primary, save — rows appear on the detail page sorted per the spec.
+6. Open the Endpoints card's "管理" dialog, add 2 VIPs and 2 domains, save — rows appear on the detail page in a single table sorted per the spec.
 7. No rollback path beyond restoring the deleted `.db` from a backup; this matches the repo-wide convention noted in `AGENTS.md`.
 
 ## Open Questions

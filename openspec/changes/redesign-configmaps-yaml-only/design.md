@@ -23,6 +23,29 @@ The cluster feature established two visual templates during the in-flight `redes
 ```
 Note: the Nodes change's third iteration retired the landing card + URL auto-redirect in favor of this persistent-sidebar + in-place-restore shape (Nodes design Decisions 4 / 8); this change mirrors that final shape.
 
+**Clusters list template** (the canonical reference for the ConfigMaps *list shell* — see `Components/Clusters/Pages/Clusters.razor`):
+```
+<MudStack Row="true" Class="d-flex flex-auto">
+  <GroupSidebar .../>
+  <MudStack Class="flex-auto">
+    <MudPaper Class="pa-4">                      ← single paper: title row + merged filter bar
+      <MudStack>
+        <MudStack Row="true" AlignItems="AlignItems.Center">
+          <MudText Typo="Typo.h5">集群管理</MudText>
+          <MudSpacer />
+          <MudButton (刷新所有集群, Text/Inherit) />
+          <MudButton (批量操作, Admin) />
+          <MudButton (添加集群, Filled/Primary/Add, Admin) />
+        </MudStack>
+        <ClusterFilterBar .../>                   ← merged below the title row, no own Paper
+      </MudStack>
+    </MudPaper>
+    <ClusterTable .../>                           ← MudTable ServerData + Hover + FixedHeader + sortable MudTableSortLabel headers + LoadingContent
+  </MudStack>
+</MudStack>
+```
+The ConfigMaps list page takes the Clusters shell for its right pane (title row inlined in the single `MudPaper`, `ClusterTable`-style table) — the user explicitly flagged the Nodes-style toolbar as "configmap列表的风格和集群管理的列表不一样" (iteration 4, see Decision 13).
+
 **Detail page template** (`Components/Clusters/Pages/ClusterDetail.razor`):
 ```
 <MudStack Class="flex-auto">
@@ -67,6 +90,8 @@ Namespace rule (from AGENTS.md): `Components/Configmaps/**` uses `MultiClusterMg
 - No Secret support — ConfigMap is the only resource type scoped in. A future `add-secret-page` change can reuse the visual scaffolding.
 - No cross-cluster capability — list/detail/edit/create are all single-cluster contexts scoped by `ClusterId`. A future `configmaps-cross-cluster-diff` change is on the table.
 - No server-side paging of ConfigMaps — K8s `ListNamespacedConfigMap` returns the whole namespace in one call (--tens to low hundreds of ConfigMaps); client-side paging inside `MudTable` is sufficient (matches the Nodes page decision).
+- No batch mode / 批量操作 on the ConfigMaps list — `Clusters.razor`'s batch-selection toolbar is a cluster-management concern; ConfigMaps write actions stay per-row (编辑 YAML / 删除) and per-dialog (新建 ConfigMap).
+- No server-side sorting or paging of ConfigMaps — sorting stays client-side inside `MudTable` (`MudTableSortLabel` with `Items` mode), matching the no-server-paging decision.
 - No search box inside the cluster sidebar — the sidebar lists clusters grouped by `GroupName` and nothing more (mirrors the Nodes iteration exclusion).
 - No introduction of monaco / codemirror / syntax-highlight editor — the YAML editor is a plain `MudTextField` (Lines=30, monospace, RO/RW). A future `configmaps-yaml-editor-upgrade` change can pick that up.
 - No undo on delete — a 2-step confirm dialog followed by immediate K8s delete (matches the user's explicit "先不做 undo" decision; mirrors current behavior).
@@ -87,10 +112,10 @@ Concrete file list:
 
 | File | Mirrors | Purpose |
 |---|---|---|
-| `ConfigMapListToolbar.razor` | `NodeListToolbar.razor` | `MudPaper pa-4 mb-4`: 返回集群详情 button (→ `/clusters/{ClusterId}`) + cluster name h4 + status `MudChip` + 刷新 `MudButton`. Params: `Cluster` (`ClusterDetailViewModel`), `Processing` (bool), `OnRefresh` `EventCallback`. |
+| `ConfigMapListToolbar.razor` | — (**not a file**) | The Nodes-style toolbar paper is **not** created; the list title row (配置管理 h5 + 集群名/状态 `MudChip` + 刷新 + 新建 ConfigMap Admin-gated; **no back button** — removed per user decision, see Decision 13) is inlined into `ConfigMaps.razor`'s single toolbar/filter `MudPaper`, mirroring `Clusters.razor` exactly (iteration 4, Decision 13). |
 | `ConfigMapClusterSidebar.razor` | `NodeClusterSidebar.razor` | Left column of the list page. 240px `MudPaper`, header 集群选择, `MudNavMenu` listing clusters grouped by `GroupName` ("未分组" last), each group collapsible (per-group expand/collapse). Cluster rows: name + status color-dot (`ClusterStatus` → hex green/red/gray), active-link highlight for `SelectedClusterId`, click → `/configmaps/{ClusterId}`. NO search box. Params: `Clusters` (`IReadOnlyList<ClusterViewModel>`), `SelectedClusterId` (`int?`), `OnClusterSelected` (`EventCallback<int>`). Byte-for-byte mirror of `NodeClusterSidebar.razor` except the CSS class prefix (`configmap-*`) and the explicit `@namespace MultiClusterMgmtSys.Features.Configmaps.Shared`. |
-| `ConfigMapListFilterBar.razor` | `NodeListFilterBar.razor` | `MudPaper pa-4 mb-4`: 命名空间 `MudSelect<string?>` (options from `ConfigMapService.GetNamespacesAsync`, with empty-selection = 全部命名空间) + 名称 `MudTextField<string>` (客户端过滤) + 新建 ConfigMap `MudButton` (inside `<AuthorizeView Roles="Admin">`, Disabled when `cluster is null \|\| !cluster.IsReachable`). Params: `Cluster`, `Namespaces` (`List<string>`), `Filter` (record bound to page state), `OnFilterChanged`, `OnCreate` `EventCallback`. |
-| `ConfigMapListTable.razor` | `NodeListTable.razor` | `MudTable<ConfigMapListViewModel>` Items=`@FilteredConfigMaps` + Dense + Hover + client `Pager` + `NoRecordsContent` mirroring the empty-state copy from old `ConfigMaps.razor:212-228`. Six columns: 名称 (clickable → detail route), 命名空间 (`MudChip Small`), Data 键数, 键名预览 (ellipsis cell), 创建时间 (`yyyy-MM-dd HH:mm`), 操作 (icon buttons: 详情跳列表内导航 / 编辑 YAML Admin-gated / 删除 Admin-gated). Params: `Items`, `OnNavigateDetail(ns,name)`, `OnNavigateEditYaml(ns,name)`, `OnDelete(ns,name)` callbacks. |
+| `ConfigMapListFilterBar.razor` | `ClusterFilterBar.razor` (restyled) | NO own `MudPaper` — sits inside the page's single `MudPaper` below the title row (mirrors `ClusterFilterBar`'s placement). 命名空间 `MudSelect<string?>` (options from `ConfigMapService.GetNamespacesAsync`, leading 全部命名空间 Value=`null`) + 名称 `MudTextField<string>` + trailing 查询 (`MudButton` Filled/Primary/Search, `OnQuery`) + 重置 (`MudButton` Outlined/Secondary/Refresh, `OnReset`). Filters apply only on 查询; 重置 clears namespace + name. The 新建 ConfigMap button is NOT here — it lives in the title row. Params: `Namespaces` (`List<string>`), `SelectedNamespace` (two-way `string?`), `SearchName` (two-way `string`), `OnQuery`, `OnReset` `EventCallback`. |
+| `ConfigMapListTable.razor` | `ClusterTable.razor` (visual attributes) | `MudTable<ConfigMapListViewModel>` Items + `Hover` + `FixedHeader` + client `Pager` (RowsPerPageString="每页条数：" InfoFormat="共 {all_items} 条") + `LoadingContent` (正在加载...) + `NoRecordsContent` (暂无 ConfigMap 或没有符合筛选条件的 ConfigMap). Headers use `MudTableSortLabel` (client-side sorting, Items mode) for 名称 / 命名空间 / Data 键数 / 创建时间; the old `Dense` + `Elevation=0` attributes are dropped. Six columns: 名称 (clickable → detail route), 命名空间 (`MudChip Small`), Data 键数, 键名预览 (ellipsis cell), 创建时间 (`yyyy-MM-dd HH:mm`), 操作 (icon buttons: 详情 / 编辑 YAML Admin-gated / 删除 Admin-gated). Params: `Items`, `Loading` (bool), `OnNavigateDetail(ns,name)`, `OnNavigateEditYaml(ns,name)`, `OnDelete(ns,name)` callbacks. |
 | `ConfigMapDetailToolbar.razor` | `NodeDetailToolbar.razor` | `MudPaper pa-4 mb-4`: 返回列表 button (→ `/configmaps/{ClusterId}`, handled internally via injected `NavigationManager`) + `{Name}` h4 + `MudChip` showing "Data 键数: {n}" (computed from `Detail.Data.Count`) + 编辑 YAML `MudButton` (inside `<AuthorizeView Roles="Admin">`) + 刷新 `MudButton`. Params: `ClusterId` (int), `Name` (string), `Detail` (`ConfigMapDetailViewModel?`), `Processing`, `OnRefresh`, `OnEditYaml` `EventCallback`. |
 | `ConfigMapYamlViewCard.razor` | (no Nodes analog — Nodes detail has no large read-only text block; closest is `ClusterOverviewCard` grid) | `MudCard Elevation=1 Class="mb-4"` containing `<MudCardContent>` with a read-only `MudTextField<string>` Lines=30 monospace, `Value="@Yaml"`, `ReadOnly="true"`. Renders nothing if `Yaml` is null/empty (a "暂无 YAML" empty-state). Params: `Yaml` (string). |
 | `ConfigMapYamlEditCard.razor` | (par. of `ConfigMapYamlViewCard`) | `MudCard Elevation=1 Class="mb-4"` containing `<MudCardContent>` with an editable `MudTextField<string>` Lines=30 monospace, `@bind-Value="Yaml"`. Save handler lives in the parent page (toolbar), not in the card. Params: `Yaml` (string, bindable two-way via `YamlChanged` `EventCallback<string>`). |
@@ -110,14 +135,26 @@ All shared components follow the same parameter convention as `ClusterNodesCard.
     else if (loading) { <MudProgressLinear Indeterminate="true" Class="my-4"/> }
     else if (cluster is null) { <未找到该集群 + 返回集群列表 button → /clusters> }
     else {
-      <ConfigMapListToolbar Cluster="@cluster" Processing="@loading" OnRefresh=.../>
+      <MudPaper Class="pa-4">                              ← single paper (Clusters shell)
+        <MudStack>
+          <MudStack Row="true" AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.h5">配置管理</MudText>
+            <MudChip (集群名 · 状态文本) />
+            <MudSpacer />
+            <MudButton (刷新, Text/Inherit, Disabled=Processing) />
+            <AuthorizeView Roles="Admin">
+              <MudButton (新建 ConfigMap, Filled/Primary/Add, Disabled=!cluster.IsReachable) />
+            </AuthorizeView>
+          </MudStack>
+          @if (cluster.IsReachable)
+          {
+            <ConfigMapListFilterBar Namespaces="@namespaces" SelectedNamespace="@selectedNamespace"
+                                    SearchName="@searchName" OnQuery=... OnReset=.../>
+          }
+        </MudStack>
+      </MudPaper>
       @if (!cluster.IsReachable) { <MudCard>集群不可达，无法获取 ConfigMap</MudCard> }
-      else {
-        <ConfigMapListFilterBar Cluster="@cluster" Namespaces="@namespaces"
-                                SelectedNamespace="@selectedNamespace" SearchName="@searchName"
-                                OnSelectedNamespaceChanged=... OnSearchNameChanged=... OnCreate=.../>
-        <ConfigMapListTable Items="@filteredConfigMaps" ...callbacks.../>
-      }
+      else { <ConfigMapListTable Items="@filteredConfigMaps" Loading="@loading" ...callbacks.../> }
     }
   </MudStack>
 </MudStack>
@@ -129,7 +166,7 @@ All shared components follow the same parameter convention as `ClusterNodesCard.
 
 **Sidebar data**: the page loads the flat cluster list once per mount in `OnInitializedAsync` via `ClusterService.GetPagedAsync(new ClusterQueryRequest { Page = 1, PageSize = 1000, SortBy = ClusterSortField.Name, SortDescending = false })` (same as `Nodes.razor`), and `ConfigMapClusterSidebar` groups it internally ("未分组" last). Sidebar click → `NavigateTo($"/configmaps/{id}")`. No per-render K8s calls.
 
-**Layout evolution record (kept for archive trace):** (1) the original plan had NO sidebar — single-column page because "the cluster is fixed by URL"; (2) a landing-card fallback ("请先选择一个集群" + 前往集群列表 button → `/clusters`) with URL auto-redirect via `ClusterSelectionState` was added; (3) the user requested the current Nodes shape — a persistent left cluster-selection sidebar with the right pane showing either the remembered cluster's ConfigMap list or the "请从左侧选择一个集群" empty state. The landing card, the 前往集群列表 button, and the auto-redirect are all retired.
+**Layout evolution record (kept for archive trace):** (1) the original plan had NO sidebar — single-column page because "the cluster is fixed by URL"; (2) a landing-card fallback ("请先选择一个集群" + 前往集群列表 button → `/clusters`) with URL auto-redirect via `ClusterSelectionState` was added; (3) the user requested the current Nodes shape — a persistent left cluster-selection sidebar with the right pane showing either the remembered cluster's ConfigMap list or the "请从左侧选择一个集群" empty state. The landing card, the 前往集群列表 button, and the auto-redirect are all retired; (4) the user flagged that the right pane still looked like the Nodes list ("configmap列表的风格和集群管理的列表不一样") — the right pane now takes the `Clusters.razor` list shell (single `MudPaper` with an inlined title row + merged filter bar, 查询/重置 filter semantics, `ClusterTable`-style table), see Decision 13.
 
 ### Decision 4: Detail page = single read-only YAML view.
 
@@ -249,6 +286,21 @@ During apply, the user reported that after picking a cluster and navigating away
 3. **`ClusterDetail.razor` records the cluster id too** — its `LoadAsync` now calls `ClusterSelection.Set(Id)` after a successful detail load. This means a user who lands on `/clusters/3` (e.g. via Search or a Clusters list selection) and then clicks the Drawer's `/nodes` or `/configmaps` link receives the auto-recovery for free — without it, the user would have to first deep-link into a Nodes/ConfigMaps page before the service could record the id. Belt-and-suspenders: `ConfigMapDetail.razor` and `EditConfigMapYaml.razor`'s `OnInitializedAsync` also call `ClusterSelection.Set(ClusterId)` at entry; matches `NodeDetail.razor:96-99`'s pattern.
 
 **Alternative considered for the state service:** introduce a new `ConfigMapSelectionState` scoped service (a fork of `NodeSelectionState`) to avoid renaming a service used by the Nodes feature. Rejected — it would defeat the point of the cross-feature UX consistency goal (the user's complaint was specifically "回退到 Nodes 后切到 ConfigMaps 也应该记得同一个集群"). One service per concept; renaming is small and matches the new conceptual boundary.
+
+### Decision 13: List page adopts the Clusters list shell (iteration 4).
+
+The user flagged after iteration 3 that the ConfigMap list page did not match the cluster-management list ("configmap列表的风格和集群管理的列表不一样"). The right pane is therefore restructured from the Nodes-style toolbar stack to the `Clusters.razor` shell:
+
+1. **Single `MudPaper pa-4` instead of two papers.** Title row (配置管理 h5; 集群名 · 状态 `MudChip`; `MudSpacer`; 刷新 (Text/Inherit, Disabled=Processing); 新建 ConfigMap (Filled/Primary/Add) inside `<AuthorizeView Roles="Admin">`, Disabled when `!cluster.IsReachable`) with `ConfigMapListFilterBar` merged below it inside the same paper — exactly `Clusters.razor`'s shape. `ConfigMapListToolbar.razor` is **not** created as a file; the title row lives inline in the page. The 新建 button moves out of the filter bar into the title row (mirrors 添加集群's placement). **No 返回集群详情 back button** — the iteration-3 toolbar's back button is dropped per the user's decision: the selected cluster is identified by the sidebar's active-row highlight, and `ClusterConfigMapsCard` on the cluster detail page already provides the reverse navigation (配置管理 → cluster detail via the sidebar-adjacent context).
+
+2. **查询/重置 filter semantics** (per the user's explicit decision). The namespace `MudSelect` and 名称 `MudTextField` only update page state while the user edits; clicking 查询 (`MudButton` Filled/Primary/Search) re-invokes `ConfigMapService.ListConfigMapsAsync(ClusterId, selectedNamespace)` and applies the client-side name filter; clicking 重置 (`MudButton` Outlined/Secondary/Refresh) clears the namespace back to 全部命名空间 and the name to empty, then reloads. This replaces the iteration-1 "live filter" behavior (immediate server reload on namespace change + live client name filter) with the `ClusterFilterBar` interaction model.
+
+3. **`ConfigMapListTable` restyled to `ClusterTable`'s visual attributes**: drop `Dense` + `Elevation="0"`; add `Hover` (already present) + `FixedHeader` + `MudTableSortLabel` sortable headers for 名称 / 命名空间 / Data 键数 / 创建时间 (client-side sorting works with `Items` mode, no server paging/sorting changes) + `LoadingContent` (正在加载...) + `NoRecordsContent` (暂无 ConfigMap 或没有符合筛选条件的 ConfigMap). The table gains a `Loading` param fed from the page's `loading` state so the loading row renders during fetches.
+
+**Alternatives considered:**
+- Keep the Nodes-style two-paper toolbar (返回集群详情 h4-toolbar + separate filter paper). Rejected — that is precisely the style the user flagged as different from 集群管理.
+- Keep live filtering and only restyle. Rejected — the user explicitly chose the 查询/重置 interaction to match `ClusterFilterBar`.
+- Keep `ConfigMapListToolbar.razor` as a restyled component. Rejected — `Clusters.razor` inlines its title row; a wrapper component adds indirection with no caller reuse (the title row is page-specific, and the nodes toolbar remains the only consumer of the component pattern).
 
 ## Risks / Trade-offs
 

@@ -28,11 +28,13 @@
         <MudPaper Class="pa-4">
             <MudStack>
                 <MudStack Row="true" AlignItems="AlignItems.Center">
+                    <MudText Typo="Typo.h5">集群管理</MudText>
+                    <MudSpacer />
                     <MudButton Variant="Variant.Text"
-                                Color="Color.Inherit"
-                                StartIcon="@Icons.Material.Filled.Refresh"
-                                @bind-Disabled="@isRefreshingAll"
-                                OnClick="RefreshAllClustersAsync">
+                               Color="Color.Inherit"
+                               StartIcon="@Icons.Material.Filled.Refresh"
+                               @bind-Disabled="@isRefreshingAll"
+                               OnClick="RefreshAllClustersAsync">
                         @(isRefreshingAll ? "刷新中..." : "刷新所有集群")
                     </MudButton>
                     <AuthorizeView Roles="Admin">
@@ -40,7 +42,7 @@
                             <MudButton Variant="@(isBatchMode ? Variant.Filled : Variant.Text)"
                                        Color="@(isBatchMode ? Color.Secondary : Color.Inherit)"
                                        StartIcon="@(isBatchMode ? Icons.Material.Filled.Close : Icons.Material.Filled.Checklist)"
-                                        OnClick="ToggleBatchMode">
+                                       OnClick="ToggleBatchMode">
                                 @(isBatchMode ? "退出批量" : "批量操作")
                             </MudButton>
                         </Authorized>
@@ -60,6 +62,7 @@
                 @if (isRefreshingAll)
                 {
                     <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudSpacer />
                         <MudProgressLinear Color="Color.Primary"
                                            Value="@((double)refreshAllCurrent / Math.Max(refreshAllTotal, 1) * 100)"
                                            Style="max-width:300px;" />
@@ -68,38 +71,37 @@
                 }
 
                 <ClusterFilterBar Query="@query"
-                                    AvailableVersions="@availableVersions"
-                                    OnFilterChanged="RefreshTable"
-                                    OnReset="ResetTable"/>
+                                  AvailableVersions="@availableVersions"
+                                  OnFilterChanged="RefreshTable"
+                                  OnReset="ResetTable"/>
             </MudStack>
         </MudPaper>
 
         <ClusterTable Query="@query"
-                        OnRefreshCluster="RefreshCluster"
-                        OnEditCluster="OpenEditClusterDialog"
-                        OnDeleteCluster="DeleteCluster"
-                        OnNavigateClusterDetail="NavigateToDetail"
-                        ProcessingIds="processingClusterIds"
+                      OnRefreshCluster="RefreshCluster"
+                      OnEditCluster="OpenEditClusterDialog"
+                      OnDeleteCluster="DeleteCluster"
+                      OnNavigateClusterDetail="NavigateToDetail"
+                      ProcessingIds="processingClusterIds"
                       RefreshingAll="isRefreshingAll"
                       MultiSelectVisible="isBatchMode"
-                        SelectedIds="selectedClusterIds"
-                        OnSelectedIdsChanged="OnSelectionChanged"
-                        @ref="tableComponent" />
+                      SelectedIds="selectedClusterIds"
+                      OnSelectedIdsChanged="OnSelectionChanged"
+                      @ref="tableComponent" />
 
         <AuthorizeView Roles="Admin">
             <Authorized>
                 @if (isBatchMode && selectedClusterIds.Count > 0)
                 {
-                    <MudPaper Class="pa-3 mt-2" Elevation="2">
+                    <MudPaper Class="pa-4">
                         <MudStack Row="true" AlignItems="AlignItems.Center">
                             <MudText>@selectedClusterIds.Count 个集群已选</MudText>
                             <MudSpacer />
                             <MudMenu Label="移动到分组" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.DriveFileMove">
                                 <MudMenuItem OnClick="@(() => MoveClustersAsync(0))">未分组</MudMenuItem>
-                                @foreach (var g in groups)
+                                @foreach (var group in groups)
                                 {
-                                    var gid = g.Id;
-                                    <MudMenuItem OnClick="@(() => MoveClustersAsync(gid))">@g.Name</MudMenuItem>
+                                    <MudMenuItem OnClick="@(() => MoveClustersAsync(group.Id))">@group.Name</MudMenuItem>
                                 }
                             </MudMenu>
                             <MudButton Variant="Variant.Text" OnClick="ClearSelection" StartIcon="@Icons.Material.Filled.Clear">清空选择</MudButton>
@@ -160,11 +162,11 @@
     {
         var groupsTask = GroupService.GetGroupsAsync();
         var versionsTask = ClusterService.GetAvailableVersionsAsync();
-        var ungroupedTask = GroupService.GetUngroupedClusterCountAsync();
-        await Task.WhenAll(groupsTask, versionsTask, ungroupedTask);
+        var ungroupedCountTask = GroupService.GetUngroupedClusterCountAsync();
+        await Task.WhenAll(groupsTask, versionsTask, ungroupedCountTask);
         groups = groupsTask.Result;
         availableVersions = versionsTask.Result;
-        ungroupedCount = ungroupedTask.Result;
+        ungroupedCount = ungroupedCountTask.Result;
     }
 
     private void ApplyGroupFromUrl()
@@ -204,9 +206,8 @@
 
     private void SelectGroup(int? id)
     {
-        var url = "/clusters" + (id.HasValue ? "?group=" + id.Value : "");
-        NavigationManager.NavigateTo(url);
-        // State mutation is performed by OnLocationChanged, the single source of truth.
+        var url = "/clusters" + (id.HasValue ? $"?group={id.Value}" : "");
+        RedirectManager.RedirectTo(url);
     }
 
     private void ToggleBatchMode()
@@ -260,8 +261,8 @@
 
     private async Task OpenAddClusterDialog()
     {
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<AddClusterDialog>("添加集群", options);
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<EditClusterDialog>("添加集群", options);
         var result = await dialog.Result;
         if (result is not null && !result.Canceled)
         {
@@ -273,7 +274,7 @@
 
     private async Task OpenCreateGroupDialog()
     {
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var options = new DialogOptions { FullWidth = true };
         var dialog = await DialogService.ShowAsync<EditGroupDialog>("新建分组", options);
         var result = await dialog.Result;
         if (result is not null && !result.Canceled)
@@ -295,6 +296,7 @@
         if (result is not null && !result.Canceled)
         {
             await LoadSidebarAndVersionsAsync();
+            await RefreshTable();
         }
     }
 
@@ -313,30 +315,33 @@
 
     private async Task DeleteGroup(ClusterGroupViewModel group)
     {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "确认删除",
-            $"确认删除分组「{group.Name}」？分组内集群将变为未分组。",
-            yesText: "删除",
-            noText: "取消");
-
-        if (confirmed != true) return;
-
-        try
+        var parameters = new DialogParameters
         {
-            await GroupService.DeleteGroupAsync(group.Id);
-            Snackbar.Add("分组已删除", Severity.Success);
+            { "Message", $"确认删除分组「{group.Name}」？分组内集群将变为未分组。" }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("确认删除", parameters, options);
+        var result = await dialog.Result;
 
-            // If the deleted group was selected, reset the URL; the LocationChanged handler will reload.
-            if (selectedGroupId == group.Id)
+        if (result is not null && !result.Canceled)
+        {
+            try
             {
-                SelectGroup(null);
+                await GroupService.DeleteGroupAsync(group.Id);
+                Snackbar.Add("分组已删除", Severity.Success);
+
+                // If the deleted group was selected, reset the URL; the LocationChanged handler will reload.
+                if (selectedGroupId == group.Id)
+                {
+                    SelectGroup(null);
+                }
+                await LoadSidebarAndVersionsAsync();
+                await tableComponent?.ReloadDataAsync();
             }
-            await LoadSidebarAndVersionsAsync();
-            await tableComponent?.ReloadDataAsync();
-        }
-        catch (Exception ex)
-        {
-            Snackbar.Add($"删除分组失败: {ex.Message}", Severity.Error);
+            catch (Exception ex)
+            {
+                Snackbar.Add($"删除分组失败: {ex.Message}", Severity.Error);
+            }
         }
     }
 
@@ -393,13 +398,15 @@
 
     private async Task DeleteCluster(ClusterViewModel cluster)
     {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "确认删除",
-            $"确认删除集群「{cluster.Name}」？此操作不可撤销。",
-            yesText: "删除",
-            noText: "取消");
+        var parameters = new DialogParameters
+        {
+            { "Message", $"确认删除集群「{cluster.Name}」？此操作不可撤销。" }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("确认删除", parameters, options);
+        var result = await dialog.Result;
 
-        if (confirmed == true)
+        if (result is not null && !result.Canceled)
         {
             processingClusterIds.Add(cluster.Id);
             StateHasChanged();

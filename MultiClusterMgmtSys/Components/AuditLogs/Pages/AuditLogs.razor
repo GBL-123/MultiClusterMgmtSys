@@ -3,6 +3,7 @@
 
 @using MultiClusterMgmtSys.Components.AuditLogs.Requests
 @using MultiClusterMgmtSys.Components.AuditLogs.Services
+@using MultiClusterMgmtSys.Components.AuditLogs.Shared
 @using MultiClusterMgmtSys.Components.AuditLogs.ViewModels
 
 @inject AuditService AuditSvc
@@ -12,43 +13,37 @@
 
 <MudStack Class="flex-auto">
     <MudPaper Class="pa-4">
-        <MudStack Row="true" AlignItems="AlignItems.Center">
-            <MudText Typo="Typo.h5">审计日志</MudText>
-            <MudSpacer />
-            @if (isAdmin)
-            {
-                <MudTextField T="string"
-                              Value="@query.SearchName"
-                              ValueChanged="OnSearchChanged"
-                              Placeholder="按操作人筛选"
-                              Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Filled.Search"
-                              Clearable="true"
-                              OnClearButtonClick="RefreshTable"
-                              OnKeyUp="OnSearchKeyUp"
-                              Style="width: 240px;" />
-            }
-            <MudButton Variant="Variant.Text"
-                       Color="Color.Inherit"
-                       StartIcon="@Icons.Material.Filled.Refresh"
-                       OnClick="RefreshTable">
-                刷新
-            </MudButton>
+        <MudStack>
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.h5">审计日志</MudText>
+                <MudSpacer />
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Inherit"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="RefreshTable">
+                    刷新
+                </MudButton>
+            </MudStack>
+
+            <AuditLogFilterBar Query="@query"
+                               ShowUserFilter="@isAdmin"
+                               OnFilterChanged="RefreshTable"
+                               OnReset="ResetTable" />
         </MudStack>
     </MudPaper>
 
-    <MudPaper Class="flex-auto" Elevation="1">
-        <MudTable ServerData="LoadData"
-                  Hover="true"
-                  FixedHeader="true"
-                  @ref="table">
-            <HeaderContent>
-                <MudTh>时间</MudTh>
-                <MudTh>操作人</MudTh>
-                <MudTh>类别</MudTh>
-                <MudTh>操作</MudTh>
-                <MudTh>目标</MudTh>
-            </HeaderContent>
+    <MudTable ServerData="LoadData"
+              Hover="true"
+              FixedHeader="true"
+              Class="audit-logs-table"
+              @ref="table">
+        <HeaderContent>
+            <MudTh><MudTableSortLabel T="AuditLogViewModel" SortBy="@(x => x.CreatedAt)" SortLabel="CreatedAt">时间</MudTableSortLabel></MudTh>
+            <MudTh>操作人</MudTh>
+            <MudTh>类别</MudTh>
+            <MudTh>操作</MudTh>
+            <MudTh>目标</MudTh>
+        </HeaderContent>
             <RowTemplate>
                 <MudTd DataLabel="时间">@context.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</MudTd>
                 <MudTd DataLabel="操作人">@(string.IsNullOrEmpty(context.UserName) ? "—" : context.UserName)</MudTd>
@@ -66,7 +61,6 @@
                 <MudText>暂无审计日志</MudText>
             </NoRecordsContent>
         </MudTable>
-    </MudPaper>
 </MudStack>
 
 @code {
@@ -87,19 +81,7 @@
 
     private Task RefreshTable() => table.ReloadServerData();
 
-    private void OnSearchChanged(string? value)
-    {
-        query.SearchName = value;
-    }
-
-    private Task OnSearchKeyUp(KeyboardEventArgs args)
-    {
-        if (args.Key == "Enter")
-        {
-            return RefreshTable();
-        }
-        return Task.CompletedTask;
-    }
+    private Task ResetTable() => table.ReloadServerData();
 
     private async Task<TableData<AuditLogViewModel>> LoadData(TableState state, CancellationToken _)
     {

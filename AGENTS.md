@@ -35,8 +35,9 @@ Folder-to-namespace mapping is **inconsistent** across feature folders, and even
 
 - `Components/Account/ViewModels/**` (incl. `Mappings/`) → `MultiClusterMgmtSys.Features.Account.ViewModels[.Mappings]` (**`Features.*`**, not `Components.*`)
 - `Components/Account/Services/**` → `MultiClusterMgmtSys.Components.Account.Services` (**`Components.*`**, not `Features.*`)
+- `Components/Account/Requests/**` → `MultiClusterMgmtSys.Components.Account.Requests`
 - `Components/Configmaps/**` (Services, ViewModels, Mappings) → `MultiClusterMgmtSys.Features.Configmaps.*` (**`Features.*`**)
-- `Components/Clusters/**`, `Components/Nodes/**`, `Components/Auth/**` → `MultiClusterMgmtSys.Components.<Feature>.*` (matches physical path)
+- `Components/Clusters/**`, `Components/Nodes/**`, `Components/Auth/**`, `Components/AuditLogs/**` → `MultiClusterMgmtSys.Components.<Feature>.*` (matches physical path)
 - `Data/**` → `MultiClusterMgmtSys.Data.*` (matches physical path)
 - **Two different `Common` folders, different roots:** root `Common/**` (Enums/Queries/ViewModels like `PagedResult<>`) → `MultiClusterMgmtSys.Common.*` (matches path); `Components/Common/**` (`ThemeManager`, `RedirectManager`) → `MultiClusterMgmtSys.Components.Common` (NOT `MultiClusterMgmtSys.Common`).
 
@@ -44,12 +45,14 @@ Folder-to-namespace mapping is **inconsistent** across feature folders, and even
 
 ## Architecture notes
 
-- Entrypoint: `Program.cs` registers MudBlazor, Razor components (interactive server), Identity (cookie `MultiClusterMgmtSys.Auth`, 8h sliding, login `/login`, default redirect `/clusters`), `ApplicationDbContext` (SQLite), and a set of scoped services/repositories (`ClusterRepository`, `GroupRepository`, `ClusterService`, `GroupService`, `ClusterNodeService`, `ConfigMapService`, `AuthService`, `AccountService`, `ThemeManager`, `RedirectManager`, `ClusterSelectionState`).
+- Entrypoint: `Program.cs` registers MudBlazor, Razor components (interactive server), Identity (cookie `MultiClusterMgmtSys.Auth`, 8h sliding, login `/login`, default redirect `/clusters`), `ApplicationDbContext` (SQLite), and a set of scoped services/repositories (`ClusterRepository`, `GroupRepository`, `AuditLogRepository`, `ClusterService`, `GroupService`, `ClusterNodeService`, `ConfigMapService`, `AuditService`, `AuthService`, `AccountService`, `ThemeManager`, `RedirectManager`, `ClusterSelectionState`).
 - Feature layout under `Components/<Feature>/{Pages,Shared,Services,Requests,ViewModels,ViewModels/Mappings}`; `Data` holds `ApplicationDbContext` + `Entities` + `Repositories`; `Common` holds shared `Enums`/`ViewModels` (e.g. `PagedResult<>`).
 - `Components/Auth/Services/Identity/*` hosts the Identity scaffolding extensions (`IdentityRevalidatingAuthenticationStateProvider`, `IdentityComponentsEndpointRouteBuilderExtensions`, `ChineseIdentityErrorDescriber`) — `Program.cs` calls `MapAdditionalIdentityEndpoints()` from here.
 - K8s credentials are stored per `ClusterInfo` (`KubeConfig` / `Token` columns, `SkipTlsVerify` defaults to `true`); see `Data/ApplicationDbContext.cs` for the model constraints.
 - `ClusterInfo` also has a `ClusterEndpoint` one-to-many collection (`Endpoints`) — admin-managed VIP/Domain metadata that doesn't come from the K8s API. Kind enum lives in `Common/Enums/ClusterEndpointKind.cs`. Adding endpoints requires the `Endpoints` cascade to be honoured by `EnsureCreated()` (no migrations).
+- Same pattern: `NodeIpRemark` (`Data/Entities/NodeIpRemark.cs`) stores admin-entered node-IP remarks keyed `(ClusterId, NodeName, Address)` (unique index), cascaded via `ClusterInfo.NodeIpRemarks`; only `InternalIP`/`ExternalIP` rows are eligible, merged into node reads by `ClusterNodeService`.
 - `ClusterGroup` carries only `Name` (no `Description`); `ApplicationDbContext` enforces the schema, so any column add/remove requires dropping `MultiClusterMgmtSys.db`.
+- `AuditLog` entity (see `Data/Entities/AuditLog.cs`) is written by `AuditService.LogAsync` after mutations — it's in the `EnsureCreated()` schema like everything else, so no migrations.
 
 ## OpenCode / OpenSpec
 
@@ -62,6 +65,7 @@ Folder-to-namespace mapping is **inconsistent** across feature folders, and even
 
 - New services go through the scoped-DI pattern already in `Program.cs`; repositories surface data, services compose logic + K8s calls, `.razor` pages bind to ViewModels via `*.ViewModels.Mappings` extension methods.
 - Services log meaningful events with `logger.LogInformation` at enter/done and `logger.LogWarning` on failures — established pattern in `GroupService`, `ClusterService`. Match it for new service methods.
+- Mutating service methods (create/update/delete/move/rename/login/logout/register) write audit entries via `auditService.LogAsync(AuditCategory.X, AuditAction.Y, "中文描述")` after success — enums live in `Common/Enums/AuditCategory.cs` / `AuditAction.cs`, entity is `Data/Entities/AuditLog.cs`. Established in `ClusterService`, `GroupService`, `AccountService`, `AuthService`, `ConfigMapService`, `ClusterNodeService`; match it for new mutations.
 - Razor `_Imports.razor` is the source of implied `@using`s; check it before adding `@using` to individual pages.
 - `BlazorDisableThrowNavigationException` is enabled in the csproj — leave it on.
 - **Frontend: prefer MudBlazor components**; fall back to raw HTML/CSS only when MudBlazor genuinely can't fit the need. Documented workaround: inline action buttons inside a `@onclick` row must be wrapped in `<span @onclick:stopPropagation="true">` — `@onclick` + `@onclick:stopPropagation` on the same MudBlazor component is a Razor error (RZ10010).

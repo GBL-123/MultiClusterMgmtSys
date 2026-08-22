@@ -41,12 +41,6 @@
                           Margin="Margin.Dense"
                           Style="width:80px; flex-shrink:0;" />
 
-            <MudCheckBox T="bool"
-                         Value="row.IsPrimary"
-                         ValueChanged="@(v => OnPrimaryChanged(row, v))"
-                         Label="主"
-                         Color="Color.Primary" />
-
             <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
                            Size="Size.Small"
                            Color="Color.Error"
@@ -64,23 +58,4 @@
 
 @code {
     [Parameter] public List<ClusterEndpointEditItem> Items { get; set; } = new();
-
-    /// <summary>
-    /// 主端点在同一 Kind 内互斥：选中某行为主时，清除同 Kind 其他行的主标记。
-    /// 服务端 ApplyEndpoints 仍会做最终校验，这里只是 UI 层的提前收敛。
-    /// </summary>
-    private void OnPrimaryChanged(ClusterEndpointEditItem row, bool value)
-    {
-        if (value)
-        {
-            foreach (var other in Items)
-            {
-                if (!ReferenceEquals(other, row) && other.Kind == row.Kind)
-                {
-                    other.IsPrimary = false;
-                }
-            }
-        }
-        row.IsPrimary = value;
-    }
 }

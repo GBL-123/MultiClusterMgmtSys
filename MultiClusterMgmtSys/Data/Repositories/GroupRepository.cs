@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using MultiClusterMgmtSys.Data;
 using MultiClusterMgmtSys.Data.Entities;
 
 namespace MultiClusterMgmtSys.Data.Repositories;
@@ -10,7 +9,10 @@ public class GroupRepository(ApplicationDbContext db)
 
     public async Task<List<ClusterGroup>> GetAllAsync()
     {
-        return await db.ClusterGroups.Include(g => g.Clusters).OrderBy(g => g.Id).ToListAsync();
+        // AsNoTracking: 侧栏的 ClusterCount 是只读读模型。若跟踪实体, EF identity resolution
+        // 会在 ExecuteUpdateAsync(SetGroupIdForClustersAsync) 改了库后仍返回内存里的旧 GroupId,
+        // 导致批量移动分组后每个分组的数量不刷新。
+        return await db.ClusterGroups.AsNoTracking().Include(g => g.Clusters).OrderBy(g => g.Id).ToListAsync();
     }
 
     public async Task<ClusterGroup?> GetByIdAsync(int id)

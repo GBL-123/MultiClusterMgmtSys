@@ -3,7 +3,10 @@ namespace MultiClusterMgmtSys.Data.Entities;
 public class ClusterGroup
 {
     public int Id { get; set; }
+
     public string Name { get; set; } = "";
+
     public DateTime CreatedAt { get; set; }
-    public List<ClusterInfo> Clusters { get; set; } = new();
+
+    public List<ClusterInfo> Clusters { get; set; } = [];
 }

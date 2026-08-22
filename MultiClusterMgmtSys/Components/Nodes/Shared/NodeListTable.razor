@@ -2,16 +2,17 @@
 
 <MudTable T="ClusterNodeViewModel"
           Items="@Nodes"
-          Dense="true"
           Hover="true"
-          Elevation="0">
+          FixedHeader="true"
+          Loading="@Loading"
+          Class="nodes-table">
     <HeaderContent>
-        <MudTh>名称</MudTh>
-        <MudTh>状态</MudTh>
-        <MudTh>角色</MudTh>
-        <MudTh>Kubelet 版本</MudTh>
-        <MudTh>操作系统</MudTh>
-        <MudTh>IP 地址</MudTh>
+        <MudTh><MudTableSortLabel T="ClusterNodeViewModel" SortBy="@(x => x.Name)" SortLabel="Name">名称</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="ClusterNodeViewModel" SortBy="@(x => x.Status)" SortLabel="Status">状态</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="ClusterNodeViewModel" SortBy="@(x => x.Roles)" SortLabel="Roles">角色</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="ClusterNodeViewModel" SortBy="@(x => x.KubeletVersion)" SortLabel="KubeletVersion">Kubelet 版本</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="ClusterNodeViewModel" SortBy="@(x => x.OsImage)" SortLabel="OsImage">操作系统</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="ClusterNodeViewModel" SortBy="@(x => x.IpAddresses.Count > 0 ? x.IpAddresses[0].Address : "")" SortLabel="IpAddresses">IP 地址</MudTableSortLabel></MudTh>
     </HeaderContent>
     <RowTemplate>
         <MudTd DataLabel="名称">
@@ -57,6 +58,9 @@
     <PagerContent>
         <MudTablePager RowsPerPageString="每页条数：" InfoFormat="共 {all_items} 条" />
     </PagerContent>
+    <LoadingContent>
+        <MudText>正在加载...</MudText>
+    </LoadingContent>
     <NoRecordsContent>
         <MudText>@(FilterActive ? "没有符合当前筛选条件的节点" : "暂无节点数据")</MudText>
     </NoRecordsContent>
@@ -65,6 +69,7 @@
 @code {
     [Parameter] public IReadOnlyList<ClusterNodeViewModel> Nodes { get; set; } = new List<ClusterNodeViewModel>();
     [Parameter] public bool FilterActive { get; set; }
+    [Parameter] public bool Loading { get; set; }
     [Parameter] public EventCallback<string> OnNavigateNode { get; set; }
 
     private static Color GetNodeStatusColor(string status) => status switch

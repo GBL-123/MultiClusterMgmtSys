@@ -1,11 +1,11 @@
 @using MultiClusterMgmtSys.Components.Clusters.ViewModels
 
-<MudPaper Class="pa-4 mb-4">
+<MudPaper Class="pa-4">
     <MudStack Row="true" AlignItems="AlignItems.Center">
         <MudButton Variant="Variant.Text"
                    StartIcon="@Icons.Material.Filled.ArrowBack"
                    OnClick="OnBack">
-            返回节点列表
+            返回列表
         </MudButton>
         <MudText Typo="Typo.h4" Class="flex-auto ml-2">@Node.Name</MudText>
         <MudChip T="string"
@@ -14,7 +14,7 @@
                  Variant="Variant.Filled">
             @Node.Status
         </MudChip>
-        <MudButton Variant="Variant.Outlined"
+        <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Refresh"
                    OnClick="OnRefresh"

@@ -14,7 +14,7 @@
     <HeaderContent>
         @if (MultiSelectVisible)
         {
-            <MudTh Style="width:48px;"></MudTh>
+            <MudTh Style="width:40px;"></MudTh>
         }
         <MudTh><MudTableSortLabel T="ClusterViewModel" SortBy="@(x => x.Name)" SortLabel="Name">名称</MudTableSortLabel></MudTh>
         <MudTh><MudTableSortLabel T="ClusterViewModel" SortBy="@(x => x.Status)" SortLabel="Status">状态</MudTableSortLabel></MudTh>
@@ -28,7 +28,7 @@
     <RowTemplate>
         @if (MultiSelectVisible)
         {
-            <MudTd Style="width:48px;">
+            <MudTd Style="width:40px;">
                 <MudCheckBox T="bool"
                              Value="@SelectedIds.Contains(context.Id)"
                              ValueChanged="@(v => OnRowCheckChanged(context.Id, v))" />
@@ -58,35 +58,37 @@
         <MudTd DataLabel="节点数">@context.NodeCount</MudTd>
         <MudTd DataLabel="分组">@(context.GroupName ?? "未分组")</MudTd>
         <MudTd DataLabel="API Server">
-            <MudText Style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
-                     Title="@context.ApiServer">
-                @(context.ApiServer ?? "未知")
-            </MudText>
+            <MudText Style="min-width:200px;">@(context.ApiServer ?? "未知")</MudText>
         </MudTd>
         <MudTd DataLabel="创建时间">@context.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudTd>
         <MudTd DataLabel="操作">
             <AuthorizeView Roles="Admin">
                 <Authorized Context="authContext">
-                        @if (ProcessingIds.Contains(context.Id))
-                        {
-                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary" Class="mr-2" />
-                        }
-                        else
-                        {
+                    @if (ProcessingIds.Contains(context.Id))
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary" Class="mr-2" />
+                    }
+                    else
+                    {
+                        <MudTooltip Text="刷新">
                             <MudIconButton Icon="@Icons.Material.Filled.Refresh"
-                                           Size="Size.Small"
-                                           OnClick="@(() => OnRefreshCluster.InvokeAsync(context.Id))"
-                                           Disabled="RefreshingAll" />
-                        }
+                                            Size="Size.Small"
+                                            OnClick="@(() => OnRefreshCluster.InvokeAsync(context.Id))"
+                                            Disabled="RefreshingAll" />
+                        </MudTooltip>
+                    }
+                    <MudTooltip Text="编辑">
                         <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                       Size="Size.Small"
-                                       OnClick="@(() => OnEditCluster.InvokeAsync(context.Id))" />
+                                        Size="Size.Small"
+                                        OnClick="@(() => OnEditCluster.InvokeAsync(context.Id))" />
+                    </MudTooltip>
+                    <MudTooltip Text="删除">
                         <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
-                                       Size="Size.Small"
-                                       Color="Color.Error"
-                                       OnClick="@(() => OnDeleteCluster.InvokeAsync(context))"
-                                       Disabled="@(RefreshingAll || ProcessingIds.Contains(context.Id))" />
-
+                                        Size="Size.Small"
+                                        Color="Color.Error"
+                                        OnClick="@(() => OnDeleteCluster.InvokeAsync(context))"
+                                        Disabled="@(RefreshingAll || ProcessingIds.Contains(context.Id))" />
+                    </MudTooltip>
                 </Authorized>
             </AuthorizeView>
         </MudTd>

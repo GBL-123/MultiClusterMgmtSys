@@ -30,6 +30,7 @@
 - [x] 4.2 Delete `Components/Clusters/Shared/CreateGroupDialog.razor`
 - [x] 4.3 Delete `Components/Clusters/Shared/ManageGroupsDialog.razor`
 - [x] 4.4 Verify no other code references the deleted dialogs (grep `CreateGroupDialog` / `ManageGroupsDialog`) — only `Clusters.razor` still references them; section 7 rewrites that file.
+- [x] 4.5 Fix `EditGroupDialog` content-area scrollbar: add `ContentClass="group-dialog-content"` and an app.css rule `.mud-dialog .mud-dialog-content.group-dialog-content { overflow: visible; }`. NOTE: padding-top does NOT fix this (the phantom overflow is invariant to padding); the `overflow` shorthand is required because if `overflow-x` stays `auto`, the CSS spec forces `overflow-y: visible` back to `auto`
 
 ## 5. ClusterFilterBar — drop the group dropdown
 
@@ -68,6 +69,7 @@
 - [x] 8.7 Implement `MoveClustersAsync(int? targetGroupId)` in `Clusters.razor`: if `targetGroupId == 0` convert to `null`; call `await GroupService.MoveClustersToGroupAsync(selectedClusterIds, targetGroupId)`; show success snackbar with count; clear `selectedClusterIds`; re-fetch groups; reload table
 - [x] 8.8 Implement "清空选择" button: clears `selectedClusterIds`, calls `tableComponent.ClearSelection()` to uncheck visible rows
 - [x] 8.9 Wrap the entire batch bar (and its actions) inside `<AuthorizeView Roles="Admin"><Authorized>`. The "批量操作" toggle button is also Admin-only.
+- [x] 8.10 Fix sidebar counts not refreshing after batch move: add `AsNoTracking()` to `GroupRepository.GetAllAsync()`. Root cause: scoped `ApplicationDbContext` tracks the `ClusterInfo` entities loaded by `Include(g => g.Clusters)`; `SetGroupIdForClustersAsync` uses `ExecuteUpdateAsync` (bypasses the change tracker), so a re-query returns the stale tracked `GroupId` and `g.Clusters.Count` never changes. Verified: sidebar badges now match the table pager totals.
 
 ## 9. Verification
 

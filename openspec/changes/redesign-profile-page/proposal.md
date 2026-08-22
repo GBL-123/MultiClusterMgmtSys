@@ -4,7 +4,7 @@
 
 ## What Changes
 
-- 在 `Components/Account/Pages/Profile.razor` 重新实现个人资料页(`@page "/profile"`),要求登录后可见
+- 页面移入独立功能文件夹 `Components/Profile/Pages/Profile.razor`,与账号管理(`Components/Account/`)解耦
 - 页面包含只读信息卡片:用户名、角色、注册时间、最后登录时间(时间格式 `yyyy-MM-dd HH:mm`,`LastLoginAt` 为 null 时显示 "—")
 - 页面包含修改密码卡片:当前密码 / 新密码 / 确认新密码,复用 `AccountService.ChangePasswordAsync`
 - 移除旧代码中的显示名残留(`SaveDisplayName` 方法、`savingDisplayName` 状态、`UpdateProfileAsync` 调用);无显示名概念,身份直接使用用户名
@@ -20,7 +20,7 @@
 
 ## Impact
 
-- `MultiClusterMgmtSys/Components/Account/Pages/Profile.razor`:重写(当前为注释状态)
+- `MultiClusterMgmtSys/Components/Profile/Pages/Profile.razor`:重写并迁移(原 `Components/Account/Pages/Profile.razor` 删除,当前为注释状态)
 - `MultiClusterMgmtSys/Components/Account/Services/AccountService.cs`:删除 `UpdateProfileAsync` 空壳(需先确认无其他调用方)
 - 无 schema 变更,不触碰 `ApplicationUser` 实体与数据库
 - 复用现有 `ChangePasswordAsync`(中文报错已就绪)、`GetUserByNameAsync`

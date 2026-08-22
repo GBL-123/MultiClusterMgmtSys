@@ -62,6 +62,10 @@ The sidebar SHALL expose group create / rename / delete actions. Each action SHA
 - **WHEN** a Member (role `Member`) views the sidebar
 - **THEN** the "+" header button is not rendered and the per-row ✏️ and 🗑️ buttons are not rendered
 
+#### Scenario: Group dialog content renders without a scrollbar
+- **WHEN** an Admin opens the create-group or rename-group dialog
+- **THEN** the dialog's content area shows no scrollbar: the 分组名称 field's floating label is fully visible within the content box (`ContentClass="group-dialog-content"` overrides `mud-dialog-content`'s default `overflow:auto` so the outlined label's phantom scrollable-overflow region never renders a scrollbar)
+
 ### Requirement: Sidebar state refresh after structural changes
 
 After any of the following structural changes, the sidebar's group list and cluster counts SHALL be re-fetched from `GroupService.GetGroupsAsync()`: successful create, successful rename (count unchanged but name updates), successful delete.

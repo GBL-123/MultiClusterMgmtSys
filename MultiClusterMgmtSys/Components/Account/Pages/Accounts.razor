@@ -56,7 +56,7 @@
 
     @if (isBatchMode && selectedAccountIds.Count > 0)
     {
-        <MudPaper Class="pa-3 mt-2" Elevation="2">
+        <MudPaper Class="pa-4">
             <MudStack Row="true" AlignItems="AlignItems.Center">
                 <MudText>@selectedAccountIds.Count 个账号已选</MudText>
                 <MudSpacer />
@@ -167,45 +167,51 @@
 
     private async Task DeleteAccount(AccountViewModel account)
     {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "确认删除",
-            $"确认删除账号「{account.UserName}」？此操作不可撤销。",
-            yesText: "删除",
-            noText: "取消");
-        if (confirmed != true) return;
-
-        var result = await AccountSvc.DeleteAccountAsync(account.Id, currentUserId);
-        if (result.Succeeded)
+        var parameters = new DialogParameters
         {
-            Snackbar.Add("账号已删除", Severity.Success);
-            await RefreshTable();
-        }
+            { "Message", $"确认删除账号「{account.UserName}」？此操作不可撤销。" }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("确认删除", parameters, options);
+        var dialogResult = await dialog.Result;
+        if (dialogResult is not null && !dialogResult.Canceled)
+        {
+            var result = await AccountSvc.DeleteAccountAsync(account.Id, currentUserId);
+            if (result.Succeeded)
+            {
+                Snackbar.Add("账号已删除", Severity.Success);
+                await RefreshTable();
+            }
         else
         {
             var msg = result.Errors.FirstOrDefault()?.Description ?? "删除失败";
             Snackbar.Add(msg, Severity.Error);
         }
     }
+    }
 
     private async Task BatchDelete()
     {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "确认删除",
-            $"确认删除选中的 {selectedAccountIds.Count} 个账号？此操作不可撤销。",
-            yesText: "删除",
-            noText: "取消");
-        if (confirmed != true) return;
-
-        try
+        var parameters = new DialogParameters
         {
-            var result = await AccountSvc.BatchDeleteAsync(selectedAccountIds.ToList(), currentUserId);
-            ShowBatchResult(result, "已删除");
-            ClearSelection();
-            await RefreshTable();
-        }
-        catch (Exception ex)
+            { "Message", $"确认删除选中的 {selectedAccountIds.Count} 个账号？此操作不可撤销。" }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("确认删除", parameters, options);
+        var dialogResult = await dialog.Result;
+        if (dialogResult is not null && !dialogResult.Canceled)
         {
-            Snackbar.Add($"批量删除失败: {ex.Message}", Severity.Error);
+            try
+            {
+                var result = await AccountSvc.BatchDeleteAsync(selectedAccountIds.ToList(), currentUserId);
+                ShowBatchResult(result, "已删除");
+                ClearSelection();
+                await RefreshTable();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"批量删除失败: {ex.Message}", Severity.Error);
+            }
         }
     }
 

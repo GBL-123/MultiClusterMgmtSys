@@ -57,3 +57,21 @@
 ## 9. Out-of-scope reaffirmation
 
 - [x] 9.1 (Documentation-only) Not added: remark rows for Hostname/DNS, free-form IP entry, remark cleanup job, K8s write ops (cordon/drain), and the `NodeListFilterBar` live-filter defect (tracked as task 9.1 of `redesign-nodes-page`).
+
+## 10. List page visual alignment with cluster management (post-implementation amendment)
+
+> Context: after implementation, the user flagged that the node list page style differs from the cluster management page. The right pane was restructured to mirror `Clusters.razor`: title row + filter bar in ONE `MudPaper`, table upgraded to sortable headers + FixedHeader + loading content (client-side paging retained — node data is fetched in one K8s call, server paging is meaningless).
+
+- [x] 10.1 `NodeListToolbar.razor` — no longer its own `MudPaper`; renders a title row only: `Typo.h5` "节点管理", cluster name outlined `MudChip`, `StatusText` status `MudChip`, "刷新" outlined button (spinner while `Processing`).
+- [x] 10.2 `NodeListFilterBar.razor` — drop the `pa-4 mb-4` self-paper classes (`mt-2` only); the parent's `MudPaper` now hosts it.
+- [x] 10.3 `NodeListTable.razor` — add `MudTableSortLabel` headers on all six columns (IP 地址 sorts by first address), `FixedHeader="true"`, `Loading` parameter + "正在加载..." `LoadingContent`; drop `Dense`/`Elevation="0"` to match `ClusterTable`.
+- [x] 10.4 `Nodes.razor` — right pane restructure: `MudPaper pa-4 mb-4` wraps `NodeListToolbar` + `NodeListFilterBar`; loading branch becomes `cluster is null && loading` (refresh keeps toolbar visible, table shows its own loading state); parameter-diff branch clears `cluster`/`nodes` before `LoadAsync` so cluster switches show the progress bar instead of stale content.
+- [x] 10.5 `dotnet build MultiClusterMgmtSys.slnx` — clean (0 errors).
+
+## 11. Toolbar back-button removal (post-implementation amendment)
+
+> Context: the user requested removing the "返回集群详情" text button from the node list toolbar (back-navigation is via the Drawer/sidebar). Spec/design updated first per workflow; implementation below.
+
+- [x] 11.1 `NodeListToolbar.razor` — remove the "返回集群详情" `MudButton` and its `OnBack` parameter.
+- [x] 11.2 `Nodes.razor` — remove the `OnBack` binding from `NodeListToolbar` usage.
+- [x] 11.3 `dotnet build MultiClusterMgmtSys.slnx` — clean (0 errors).

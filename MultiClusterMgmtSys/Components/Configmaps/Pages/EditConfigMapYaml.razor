@@ -10,14 +10,14 @@
 
 <PageTitle>编辑 YAML: @Name</PageTitle>
 
-<MudStack Class="flex-auto">
+<MudStack Class="flex-auto pb-4" Style="align-self: flex-start;">
     @if (loading)
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
     }
     else if (loadError)
     {
-        <MudCard Class="pa-8" Elevation="2">
+        <MudCard Class="pa-4">
             <MudCardContent>
                 <MudText Align="Align.Center" Class="mud-text-secondary" Typo="Typo.h6">ConfigMap 不存在或已被删除</MudText>
                 <div class="d-flex justify-center mt-4">
@@ -33,7 +33,7 @@
     }
     else
     {
-        <MudPaper Class="pa-4 mb-4">
+        <MudPaper Class="pa-4">
             <MudStack Row="true" AlignItems="AlignItems.Center">
                 <MudButton Variant="Variant.Text"
                            StartIcon="@Icons.Material.Filled.ArrowBack"

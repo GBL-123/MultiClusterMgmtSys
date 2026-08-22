@@ -61,3 +61,29 @@ The system SHALL render the node detail page (`/nodes/{ClusterId}/{NodeName}`) a
 #### Scenario: Cluster detail card truncation preserved
 - **WHEN** `ClusterNodesCard` renders more than five nodes
 - **THEN** it shows only the first five nodes with the existing "查看全部" button targeting `/nodes/{Cluster.Id}`
+
+### Requirement: Node list page toolbar mirrors the cluster management page
+
+The node list page's right pane SHALL follow the visual structure of `Clusters.razor`: a single `MudPaper pa-4` containing a title row and the filter bar in one card, followed by the table. The title row (`NodeListToolbar`) SHALL render: the page title "节点管理" as `Typo.h5`, the cluster name as an outlined `MudChip`, the cluster's `StatusText` as a status-colored `MudChip`, and a "刷新" outlined button (disabled while `Processing`, with a small progress spinner). The title row SHALL NOT contain a back-to-cluster-detail button (navigation back to the cluster detail is via the Drawer/sidebar, not this toolbar). The filter bar SHALL render inside the same `MudPaper` below the title row (no standalone `pa-4 mb-4` paper of its own).
+
+#### Scenario: Title row and filter share one paper
+- **WHEN** the node list renders for a reachable cluster
+- **THEN** `NodeListToolbar` and `NodeListFilterBar` appear inside the same `MudPaper pa-4`
+- **AND** the page title reads "节点管理" at `Typo.h5` with the cluster context shown as chips
+- **AND** the title row contains no back-to-cluster-detail button
+
+#### Scenario: Refresh keeps the toolbar visible
+- **WHEN** the user clicks "刷新" while the node list is loaded
+- **THEN** the toolbar and filter bar remain rendered and the table shows its loading state ("正在加载...") until the reload completes
+
+### Requirement: Node list table uses sortable client-side columns
+
+`NodeListTable` SHALL render a `MudTable<ClusterNodeViewModel>` with `Hover`, `FixedHeader`, a `Loading` parameter driving a "正在加载..." `LoadingContent`, and `MudTableSortLabel` headers for all six columns (名称 / 状态 / 角色 / Kubelet 版本 / 操作系统 / IP 地址, the last sorting by the first IP address). Sorting SHALL be client-side over the loaded `Items` — no new server round-trip.
+
+#### Scenario: Column headers are sortable
+- **WHEN** the user clicks a column header (e.g. 状态)
+- **THEN** the table re-sorts its rows client-side by that column, toggling ascending/descending
+
+#### Scenario: Loading content shows during refresh
+- **WHEN** `Loading` is `true`
+- **THEN** the table renders "正在加载..." in place of the rows

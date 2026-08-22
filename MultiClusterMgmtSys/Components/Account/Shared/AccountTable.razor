@@ -15,11 +15,11 @@
         {
             <MudTh Style="width:48px;"></MudTh>
         }
-        <MudTh>用户名</MudTh>
+        <MudTh><MudTableSortLabel T="AccountViewModel" SortBy="@(x => x.UserName)" SortLabel="UserName">用户名</MudTableSortLabel></MudTh>
         <MudTh>角色</MudTh>
-        <MudTh>创建时间</MudTh>
-        <MudTh>最后登录</MudTh>
-        <MudTh Style="width:160px;">操作</MudTh>
+        <MudTh><MudTableSortLabel T="AccountViewModel" SortBy="@(x => x.CreatedAt)" SortLabel="CreatedAt">创建时间</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="AccountViewModel" SortBy="@(x => x.LastLoginAt)" SortLabel="LastLoginAt">最后登录</MudTableSortLabel></MudTh>
+        <MudTh>操作</MudTh>
     </HeaderContent>
     <RowTemplate>
         @if (MultiSelectVisible)

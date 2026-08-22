@@ -124,11 +124,22 @@ public class AccountService(
         }
 
         var total = await q.CountAsync();
-        var users = sortDescending
-            ? await q.OrderByDescending(u => u.CreatedAt).ThenByDescending(u => u.Id)
-                .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync()
-            : await q.OrderBy(u => u.CreatedAt).ThenBy(u => u.Id)
-                .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+        var users = await (state.SortLabel switch
+        {
+            "UserName" => sortDescending
+                ? q.OrderByDescending(u => u.UserName)
+                : q.OrderBy(u => u.UserName),
+            "LastLoginAt" => sortDescending
+                ? q.OrderByDescending(u => u.LastLoginAt)
+                : q.OrderBy(u => u.LastLoginAt),
+            _ => sortDescending
+                ? q.OrderByDescending(u => u.CreatedAt)
+                : q.OrderBy(u => u.CreatedAt)
+        })
+        .ThenBy(u => u.Id)
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
+        .ToListAsync();
 
         var vms = new List<AccountViewModel>(users.Count);
         foreach (var user in users)

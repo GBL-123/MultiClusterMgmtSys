@@ -102,6 +102,16 @@ public List<NodeIpViewModel> IpAddresses { get; set; } = new();
 - Entry: Admin-only "管理" button in 基本信息 card's 地址 section header (wrapped in `<AuthorizeView Roles="Admin">`), exactly like `ClusterEndpointsCard`.
 - Member/read-only users see the remarks as plain text with no manage affordance.
 
+### Decision 7 (post-implementation amendment): Node list page visually aligns with the cluster management page
+
+Added after the user flagged that the node list style differed from `Clusters.razor`. **Scope chosen: visual alignment + sortable headers; paging stays client-side** (node data arrives as one K8s `ListNode` call; server paging would be a fake adapter). Concrete shape:
+
+- **One `MudPaper` per right pane** (mirroring `Clusters.razor`): `NodeListToolbar` loses its own `MudPaper` and becomes a title row only — `Typo.h5` "节点管理" page title, cluster name outlined `MudChip`, `StatusText` status `MudChip`, "刷新" outlined button with inline spinner. The "返回集群详情" text button is NOT present — back-navigation is via the Drawer/sidebar (user exclusion; the toolbar keeps only page title + cluster context + refresh). `NodeListFilterBar` drops `pa-4 mb-4` and sits inside the same paper (`mt-2`), like `ClusterFilterBar` inside the cluster page's paper.
+- **Table upgraded to match `ClusterTable`'s chrome:** `MudTableSortLabel` headers on all six columns (IP 地址 sorts by first address), `FixedHeader="true"`, `Loading` parameter driving a "正在加载..." `LoadingContent`; `Dense`/`Elevation="0"` dropped. Sorting remains client-side over `Items`.
+- **State-render reorder in `Nodes.razor`:** loading branch becomes `cluster is null && loading` so a refresh keeps the toolbar visible while the table shows its own loading state; the parameter-diff branch clears `cluster`/`nodes` before `LoadAsync` so sidebar cluster switches show the progress bar instead of stale content.
+
+**Alternatives considered:** (a) full server-paging alignment (`ServerData`) — rejected: meaningless for a single K8s list call; (b) pure title "节点管理" without cluster context — rejected: the back-to-cluster-detail affordance and cluster identity are needed on a cluster-scoped page.
+
 ## Risks / Trade-offs
 
 - **[R1] DB rebuild required** (no migrations, `EnsureCreated`) → Mitigation: documented in tasks; local dev DB only, gitignored; admin seed auto-recreated at startup. Sequence the drop as an explicit task step before first run.

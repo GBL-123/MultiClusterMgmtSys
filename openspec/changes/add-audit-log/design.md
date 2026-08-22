@@ -52,6 +52,7 @@ MultiClusterMgmtSys 是一个 .NET 10 / Blazor Server (interactive server) + Mud
 
 ### D7：页面与导航
 - 新增 `Components/AuditLogs/Pages/AuditLogs.razor`（路由 `/audit-logs`），沿用 `Accounts.razor` 的 MudTable + `PagedResult<>` + `TableState` 模式；Member 无操作人筛选框，Admin 有。
+- 表格呈现复刻集群管理页（`ClusterTable.razor` + `wwwroot/css/app.css` 的 `.clusters-table` flex-fill 模式）：表格平铺于页面（不包 MudPaper 卡片）、填满剩余高度、时间列用 `MudTableSortLabel` 可排序；样式类 `audit-logs-table` 与 `.clusters-table` 规则一致。
 - Drawer 在"账号管理"之后新增入口：`审计日志`，`Icons.Material.Filled.History`，无角色限制（所有登录用户可见）。
 - 命名空间遵循 `Components/AuditLogs/**` → `MultiClusterMgmtSys.Components.AuditLogs.*`（与 `Components/Clusters` 等物理路径一致的模式）；枚举在 `Common/Enums`。
 

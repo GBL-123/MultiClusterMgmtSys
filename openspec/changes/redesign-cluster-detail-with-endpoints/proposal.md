@@ -5,8 +5,8 @@ The cluster detail page (`/clusters/{id}`) is currently fully commented out at `
 ## What Changes
 
 - **Rebuild** `Components/Clusters/Pages/ClusterDetail.razor` as an active "archive page" (the "A" layout tier): top toolbar with cluster name + status chip + Admin-only action group, followed by four discrete cards — Overview, **Cluster Endpoints** (new), Connection Info (Admin-only, payload-unmasked-on-demand), and a compact Nodes card with a "view all" link to `/nodes/{id}`. Delete the surrounding `@* ... *@` comment block so the `@page "/clusters/{Id:int}"` route becomes registered.
-- **Add** a new `ClusterEndpoint` child entity (`int` PK, FK to `ClusterInfo.Id` with cascade delete, `Kind` enum, `Value`, `Note`, `IsPrimary`, `SortOrder`) persisted in SQLite. `Kind` starts with `Vip = 0` and `Domain = 1`; future kinds (e.g. `Bastion`) extend the enum.
-- **Add** endpoint management UI as a dedicated `ClusterEndpointsDialog.razor` (Shared), invoked from a "管理" button on the detail page's Endpoints card. The dialog uses a full-replacement editor: add/remove rows inline, each row exposes `Kind` (select), `Value` (required, ≤ 256 chars), `Note` (optional, ≤ 64 chars), `IsPrimary` (radio, at most one primary per `Kind`), and an inline delete affordance. Saving submits a complete list — the service clears the existing set and re-inserts the surviving/new rows.
+- **Add** a new `ClusterEndpoint` child entity (`int` PK, FK to `ClusterInfo.Id` with cascade delete, `Kind` enum, `Value`, `Note`, `SortOrder`) persisted in SQLite. `Kind` starts with `Vip = 0` and `Domain = 1`; future kinds (e.g. `Bastion`) extend the enum.
+- **Add** endpoint management UI as a dedicated `ClusterEndpointsDialog.razor` (Shared), invoked from a "管理" button on the detail page's Endpoints card. The dialog uses a full-replacement editor: add/remove rows inline, each row exposes `Kind` (select), `Value` (required, ≤ 256 chars), `Note` (optional, ≤ 64 chars), and an inline delete affordance. Saving submits a complete list — the service clears the existing set and re-inserts the surviving/new rows.
 - **Add** one-click clipboard copy of any endpoint `Value` via MudBlazor's clipboard support. Each endpoint row in the detail view renders a copy affordance so operators can paste VIPs/domains straight into SSH/curl commands.
 - **Extend** `AddClusterDialog.razor` to also embed the `ClusterEndpointEditor` block, so endpoints can be captured at cluster creation time. Leave `EditClusterDialog.razor` untouched — per `refactor-clusters-group-sidebar-layout/proposal.md` it is reserved for a separate change. (Cluster non-endpoint editing remains non-functional until that separate change; out of scope here.)
 - **BREAKING (schema):** A new `ClusterEndpoints` table is added. Because the repo uses `db.Database.EnsureCreated()` with no EF migrations, this requires deleting `MultiClusterMgmtSys.db` (plus `-wal` / `-shm`) and letting the next startup rebuild the schema. Existing local cluster rows are lost; the admin seed `admin / Changeme_123` re-creates automatically on next startup.
@@ -14,7 +14,7 @@ The cluster detail page (`/clusters/{id}`) is currently fully commented out at `
 ## Capabilities
 
 ### New Capabilities
-- `cluster-endpoints`: Persist, edit, and display administrator-defined per-cluster endpoints (VIPs and domains, with note and primary/secondary flag) as first-class metadata stored in the app database. Independent of Kubernetes API reachability.
+- `cluster-endpoints`: Persist, edit, and display administrator-defined per-cluster endpoints (VIPs and domains, with optional note) as first-class metadata stored in the app database. Independent of Kubernetes API reachability.
 - `cluster-detail`: The `/clusters/{id}` "archive page" — a single-page detail view that composes the cluster's own fields, its registered endpoints, its connection secrets (Admin-only), and a compact nodes preview into one navigable surface.
 
 ### Modified Capabilities
@@ -28,9 +28,9 @@ The cluster detail page (`/clusters/{id}`) is currently fully commented out at `
   - `Data/ApplicationDbContext.cs` — `DbSet<ClusterEndpoint>` + `OnModelCreating` FK/cascade config.
   - `Common/Enums/ClusterEndpointKind.cs` (new) — `Vip = 0`, `Domain = 1`.
   - `Data/Repositories/ClusterRepository.cs` — `GetByIdAsync` adds `.Include(c => c.Endpoints)`; `GetPagedAsync` unchanged (list view does not need endpoints).
-  - `Components/Clusters/Services/ClusterService.cs` — `AddClusterAsync` persists endpoints from the create VM; new `UpdateClusterEndpointsAsync(int clusterId, List<ClusterEndpointEditItem>)` performs the full-replace strategy; validation throws `ArgumentException` when more than one `IsPrimary` row exists per `Kind`.
-  - `Components/Clusters/ViewModels/ClusterEndpointViewModel.cs` (new) — detail view VM with `KindText`, `Value`, `Note`, `IsPrimary`.
-  - `Components/Clusters/ViewModels/ClusterEndpointEditItem.cs` (new) — editor row VM (`Id?`, `Kind`, `Value`, `Note`, `IsPrimary`, `IsDeleted`).
+  - `Components/Clusters/Services/ClusterService.cs` — `AddClusterAsync` persists endpoints from the create VM; new `UpdateClusterEndpointsAsync(int clusterId, List<ClusterEndpointEditItem>)` performs the full-replace strategy; validation throws `ArgumentException` on value/note length violations.
+  - `Components/Clusters/ViewModels/ClusterEndpointViewModel.cs` (new) — detail view VM with `KindText`, `Value`, `Note`.
+  - `Components/Clusters/ViewModels/ClusterEndpointEditItem.cs` (new) — editor row VM (`Id?`, `Kind`, `Value`, `Note`, `IsDeleted`).
   - `Components/Clusters/ViewModels/ClusterCreateViewModel.cs` — `+ List<ClusterEndpointEditItem> Endpoints` (default empty).
   - `Components/Clusters/ViewModels/ClusterDetailViewModel.cs` — `+ List<ClusterEndpointViewModel> Endpoints`.
   - `Components/Clusters/ViewModels/Mappings/ClusterMappingExtensions.cs` — `ToDetailViewModel` and `ToEditViewModel` project endpoints; helper `ApplyEndpoints(entity, items)` for full-replace.

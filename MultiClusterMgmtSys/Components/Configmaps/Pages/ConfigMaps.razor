@@ -46,31 +46,67 @@
                 </MudCardContent>
             </MudCard>
         }
-        else if (!cluster.IsReachable)
-        {
-            <ConfigMapListToolbar Cluster="@cluster" Processing="@loading" OnRefresh="@(() => LoadAsync(EffectiveClusterId!.Value))" />
-            <MudCard Elevation="1">
-                <MudCardContent>
-                    <MudText Align="Align.Center" Class="mud-text-secondary">集群不可达，无法获取 ConfigMap</MudText>
-                </MudCardContent>
-            </MudCard>
-        }
         else
         {
-            <ConfigMapListToolbar Cluster="@cluster"
-                                  Processing="@loading"
-                                  OnRefresh="@(() => LoadAsync(EffectiveClusterId!.Value))" />
-            <ConfigMapListFilterBar Cluster="@cluster"
-                                    Namespaces="@namespaces"
-                                    SelectedNamespace="@selectedNamespace"
-                                    SearchName="@searchName"
-                                    OnSelectedNamespaceChanged="OnNamespaceValueChanged"
-                                    OnSearchNameChanged="OnSearchNameChanged"
-                                    OnCreate="OpenCreateDialog" />
-            <ConfigMapListTable Items="@filteredConfigMaps"
-                                OnNavigateDetail="NavigateToDetail"
-                                OnNavigateEditYaml="NavigateToYamlEdit"
-                                OnDelete="DeleteConfigMap" />
+            <MudPaper Class="pa-4">
+                <MudStack>
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudText Typo="Typo.h5">配置管理</MudText>
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Color="GetClusterStatusColor(cluster.Status)"
+                                 Variant="Variant.Filled"
+                                 Class="ml-2">
+                            @cluster.Name · @cluster.StatusText
+                        </MudChip>
+                        <MudSpacer />
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Inherit"
+                                   StartIcon="@Icons.Material.Filled.Refresh"
+                                   OnClick="@(() => LoadAsync(EffectiveClusterId!.Value))"
+                                   Disabled="@loading">
+                            刷新
+                        </MudButton>
+                        <AuthorizeView Roles="Admin">
+                            <Authorized>
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.Add"
+                                           OnClick="OpenCreateDialog"
+                                           Disabled="@(!cluster.IsReachable)">
+                                    新建 ConfigMap
+                                </MudButton>
+                            </Authorized>
+                        </AuthorizeView>
+                    </MudStack>
+
+                    @if (cluster.IsReachable)
+                    {
+                        <ConfigMapListFilterBar @bind-SelectedNamespace="selectedNamespace"
+                                                @bind-SearchName="searchName"
+                                                Namespaces="@namespaces"
+                                                OnQuery="OnQueryClick"
+                                                OnReset="OnResetClick" />
+                    }
+                </MudStack>
+            </MudPaper>
+
+            @if (!cluster.IsReachable)
+            {
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudText Align="Align.Center" Class="mud-text-secondary">集群不可达，无法获取 ConfigMap</MudText>
+                    </MudCardContent>
+                </MudCard>
+            }
+            else
+            {
+                <ConfigMapListTable Items="@filteredConfigMaps"
+                                    Loading="@loading"
+                                    OnNavigateDetail="NavigateToDetail"
+                                    OnNavigateEditYaml="NavigateToYamlEdit"
+                                    OnDelete="DeleteConfigMap" />
+            }
         }
     </MudStack>
 </MudStack>
@@ -91,6 +127,7 @@
     private List<string> namespaces = new();
     private bool loading;
     private string searchName = "";
+    private string appliedSearchName = "";
     private string? selectedNamespace;
     private int? previousClusterId;
     private bool hasInitialized;
@@ -106,8 +143,8 @@
         get
         {
             var q = configMaps.AsEnumerable();
-            if (!string.IsNullOrWhiteSpace(searchName))
-                q = q.Where(cm => cm.Name.Contains(searchName, StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(appliedSearchName))
+                q = q.Where(cm => cm.Name.Contains(appliedSearchName, StringComparison.OrdinalIgnoreCase));
             return q.ToList();
         }
     }
@@ -212,31 +249,34 @@
         NavigationManager.NavigateTo($"/configmaps/{id}");
     }
 
-    private async Task OnNamespaceValueChanged(string? ns)
+    private async Task OnQueryClick()
     {
-        selectedNamespace = ns;
-        if (EffectiveClusterId.HasValue)
+        if (!EffectiveClusterId.HasValue) return;
+        appliedSearchName = searchName;
+        loading = true;
+        try
         {
-            loading = true;
-            try
-            {
-                configMaps = await ConfigMapService.ListConfigMapsAsync(EffectiveClusterId.Value, selectedNamespace);
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add($"加载 ConfigMap 列表失败: {ex.Message}", Severity.Error);
-            }
-            finally
-            {
-                loading = false;
-            }
+            configMaps = await ConfigMapService.ListConfigMapsAsync(EffectiveClusterId.Value, selectedNamespace);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"加载 ConfigMap 列表失败: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
         }
     }
 
-    private Task OnSearchNameChanged(string value)
+    private async Task OnResetClick()
     {
-        searchName = value;
-        return Task.CompletedTask;
+        selectedNamespace = null;
+        searchName = "";
+        appliedSearchName = "";
+        if (EffectiveClusterId.HasValue)
+        {
+            await LoadAsync(EffectiveClusterId.Value);
+        }
     }
 
     private void NavigateToDetail((string Namespace, string Name) args)
@@ -251,13 +291,15 @@
 
     private async Task DeleteConfigMap((string Namespace, string Name) args)
     {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "确认删除",
-            $"确认删除 ConfigMap「{args.Name}」？此操作不可撤销。",
-            yesText: "删除",
-            noText: "取消");
+        var parameters = new DialogParameters
+        {
+            { "Message", $"确认删除 ConfigMap「{args.Name}」？此操作不可撤销。" }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("确认删除", parameters, options);
+        var result = await dialog.Result;
 
-        if (confirmed == true)
+        if (result is not null && !result.Canceled)
         {
             try
             {
@@ -285,4 +327,11 @@
         if (result is not null && !result.Canceled)
             await LoadAsync(EffectiveClusterId!.Value);
     }
+
+    private static Color GetClusterStatusColor(ClusterStatus status) => status switch
+    {
+        ClusterStatus.Online => Color.Success,
+        ClusterStatus.Offline => Color.Error,
+        _ => Color.Default
+    };
 }

@@ -37,6 +37,11 @@ public class AuditLogRepository(ApplicationDbContext db)
             q = q.Where(l => l.UserName != null && l.UserName.Contains(search));
         }
 
+        if (query.Category.HasValue)
+        {
+            q = q.Where(l => l.Category == query.Category.Value);
+        }
+
         var total = await q.CountAsync();
 
         IOrderedQueryable<AuditLog> ordered = sortDescending

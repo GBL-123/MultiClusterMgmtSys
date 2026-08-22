@@ -8,14 +8,14 @@
 
 <PageTitle>集群详情</PageTitle>
 
-<MudStack Class="flex-auto">
+<MudStack Class="d-flex flex-auto pb-4" Style="align-self: flex-start;">
     @if (loading)
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
     }
     else if (cluster is null)
     {
-        <MudCard Class="pa-8" Elevation="2">
+        <MudCard Class="pa-4">
             <MudCardContent>
                 <MudText Align="Align.Center" Class="mud-text-secondary">未找到该集群</MudText>
                 <div class="d-flex justify-center mt-4">
@@ -35,6 +35,7 @@
                              Processing="processing"
                              OnBack="@(() => NavigationManager.NavigateTo("/clusters"))"
                              OnRefresh="RefreshStatus"
+                             OnEdit="OpenEditDialog"
                              OnDelete="DeleteCluster" />
 
         <ClusterOverviewCard Cluster="@cluster" />
@@ -47,12 +48,23 @@
 </MudStack>
 
 @code {
-    [Parameter] public int Id { get; set; }
-    [Inject] private ClusterService ClusterService { get; set; } = default!;
-    [Inject] private ClusterSelectionState ClusterSelection { get; set; } = default!;
-    [Inject] private IDialogService DialogService { get; set; } = default!;
-    [Inject] private ISnackbar Snackbar { get; set; } = default!;
-    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+    [Parameter]
+    public int Id { get; set; }
+
+    [Inject]
+    private ClusterService ClusterService { get; set; } = default!;
+
+    [Inject]
+    private ClusterSelectionState ClusterSelection { get; set; } = default!;
+
+    [Inject]
+    private IDialogService DialogService { get; set; } = default!;
+
+    [Inject]
+    private ISnackbar Snackbar { get; set; } = default!;
+
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = default!;
 
     private ClusterDetailViewModel? cluster;
     private bool loading;
@@ -103,15 +115,29 @@
         }
     }
 
+    private async Task OpenEditDialog()
+    {
+        var parameters = new DialogParameters { { "ClusterId", Id } };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<EditClusterDialog>("编辑集群", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await LoadAsync();
+        }
+    }
+
     private async Task DeleteCluster()
     {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "确认删除",
-            $"确认删除集群「{cluster?.Name ?? Id.ToString()}」？此操作不可撤销。",
-            yesText: "删除",
-            noText: "取消");
+        var parameters = new DialogParameters
+        {
+            { "Message", $"确认删除集群「{cluster?.Name ?? Id.ToString()}」？此操作不可撤销。" }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("确认删除", parameters, options);
+        var result = await dialog.Result;
 
-        if (confirmed == true)
+        if (result is not null && !result.Canceled)
         {
             processing = true;
             try

@@ -1,0 +1,69 @@
+@using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Components.AuditLogs.Requests
+@using MultiClusterMgmtSys.Components.AuditLogs.ViewModels.Mappings
+
+<MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
+    <MudStack Row="true" Class="flex-auto">
+        @if (ShowUserFilter)
+        {
+            <MudTextField @bind-Value="Query.SearchName"
+                          Label="操作人"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Placeholder="请输入操作人"
+                          Style="min-width:200px;" />
+        }
+        <MudSelect @bind-Value="Query.Category"
+                   Label="类别"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   Style="min-width:120px;">
+            <MudSelectItem Value="@((AuditCategory?)null)">全部</MudSelectItem>
+            @foreach (var category in Enum.GetValues<AuditCategory>())
+            {
+                <MudSelectItem Value="@((AuditCategory?)category)">@category.ToDisplayName()</MudSelectItem>
+            }
+        </MudSelect>
+    </MudStack>
+    <MudSpacer />
+    <MudStack Row="true">
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Search"
+                   OnClick="Search">
+            查询
+        </MudButton>
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Secondary"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="ResetFilter">
+            重置
+        </MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter]
+    public AuditLogQueryRequest Query { get; set; } = new();
+
+    [Parameter]
+    public bool ShowUserFilter { get; set; }
+
+    [Parameter]
+    public EventCallback OnFilterChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnReset { get; set; }
+
+    private Task Search()
+    {
+        return OnFilterChanged.InvokeAsync();
+    }
+
+    private Task ResetFilter()
+    {
+        Query.SearchName = null;
+        Query.Category = null;
+        return OnReset.InvokeAsync();
+    }
+}

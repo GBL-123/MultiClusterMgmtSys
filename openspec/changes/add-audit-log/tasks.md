@@ -24,7 +24,7 @@
 
 - [x] 4.1 新增 `Components/AuditLogs/Requests/AuditLogQueryRequest.cs`：可选 `SearchName`（Admin 筛选操作人）
 - [x] 4.2 新增 `Components/AuditLogs/ViewModels/AuditLogViewModel.cs` 与 `ViewModels/Mappings/AuditLogMappingExtensions.cs`（枚举→中文显示映射、时间格式化）
-- [x] 4.3 新增 `Components/AuditLogs/Pages/AuditLogs.razor`：路由 `/audit-logs`，MudTable 分页（沿用 Accounts 页 `PagedResult<>` + `TableState` 模式），列：时间/操作人/类别/操作/目标；Admin 显示操作人筛选框，Member 不显示；页面标题"审计日志"
+- [x] 4.3 新增 `Components/AuditLogs/Pages/AuditLogs.razor`：路由 `/audit-logs`，MudTable 分页（沿用 Accounts 页 `PagedResult<>` + `TableState` 模式），列：时间/操作人/类别/操作/目标；Admin 显示操作人筛选框，Member 不显示；页面标题"审计日志"；表格平铺呈现并复刻集群管理页样式（`audit-logs-table` flex-fill + 时间列可排序）
 - [x] 4.4 `Drawer.razor` 在"账号管理"之后新增"审计日志"导航入口（所有登录用户可见，`Icons.Material.Filled.History`）
 
 ## 5. 验证

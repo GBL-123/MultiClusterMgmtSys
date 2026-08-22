@@ -1,6 +1,5 @@
 using MultiClusterMgmtSys.Common.Enums;
 using MultiClusterMgmtSys.Data.Entities;
-using MultiClusterMgmtSys.Components.Clusters.ViewModels;
 
 namespace MultiClusterMgmtSys.Components.Clusters.ViewModels.Mappings;
 
@@ -61,12 +60,10 @@ public static class ClusterMappingExtensions
                     KindText = ep.Kind == ClusterEndpointKind.Vip ? "VIP" : "域名",
                     Value = ep.Value,
                     Note = ep.Note,
-                    IsPrimary = ep.IsPrimary,
                     SortOrder = ep.SortOrder
                 })
                 .OrderBy(ep => ep.Kind)
                 .ThenBy(ep => ep.SortOrder)
-                .ThenByDescending(ep => ep.IsPrimary)
                 .ToList()
         };
     }
@@ -88,8 +85,8 @@ public static class ClusterMappingExtensions
 
     /// <summary>
     /// 全量替换集群端点集合。校验不变式：
-    /// 1. Value 非空（trim 后）且 ≤ 256 字符；Note ≤ 64 字符；
-    /// 2. 每个 Kind 至多一个 IsPrimary 行——"service 是端点生存与否的唯一权威"。
+    /// Value 非空（trim 后）且 ≤ 256 字符；Note ≤ 64 字符——
+    /// "service 是端点生存与否的唯一权威"。
     /// 此方法只修改实体内存集合，SaveChanges 由调用方的 UpdateAsync 提交。
     /// </summary>
     public static void ApplyEndpoints(this ClusterInfo entity, IEnumerable<ClusterEndpointEditItem> items)
@@ -105,9 +102,6 @@ public static class ClusterMappingExtensions
                 throw new ArgumentException("端点备注长度不能超过 64 字符");
         }
 
-        if (list.Where(i => i.IsPrimary).GroupBy(i => i.Kind).Any(g => g.Count() > 1))
-            throw new ArgumentException("每个类型最多一个主端点");
-
         entity.Endpoints.Clear();
         foreach (var item in list)
         {
@@ -116,7 +110,6 @@ public static class ClusterMappingExtensions
                 Kind = item.Kind,
                 Value = item.Value!.Trim(),
                 Note = string.IsNullOrWhiteSpace(item.Note) ? null : item.Note.Trim(),
-                IsPrimary = item.IsPrimary,
                 SortOrder = item.SortOrder
             });
         }

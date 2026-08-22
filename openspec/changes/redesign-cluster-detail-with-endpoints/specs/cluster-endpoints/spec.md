@@ -4,7 +4,7 @@
 
 ### Requirement: Clusters carry zero or more administrator-defined endpoints
 
-A cluster SHALL own a list of `ClusterEndpoint` records persisted in the app database. Each endpoint has a `Kind` (`Vip` or `Domain`), a non-empty `Value` (≤ 256 chars), an optional `Note` (≤ 64 chars), an `IsPrimary` boolean, and a `SortOrder` integer. Endpoints are app-owned metadata — they do not require cluster reachability and SHALL remain available for read when the cluster's `Status` is `Offline`. New kinds are added in the future by extending the `ClusterEndpointKind` enum; no schema change is required beyond that enum addition.
+A cluster SHALL own a list of `ClusterEndpoint` records persisted in the app database. Each endpoint has a `Kind` (`Vip` or `Domain`), a non-empty `Value` (≤ 256 chars), an optional `Note` (≤ 64 chars), and a `SortOrder` integer. Endpoints are app-owned metadata — they do not require cluster reachability and SHALL remain available for read when the cluster's `Status` is `Offline`. New kinds are added in the future by extending the `ClusterEndpointKind` enum; no schema change is required beyond that enum addition.
 
 #### Scenario: Endpoint set is optional
 
@@ -39,25 +39,6 @@ A cluster SHALL own a list of `ClusterEndpoint` records persisted in the app dat
 
 - **WHEN** the submitted items carry distinct `SortOrder` values
 - **THEN** the persisted rows preserve those `SortOrder` values, and `ClusterService.GetClusterDetailAsync` returns them sorted ascending by `SortOrder` then by `Id`
-
-### Requirement: At most one primary endpoint per kind
-
-Within a single cluster, at most one endpoint of each `Kind` MAY be marked `IsPrimary == true`. The service SHALL enforce this invariant; violations abort the update.
-
-#### Scenario: Single primary per kind is valid
-
-- **WHEN** the submitted items contain exactly one `Vip` row with `IsPrimary == true` and exactly one `Domain` row with `IsPrimary == true`
-- **THEN** the service accepts the submission and persists both primaries
-
-#### Scenario: Duplicate primary within a kind is rejected
-
-- **WHEN** the submitted items contain two `Vip` rows with `IsPrimary == true`
-- **THEN** the service throws `ArgumentException` with a message indicating "at most one primary per kind" and does NOT mutate any persisted endpoint row
-
-#### Scenario: Zero primaries is valid
-
-- **WHEN** the submitted items contain no row with `IsPrimary == true` for a given kind (or for any kind)
-- **THEN** the service accepts the submission; the resulting endpoint collection has no primary of that kind
 
 ### Requirement: Endpoint value formatting and validation
 

@@ -3,15 +3,16 @@
 
 <MudTable T="ConfigMapListViewModel"
           Items="@Items"
-          Dense="true"
           Hover="true"
-          Elevation="0">
+          FixedHeader="true"
+          Loading="Loading"
+          Class="configmaps-table">
     <HeaderContent>
-        <MudTh>名称</MudTh>
-        <MudTh>命名空间</MudTh>
-        <MudTh>Data 键数</MudTh>
+        <MudTh><MudTableSortLabel T="ConfigMapListViewModel" SortBy="@(x => x.Name)" SortLabel="Name">名称</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="ConfigMapListViewModel" SortBy="@(x => x.Namespace)" SortLabel="Namespace">命名空间</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="ConfigMapListViewModel" SortBy="@(x => x.DataKeyCount)" SortLabel="DataKeyCount">Data 键数</MudTableSortLabel></MudTh>
         <MudTh>键名预览</MudTh>
-        <MudTh>创建时间</MudTh>
+        <MudTh><MudTableSortLabel T="ConfigMapListViewModel" SortBy="@(x => x.CreatedAt)" SortLabel="CreatedAt">创建时间</MudTableSortLabel></MudTh>
         <MudTh>操作</MudTh>
     </HeaderContent>
     <RowTemplate>
@@ -59,13 +60,17 @@
     <PagerContent>
         <MudTablePager RowsPerPageString="每页条数：" InfoFormat="共 {all_items} 条" />
     </PagerContent>
+    <LoadingContent>
+        <MudText>正在加载...</MudText>
+    </LoadingContent>
     <NoRecordsContent>
-        <MudText>暂无 ConfigMap</MudText>
+        <MudText>暂无 ConfigMap 或没有符合筛选条件的 ConfigMap</MudText>
     </NoRecordsContent>
 </MudTable>
 
 @code {
     [Parameter] public IReadOnlyList<ConfigMapListViewModel> Items { get; set; } = new List<ConfigMapListViewModel>();
+    [Parameter] public bool Loading { get; set; }
     [Parameter] public EventCallback<(string Namespace, string Name)> OnNavigateDetail { get; set; }
     [Parameter] public EventCallback<(string Namespace, string Name)> OnNavigateEditYaml { get; set; }
     [Parameter] public EventCallback<(string Namespace, string Name)> OnDelete { get; set; }
