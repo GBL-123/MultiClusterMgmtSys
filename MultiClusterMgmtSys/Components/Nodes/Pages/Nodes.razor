@@ -13,9 +13,9 @@
 <PageTitle>节点管理</PageTitle>
 
 <MudStack Row="true" Spacing="3" Class="d-flex flex-auto">
-    <NodeClusterSidebar Clusters="@clusters"
-                        SelectedClusterId="@EffectiveClusterId"
-                        OnClusterSelected="SelectCluster" />
+    <ClusterSelectSidebar Clusters="@clusters"
+                          SelectedClusterId="@EffectiveClusterId"
+                          OnClusterSelected="SelectCluster" />
 
     <MudStack Class="flex-auto">
         @if (!EffectiveClusterId.HasValue)

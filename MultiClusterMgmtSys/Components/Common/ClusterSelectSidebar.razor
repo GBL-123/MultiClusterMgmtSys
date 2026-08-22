@@ -1,0 +1,108 @@
+@using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+
+<MudPaper Width="300px" Class="flex-none cluster-sidebar">
+    <MudStack Spacing="0">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="pa-4">
+            <MudText Typo="Typo.h5">集群选择</MudText>
+        </MudStack>
+        <MudDivider />
+
+        <MudList T="string">
+            @foreach (var group in GroupedClusters)
+            {
+                <MudListItem Icon="@(IsGroupExpanded(group.Name) ? Icons.Material.Filled.FolderOpen : Icons.Material.Filled.Folder)"
+                             OnClick="@(() => ToggleGroup(group.Name))">
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudText>@group.Name</MudText>
+                        <MudSpacer />
+                        <MudIcon Icon="@(IsGroupExpanded(group.Name) ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)"
+                                 Size="Size.Small"
+                                 Class="mud-text-secondary mr-2" />
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@group.Clusters.Count</MudChip>
+                    </MudStack>
+                </MudListItem>
+
+                @if (IsGroupExpanded(group.Name))
+                {
+                    @foreach (var c in group.Clusters)
+                    {
+                        var cluster = c;
+                        <MudListItem T="string"
+                                     OnClick="@(() => OnClusterSelected.InvokeAsync(cluster.Id))"
+                                     Class="@GetItemClass(cluster.Id)">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Class="ml-4">
+                                <MudIcon Icon="@Icons.Material.Filled.Circle"
+                                         Size="Size.Small"
+                                         Color="GetStatusColor(cluster.Status)" />
+                                <MudText Class="ml-2"
+                                         Style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">@cluster.Name</MudText>
+                            </MudStack>
+                        </MudListItem>
+                    }
+                }
+            }
+        </MudList>
+
+        @if (!Clusters.Any())
+        {
+            <MudListItem T="string" Disabled="true">
+                <MudText Class="mud-text-secondary">暂无集群</MudText>
+            </MudListItem>
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter] public IReadOnlyList<ClusterViewModel> Clusters { get; set; } = new List<ClusterViewModel>();
+    [Parameter] public int? SelectedClusterId { get; set; }
+    [Parameter] public EventCallback<int> OnClusterSelected { get; set; }
+
+    private readonly HashSet<string> collapsedGroups = new();
+
+    private List<ClusterGroupNode> GroupedClusters
+    {
+        get
+        {
+            return Clusters
+                .GroupBy(c => c.GroupName ?? "未分组")
+                .Select(g => new ClusterGroupNode
+                {
+                    Name = g.Key,
+                    Clusters = g.OrderBy(c => c.Name).ToList()
+                })
+                .OrderBy(g => g.Name == "未分组" ? 1 : 0)
+                .ThenBy(g => g.Name)
+                .ToList();
+        }
+    }
+
+    private bool IsGroupExpanded(string name)
+    {
+        return !collapsedGroups.Contains(name);
+    }
+
+    private void ToggleGroup(string name)
+    {
+        if (collapsedGroups.Contains(name))
+            collapsedGroups.Remove(name);
+        else
+            collapsedGroups.Add(name);
+    }
+
+    private string GetItemClass(int clusterId) =>
+        SelectedClusterId == clusterId ? "sidebar-item-active" : "";
+
+    private static Color GetStatusColor(ClusterStatus status) => status switch
+    {
+        ClusterStatus.Online => Color.Success,
+        ClusterStatus.Offline => Color.Error,
+        _ => Color.Default
+    };
+
+    private sealed class ClusterGroupNode
+    {
+        public string Name { get; set; } = "";
+        public List<ClusterViewModel> Clusters { get; set; } = new();
+    }
+}

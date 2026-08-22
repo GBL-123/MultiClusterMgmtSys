@@ -14,9 +14,9 @@
 <PageTitle>配置管理</PageTitle>
 
 <MudStack Row="true" Spacing="3" Class="d-flex flex-auto">
-    <ConfigMapClusterSidebar Clusters="@clusters"
-                              SelectedClusterId="@EffectiveClusterId"
-                              OnClusterSelected="SelectCluster" />
+    <ClusterSelectSidebar Clusters="@clusters"
+                          SelectedClusterId="@EffectiveClusterId"
+                          OnClusterSelected="SelectCluster" />
 
     <MudStack Class="flex-auto">
         @if (!EffectiveClusterId.HasValue)
