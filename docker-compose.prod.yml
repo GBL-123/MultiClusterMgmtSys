@@ -1,0 +1,38 @@
+# 生产部署：docker compose -f docker-compose.prod.yml up -d --build
+#
+# 注意：不要用裸 `docker compose up` 部署 —— 它会合并 VS 调试用的
+# docker-compose.override.yml（Development 环境 + 用户密钥挂载，在服务器上会失败）。
+#
+# 数据持久化：SQLite 库重定向到 /app/db（绑定挂载宿主机 ./db 目录），
+# 数据库文件直接出现在部署目录的 db/ 下，可直接复制备份。
+#
+# 首次部署前在宿主机执行一次（否则容器内非 root 用户无法写入）：
+#   mkdir -p db && sudo chown 1654:1654 db
+# （1654 是 .NET 镜像内置 app 用户的 UID；也可用 `sudo chown -R $(id -u):$(id -g) db` 配合自定义 UID）
+#
+# 升级：docker compose -f docker-compose.prod.yml up -d --build（数据保留在 ./db）
+
+name: multiclustermgmtsys
+
+services:
+  multiclustermgmtsys:
+    image: multiclustermgmtsys:latest
+    build:
+      context: .
+      dockerfile: MultiClusterMgmtSys/Dockerfile
+    container_name: mcms
+    restart: unless-stopped
+    ports:
+      # 宿主机端口:容器端口。对外建议由反向代理(Nginx/Caddy)终止 TLS 后转发到 8080
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: "8080"
+      # 应用默认连接串是相对路径(容器内 /app)，这里重定向到挂载的 db 目录
+      ConnectionStrings__DefaultConnection: "Data Source=/app/db/MultiClusterMgmtSys.db"
+      TZ: Asia/Shanghai
+    volumes:
+      # SQLite 数据库目录（宿主机 ./db <-> 容器 /app/db），含 .db/.db-shm/.db-wal
+      - ./db:/app/db
+
+# 使用绑定挂载后不再需要命名卷；备份 = 直接停服复制 ./db/MultiClusterMgmtSys.db

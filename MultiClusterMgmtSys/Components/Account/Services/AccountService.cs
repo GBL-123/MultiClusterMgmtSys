@@ -67,30 +67,6 @@ public class AccountService(
         logger.LogInformation("Create admin account succeeded");
     }
 
-    public async Task<AccountViewModel[]> GetAllAccountsAsync()
-    {
-        var list = await userManager.Users
-            .OrderByDescending(u => u.CreatedAt)
-            .ToListAsync();
-
-        var vms = new List<AccountViewModel>(list.Count);
-        foreach (var user in list)
-        {
-            var userRoles = await userManager.GetRolesAsync(user);
-            var roleName = userRoles.FirstOrDefault() ?? "";
-            vms.Add(user.ToAccountViewModel(roleName));
-        }
-        return vms.ToArray();
-    }
-
-    public async Task<AccountViewModel?> GetAccountByIdAsync(int id)
-    {
-        var user = await userManager.FindByIdAsync(id.ToString());
-        if (user is null) return null;
-        var userRoles = await userManager.GetRolesAsync(user);
-        return user.ToAccountViewModel(userRoles.FirstOrDefault() ?? "");
-    }
-
     public async Task<PagedResult<AccountViewModel>> GetPagedAccountsAsync(TableState state, AccountQueryRequest query)
     {
         logger.LogInformation("Querying accounts: search={SearchName}, role={RoleFilter}", query.SearchName, query.RoleFilter);
@@ -410,26 +386,6 @@ public class AccountService(
         if (result.Succeeded)
         {
             await auditService.LogAsync(AuditCategory.Account, AuditAction.Update, $"账号: {user.UserName} 重置密码");
-        }
-        return result;
-    }
-
-    public async Task<IdentityResult> UpdateProfileAsync(string username)
-    {
-        var user = await userManager.FindByNameAsync(username);
-        if (user is null)
-        {
-            return IdentityResult.Failed(new IdentityError
-            {
-                Code = "UserNotFound",
-                Description = "账号不存在"
-            });
-        }
-        user.UpdatedAt = DateTime.UtcNow;
-        var result = await userManager.UpdateAsync(user);
-        if (result.Succeeded)
-        {
-            await auditService.LogAsync(AuditCategory.Account, AuditAction.Update, $"账号: {username} 修改资料");
         }
         return result;
     }

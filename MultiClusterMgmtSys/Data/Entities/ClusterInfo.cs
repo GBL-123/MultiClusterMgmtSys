@@ -28,9 +28,9 @@ public class ClusterInfo
 
     public ClusterGroup? Group { get; set; }
 
-    public ICollection<ClusterEndpoint> Endpoints { get; set; } = new List<ClusterEndpoint>();
+    public ICollection<ClusterEndpoint> Endpoints { get; set; } = [];
 
-    public ICollection<NodeIpRemark> NodeIpRemarks { get; set; } = new List<NodeIpRemark>();
+    public ICollection<NodeIpRemark> NodeIpRemarks { get; set; } = [];
 
     public DateTime CreatedAt { get; set; }
 

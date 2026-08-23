@@ -11,7 +11,9 @@
         <MudList T="string">
             @foreach (var group in GroupedClusters)
             {
-                <MudListItem Icon="@(IsGroupExpanded(group.Name) ? Icons.Material.Filled.FolderOpen : Icons.Material.Filled.Folder)"
+                <MudListItem T="string"
+                             Icon="@(IsGroupExpanded(group.Name) ? Icons.Material.Filled.FolderOpen : Icons.Material.Filled.Folder)"
+                             Value="@($"group:{group.Name}")"
                              OnClick="@(() => ToggleGroup(group.Name))">
                     <MudStack Row="true" AlignItems="AlignItems.Center">
                         <MudText>@group.Name</MudText>
@@ -29,8 +31,8 @@
                     {
                         var cluster = c;
                         <MudListItem T="string"
-                                     OnClick="@(() => OnClusterSelected.InvokeAsync(cluster.Id))"
-                                     Class="@GetItemClass(cluster.Id)">
+                                     Value="@cluster.Id.ToString()"
+                                     OnClick="@(() => OnClusterSelected.InvokeAsync(cluster.Id))">
                             <MudStack Row="true" AlignItems="AlignItems.Center" Class="ml-4">
                                 <MudIcon Icon="@Icons.Material.Filled.Circle"
                                          Size="Size.Small"
@@ -87,9 +89,6 @@
         else
             collapsedGroups.Add(name);
     }
-
-    private string GetItemClass(int clusterId) =>
-        SelectedClusterId == clusterId ? "sidebar-item-active" : "";
 
     private static Color GetStatusColor(ClusterStatus status) => status switch
     {

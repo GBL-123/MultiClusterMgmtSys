@@ -2,6 +2,8 @@
 
 <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Class="mt-2">
     <MudTextField @bind-Value="Filter.Name"
+                  @bind-Value:after="NotifyFilterChanged"
+                  Immediate="true"
                   Label="节点名称"
                   Variant="Variant.Outlined"
                   Margin="Margin.Dense"
@@ -9,6 +11,7 @@
                   Style="min-width:200px;" />
 
     <MudSelect @bind-Value="Filter.Role"
+               @bind-Value:after="NotifyFilterChanged"
                Label="角色"
                Variant="Variant.Outlined"
                Margin="Margin.Dense"
@@ -19,6 +22,7 @@
     </MudSelect>
 
     <MudSelect @bind-Value="Filter.Status"
+               @bind-Value:after="NotifyFilterChanged"
                Label="状态"
                Variant="Variant.Outlined"
                Margin="Margin.Dense"
@@ -30,6 +34,7 @@
     </MudSelect>
 
     <MudSelect @bind-Value="Filter.Schedulable"
+               @bind-Value:after="NotifyFilterChanged"
                Label="调度性"
                Variant="Variant.Outlined"
                Margin="Margin.Dense"
@@ -52,6 +57,8 @@
     [Parameter] public NodeListFilter Filter { get; set; } = default!;
     [Parameter] public EventCallback OnFilterChanged { get; set; }
     [Parameter] public EventCallback OnReset { get; set; }
+
+    private Task NotifyFilterChanged() => OnFilterChanged.InvokeAsync();
 
     private Task ResetFilter()
     {

@@ -18,7 +18,7 @@ dotnet run  --project MultiClusterMgmtSys       # http://localhost:5021 (http pr
 dotnet run  --project MultiClusterMgmtSys --launch-profile https
 ```
 
-Docker: `docker compose build` / `docker compose up` (uses `MultiClusterMgmtSys/Dockerfile`, ports 8080/8081).
+Docker prod deploy: `docker compose -f docker-compose.prod.yml up -d --build` (`MultiClusterMgmtSys/Dockerfile`, publishes host 8080 → container 8080). Do **not** use bare `docker compose up` — it merges the VS-debug `docker-compose.override.yml` (Development env + user-secrets mounts) and fails off-Windows. First run on a Linux server requires `mkdir -p db && sudo chown 1654:1654 db` (container runs as UID 1654; otherwise SQLite writes fail at startup). DB lives in host `./db`.
 
 There is **no test project** and no lint/format/typecheck config. Do not invent test commands.
 
@@ -26,7 +26,7 @@ There is **no test project** and no lint/format/typecheck config. Do not invent 
 
 - Schema is created with `db.Database.EnsureCreated()` in `Program.cs` at startup — there are **no EF migrations** in the repo. Changing the model means dropping/regenerating `MultiClusterMgmtSys.db`, not running `dotnet ef migrations add`.
 - On every startup `AccountService.CreateAdminAsync()` seeds roles and an `admin` user with default password `Changeme_123` (see `Components/Account/Services/AccountService.cs`). Don't relocate that call without preserving the startup seed.
-- `*.db` / `*.db-shm` / `*.db-wal` are **gitignored** (see `.gitignore` tail) and are NOT tracked — they are runtime artifacts, do not hand-edit; delete to reset local state. The active store is `MultiClusterMgmtSys.db` (per `appsettings.json`). A stray `clusters.db` may appear locally from older runs — it is unused; ignore it.
+- `*.db` / `*.db-shm` / `*.db-wal` are **gitignored** (see `.gitignore` tail) and are NOT tracked — they are runtime artifacts, do not hand-edit; delete to reset local state. The active store is `MultiClusterMgmtSys/db/MultiClusterMgmtSys.db` (per `appsettings.json`; relative to the project dir when running via `dotnet run`). In Docker (`docker-compose.prod.yml`) an env var redirects it to `/app/db` = host `./db`. A stray `clusters.db` may appear locally from older runs — it is unused; ignore it.
 - Connection string lives in `appsettings.json` (`ConnectionStrings:DefaultConnection`); overriding it requires user secrets (`UserSecretsId` is set in the csproj) or env, not another appsettings file.
 
 ## Namespaces — gotcha
@@ -37,7 +37,7 @@ Folder-to-namespace mapping is **inconsistent** across feature folders, and even
 - `Components/Account/Services/**` → `MultiClusterMgmtSys.Components.Account.Services` (**`Components.*`**, not `Features.*`)
 - `Components/Account/Requests/**` → `MultiClusterMgmtSys.Components.Account.Requests`
 - `Components/Configmaps/**` (Services, ViewModels, Mappings) → `MultiClusterMgmtSys.Features.Configmaps.*` (**`Features.*`**)
-- `Components/Clusters/**`, `Components/Nodes/**`, `Components/Auth/**`, `Components/AuditLogs/**` → `MultiClusterMgmtSys.Components.<Feature>.*` (matches physical path)
+- `Components/Clusters/**`, `Components/Nodes/**`, `Components/Auth/**`, `Components/AuditLogs/**`, `Components/Profile/**` → `MultiClusterMgmtSys.Components.<Feature>.*` (matches physical path)
 - `Data/**` → `MultiClusterMgmtSys.Data.*` (matches physical path)
 - **Two different `Common` folders, different roots:** root `Common/**` (Enums/Queries/ViewModels like `PagedResult<>`) → `MultiClusterMgmtSys.Common.*` (matches path); `Components/Common/**` (`ThemeManager`, `RedirectManager`) → `MultiClusterMgmtSys.Components.Common` (NOT `MultiClusterMgmtSys.Common`).
 

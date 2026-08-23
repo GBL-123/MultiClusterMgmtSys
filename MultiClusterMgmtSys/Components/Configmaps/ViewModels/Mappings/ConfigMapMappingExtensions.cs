@@ -8,7 +8,7 @@ public static class ConfigMapMappingExtensions
 {
     public static ConfigMapListViewModel ToConfigMapListViewModel(this V1ConfigMap cm)
     {
-        var keys = cm.Data?.Keys.ToList() ?? new List<string>();
+        var keys = cm.Data?.Keys.ToList() ?? [];
         var preview = keys.Count <= 3
             ? string.Join(", ", keys)
             : string.Join(", ", keys.Take(3)) + "...";

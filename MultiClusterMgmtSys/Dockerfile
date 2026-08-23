@@ -2,8 +2,10 @@
 
 # 此阶段用于在快速模式(默认为调试配置)下从 VS 运行时
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
-USER $APP_UID
 WORKDIR /app
+# SQLite 数据目录：需以非 root 用户可写（compose 挂载宿主机 ./db 到 /app/db）
+RUN mkdir -p /app/db && chown -R $APP_UID /app/db
+USER $APP_UID
 EXPOSE 8080
 EXPOSE 8081
 

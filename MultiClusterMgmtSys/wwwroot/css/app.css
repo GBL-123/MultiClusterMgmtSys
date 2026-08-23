@@ -36,12 +36,3 @@
 .group-dialog {
     overflow: visible !important;
 }
-
-.cluster-sidebar .sidebar-item-active {
-    background-color: var(--mud-palette-primary);
-    color: var(--mud-palette-primary-text);
-}
-
-    .cluster-sidebar .sidebar-item-active:hover {
-        background-color: var(--mud-palette-primary);
-    }
