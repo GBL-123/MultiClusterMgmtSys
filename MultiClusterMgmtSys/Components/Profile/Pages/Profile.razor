@@ -5,7 +5,7 @@
 
 <PageTitle>个人资料</PageTitle>
 
-<MudStack Class="flex-auto pb-4" Style="align-self: flex-start;">
+<MudStack Class="flex-auto pb-4">
     <MudPaper Class="pa-4">
         <MudStack Row="true" AlignItems="AlignItems.Center">
             <MudText Typo="Typo.h5">个人资料</MudText>
@@ -17,90 +17,108 @@
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
     }
+    else
+    {
+        <MudGrid Spacing="3">
+            <MudItem xs="12" md="8">
+                <MudCard Elevation="1" Class="h-100">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">账号信息</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent Class="pt-0">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-4">
+                            <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large">
+                                <MudText Typo="Typo.h5">@UserInitial</MudText>
+                            </MudAvatar>
+                            <MudStack Spacing="0">
+                                <MudText Typo="Typo.h6">@(string.IsNullOrEmpty(currentUserName) ? "—" : currentUserName)</MudText>
+                                <MudChip T="string"
+                                         Size="Size.Small"
+                                         Color="@GetRoleColor()"
+                                         Variant="Variant.Filled"
+                                         Class="mt-1 align-self-flex-start">
+                                    @(string.IsNullOrEmpty(currentUserRole) ? "未知角色" : currentUserRole)
+                                </MudChip>
+                            </MudStack>
+                        </MudStack>
 
-    <MudCard Elevation="1" Class="mb-4" Style="max-width: 720px;">
-        <MudCardHeader>
-            <CardHeaderContent>
-                <MudText Typo="Typo.h6">账号信息</MudText>
-            </CardHeaderContent>
-        </MudCardHeader>
-        <MudCardContent>
-            <MudStack Spacing="2">
-                <MudStack Row="true" AlignItems="AlignItems.Center">
-                    <MudText Typo="Typo.body2" Class="mud-text-secondary" Style="width: 120px;">用户名</MudText>
-                    <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(currentUserName) ? "—" : currentUserName)</MudText>
-                </MudStack>
-                <MudStack Row="true" AlignItems="AlignItems.Center">
-                    <MudText Typo="Typo.body2" Class="mud-text-secondary" Style="width: 120px;">角色</MudText>
-                    <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(currentUserRole) ? "—" : currentUserRole)</MudText>
-                </MudStack>
-                <MudStack Row="true" AlignItems="AlignItems.Center">
-                    <MudText Typo="Typo.body2" Class="mud-text-secondary" Style="width: 120px;">注册时间</MudText>
-                    <MudText Typo="Typo.body1">@(createdAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
-                </MudStack>
-                <MudStack Row="true" AlignItems="AlignItems.Center">
-                    <MudText Typo="Typo.body2" Class="mud-text-secondary" Style="width: 120px;">修改时间</MudText>
-                    <MudText Typo="Typo.body1">@(updatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
-                </MudStack>
-                <MudStack Row="true" AlignItems="AlignItems.Center">
-                    <MudText Typo="Typo.body2" Class="mud-text-secondary" Style="width: 120px;">最后登录</MudText>
-                    <MudText Typo="Typo.body1">@(lastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
-                </MudStack>
-            </MudStack>
-        </MudCardContent>
-    </MudCard>
+                        <MudDivider Class="mb-4" />
 
-    <MudCard Elevation="1">
-        <MudCardHeader>
-            <CardHeaderContent>
-                <MudText Typo="Typo.h6">修改密码</MudText>
-            </CardHeaderContent>
-        </MudCardHeader>
-        <MudCardContent>
-            <MudTextField @bind-Value="currentPassword"
-                          Label="当前密码"
-                          Required="true"
-                          RequiredError="请输入当前密码"
-                          Immediate="true"
-                          InputType="InputType.Password"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
-                          Class="mb-3" />
+                        <MudGrid Spacing="2">
+                            <MudItem xs="12" sm="4">
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">注册时间</MudText>
+                                <MudText Typo="Typo.body1">@(createdAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
+                            </MudItem>
+                            <MudItem xs="12" sm="4">
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">修改时间</MudText>
+                                <MudText Typo="Typo.body1">@(updatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
+                            </MudItem>
+                            <MudItem xs="12" sm="4">
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">最后登录</MudText>
+                                <MudText Typo="Typo.body1">@(lastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+            </MudItem>
 
-            <MudTextField @bind-Value="newPassword"
-                          Label="新密码"
-                          Required="true"
-                          RequiredError="请输入新密码"
-                          Immediate="true"
-                          InputType="InputType.Password"
-                          HelperText="至少 8 位且包含字母和数字"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
-                          Class="mb-3" />
+            <MudItem xs="12" md="4">
+                <MudCard Elevation="1" Class="h-100">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">修改密码</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent Class="pt-0">
+                        <MudTextField @bind-Value="currentPassword"
+                                      Label="当前密码"
+                                      Required="true"
+                                      RequiredError="请输入当前密码"
+                                      Immediate="true"
+                                      InputType="InputType.Password"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Class="mb-3" />
 
-            <MudTextField @bind-Value="confirmPassword"
-                          Label="确认新密码"
-                          Required="true"
-                          RequiredError="请再次输入新密码"
-                          Immediate="true"
-                          InputType="InputType.Password"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
-                          Class="mb-4" />
+                        <MudTextField @bind-Value="newPassword"
+                                      Label="新密码"
+                                      Required="true"
+                                      RequiredError="请输入新密码"
+                                      Immediate="true"
+                                      InputType="InputType.Password"
+                                      HelperText="至少 8 位且包含字母和数字"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Class="mb-3" />
 
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.LockReset"
-                       OnClick="ChangePassword"
-                       Disabled="savingPassword">
-                @if (savingPassword)
-                {
-                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                }
-                修改密码
-            </MudButton>
-        </MudCardContent>
-    </MudCard>
+                        <MudTextField @bind-Value="confirmPassword"
+                                      Label="确认新密码"
+                                      Required="true"
+                                      RequiredError="请再次输入新密码"
+                                      Immediate="true"
+                                      InputType="InputType.Password"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense" />
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.LockReset"
+                                   OnClick="ChangePassword"
+                                   Disabled="savingPassword">
+                            @if (savingPassword)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                            }
+                            修改密码
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+    }
 </MudStack>
 
 @code {
@@ -118,6 +136,10 @@
     private DateTime? lastLoginAt;
     private bool loading;
     private bool savingPassword;
+
+    private string UserInitial => string.IsNullOrEmpty(currentUserName) ? "?" : currentUserName.Substring(0, 1).ToUpperInvariant();
+
+    private Color GetRoleColor() => currentUserRole == "Admin" ? Color.Secondary : Color.Default;
 
     protected override async Task OnInitializedAsync()
     {
