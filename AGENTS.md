@@ -25,7 +25,7 @@ There is **no test project** and no lint/format/typecheck config. Do not invent 
 ## Database quirks (important)
 
 - Schema is created with `db.Database.EnsureCreated()` in `Program.cs` at startup — there are **no EF migrations** in the repo. Changing the model means dropping/regenerating `MultiClusterMgmtSys.db`, not running `dotnet ef migrations add`.
-- On every startup `AccountService.CreateAdminAsync()` seeds roles and an `admin` user with default password `Changeme_123` (see `Components/Account/Services/AccountService.cs`). Don't relocate that call without preserving the startup seed.
+- On every startup `AccountService.CreateAdminAsync()` seeds roles and an `admin` user with default password `Changeme_123` (see `Components/Account/Services/AccountService.cs`). Don't relocate that call without preserving the startup seed. Identity password policy is min-length 8 + at least one digit, nothing else required (`Program.cs`) — generated/seed passwords must satisfy it.
 - `*.db` / `*.db-shm` / `*.db-wal` are **gitignored** (see `.gitignore` tail) and are NOT tracked — they are runtime artifacts, do not hand-edit; delete to reset local state. The active store is `MultiClusterMgmtSys/db/MultiClusterMgmtSys.db` (per `appsettings.json`; relative to the project dir when running via `dotnet run`). In Docker (`docker-compose.prod.yml`) an env var redirects it to `/app/db` = host `./db`. A stray `clusters.db` may appear locally from older runs — it is unused; ignore it.
 - Connection string lives in `appsettings.json` (`ConnectionStrings:DefaultConnection`); overriding it requires user secrets (`UserSecretsId` is set in the csproj) or env, not another appsettings file.
 
@@ -45,7 +45,7 @@ Folder-to-namespace mapping is **inconsistent** across feature folders, and even
 
 ## Architecture notes
 
-- Entrypoint: `Program.cs` registers MudBlazor, Razor components (interactive server), Identity (cookie `MultiClusterMgmtSys.Auth`, 8h sliding, login `/login`, default redirect `/clusters`), `ApplicationDbContext` (SQLite), and a set of scoped services/repositories (`ClusterRepository`, `GroupRepository`, `AuditLogRepository`, `ClusterService`, `GroupService`, `ClusterNodeService`, `ConfigMapService`, `AuditService`, `AuthService`, `AccountService`, `ThemeManager`, `RedirectManager`, `ClusterSelectionState`).
+- Entrypoint: `Program.cs` registers MudBlazor, Razor components (interactive server), Identity (cookie `MultiClusterMgmtSys.Auth`, 8h sliding, login `/login`, access-denied `/access-denied`, default redirect `/clusters`), `ApplicationDbContext` (SQLite), and a set of scoped services/repositories (`ClusterRepository`, `GroupRepository`, `AuditLogRepository`, `ClusterService`, `GroupService`, `ClusterNodeService`, `ConfigMapService`, `AuditService`, `AuthService`, `AccountService`, `ThemeManager`, `RedirectManager`, `ClusterSelectionState`).
 - Feature layout under `Components/<Feature>/{Pages,Shared,Services,Requests,ViewModels,ViewModels/Mappings}`; `Data` holds `ApplicationDbContext` + `Entities` + `Repositories`; `Common` holds shared `Enums`/`ViewModels` (e.g. `PagedResult<>`).
 - `Components/Auth/Services/Identity/*` hosts the Identity scaffolding extensions (`IdentityRevalidatingAuthenticationStateProvider`, `IdentityComponentsEndpointRouteBuilderExtensions`, `ChineseIdentityErrorDescriber`) — `Program.cs` calls `MapAdditionalIdentityEndpoints()` from here.
 - K8s credentials are stored per `ClusterInfo` (`KubeConfig` / `Token` columns, `SkipTlsVerify` defaults to `true`); see `Data/ApplicationDbContext.cs` for the model constraints.
@@ -58,7 +58,7 @@ Folder-to-namespace mapping is **inconsistent** across feature folders, and even
 
 - OpenCode skills for OpenSpec live under `.opencode/skills/openspec-*` and commands under `.opencode/commands/`. The repository uses an `openspec/` workflow (`changes/`, `specs/`, `config.yaml`). Use the `openspec-*` skills for proposing/implementing/archiving changes instead of editing those folders by hand.
 - `openspec/config.yaml` has only `schema: spec-driven` set; the tech-stack `context:` block is still commented-out placeholders.
-- Main spec for the cluster query contract lives at `openspec/specs/cluster-query-layering/spec.md`; `ClusterPageQuery.GroupId` semantic there (null=no filter, `0`=ungrouped sentinel → repo translates to `WHERE GroupId IS NULL`, positive=equality) must not drift from the repository implementation.
+- Main spec for the cluster query contract lives at `openspec/specs/cluster-query-layering/spec.md`; `ClusterPageQuery.GroupId` semantic there (null=no filter, `0`=ungrouped sentinel → repo translates to `WHERE GroupId IS NULL`, positive=equality) must not drift from the repository implementation. The same file defines string sentinels for the version filter (`VersionFilterSentinel.All` = `""`, `OnlyNull` = `"__null__"`) — same contract treatment.
 - OpenSpec `tasks.md` files use `- [ ]`/`- [x]` checkbox format that the apply skill parses — preserve this exact format when editing task lists.
 
 ## Conventions to preserve
@@ -70,3 +70,4 @@ Folder-to-namespace mapping is **inconsistent** across feature folders, and even
 - `BlazorDisableThrowNavigationException` is enabled in the csproj — leave it on.
 - **Frontend: prefer MudBlazor components**; fall back to raw HTML/CSS only when MudBlazor genuinely can't fit the need. Documented workaround: inline action buttons inside a `@onclick` row must be wrapped in `<span @onclick:stopPropagation="true">` — `@onclick` + `@onclick:stopPropagation` on the same MudBlazor component is a Razor error (RZ10010).
 - Admin-only actions (create / rename / delete / batch operations / cluster delete) are gated via `<AuthorizeView Roles="Admin"><Authorized>`; view and filter actions are role-agnostic.
+- Commit messages are short Chinese one-liners (e.g. `添加readme`, `重做页面`) — match that style when asked to commit.
