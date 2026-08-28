@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Common.Queries;
 using MultiClusterMgmtSys.Data.Entities;
+using MultiClusterMgmtSys.Models;
 
 namespace MultiClusterMgmtSys.Data.Repositories;
 

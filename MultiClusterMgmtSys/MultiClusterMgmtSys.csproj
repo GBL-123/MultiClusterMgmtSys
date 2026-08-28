@@ -28,7 +28,6 @@
 
   <ItemGroup>
     <Folder Include="Data\Entities\" />
-    <Folder Include="Components\Account\Requests\" />
     <Folder Include="Components\Nodes\Shared\" />
   </ItemGroup>
 

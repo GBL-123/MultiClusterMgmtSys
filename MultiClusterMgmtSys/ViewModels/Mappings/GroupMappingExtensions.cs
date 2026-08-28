@@ -1,0 +1,18 @@
+using MultiClusterMgmtSys.Components.Clusters.ViewModels;
+using MultiClusterMgmtSys.Data.Entities;
+
+namespace MultiClusterMgmtSys.ViewModels.Mappings;
+
+public static class GroupMappingExtensions
+{
+    public static ClusterGroupViewModel ToViewModel(this ClusterGroup g)
+    {
+        return new ClusterGroupViewModel
+        {
+            Id = g.Id,
+            Name = g.Name,
+            ClusterCount = g.Clusters?.Count ?? 0,
+            CreatedAt = g.CreatedAt
+        };
+    }
+}

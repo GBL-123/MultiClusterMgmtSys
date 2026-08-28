@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using MudBlazor;
-using MultiClusterMgmtSys.Components.AuditLogs.Requests;
 using MultiClusterMgmtSys.Data.Entities;
+using MultiClusterMgmtSys.Requests;
 
 namespace MultiClusterMgmtSys.Data.Repositories;
 

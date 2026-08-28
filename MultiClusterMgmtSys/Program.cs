@@ -8,15 +8,10 @@ using MultiClusterMgmtSys.Data;
 using MultiClusterMgmtSys.Data.Repositories;
 using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Components.Common;
-using MultiClusterMgmtSys.Components.Nodes.Services;
-using MultiClusterMgmtSys.Features.Configmaps.Services;
-using MultiClusterMgmtSys.Components.Auth.Services;
-using MultiClusterMgmtSys.Components.Clusters.Services;
-using MultiClusterMgmtSys.Components.Auth.Services.Identity;
-using MultiClusterMgmtSys.Components.Account.Services;
-using MultiClusterMgmtSys.Components.AuditLogs.Services;
 using Serilog;
 using Serilog.Events;
+using MultiClusterMgmtSys.Services;
+using MultiClusterMgmtSys.Services.Identity;
 
 var builder = WebApplication.CreateBuilder(args);
 
