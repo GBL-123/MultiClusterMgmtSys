@@ -1,4 +1,4 @@
-# 生产部署：docker compose -f docker-compose.prod.yml up -d --build
+# 生产部署：docker compose -f docker-compose.prod.yml up -d
 #
 # 注意：不要用裸 `docker compose up` 部署 —— 它会合并 VS 调试用的
 # docker-compose.override.yml（Development 环境 + 用户密钥挂载，在服务器上会失败）。
@@ -6,33 +6,58 @@
 # 数据持久化：SQLite 库重定向到 /app/db（绑定挂载宿主机 ./db 目录），
 # 数据库文件直接出现在部署目录的 db/ 下，可直接复制备份。
 #
-# 首次部署前在宿主机执行一次（否则容器内非 root 用户无法写入）：
-#   mkdir -p db && sudo chown 1654:1654 db
-# （1654 是 .NET 镜像内置 app 用户的 UID；也可用 `sudo chown -R $(id -u):$(id -g) db` 配合自定义 UID）
+# 服务日志：Serilog 按天滚动写入 /app/logs（绑定挂载宿主机 ./logs 目录），
+# 容器重建/删除都不丢日志，按天滚动并保留 30 天，可直接 tail/grep 排查。
 #
-# 升级：docker compose -f docker-compose.prod.yml up -d --build（数据保留在 ./db）
+# 反向代理：nginx 容器终止 TLS 并反代应用（Blazor Server 需 WebSocket 升级），
+# 对外只暴露 80/443，应用 8080 不再映射宿主端口，只能经内部网络访问。
+# 证书放 ./nginx/certs/：fullchain.pem + privkey.pem（nginx 以 root 启动，目录无需 chown）。
+# 没有正式证书时可先生成自签名测试（必须带 SAN：IP/域名要与访问地址一致）：
+#   cd nginx/certs && openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
+#     -keyout privkey.pem -out fullchain.pem \
+#     -subj "/CN=192.168.1.100" -addext "subjectAltName=IP:192.168.1.100,DNS:mcms.local"
+# （把 192.168.1.100 换成你的服务器 IP；自签名浏览器会有"不安全"警告，属正常）
+#
+# 首次部署前在宿主机执行一次（否则容器内非 root 用户无法写入）：
+#   mkdir -p db logs nginx/certs && sudo chown 1654:1654 db logs
+# （1654 是 .NET 镜像内置 app 用户的 UID；也可用 `sudo chown -R $(id -u):$(id -g) db logs` 配合自定义 UID）
+#
+# 升级：docker compose -f docker-compose.prod.yml up -d（数据保留在 ./db，日志保留在 ./logs）
 
 name: multiclustermgmtsys
 
 services:
   multiclustermgmtsys:
-    image: multiclustermgmtsys:latest
-    build:
-      context: .
-      dockerfile: MultiClusterMgmtSys/Dockerfile
-    container_name: mcms
+    image: multiclustermgmtsys:v1.0.0
+    container_name: multiclustermgmtsys
     restart: unless-stopped
-    ports:
-      # 宿主机端口:容器端口。对外建议由反向代理(Nginx/Caddy)终止 TLS 后转发到 8080
-      - "8080:8080"
+    # 应用不再对外暴露端口，仅经 compose 内部网络被 nginx 访问
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_HTTP_PORTS: "8080"
       # 应用默认连接串是相对路径(容器内 /app)，这里重定向到挂载的 db 目录
       ConnectionStrings__DefaultConnection: "Data Source=/app/db/MultiClusterMgmtSys.db"
+      # Serilog 日志写到挂载目录（app-日期.log，滚动保留 30 天）
+      Logging__File__Path: "/app/logs/app-.log"
       TZ: Asia/Shanghai
     volumes:
       # SQLite 数据库目录（宿主机 ./db <-> 容器 /app/db），含 .db/.db-shm/.db-wal
       - ./db:/app/db
+      # 服务日志目录（宿主机 ./logs <-> 容器 /app/logs），按天滚动
+      - ./logs:/app/logs
+
+  nginx:
+    image: nginx:stable-alpine
+    container_name: mcms-nginx
+    restart: unless-stopped
+    depends_on:
+      - multiclustermgmtsys
+    ports:
+      # 对外只暴露 80/443，HTTP 由 nginx 强制 301 跳转 HTTPS
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
 
 # 使用绑定挂载后不再需要命名卷；备份 = 直接停服复制 ./db/MultiClusterMgmtSys.db

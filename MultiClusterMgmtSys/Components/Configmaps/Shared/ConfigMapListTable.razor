@@ -36,22 +36,25 @@
         <MudTd DataLabel="创建时间">@(context.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudTd>
         <MudTd DataLabel="操作">
             <div class="d-flex" style="gap: 4px;">
-                <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                               Size="Size.Small"
-                               Color="Color.Primary"
-                               Title="详情"
-                               OnClick="@(() => OnNavigateDetail.InvokeAsync((context.Namespace, context.Name)))" />
+                <MudTooltip Text="详情">
+                    <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                   Size="Size.Small"
+                                   Color="Color.Primary"
+                                   OnClick="@(() => OnNavigateDetail.InvokeAsync((context.Namespace, context.Name)))" />
+                </MudTooltip>
                 <AuthorizeView Roles="Admin">
                     <Authorized Context="authContext">
-                        <MudIconButton Icon="@Icons.Material.Filled.Code"
-                                       Size="Size.Small"
-                                       Title="编辑 YAML"
-                                       OnClick="@(() => OnNavigateEditYaml.InvokeAsync((context.Namespace, context.Name)))" />
-                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
-                                       Size="Size.Small"
-                                       Color="Color.Error"
-                                       Title="删除"
-                                       OnClick="@(() => OnDelete.InvokeAsync((context.Namespace, context.Name)))" />
+                        <MudTooltip Text="编辑 YAML">
+                            <MudIconButton Icon="@Icons.Material.Filled.Code"
+                                           Size="Size.Small"
+                                           OnClick="@(() => OnNavigateEditYaml.InvokeAsync((context.Namespace, context.Name)))" />
+                        </MudTooltip>
+                        <MudTooltip Text="删除">
+                            <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
+                                           Size="Size.Small"
+                                           Color="Color.Error"
+                                           OnClick="@(() => OnDelete.InvokeAsync((context.Namespace, context.Name)))" />
+                        </MudTooltip>
                     </Authorized>
                 </AuthorizeView>
             </div>

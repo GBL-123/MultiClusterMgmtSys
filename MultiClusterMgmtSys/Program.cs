@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
@@ -14,8 +15,27 @@ using MultiClusterMgmtSys.Components.Clusters.Services;
 using MultiClusterMgmtSys.Components.Auth.Services.Identity;
 using MultiClusterMgmtSys.Components.Account.Services;
 using MultiClusterMgmtSys.Components.AuditLogs.Services;
+using Serilog;
+using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Serilog：控制台 + 按天滚动文件日志（生产环境路径由 Logging__File__Path / 挂载 ./logs 控制）
+builder.Host.UseSerilog((context, _, configuration) =>
+{
+    var logPath = context.Configuration["Logging:File:Path"] ?? "logs/app-.log";
+    var isProduction = context.HostingEnvironment.IsProduction();
+    configuration
+        .MinimumLevel.Information()
+        .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+        // EF Core 的 SQL 语句日志（Executed DbCommand 等）仅在开发环境打印，生产只保留 Warning 及以上（如 SQL 执行报错）
+        .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", isProduction ? LogEventLevel.Warning : LogEventLevel.Information)
+        .WriteTo.Console()
+        .WriteTo.File(logPath,
+            rollingInterval: RollingInterval.Day,
+            retainedFileCountLimit: 30,
+            shared: true);
+});
 
 // Add MudBlazor services
 builder.Services.AddMudServices();
@@ -114,6 +134,17 @@ else
     app.UseHsts();
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+
+// nginx 在 443 终止 TLS 并反代本应用（应用端口只在 compose 内部网络暴露）：
+// 信任代理的 X-Forwarded-For/X-Forwarded-Proto，保证 HttpsRedirection、HSTS 和登录重定向等按 https 处理
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+    // 应用不对外监听，仅 nginx 可达，可安全信任全部代理
+    KnownNetworks = { },
+    KnownProxies = { }
+});
+
 app.UseHttpsRedirection();
 
 app.UseAntiforgery();
