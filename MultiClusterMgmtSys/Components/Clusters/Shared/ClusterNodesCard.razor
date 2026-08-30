@@ -41,20 +41,19 @@
                 <RowTemplate>
                     <MudTd DataLabel="名称">
                         <MudText Color="Color.Primary"
+                                 Class="font-mono"
                                  Style="cursor:pointer; text-decoration: underline;"
                                  @onclick="@(async () => NavigationManager.NavigateTo($"/nodes/{Cluster.Id}/{context.Name}"))">
                             @context.Name
                         </MudText>
                     </MudTd>
                     <MudTd DataLabel="状态">
-                        <MudChip T="string"
-                                 Size="Size.Small"
-                                 Color="GetNodeStatusColor(context.Status)">
-                            @context.Status
-                        </MudChip>
+                        <span class="status-badge @GetNodeStatusClass(context.Status)">
+                            <span class="status-dot"></span>@context.Status
+                        </span>
                     </MudTd>
                     <MudTd DataLabel="角色">@context.Roles</MudTd>
-                    <MudTd DataLabel="Kubelet 版本">@context.KubeletVersion</MudTd>
+                    <MudTd DataLabel="Kubelet 版本"><span class="font-mono">@context.KubeletVersion</span></MudTd>
                     <MudTd DataLabel="操作系统">@context.OsImage</MudTd>
                     <MudTd DataLabel="IP 地址">
                         @if (context.IpAddresses.Count == 0)
@@ -66,7 +65,7 @@
                             <div style="display:flex; flex-direction:column;">
                                 @foreach (var ip in context.IpAddresses)
                                 {
-                                    <span style="font-family: monospace; white-space:nowrap;">
+                                    <span class="font-mono" style="white-space:nowrap;">
                                         @ip.Address
                                         @if (!string.IsNullOrEmpty(ip.Note))
                                         {
@@ -90,10 +89,10 @@
 @code {
     [Parameter] public ClusterDetailViewModel Cluster { get; set; } = default!;
 
-    private static Color GetNodeStatusColor(string status) => status switch
+    private static string GetNodeStatusClass(string status) => status switch
     {
-        "Ready" => Color.Success,
-        "NotReady" => Color.Error,
-        _ => Color.Default
+        "Ready" => "online",
+        "NotReady" => "offline",
+        _ => "unknown"
     };
 }

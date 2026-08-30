@@ -49,7 +49,6 @@ builder.Services.AddScoped<ConfigMapService>();
 builder.Services.AddScoped<ClusterService>();
 builder.Services.AddScoped<GroupService>();
 builder.Services.AddScoped<AuditService>();
-builder.Services.AddScoped<ThemeManager>();
 builder.Services.AddScoped<ClusterSelectionState>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AccountService>();

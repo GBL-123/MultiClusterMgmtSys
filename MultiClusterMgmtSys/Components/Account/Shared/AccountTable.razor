@@ -1,6 +1,6 @@
-@using MultiClusterMgmtSys.Components.Account.Requests
-@using MultiClusterMgmtSys.Components.Account.Services
-@using MultiClusterMgmtSys.Features.Account.ViewModels
+@using MultiClusterMgmtSys.Requests
+@using MultiClusterMgmtSys.Services
+@using MultiClusterMgmtSys.ViewModels
 
 @inject AccountService AccountSvc
 
@@ -31,7 +31,7 @@
                              ValueChanged="@(v => OnRowCheckChanged(context.Id, v))" />
             </MudTd>
         }
-        <MudTd DataLabel="用户名">@context.UserName</MudTd>
+        <MudTd DataLabel="用户名"><span class="font-mono">@context.UserName</span></MudTd>
         <MudTd DataLabel="角色">
             <MudChip T="string" Size="Size.Small"
                      Color="@(context.RoleName == "Admin" ? Color.Primary : Color.Default)"
@@ -39,8 +39,8 @@
                 @context.RoleName
             </MudChip>
         </MudTd>
-        <MudTd DataLabel="创建时间">@context.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudTd>
-        <MudTd DataLabel="最后登录">@(context.LastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudTd>
+        <MudTd DataLabel="创建时间"><span class="font-mono">@context.CreatedAt.ToString("yyyy-MM-dd HH:mm")</span></MudTd>
+        <MudTd DataLabel="最后登录"><span class="font-mono">@(context.LastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</span></MudTd>
         <MudTd DataLabel="操作">
             @if (IsBuiltInAdmin(context))
             {
@@ -72,10 +72,10 @@
         <MudTablePager RowsPerPageString="每页条数：" InfoFormat="共 {all_items} 条" />
     </PagerContent>
     <LoadingContent>
-        <MudText>正在加载...</MudText>
+        <MudText Class="pa-4 font-mono mud-text-secondary">// 正在加载...</MudText>
     </LoadingContent>
     <NoRecordsContent>
-        <MudText>暂无账号或没有符合筛选条件的账号</MudText>
+        <div class="empty-state">[ 暂无账号 ]</div>
     </NoRecordsContent>
 </MudTable>
 

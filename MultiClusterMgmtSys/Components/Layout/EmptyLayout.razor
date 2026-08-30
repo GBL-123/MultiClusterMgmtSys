@@ -1,11 +1,6 @@
 @inherits LayoutComponentBase
 
-@inject ThemeManager ThemeManager
-
-<MudThemeProvider Theme="@ThemeManager.Theme"
-                  IsDarkMode="@ThemeManager.IsDarkMode"
-                  IsDarkModeChanged="@(v => ThemeManager.IsDarkMode = v)"
-                  ObserveSystemDarkModeChange="@ThemeManager.ObserveSystemDarkModeChange" />
+<MudThemeProvider Theme="@ThemeManager.Theme" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />

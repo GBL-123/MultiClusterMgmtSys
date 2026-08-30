@@ -7,13 +7,10 @@
                    OnClick="OnBack">
             返回列表
         </MudButton>
-        <MudText Typo="Typo.h4" Class="flex-auto ml-2">@Node.Name</MudText>
-        <MudChip T="string"
-                 Size="Size.Small"
-                 Color="GetNodeStatusColor(Node.Status)"
-                 Variant="Variant.Filled">
-            @Node.Status
-        </MudChip>
+        <MudText Typo="Typo.h4" Class="flex-auto ml-2 font-grotesk">@Node.Name</MudText>
+        <span class="status-badge @GetNodeStatusClass(Node.Status)">
+            <span class="status-dot"></span>@Node.Status
+        </span>
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Refresh"
@@ -34,10 +31,10 @@
     [Parameter] public EventCallback OnBack { get; set; }
     [Parameter] public EventCallback OnRefresh { get; set; }
 
-    private static Color GetNodeStatusColor(string status) => status switch
+    private static string GetNodeStatusClass(string status) => status switch
     {
-        "Ready" => Color.Success,
-        "NotReady" => Color.Error,
-        _ => Color.Default
+        "Ready" => "online",
+        "NotReady" => "offline",
+        _ => "unknown"
     };
 }

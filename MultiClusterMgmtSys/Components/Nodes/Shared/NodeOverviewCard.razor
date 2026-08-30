@@ -9,19 +9,16 @@
             <MudText Typo="Typo.h6">基本信息</MudText>
         </CardHeaderContent>
         <CardHeaderActions>
-            <MudChip T="string"
-                     Size="Size.Small"
-                     Color="GetNodeStatusColor(Node.Status)"
-                     Variant="Variant.Filled">
-                @Node.Status
-            </MudChip>
+            <span class="status-badge @GetNodeStatusClass(Node.Status)">
+                <span class="status-dot"></span>@Node.Status
+            </span>
         </CardHeaderActions>
     </MudCardHeader>
     <MudCardContent>
         <MudGrid Spacing="2">
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">名称</MudText>
-                <MudText Typo="Typo.body1">@Node.Name</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@Node.Name</MudText>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">角色</MudText>
@@ -29,7 +26,7 @@
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">Kubelet 版本</MudText>
-                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.KubeletVersion) ? "—" : Node.KubeletVersion)</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(Node.KubeletVersion) ? "—" : Node.KubeletVersion)</MudText>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">操作系统</MudText>
@@ -37,24 +34,21 @@
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">调度性</MudText>
-                <MudChip T="string"
-                         Size="Size.Small"
-                         Color="@(Node.Unschedulable ? Color.Warning : Color.Success)"
-                         Variant="Variant.Filled">
-                    @(Node.Unschedulable ? "不可调度" : "可调度")
-                </MudChip>
+                <span class="status-badge @(Node.Unschedulable ? "unknown" : "online")">
+                    <span class="status-dot"></span>@(Node.Unschedulable ? "不可调度" : "可调度")
+                </span>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">Phase</MudText>
-                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.Phase) ? "—" : Node.Phase)</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(Node.Phase) ? "—" : Node.Phase)</MudText>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">PodCIDR</MudText>
-                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.PodCIDR) ? "—" : Node.PodCIDR)</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(Node.PodCIDR) ? "—" : Node.PodCIDR)</MudText>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">创建时间</MudText>
-                <MudText Typo="Typo.body1">@(Node.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(Node.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
             </MudItem>
         </MudGrid>
 
@@ -84,7 +78,7 @@
                 <RowTemplate>
                     <MudTd DataLabel="类型">@context.Type</MudTd>
                     <MudTd DataLabel="IP 地址">
-                        <MudText Style="font-family: monospace;">@context.Address</MudText>
+                        <MudText Class="font-mono">@context.Address</MudText>
                     </MudTd>
                     <MudTd DataLabel="备注">@(context.Note ?? "—")</MudTd>
                 </RowTemplate>
@@ -132,10 +126,10 @@
         }
     }
 
-    private static Color GetNodeStatusColor(string status) => status switch
+    private static string GetNodeStatusClass(string status) => status switch
     {
-        "Ready" => Color.Success,
-        "NotReady" => Color.Error,
-        _ => Color.Default
+        "Ready" => "online",
+        "NotReady" => "offline",
+        _ => "unknown"
     };
 }

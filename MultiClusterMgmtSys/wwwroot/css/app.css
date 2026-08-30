@@ -1,10 +1,157 @@
-﻿.app-layout {
+﻿/* ============================================================
+   MultiClusterMgmtSys — Swiss Industrial Print design tokens
+   ============================================================ */
+
+/* ---------- 1. Fonts ---------- */
+
+@font-face {
+    font-family: 'Space Grotesk';
+    font-style: normal;
+    font-weight: 100 700;
+    font-display: swap;
+    src: url('../fonts/SpaceGrotesk-Variable.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'IBM Plex Mono';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('../fonts/IBMPlexMono-400.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'IBM Plex Mono';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('../fonts/IBMPlexMono-500.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'IBM Plex Mono';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('../fonts/IBMPlexMono-600.woff2') format('woff2');
+}
+
+.font-grotesk {
+    font-family: 'Space Grotesk', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+    font-variant-numeric: tabular-nums;
+}
+
+.font-mono {
+    font-family: 'IBM Plex Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Data-heavy UI: tabular numerals everywhere */
+html, body {
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 2. Surfaces: hairline + inset highlight instead of shadows ---------- */
+
+.app-layout {
     display: flex;
     flex-direction: column;
     height: 100vh !important;
     min-width: 1280px;
     min-height: 720px;
 }
+
+.mud-appbar {
+    border-bottom: 1px solid #E2DED5;
+}
+
+.mud-drawer {
+    border-right: 1px solid #E2DED5;
+}
+
+/* ---------- 3. AppBar brand ---------- */
+
+.appbar-brand {
+    width: 28px;
+    height: 28px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #B45309;
+    color: #FCFBF7;
+    border-radius: 3px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 14px;
+    line-height: 1;
+}
+
+.appbar-subtitle {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #6E675C;
+    white-space: nowrap;
+}
+
+/* ---------- 4. Navigation: ink block active state ---------- */
+
+.mud-nav-link {
+    border-radius: 3px;
+    color: #6E675C;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.mud-nav-link:hover {
+    background: #E7E2D8;
+    color: #111111;
+}
+
+.mud-nav-link.active {
+    background: #111111;
+    color: #FCFBF7;
+}
+
+/* ---------- 5. Status badges: pale fill + deep text ---------- */
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.6;
+    white-space: nowrap;
+}
+
+.status-badge .status-dot {
+    width: 6px;
+    height: 6px;
+    flex: none;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.status-badge.online {
+    background: #EDF3EC;
+    color: #346538;
+}
+
+.status-badge.offline {
+    background: #FDEBEC;
+    color: #9F2F2D;
+}
+
+.status-badge.unknown {
+    background: #FBF3DB;
+    color: #956400;
+}
+
+/* ---------- 6. Tables: 2px ink header rule, warm hover, dense ---------- */
 
 .clusters-table,
 .accounts-table,
@@ -32,6 +179,79 @@
     .configmaps-table .mud-table-pagination {
         overflow: visible;
     }
+
+.mud-table-head .mud-table-cell {
+    border-bottom: 2px solid #111111;
+    color: #6E675C;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    background: #FCFBF7;
+}
+
+.mud-table-hover tbody tr:hover {
+    background: #EDE9E0;
+}
+
+/* ---------- 7. Interactivity: amber focus ring, press feedback ---------- */
+
+.mud-button-root {
+    transition: transform 0.15s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.mud-button-root:active {
+    transform: scale(0.98);
+}
+
+.mud-button-root:focus-visible,
+.mud-input:focus-within,
+a:focus-visible {
+    outline: 2px solid #B45309;
+    outline-offset: 2px;
+}
+
+/* Refresh-all progress uses the amber signal color */
+.progress-signal .mud-progress-linear-bar {
+    background: #B45309 !important;
+}
+
+/* ---------- 8. Empty states: dashed mono frame ---------- */
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 32px 16px;
+    border: 1px dashed #C9C2B5;
+    border-radius: 3px;
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 13px;
+    color: #6E675C;
+}
+
+/* ---------- 9. Scrollbars: slim graphite ---------- */
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #C9C2B5;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #A9A193;
+}
+
+/* ---------- 10. Legacy layout workarounds ---------- */
 
 .group-dialog {
     overflow: visible !important;

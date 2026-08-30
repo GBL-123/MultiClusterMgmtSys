@@ -2,9 +2,9 @@
 @page "/clusters"
 @implements IDisposable
 
-@using MultiClusterMgmtSys.Components.Clusters.Services
+@using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.Components.Clusters.Shared
-@using MultiClusterMgmtSys.Components.Clusters.Requests
+@using MultiClusterMgmtSys.Requests
 @using MultiClusterMgmtSys.Components.Clusters.ViewModels
 
 @inject ClusterService ClusterService
@@ -65,6 +65,7 @@
                         <MudSpacer />
                         <MudProgressLinear Color="Color.Primary"
                                            Value="@((double)refreshAllCurrent / Math.Max(refreshAllTotal, 1) * 100)"
+                                           Class="progress-signal"
                                            Style="max-width:300px;" />
                         <MudText Class="mud-text-secondary">@refreshAllCurrent / @refreshAllTotal</MudText>
                     </MudStack>

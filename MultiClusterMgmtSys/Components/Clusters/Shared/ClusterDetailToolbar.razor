@@ -8,13 +8,10 @@
                    OnClick="OnBack">
             返回列表
         </MudButton>
-        <MudText Typo="Typo.h4" Class="flex-auto ml-2">@Cluster.Name</MudText>
-        <MudChip T="string"
-                 Size="Size.Small"
-                 Color="GetStatusColor(Cluster.Status)"
-                 Variant="Variant.Filled">
-            @Cluster.StatusText
-        </MudChip>
+        <MudText Typo="Typo.h4" Class="flex-auto ml-2 font-grotesk">@Cluster.Name</MudText>
+        <span class="status-badge @GetStatusClass(Cluster.Status)">
+            <span class="status-dot"></span>@Cluster.StatusText
+        </span>
         <AuthorizeView Roles="Admin">
             <Authorized>
                 <MudButton Variant="Variant.Filled"
@@ -55,10 +52,10 @@
     [Parameter] public EventCallback OnEdit { get; set; }
     [Parameter] public EventCallback OnDelete { get; set; }
 
-    private static Color GetStatusColor(ClusterStatus status) => status switch
+    private static string GetStatusClass(ClusterStatus status) => status switch
     {
-        ClusterStatus.Online => Color.Success,
-        ClusterStatus.Offline => Color.Error,
-        _ => Color.Default
+        ClusterStatus.Online => "online",
+        ClusterStatus.Offline => "offline",
+        _ => "unknown"
     };
 }

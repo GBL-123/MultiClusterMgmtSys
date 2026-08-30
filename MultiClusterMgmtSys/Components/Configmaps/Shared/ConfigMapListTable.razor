@@ -1,4 +1,4 @@
-@using MultiClusterMgmtSys.Features.Configmaps.ViewModels
+@using MultiClusterMgmtSys.ViewModels
 @namespace MultiClusterMgmtSys.Features.Configmaps.Shared
 
 <MudTable T="ConfigMapListViewModel"
@@ -18,22 +18,23 @@
     <RowTemplate>
         <MudTd DataLabel="名称">
             <MudText Color="Color.Primary"
+                     Class="font-mono"
                      Style="cursor:pointer; text-decoration: underline;"
                      @onclick="() => OnNavigateDetail.InvokeAsync((context.Namespace, context.Name))">
                 @context.Name
             </MudText>
         </MudTd>
         <MudTd DataLabel="命名空间">
-            <MudChip T="string" Size="Size.Small">@context.Namespace</MudChip>
+            <MudChip T="string" Size="Size.Small" Class="font-mono">@context.Namespace</MudChip>
         </MudTd>
-        <MudTd DataLabel="Data 键数">@context.DataKeyCount</MudTd>
+        <MudTd DataLabel="Data 键数"><span class="font-mono">@context.DataKeyCount</span></MudTd>
         <MudTd DataLabel="键名预览">
             <MudText Style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
                      Title="@context.DataKeyPreview">
                 @context.DataKeyPreview
             </MudText>
         </MudTd>
-        <MudTd DataLabel="创建时间">@(context.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudTd>
+        <MudTd DataLabel="创建时间"><span class="font-mono">@(context.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</span></MudTd>
         <MudTd DataLabel="操作">
             <div class="d-flex" style="gap: 4px;">
                 <MudTooltip Text="详情">
@@ -64,10 +65,10 @@
         <MudTablePager RowsPerPageString="每页条数：" InfoFormat="共 {all_items} 条" />
     </PagerContent>
     <LoadingContent>
-        <MudText>正在加载...</MudText>
+        <MudText Class="pa-4 font-mono mud-text-secondary">// 正在加载...</MudText>
     </LoadingContent>
     <NoRecordsContent>
-        <MudText>暂无 ConfigMap 或没有符合筛选条件的 ConfigMap</MudText>
+        <div class="empty-state">[ 暂无 ConfigMap ]</div>
     </NoRecordsContent>
 </MudTable>
 

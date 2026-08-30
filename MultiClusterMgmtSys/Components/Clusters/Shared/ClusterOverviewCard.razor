@@ -1,5 +1,5 @@
 @using MultiClusterMgmtSys.Common.Enums
-@using MultiClusterMgmtSys.Components.Clusters.Services
+@using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.Components.Clusters.ViewModels
 
 @inject ClusterService ClusterService
@@ -31,11 +31,11 @@
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">版本</MudText>
-                <MudText Typo="Typo.body1">@(Cluster.Version ?? "—")</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(Cluster.Version ?? "—")</MudText>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">节点数</MudText>
-                <MudText Typo="Typo.body1">@Cluster.NodeCount</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@Cluster.NodeCount</MudText>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">所属分组</MudText>
@@ -49,15 +49,15 @@
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">API Server</MudText>
-                <MudText Typo="Typo.body1">@(Cluster.ApiServer ?? "—")</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(Cluster.ApiServer ?? "—")</MudText>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">创建时间</MudText>
-                <MudText Typo="Typo.body1">@Cluster.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@Cluster.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudText>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">最后检测时间</MudText>
-                <MudText Typo="Typo.body1">@(Cluster.LastCheckedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(Cluster.LastCheckedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
             </MudItem>
         </MudGrid>
         <AuthorizeView Roles="Admin">

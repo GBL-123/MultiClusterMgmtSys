@@ -1,17 +1,12 @@
 ﻿@inherits LayoutComponentBase
 
-@inject ThemeManager ThemeManager
-
-<MudThemeProvider Theme="@ThemeManager.Theme"
-                  IsDarkMode="@ThemeManager.IsDarkMode"
-                  IsDarkModeChanged="@(v => ThemeManager.IsDarkMode = v)"
-                  ObserveSystemDarkModeChange="@ThemeManager.ObserveSystemDarkModeChange" />
+<MudThemeProvider Theme="@ThemeManager.Theme" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
 <MudLayout Class="app-layout">
-    <AppBar OnMenuClick="@ToggleDrawer" OnThemeClick="@ToggleTheme" />
+    <AppBar OnMenuClick="@ToggleDrawer" />
     <Drawer IsOpen="@drawerOpen" />
 
     <MudMainContent Class="d-flex" Style="height:100%;">
@@ -27,19 +22,5 @@
     private void ToggleDrawer()
     {
         drawerOpen = !drawerOpen;
-    }
-
-    private async Task ToggleTheme()
-    {
-        await ThemeManager.ToggleDarkModeAsync();
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            await ThemeManager.InitializeAsync();
-            StateHasChanged();
-        }
     }
 }

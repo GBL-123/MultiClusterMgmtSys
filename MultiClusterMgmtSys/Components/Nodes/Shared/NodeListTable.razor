@@ -17,21 +17,19 @@
     <RowTemplate>
         <MudTd DataLabel="名称">
             <MudText Color="Color.Primary"
+                     Class="font-mono"
                      Style="cursor:pointer; text-decoration: underline;"
                      @onclick="() => OnNavigateNode.InvokeAsync(context.Name)">
                 @context.Name
             </MudText>
         </MudTd>
         <MudTd DataLabel="状态">
-            <MudChip T="string"
-                     Size="Size.Small"
-                     Color="GetNodeStatusColor(context.Status)"
-                     Variant="Variant.Filled">
-                @context.Status
-            </MudChip>
+            <span class="status-badge @GetNodeStatusClass(context.Status)">
+                <span class="status-dot"></span>@context.Status
+            </span>
         </MudTd>
         <MudTd DataLabel="角色">@(string.IsNullOrEmpty(context.Roles) ? "—" : context.Roles)</MudTd>
-        <MudTd DataLabel="Kubelet 版本">@(string.IsNullOrEmpty(context.KubeletVersion) ? "—" : context.KubeletVersion)</MudTd>
+        <MudTd DataLabel="Kubelet 版本"><span class="font-mono">@(string.IsNullOrEmpty(context.KubeletVersion) ? "—" : context.KubeletVersion)</span></MudTd>
         <MudTd DataLabel="操作系统">@(string.IsNullOrEmpty(context.OsImage) ? "—" : context.OsImage)</MudTd>
         <MudTd DataLabel="IP 地址">
             @if (context.IpAddresses.Count == 0)
@@ -43,7 +41,7 @@
                 <div style="display:flex; flex-direction:column;">
                     @foreach (var ip in context.IpAddresses)
                     {
-                        <span style="font-family: monospace; white-space:nowrap;">
+                        <span class="font-mono" style="white-space:nowrap;">
                             @ip.Address
                             @if (!string.IsNullOrEmpty(ip.Note))
                             {
@@ -59,10 +57,10 @@
         <MudTablePager RowsPerPageString="每页条数：" InfoFormat="共 {all_items} 条" />
     </PagerContent>
     <LoadingContent>
-        <MudText>正在加载...</MudText>
+        <MudText Class="pa-4 font-mono mud-text-secondary">// 正在加载...</MudText>
     </LoadingContent>
     <NoRecordsContent>
-        <MudText>@(FilterActive ? "没有符合当前筛选条件的节点" : "暂无节点数据")</MudText>
+        <div class="empty-state">@(FilterActive ? "[ 无匹配节点 ]" : "[ 暂无节点 ]")</div>
     </NoRecordsContent>
 </MudTable>
 
@@ -72,10 +70,10 @@
     [Parameter] public bool Loading { get; set; }
     [Parameter] public EventCallback<string> OnNavigateNode { get; set; }
 
-    private static Color GetNodeStatusColor(string status) => status switch
+    private static string GetNodeStatusClass(string status) => status switch
     {
-        "Ready" => Color.Success,
-        "NotReady" => Color.Error,
-        _ => Color.Default
+        "Ready" => "online",
+        "NotReady" => "offline",
+        _ => "unknown"
     };
 }

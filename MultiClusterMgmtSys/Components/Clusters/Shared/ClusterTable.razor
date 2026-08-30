@@ -1,6 +1,6 @@
 @using MultiClusterMgmtSys.Common.Enums
-@using MultiClusterMgmtSys.Components.Clusters.Requests
-@using MultiClusterMgmtSys.Components.Clusters.Services
+@using MultiClusterMgmtSys.Requests
+@using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.Components.Clusters.ViewModels
 
 @inject ClusterService ClusterService
@@ -36,31 +36,24 @@
         }
         <MudTd DataLabel="名称">
             <MudText Color="Color.Primary"
+                     Class="font-mono"
                      Style="cursor:pointer; text-decoration: underline;"
                      @onclick="() => OnNavigateClusterDetail.InvokeAsync(context.Id)">
                 @context.Name
             </MudText>
         </MudTd>
         <MudTd DataLabel="状态">
-            <MudChip T="string"
-                     Size="Size.Small"
-                     Color="@(context.Status switch
-                     {
-                         ClusterStatus.Online => Color.Success,
-                         ClusterStatus.Offline => Color.Error,
-                         _ => Color.Default
-                     })"
-                     Variant="Variant.Filled">
-                @context.StatusText
-            </MudChip>
+            <span class="status-badge @GetStatusClass(context.Status)">
+                <span class="status-dot"></span>@context.StatusText
+            </span>
         </MudTd>
-        <MudTd DataLabel="版本">@(context.Version ?? "未知")</MudTd>
-        <MudTd DataLabel="节点数">@context.NodeCount</MudTd>
+        <MudTd DataLabel="版本"><span class="font-mono">@(context.Version ?? "未知")</span></MudTd>
+        <MudTd DataLabel="节点数"><span class="font-mono">@context.NodeCount</span></MudTd>
         <MudTd DataLabel="分组">@(context.GroupName ?? "未分组")</MudTd>
         <MudTd DataLabel="API Server">
-            <MudText Style="min-width:200px;">@(context.ApiServer ?? "未知")</MudText>
+            <MudText Class="font-mono" Style="min-width:200px;">@(context.ApiServer ?? "未知")</MudText>
         </MudTd>
-        <MudTd DataLabel="创建时间">@context.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudTd>
+        <MudTd DataLabel="创建时间"><span class="font-mono">@context.CreatedAt.ToString("yyyy-MM-dd HH:mm")</span></MudTd>
         <MudTd DataLabel="操作">
             <AuthorizeView Roles="Admin">
                 <Authorized Context="authContext">
@@ -97,14 +90,21 @@
         <MudTablePager RowsPerPageString="每页条数：" InfoFormat="共 {all_items} 条" />
     </PagerContent>
     <LoadingContent>
-        <MudText>正在加载...</MudText>
+        <MudText Class="pa-4 font-mono mud-text-secondary">// 正在加载...</MudText>
     </LoadingContent>
     <NoRecordsContent>
-        <MudText>暂无集群或没有符合筛选条件的集群</MudText>
+        <div class="empty-state">[ 暂无集群 ]</div>
     </NoRecordsContent>
 </MudTable>
 
 @code {
+    private static string GetStatusClass(ClusterStatus status) => status switch
+    {
+        ClusterStatus.Online => "online",
+        ClusterStatus.Offline => "offline",
+        _ => "unknown"
+    };
+
     [Parameter]
     public ClusterQueryRequest Query { get; set; } = new();
 

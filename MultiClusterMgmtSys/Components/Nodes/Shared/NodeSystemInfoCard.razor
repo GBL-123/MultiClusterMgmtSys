@@ -10,31 +10,31 @@
         <MudGrid Spacing="2">
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">Architecture</MudText>
-                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.SystemInfo.Architecture) ? "—" : Node.SystemInfo.Architecture)</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(Node.SystemInfo.Architecture) ? "—" : Node.SystemInfo.Architecture)</MudText>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">BootID</MudText>
-                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.SystemInfo.BootID) ? "—" : Node.SystemInfo.BootID)</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(Node.SystemInfo.BootID) ? "—" : Node.SystemInfo.BootID)</MudText>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">ContainerRuntimeVersion</MudText>
-                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.SystemInfo.ContainerRuntimeVersion) ? "—" : Node.SystemInfo.ContainerRuntimeVersion)</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(Node.SystemInfo.ContainerRuntimeVersion) ? "—" : Node.SystemInfo.ContainerRuntimeVersion)</MudText>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">KernelVersion</MudText>
-                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.SystemInfo.KernelVersion) ? "—" : Node.SystemInfo.KernelVersion)</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(Node.SystemInfo.KernelVersion) ? "—" : Node.SystemInfo.KernelVersion)</MudText>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">KubeProxyVersion</MudText>
-                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.SystemInfo.KubeProxyVersion) ? "—" : Node.SystemInfo.KubeProxyVersion)</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(Node.SystemInfo.KubeProxyVersion) ? "—" : Node.SystemInfo.KubeProxyVersion)</MudText>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">KubeletVersion</MudText>
-                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.SystemInfo.KubeletVersion) ? "—" : Node.SystemInfo.KubeletVersion)</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(Node.SystemInfo.KubeletVersion) ? "—" : Node.SystemInfo.KubeletVersion)</MudText>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">MachineID</MudText>
-                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.SystemInfo.MachineID) ? "—" : Node.SystemInfo.MachineID)</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(Node.SystemInfo.MachineID) ? "—" : Node.SystemInfo.MachineID)</MudText>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">OperatingSystem</MudText>
@@ -46,7 +46,7 @@
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">SystemUUID</MudText>
-                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.SystemInfo.SystemUUID) ? "—" : Node.SystemInfo.SystemUUID)</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(Node.SystemInfo.SystemUUID) ? "—" : Node.SystemInfo.SystemUUID)</MudText>
             </MudItem>
         </MudGrid>
     </MudCardContent>

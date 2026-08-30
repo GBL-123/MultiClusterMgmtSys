@@ -26,12 +26,9 @@
                 <RowTemplate>
                     <MudTd DataLabel="类型">@context.Type</MudTd>
                     <MudTd DataLabel="状态">
-                        <MudChip T="string"
-                                 Size="Size.Small"
-                                 Color="GetConditionColor(context.Type, context.Status)"
-                                 Variant="Variant.Filled">
-                            @context.Status
-                        </MudChip>
+                        <span class="status-badge @GetConditionClass(context.Type, context.Status)">
+                            <span class="status-dot"></span>@context.Status
+                        </span>
                     </MudTd>
                     <MudTd DataLabel="原因">@(context.Reason ?? "—")</MudTd>
                     <MudTd DataLabel="消息">
@@ -40,8 +37,8 @@
                             @(context.Message ?? "—")
                         </span>
                     </MudTd>
-                    <MudTd DataLabel="最近心跳">@(context.LastHeartbeatTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")</MudTd>
-                    <MudTd DataLabel="最近转换">@(context.LastTransitionTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")</MudTd>
+                    <MudTd DataLabel="最近心跳"><span class="font-mono">@(context.LastHeartbeatTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")</span></MudTd>
+                    <MudTd DataLabel="最近转换"><span class="font-mono">@(context.LastTransitionTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")</span></MudTd>
                 </RowTemplate>
             </MudTable>
         }
@@ -51,10 +48,10 @@
 @code {
     [Parameter] public ClusterNodeDetailViewModel Node { get; set; } = default!;
 
-    private static Color GetConditionColor(string type, string status)
+    private static string GetConditionClass(string type, string status)
     {
-        if (status == "Unknown") return Color.Default;
+        if (status == "Unknown") return "unknown";
         var isHealthy = type == "Ready" ? status == "True" : status == "False";
-        return isHealthy ? Color.Success : Color.Error;
+        return isHealthy ? "online" : "offline";
     }
 }
