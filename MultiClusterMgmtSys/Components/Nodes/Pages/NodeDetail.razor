@@ -1,12 +1,11 @@
 @attribute [Authorize]
 @page "/nodes/{ClusterId:int}/{NodeName}"
 
-@using MultiClusterMgmtSys.Components.Clusters.Services
+@using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.Components.Clusters.ViewModels
 @using MultiClusterMgmtSys.Components.Common
-@using MultiClusterMgmtSys.Components.Nodes.Services
 @using MultiClusterMgmtSys.Components.Nodes.Shared
-@using MultiClusterMgmtSys.Components.Nodes.ViewModels
+@using MultiClusterMgmtSys.ViewModels
 
 <PageTitle>节点详情: @NodeName</PageTitle>
 

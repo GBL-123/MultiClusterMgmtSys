@@ -5,20 +5,21 @@
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Authentication
 @using Microsoft.AspNetCore.Identity
-@using MultiClusterMgmtSys.Components.Auth.Services
+@using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.Components.Auth.Shared
-@using MultiClusterMgmtSys.Components.Auth.Requests
+@using MultiClusterMgmtSys.Requests
 
 @inject RedirectManager RedirectManager
 @inject AuthService AuthService
 
 <PageTitle>登录</PageTitle>
 
-<MudPaper Elevation="8" Width="400px" Class="pa-8">
+<MudPaper Elevation="0" Width="400px" Class="pa-8 auth-panel">
     <MudStack >
         <MudStack AlignItems="AlignItems.Center">
-            <MudIcon Icon="@Icons.Material.Filled.TravelExplore" Size="Size.Large" Color="Color.Primary" />
+            <span class="brand-mark large">▮</span>
             <MudText Typo="Typo.h5">多集群管理系统</MudText>
+            <span class="appbar-subtitle">MCM // CONTROL</span>
             <StatusMessage IsSuccess="@isSuccess" Message="@errorMessage" />
         </MudStack>
        

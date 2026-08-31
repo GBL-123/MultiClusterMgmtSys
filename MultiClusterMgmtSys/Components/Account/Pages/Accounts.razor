@@ -1,10 +1,10 @@
 @attribute [Authorize(Roles = "Admin")]
 @page "/accounts"
 
-@using MultiClusterMgmtSys.Components.Account.Services
+@using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.Components.Account.Shared
-@using MultiClusterMgmtSys.Components.Account.Requests
-@using MultiClusterMgmtSys.Features.Account.ViewModels
+@using MultiClusterMgmtSys.Requests
+@using MultiClusterMgmtSys.ViewModels
 
 @inject AccountService AccountSvc
 @inject IDialogService DialogService

@@ -17,9 +17,7 @@
     </HeaderContent>
     <RowTemplate>
         <MudTd DataLabel="名称">
-            <MudText Color="Color.Primary"
-                     Class="font-mono"
-                     Style="cursor:pointer; text-decoration: underline;"
+            <MudText Class="font-mono link-primary"
                      @onclick="() => OnNavigateDetail.InvokeAsync((context.Namespace, context.Name))">
                 @context.Name
             </MudText>

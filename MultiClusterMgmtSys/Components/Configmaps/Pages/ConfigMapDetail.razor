@@ -2,13 +2,13 @@
 @page "/configmaps/{ClusterId:int}/{Namespace}/{Name}"
 
 @using MultiClusterMgmtSys.Components.Common
-@using MultiClusterMgmtSys.Features.Configmaps.Services
-@using MultiClusterMgmtSys.Features.Configmaps.ViewModels
+@using MultiClusterMgmtSys.Services
+@using MultiClusterMgmtSys.ViewModels
 @using MultiClusterMgmtSys.Features.Configmaps.Shared
 
 <PageTitle>ConfigMap 详情: @Name</PageTitle>
 
-<MudStack Class="flex-auto pb-4" Style="align-self: flex-start;">
+<MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
     @if (loading)
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />

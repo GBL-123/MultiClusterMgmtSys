@@ -17,6 +17,8 @@ public static class ThemeManager
             PaletteLight = new PaletteLight
             {
                 Primary = "#111111",
+                PrimaryDarken = "#2E2A24",
+                PrimaryLighten = "#3A352E",
                 PrimaryContrastText = "#FCFBF7",
                 Secondary = "#6E675C",
                 SecondaryContrastText = "#FCFBF7",
@@ -30,7 +32,7 @@ public static class ThemeManager
                 TextSecondary = "#6E675C",
                 Divider = "#E2DED5",
                 Success = "#346538",
-                Warning = "#956400",
+                Warning = "#D97706",
                 Error = "#9F2F2D",
                 Info = "#146C7C",
             },
@@ -40,17 +42,17 @@ public static class ThemeManager
             },
             Typography = new Typography
             {
-                Default = new DefaultTypography { FontFamily = ["Space Grotesk", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "sans-serif"] },
-                H4 = new H4Typography { FontFamily = ["Space Grotesk", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "sans-serif"], FontSize = "1.5rem", FontWeight = "700", LineHeight = "1.25", LetterSpacing = "-0.02em" },
-                H5 = new H5Typography { FontFamily = ["Space Grotesk", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "sans-serif"], FontSize = "1.25rem", FontWeight = "700", LineHeight = "1.3", LetterSpacing = "-0.015em" },
+                Default = new DefaultTypography { FontFamily = ["-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "sans-serif"] },
+                H4 = new H4Typography { FontFamily = ["Space Grotesk", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "sans-serif"], FontSize = "1.5rem", FontWeight = "600", LineHeight = "1.25", LetterSpacing = "-0.01em" },
+                H5 = new H5Typography { FontFamily = ["Space Grotesk", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "sans-serif"], FontSize = "1.25rem", FontWeight = "600", LineHeight = "1.3", LetterSpacing = "-0.005em" },
                 H6 = new H6Typography { FontFamily = ["Space Grotesk", "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "sans-serif"], FontSize = "1.125rem", FontWeight = "600", LineHeight = "1.35" },
                 Subtitle1 = new Subtitle1Typography { FontSize = "1rem", FontWeight = "500", LineHeight = "1.5" },
                 Subtitle2 = new Subtitle2Typography { FontSize = "0.875rem", FontWeight = "500", LineHeight = "1.5" },
                 Body1 = new Body1Typography { FontSize = "0.875rem", FontWeight = "400", LineHeight = "1.6" },
                 Body2 = new Body2Typography { FontSize = "0.8125rem", FontWeight = "400", LineHeight = "1.5" },
-                Button = new ButtonTypography { FontSize = "0.8125rem", FontWeight = "600", LineHeight = "1.5", LetterSpacing = "0.04em" },
+                Button = new ButtonTypography { FontSize = "0.8125rem", FontWeight = "500", LineHeight = "1.5", LetterSpacing = "0.01em" },
                 Caption = new CaptionTypography { FontSize = "0.75rem", FontWeight = "400", LineHeight = "1.4" },
-                Overline = new OverlineTypography { FontSize = "0.6875rem", FontWeight = "600", LineHeight = "1.4", LetterSpacing = "0.1em" },
+                Overline = new OverlineTypography { FontSize = "0.6875rem", FontWeight = "600", LineHeight = "1.4", LetterSpacing = "0.08em" },
             },
         };
         return theme;

@@ -1,4 +1,4 @@
-using MultiClusterMgmtSys.Components.Clusters.Requests;
+using MultiClusterMgmtSys.Requests;
 using MultiClusterMgmtSys.Components.Clusters.ViewModels;
 using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Data.Repositories;

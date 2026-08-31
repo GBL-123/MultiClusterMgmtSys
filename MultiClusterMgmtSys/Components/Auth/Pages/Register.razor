@@ -3,20 +3,21 @@
 @attribute [ExcludeFromInteractiveRouting]
 
 @using System.ComponentModel.DataAnnotations
-@using MultiClusterMgmtSys.Components.Auth.Services
+@using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.Components.Auth.Shared
-@using MultiClusterMgmtSys.Components.Auth.Requests
+@using MultiClusterMgmtSys.Requests
 
 @inject RedirectManager RedirectManager
 @inject AuthService AuthService
 
 <PageTitle>注册账号</PageTitle>
 
-<MudPaper Elevation="8" Width="400px" Class="pa-8">
+<MudPaper Elevation="0" Width="400px" Class="pa-8 auth-panel">
     <MudStack >
         <MudStack AlignItems="AlignItems.Center">
-            <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Size="Size.Large" Color="Color.Primary" />
+            <span class="brand-mark large">▮</span>
             <MudText Typo="Typo.h5">注册新账号</MudText>
+            <span class="appbar-subtitle">MCM // CONTROL</span>
             <StatusMessage IsSuccess="@isSuccess" Message="@errorMessage" />
         </MudStack>
 
