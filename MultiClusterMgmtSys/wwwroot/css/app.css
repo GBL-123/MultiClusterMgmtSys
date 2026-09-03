@@ -266,6 +266,17 @@ a:focus-visible {
     border: 1px solid #E2DED5;
 }
 
+/* Compact dialogs (password change/reset): size to content, no inner scrollbar */
+[class~="pwd-dialog"] {
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+    [class~="pwd-dialog"] .mud-dialog-content {
+        overflow: visible !important;
+        max-height: none !important;
+    }
+
 /* YAML editors: flex-fill to available height (same pattern as .clusters-table) */
 /* YAML view/edit: plain textarea fills card height (MudTextField nesting fights specificity) */
 .yaml-card {

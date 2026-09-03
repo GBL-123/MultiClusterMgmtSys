@@ -31,13 +31,17 @@
                 <MudStack Row="true" AlignItems="AlignItems.Center">
                     <MudText Typo="Typo.h5">集群管理</MudText>
                     <MudSpacer />
-                    <MudButton Variant="Variant.Text"
-                               Color="Color.Inherit"
-                               StartIcon="@Icons.Material.Filled.Refresh"
-                               @bind-Disabled="@isRefreshingAll"
-                               OnClick="RefreshAllClustersAsync">
-                        @(isRefreshingAll ? "刷新中..." : "刷新所有集群")
-                    </MudButton>
+                    <AuthorizeView Roles="Admin">
+                        <Authorized>
+                            <MudButton Variant="Variant.Text"
+                                       Color="Color.Inherit"
+                                       StartIcon="@Icons.Material.Filled.Refresh"
+                                       @bind-Disabled="@isRefreshingAll"
+                                       OnClick="RefreshAllClustersAsync">
+                                @(isRefreshingAll ? "刷新中..." : "刷新所有集群")
+                            </MudButton>
+                        </Authorized>
+                    </AuthorizeView>
                     <AuthorizeView Roles="Admin">
                         <Authorized>
                             <MudButton Variant="@(isBatchMode ? Variant.Filled : Variant.Text)"

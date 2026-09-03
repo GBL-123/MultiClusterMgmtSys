@@ -190,6 +190,7 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         var total = ids.Count;
         var succeeded = 0;
         var current = 0;
+        progress?.Report((0, total));
         foreach (var id in ids)
         {
             try

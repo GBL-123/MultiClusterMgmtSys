@@ -35,7 +35,8 @@
     </MudStack>
 
     <MudStack Row="true" Class="flex-auto">
-        <MudDateRangePicker @bind-Value="Query.DateRange"
+        <MudDateRangePicker DateRange="Query.DateRange"
+                            DateRangeChanged="OnDateRangeChanged"
                             Label="创建日期"
                             PlaceholderStart="开始日期"
                             PlaceholderEnd="结束日期"
@@ -76,6 +77,11 @@
     private Task Search()
     {
         return OnFilterChanged.InvokeAsync();
+    }
+
+    private void OnDateRangeChanged(DateRange range)
+    {
+        Query.DateRange = range;
     }
 
     private Task ResetFilter()
