@@ -2,6 +2,7 @@
 
 @inject GroupService GroupService
 @inject ISnackbar Snackbar
+@inject ExceptionPresenter ExHandler
 
 <MudDialog ContentClass="group-dialog">
     <DialogContent>
@@ -80,7 +81,7 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"保存失败: {ex.Message}", Severity.Error);
+            await ExHandler.HandleAsync(ex, "保存分组");
         }
         finally
         {

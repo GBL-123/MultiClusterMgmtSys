@@ -10,6 +10,7 @@
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject AuthenticationStateProvider AuthStateProvider
+@inject ExceptionPresenter ExHandler
 
 <PageTitle>账号管理</PageTitle>
 
@@ -210,7 +211,7 @@
             }
             catch (Exception ex)
             {
-                Snackbar.Add($"批量删除失败: {ex.Message}", Severity.Error);
+                await ExHandler.HandleAsync(ex, "批量删除");
             }
         }
     }
@@ -226,7 +227,7 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"批量改角色失败: {ex.Message}", Severity.Error);
+            await ExHandler.HandleAsync(ex, "批量修改角色");
         }
     }
 

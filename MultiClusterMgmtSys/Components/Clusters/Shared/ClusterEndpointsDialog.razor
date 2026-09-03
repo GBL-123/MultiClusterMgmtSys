@@ -1,9 +1,11 @@
 @using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Common.Exceptions
 @using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.Components.Clusters.ViewModels
 
 @inject ClusterService ClusterService
 @inject ISnackbar Snackbar
+@inject ExceptionPresenter ExHandler
 
 <AuthorizeView Roles="Admin">
     <Authorized>
@@ -71,7 +73,7 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"加载端点失败: {ex.Message}", Severity.Error);
+            await ExHandler.HandleAsync(ex, "加载端点");
             Dialog.Cancel();
         }
         finally
@@ -89,14 +91,14 @@
             Snackbar.Add("端点已更新", Severity.Success);
             Dialog.Close(DialogResult.Ok(true));
         }
-        catch (ArgumentException ex)
+        catch (BusinessException ex)
         {
-            Snackbar.Add(ex.Message, Severity.Warning);
-            // 校验失败：保持对话框打开，行数据原样保留供用户修正。
+            Snackbar.Add(ex.UserMessage, Severity.Warning);
+            // 业务失败(如校验/冲突)：保持对话框打开，行数据原样保留供用户修正。
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"更新失败: {ex.Message}", Severity.Error);
+            await ExHandler.HandleAsync(ex, "保存端点");
         }
         finally
         {

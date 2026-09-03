@@ -1,25 +1,4 @@
-# profile-page
-
-## Purpose
-
-Provide an authenticated `/profile` page where any signed-in user can view their read-only account information (username, role, registration/modification/last-login times) and change their own password. The page lives in its own feature folder (`Components/Profile/`), follows the site-wide page layout conventions, and removes the vestigial display-name concept and its service stub.
-
-## Requirements
-
-### Requirement: Profile page exists at /profile and requires authentication
-The system SHALL provide a personal profile page at the `/profile` route, reachable by any authenticated user, and SHALL be the destination of the existing "个人资料" entry in the Drawer navigation.
-
-#### Scenario: Authenticated user visits /profile
-- **WHEN** an authenticated user visits `/profile`
-- **THEN** the profile page renders with a read-only info card and a change-password card
-
-#### Scenario: Unauthenticated user visits /profile
-- **WHEN** an unauthenticated user visits `/profile`
-- **THEN** the user is redirected to the login page
-
-#### Scenario: Drawer navigation reaches the page
-- **WHEN** the Drawer's "个人资料" link is clicked
-- **THEN** it navigates to `/profile` and the page renders without a 404
+## MODIFIED Requirements
 
 ### Requirement: Profile page shows read-only account information
 The system SHALL display the signed-in user's username, role, registration time, modification time, and last login time on the profile page. All fields SHALL be read-only; the username SHALL be used as the identity directly, and there SHALL be no display-name concept. Presentation SHALL follow the Swiss Industrial Print design system: a 40px amber square avatar (brand-mark language) showing the username's initial, a pale-fill role badge instead of a filled chip, and timestamps rendered in the mono data font.
@@ -79,38 +58,7 @@ The system SHALL allow the signed-in user to change their own password by provid
 - **WHEN** the new password does not satisfy the identity password policy
 - **THEN** the change fails and the Chinese validation error from the identity pipeline is shown
 
-### Requirement: No display-name service stub remains
-The system SHALL remove the unused `UpdateProfileAsync` method from `AccountService` once confirmed to have no remaining callers, together with the vestigial display-name save logic in the old page code.
-
-#### Scenario: Removing the stub
-- **WHEN** a repository-wide search confirms no caller of `UpdateProfileAsync` exists
-- **THEN** the method is removed from `AccountService` and the project still builds
-
-### Requirement: Profile page lives in its own feature folder
-The system SHALL implement the profile page in its own feature folder `Components/Profile/Pages/`, decoupled from the account management feature folder `Components/Account/`.
-
-#### Scenario: Folder placement
-- **WHEN** the components folder is inspected
-- **THEN** the profile page exists at `Components/Profile/Pages/Profile.razor` and no profile page remains under `Components/Account/`
-
-#### Scenario: Account management unaffected
-- **WHEN** the `Components/Account/` folder is inspected
-- **THEN** it hosts only account-management pages and no profile page
-
-### Requirement: Profile page follows the site-wide page layout
-The system SHALL render the profile page with the same layout conventions as the other pages: a header area showing the page title, and content sections presented as cards with section titles and label/value fields.
-
-#### Scenario: Header area
-- **WHEN** the profile page renders
-- **THEN** a header area shows the page title 个人资料
-
-#### Scenario: Card sections
-- **WHEN** the profile page renders
-- **THEN** the account information and the password change form each appear in a separate card with a section title
-
-#### Scenario: Label/value field display
-- **WHEN** account fields render
-- **THEN** each field shows a secondary-styled label and a body-styled value, with "—" for missing values
+## ADDED Requirements
 
 ### Requirement: Profile page shows recent operations
 The system SHALL display a 最近操作 card below the account information card showing the signed-in user's own most recent audit log entries, at most 5, ordered by creation time descending. Each row SHALL show the time (mono font, `yyyy-MM-dd HH:mm:ss`), the category and action display names, and the target. A 查看全部 link SHALL navigate to `/audit-logs`. When there are no entries, the card SHALL show an empty state.

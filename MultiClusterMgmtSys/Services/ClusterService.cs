@@ -4,6 +4,7 @@ using System.Text;
 using MultiClusterMgmtSys.Data.Repositories;
 using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Common.Enums;
+using MultiClusterMgmtSys.Common.Exceptions;
 using MultiClusterMgmtSys.ViewModels.Mappings;
 using MultiClusterMgmtSys.Components.Clusters.ViewModels;
 using MultiClusterMgmtSys.ViewModels;
@@ -112,7 +113,7 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         if (entity is null)
         {
             logger.LogWarning("Cluster {ClusterId} not found", vm.Id);
-            throw new InvalidOperationException($"Cluster {vm.Id} not found");
+            throw new NotFoundException($"集群 {vm.Id} 不存在");
         }
 
         var configChanged = entity.ConnectionType != vm.ConnectionType
@@ -158,7 +159,7 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         if (entity is null)
         {
             logger.LogWarning("Cluster {ClusterId} not found", clusterId);
-            throw new InvalidOperationException($"Cluster {clusterId} not found");
+            throw new NotFoundException($"集群 {clusterId} 不存在");
         }
 
         entity.ApplyEndpoints(items);
@@ -174,7 +175,7 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         if (entity is null)
         {
             logger.LogWarning("Cluster {ClusterId} not found", id);
-            throw new InvalidOperationException($"Cluster {id} not found");
+            throw new NotFoundException($"集群 {id} 不存在");
         }
         await ProbeAsync(entity);
         logger.LogInformation("RefreshClusterStatus id={ClusterId} status={Status}", id, entity.Status);
@@ -248,7 +249,7 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to connect to cluster {ClusterName} (Id={ClusterId})", cluster.Name, cluster.Id);
+            logger.LogWarning(ex, "Probe failed for cluster {ClusterName} (Id={ClusterId})", cluster.Name, cluster.Id);
             cluster.Status = ClusterStatus.Offline;
             cluster.Version = null;
             cluster.NodeCount = 0;

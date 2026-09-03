@@ -3,6 +3,7 @@ using MultiClusterMgmtSys.Components.Clusters.ViewModels;
 using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Data.Repositories;
 using MultiClusterMgmtSys.Common.Enums;
+using MultiClusterMgmtSys.Common.Exceptions;
 using MultiClusterMgmtSys.ViewModels.Mappings;
 
 namespace MultiClusterMgmtSys.Services;
@@ -61,7 +62,7 @@ public class GroupService(
         if (existing is null)
         {
             logger.LogWarning("RenameGroup id={GroupId} not found", id);
-            throw new InvalidOperationException($"Group {id} not found");
+            throw new NotFoundException($"分组 {id} 不存在");
         }
 
         await repo.RenameAsync(id, newName);
@@ -74,7 +75,7 @@ public class GroupService(
         if (targetGroupId == 0)
         {
             logger.LogWarning("MoveClustersToGroup rejected targetGroupId=0 (sentinel must be translated to null before service call)");
-            throw new ArgumentException("target group id must be a real id or null for ungrouped", nameof(targetGroupId));
+            throw new ValidationException("目标分组无效,请刷新后重试");
         }
 
         var ids = clusterIds.ToList();

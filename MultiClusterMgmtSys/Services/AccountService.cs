@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor;
 using MultiClusterMgmtSys.Common.Enums;
+using MultiClusterMgmtSys.Common.Exceptions;
 using MultiClusterMgmtSys.Data;
 using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Requests;
@@ -176,7 +177,7 @@ public class AccountService(
         if (ids.Count == 0) return new AccountBatchResult(0, 0);
         if (!await roleManager.RoleExistsAsync(roleName))
         {
-            throw new InvalidOperationException($"角色 {roleName} 不存在");
+            throw new NotFoundException($"角色 {roleName} 不存在");
         }
 
         var skipSet = new HashSet<int> { currentUserId };
@@ -398,6 +399,11 @@ public class AccountService(
                 Code = "UserNotFound",
                 Description = "账号不存在"
             });
+        }
+
+        if (string.Equals(currentPassword, newPassword, StringComparison.Ordinal))
+        {
+            throw new ValidationException("新密码不能与当前密码相同");
         }
 
         var result = await userManager.ChangePasswordAsync(user, currentPassword, newPassword);

@@ -48,8 +48,9 @@
 
     [Inject] private ConfigMapService ConfigMapService { get; set; } = default!;
     [Inject] private ClusterSelectionState ClusterSelection { get; set; } = default!;
-    [Inject] private ISnackbar Snackbar { get; set; } = default!;
-    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+[Inject] private ISnackbar Snackbar { get; set; } = default!;
+[Inject] private NavigationManager NavigationManager { get; set; } = default!;
+[Inject] private ExceptionPresenter ExHandler { get; set; } = default!;
 
     private ConfigMapDetailViewModel? detail;
     private bool loading = true;
@@ -73,7 +74,7 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"加载详情失败: {ex.Message}", Severity.Error);
+            await ExHandler.HandleAsync(ex, "加载详情");
         }
         finally
         {

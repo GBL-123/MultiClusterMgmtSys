@@ -79,8 +79,9 @@
     [Inject] private ClusterService ClusterService { get; set; } = default!;
     [Inject] private ClusterNodeService ClusterNodeService { get; set; } = default!;
     [Inject] private ClusterSelectionState ClusterSelection { get; set; } = default!;
-    [Inject] private ISnackbar Snackbar { get; set; } = default!;
-    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+[Inject] private ISnackbar Snackbar { get; set; } = default!;
+[Inject] private NavigationManager NavigationManager { get; set; } = default!;
+[Inject] private ExceptionPresenter ExHandler { get; set; } = default!;
 
     private List<ClusterViewModel> clusters = new();
     private ClusterDetailViewModel? cluster;
@@ -166,7 +167,7 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"加载集群列表失败: {ex.Message}", Severity.Error);
+            await ExHandler.HandleAsync(ex, "加载集群列表");
         }
     }
 
@@ -185,7 +186,7 @@
                 catch (Exception ex)
                 {
                     nodes = new();
-                    Snackbar.Add($"加载节点列表失败: {ex.Message}", Severity.Error);
+                    await ExHandler.HandleAsync(ex, "加载节点列表");
                 }
             }
             else
@@ -195,7 +196,7 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"加载集群详情失败: {ex.Message}", Severity.Error);
+            await ExHandler.HandleAsync(ex, "加载集群详情");
         }
         finally
         {

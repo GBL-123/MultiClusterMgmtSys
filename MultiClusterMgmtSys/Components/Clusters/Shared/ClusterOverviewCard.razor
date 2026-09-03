@@ -4,6 +4,7 @@
 
 @inject ClusterService ClusterService
 @inject ISnackbar Snackbar
+@inject ExceptionPresenter ExHandler
 
 <MudCard Class="pa-4">
     <MudCardHeader>
@@ -115,7 +116,7 @@
             }
             catch (Exception ex)
             {
-                Snackbar.Add($"加载密文失败: {ex.Message}", Severity.Error);
+                await ExHandler.HandleAsync(ex, "加载密文");
                 showSecret = false;
             }
         }

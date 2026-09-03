@@ -40,6 +40,14 @@ public class AuditService(
         }
     }
 
+    public async Task<List<AuditLogViewModel>> GetRecentAsync(string userName, int count)
+    {
+        logger.LogInformation("GetRecentAuditLogs user={UserName} count={Count}", userName, count);
+        var items = await repo.GetRecentForUserAsync(userName, count);
+        logger.LogInformation("GetRecentAuditLogs returned {Count} for user={UserName}", items.Count, userName);
+        return [.. items.Select(l => l.ToAuditLogViewModel())];
+    }
+
     public async Task<PagedResult<AuditLogViewModel>> GetPagedAsync(
         TableState state,
         AuditLogQueryRequest query,

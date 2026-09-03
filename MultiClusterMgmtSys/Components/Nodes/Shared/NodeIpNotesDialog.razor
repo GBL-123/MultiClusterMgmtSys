@@ -1,9 +1,11 @@
 @using MultiClusterMgmtSys.Requests
+@using MultiClusterMgmtSys.Common.Exceptions
 @using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.ViewModels
 
 @inject ClusterNodeService ClusterNodeService
 @inject ISnackbar Snackbar
+@inject ExceptionPresenter ExHandler
 
 <AuthorizeView Roles="Admin">
     <Authorized>
@@ -84,13 +86,13 @@
             Snackbar.Add("节点 IP 备注已更新", Severity.Success);
             Dialog.Close(DialogResult.Ok(true));
         }
-        catch (InvalidOperationException ex)
+        catch (BusinessException ex)
         {
-            Snackbar.Add(ex.Message, Severity.Warning);
+            Snackbar.Add(ex.UserMessage, Severity.Warning);
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"更新失败: {ex.Message}", Severity.Error);
+            await ExHandler.HandleAsync(ex, "更新节点备注");
         }
         finally
         {

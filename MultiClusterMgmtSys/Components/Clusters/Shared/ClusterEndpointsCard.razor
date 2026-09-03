@@ -1,8 +1,10 @@
 @using MultiClusterMgmtSys.Components.Clusters.ViewModels
+@using MultiClusterMgmtSys.Services
 
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @inject IDialogService DialogService
+@inject ExceptionPresenter ExHandler
 
 <MudCard Class="pa-4">
     <MudCardHeader>
@@ -101,7 +103,7 @@
         }
         catch (JSException ex)
         {
-            Snackbar.Add($"复制失败: {ex.Message}", Severity.Error);
+            await ExHandler.HandleAsync(ex, "复制");
         }
     }
 }

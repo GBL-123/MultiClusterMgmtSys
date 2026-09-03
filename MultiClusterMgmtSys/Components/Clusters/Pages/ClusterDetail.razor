@@ -66,6 +66,9 @@
     [Inject]
     private NavigationManager NavigationManager { get; set; } = default!;
 
+    [Inject]
+    private ExceptionPresenter ExHandler { get; set; } = default!;
+
     private ClusterDetailViewModel? cluster;
     private bool loading;
     private bool processing;
@@ -88,7 +91,7 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"加载集群详情失败: {ex.Message}", Severity.Error);
+            await ExHandler.HandleAsync(ex, "加载集群详情");
         }
         finally
         {
@@ -107,7 +110,7 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"刷新状态失败: {ex.Message}", Severity.Error);
+            await ExHandler.HandleAsync(ex, "刷新状态");
         }
         finally
         {
@@ -148,7 +151,7 @@
             }
             catch (Exception ex)
             {
-                Snackbar.Add($"删除集群失败: {ex.Message}", Severity.Error);
+                await ExHandler.HandleAsync(ex, "删除集群");
             }
             finally
             {

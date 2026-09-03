@@ -158,6 +158,28 @@ html, body {
     color: #956400;
 }
 
+/* Role badges: same pale-fill formula, neutral for Member, amber tint for Admin */
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.6;
+    white-space: nowrap;
+}
+
+.role-badge.admin {
+    background: #FBF3DB;
+    color: #956400;
+}
+
+.role-badge.member {
+    background: #EDEAE3;
+    color: #57534E;
+}
+
 /* ---------- 6. Tables: 2px ink header rule, warm hover, dense ---------- */
 
 .clusters-table,

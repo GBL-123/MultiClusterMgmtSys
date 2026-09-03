@@ -1,6 +1,7 @@
 using k8s;
 using k8s.Models;
 using MultiClusterMgmtSys.Common.Enums;
+using MultiClusterMgmtSys.Common.Exceptions;
 using MultiClusterMgmtSys.Components.Clusters.ViewModels;
 using MultiClusterMgmtSys.ViewModels;
 using MultiClusterMgmtSys.Data.Entities;
@@ -30,15 +31,25 @@ public class ClusterNodeService(ClusterRepository repo, AuditService auditServic
         if (entity is null)
         {
             logger.LogWarning("Cluster {ClusterId} not found", id);
-            throw new InvalidOperationException($"Cluster {id} not found");
+            throw new NotFoundException($"集群 {id} 不存在");
         }
 
         var remarks = BuildRemarkLookup(entity);
 
         var config = BuildConfig(entity);
         using var client = new Kubernetes(config);
-        var nodeList = await client.CoreV1.ListNodeAsync();
-        var result = nodeList.Items.Select(n => MapNode(n, remarks)).ToList();
+        IList<V1Node> nodeItems;
+        try
+        {
+            var nodeList = await client.CoreV1.ListNodeAsync();
+            nodeItems = nodeList.Items;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "ListNodes failed clusterId={ClusterId}", id);
+            throw K8sExceptionMapper.Translate(ex, "加载节点列表");
+        }
+        var result = nodeItems.Select(n => MapNode(n, remarks)).ToList();
         logger.LogInformation("GetClusterNodes done clusterId={ClusterId} count={Count}", id, result.Count);
         return result;
     }
@@ -62,7 +73,16 @@ public class ClusterNodeService(ClusterRepository repo, AuditService auditServic
 
         var config = BuildConfig(entity);
         using var client = new Kubernetes(config);
-        var node = await client.CoreV1.ReadNodeAsync(nodeName);
+        V1Node node;
+        try
+        {
+            node = await client.CoreV1.ReadNodeAsync(nodeName);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "ReadNode failed clusterId={ClusterId} node={NodeName}", clusterId, nodeName);
+            throw K8sExceptionMapper.Translate(ex, "加载节点详情");
+        }
         var vm = MapNodeDetail(node, entity, remarks);
         vm.ClusterId = clusterId;
         vm.ClusterName = entity.Name;
@@ -77,7 +97,7 @@ public class ClusterNodeService(ClusterRepository repo, AuditService auditServic
         if (entity is null)
         {
             logger.LogWarning("Cluster {ClusterId} not found", clusterId);
-            throw new InvalidOperationException($"Cluster {clusterId} not found");
+            throw new NotFoundException($"集群 {clusterId} 不存在");
         }
 
         var incoming = items
@@ -93,7 +113,7 @@ public class ClusterNodeService(ClusterRepository repo, AuditService auditServic
             if (note is not null && note.Length > 64)
             {
                 logger.LogWarning("NodeIpRemark note too long node={NodeName} address={Address}", nodeName, address);
-                throw new InvalidOperationException($"备注长度不能超过 64 个字符");
+                throw new ValidationException("备注长度不能超过 64 个字符");
             }
 
             if (existing.TryGetValue(address, out var remark))

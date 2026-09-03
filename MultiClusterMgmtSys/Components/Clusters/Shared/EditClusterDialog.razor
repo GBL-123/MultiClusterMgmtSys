@@ -139,6 +139,7 @@
     [Inject] private ClusterService ClusterService { get; set; } = default!;
     [Inject] private GroupService GroupService { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
+[Inject] private ExceptionPresenter ExHandler { get; set; } = default!;
 
     private MudForm form = default!;
     private List<ClusterGroupViewModel> groups = new();
@@ -188,7 +189,7 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"加载集群信息失败: {ex.Message}", Severity.Error);
+            await ExHandler.HandleAsync(ex, "加载集群信息");
             Dialog.Cancel();
         }
     }
@@ -252,7 +253,7 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"保存失败: {ex.Message}", Severity.Error);
+            await ExHandler.HandleAsync(ex, "保存集群");
         }
         finally
         {
@@ -278,7 +279,7 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"读取文件失败: {ex.Message}", Severity.Error);
+            await ExHandler.HandleAsync(ex, "读取文件");
         }
     }
 

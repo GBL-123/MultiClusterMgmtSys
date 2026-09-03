@@ -4,6 +4,7 @@
 @using k8s
 @using k8s.Models
 @using MultiClusterMgmtSys.Components.Common
+@using MultiClusterMgmtSys.Common.Exceptions
 @using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.ViewModels
 @using MultiClusterMgmtSys.Features.Configmaps.Shared
@@ -66,8 +67,9 @@
 
     [Inject] private ConfigMapService ConfigMapService { get; set; } = default!;
     [Inject] private ClusterSelectionState ClusterSelection { get; set; } = default!;
-    [Inject] private ISnackbar Snackbar { get; set; } = default!;
-    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+[Inject] private ISnackbar Snackbar { get; set; } = default!;
+[Inject] private NavigationManager NavigationManager { get; set; } = default!;
+[Inject] private ExceptionPresenter ExHandler { get; set; } = default!;
 
     private string yamlContent = "";
     private bool loading = true;
@@ -91,7 +93,7 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"加载 ConfigMap 详情失败: {ex.Message}", Severity.Error);
+            await ExHandler.HandleAsync(ex, "加载 ConfigMap 详情");
             loadError = true;
         }
         finally
@@ -108,7 +110,7 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"YAML 格式错误: {ex.Message}", Severity.Error);
+            await ExHandler.HandleAsync(new ValidationException($"YAML 格式错误:{ex.Message}"), "保存");
             return;
         }
 
@@ -121,11 +123,7 @@
         }
         catch (Exception ex)
         {
-            var msg = ex.Message;
-            if (msg.Contains("409") || msg.Contains("Conflict"))
-                Snackbar.Add("资源已被他人修改，请刷新后重试", Severity.Warning);
-            else
-                Snackbar.Add($"修改失败: {ex.Message}", Severity.Error);
+            await ExHandler.HandleAsync(ex, "保存配置");
         }
         finally
         {

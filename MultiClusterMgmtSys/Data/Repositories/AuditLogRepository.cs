@@ -15,6 +15,17 @@ public class AuditLogRepository(ApplicationDbContext db)
         await db.SaveChangesAsync();
     }
 
+    public async Task<List<AuditLog>> GetRecentForUserAsync(string userName, int count)
+    {
+        var items = await db.AuditLogs.AsNoTracking()
+            .Where(l => l.UserName == userName)
+            .OrderByDescending(l => l.CreatedAt)
+            .Take(count)
+            .ToListAsync();
+
+        return items;
+    }
+
     public async Task<(List<AuditLog> Items, int Total)> GetPagedAsync(
         TableState state,
         AuditLogQueryRequest query,

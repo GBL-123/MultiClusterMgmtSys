@@ -53,6 +53,7 @@ builder.Services.AddScoped<ClusterSelectionState>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<RedirectManager>();
+builder.Services.AddScoped<ExceptionPresenter>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 
 builder.Services.AddAuthorization();
