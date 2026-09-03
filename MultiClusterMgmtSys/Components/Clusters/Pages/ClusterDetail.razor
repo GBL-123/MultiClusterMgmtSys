@@ -6,6 +6,13 @@
 @using MultiClusterMgmtSys.Components.Clusters.ViewModels
 @using MultiClusterMgmtSys.Components.Common
 
+@inject ClusterService ClusterService
+@inject ClusterSelectionState ClusterSelection
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+@inject ExceptionPresenter ExHandler
+
 <PageTitle>集群详情</PageTitle>
 
 <MudStack Class="d-flex flex-auto pb-4" Style="align-self: flex-start;">
@@ -51,26 +58,11 @@
     [Parameter]
     public int Id { get; set; }
 
-    [Inject]
-    private ClusterService ClusterService { get; set; } = default!;
-
-    [Inject]
-    private ClusterSelectionState ClusterSelection { get; set; } = default!;
-
-    [Inject]
-    private IDialogService DialogService { get; set; } = default!;
-
-    [Inject]
-    private ISnackbar Snackbar { get; set; } = default!;
-
-    [Inject]
-    private NavigationManager NavigationManager { get; set; } = default!;
-
-    [Inject]
-    private ExceptionPresenter ExHandler { get; set; } = default!;
 
     private ClusterDetailViewModel? cluster;
+
     private bool loading;
+
     private bool processing;
 
     protected override async Task OnInitializedAsync()

@@ -16,8 +16,11 @@ namespace MultiClusterMgmtSys.Services;
 public class ClusterService(ClusterRepository repo, ClusterNodeService nodeService, AuditService auditService, ILogger<ClusterService> logger)
 {
     private readonly ClusterRepository repo = repo;
+
     private readonly ClusterNodeService nodeService = nodeService;
+
     private readonly AuditService auditService = auditService;
+
     private readonly ILogger<ClusterService> logger = logger;
 
     public async Task<PagedResult<ClusterViewModel>> GetPagedAsync(ClusterQueryRequest request)

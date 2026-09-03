@@ -13,7 +13,9 @@ namespace MultiClusterMgmtSys.Services;
 public class ConfigMapService(ClusterRepository repo, AuditService auditService, ILogger<ConfigMapService> logger)
 {
     private readonly ClusterRepository repo = repo;
+
     private readonly AuditService auditService = auditService;
+
     private readonly ILogger<ConfigMapService> logger = logger;
 
     public async Task<List<string>> GetNamespacesAsync(int clusterId)

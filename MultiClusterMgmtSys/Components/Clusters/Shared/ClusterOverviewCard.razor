@@ -99,10 +99,13 @@
 </MudCard>
 
 @code {
-    [Parameter] public ClusterDetailViewModel Cluster { get; set; } = default!;
+    [Parameter]
+    public ClusterDetailViewModel Cluster { get; set; } = default!;
 
     private bool showSecret;
+
     private bool showSecretContent;
+
     private ClusterEditViewModel? editForSecret;
 
     private async Task ToggleSecret()

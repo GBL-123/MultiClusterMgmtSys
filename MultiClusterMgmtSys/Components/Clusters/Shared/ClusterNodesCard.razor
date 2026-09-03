@@ -85,7 +85,8 @@
 </MudCard>
 
 @code {
-    [Parameter] public ClusterDetailViewModel Cluster { get; set; } = default!;
+    [Parameter]
+    public ClusterDetailViewModel Cluster { get; set; } = default!;
 
     private static string GetNodeStatusClass(string status) => status switch
     {

@@ -76,8 +76,11 @@
 </MudCard>
 
 @code {
-    [Parameter] public ClusterDetailViewModel Cluster { get; set; } = default!;
-    [Parameter] public EventCallback OnEndpointsChanged { get; set; }
+    [Parameter]
+    public ClusterDetailViewModel Cluster { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnEndpointsChanged { get; set; }
 
     private async Task OpenManageDialog()
     {

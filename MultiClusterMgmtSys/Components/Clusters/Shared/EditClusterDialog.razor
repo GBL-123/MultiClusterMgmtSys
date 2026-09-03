@@ -2,6 +2,11 @@
 @using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.Components.Clusters.ViewModels
 
+@inject ClusterService ClusterService
+@inject GroupService GroupService
+@inject ISnackbar Snackbar
+@inject ExceptionPresenter ExHandler
+
 <MudDialog>
     <DialogContent>
         <MudForm @ref="form">
@@ -134,29 +139,42 @@
 </MudDialog>
 
 @code {
-    [Parameter] public int? ClusterId { get; set; }
-    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
-    [Inject] private ClusterService ClusterService { get; set; } = default!;
-    [Inject] private GroupService GroupService { get; set; } = default!;
-    [Inject] private ISnackbar Snackbar { get; set; } = default!;
-[Inject] private ExceptionPresenter ExHandler { get; set; } = default!;
+    [Parameter]
+    public int? ClusterId { get; set; }
+
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
 
     private MudForm form = default!;
+
     private List<ClusterGroupViewModel> groups = new();
 
     private ConnectionType connectionType = ConnectionType.KubeConfig;
+
     private ConnectionType? originalConnectionType;
+
     private string Name = "";
+
     private int? GroupId;
+
     private string ApiServer = "";
+
     private string KubeConfig = "";
+
     private string Token = "";
+
     private bool SkipTlsVerify = true;
+
     private bool showToken;
+
     private bool saving;
+
     private KubeConfigInputMode kubeConfigInputMode = KubeConfigInputMode.Paste;
+
     private string? kubeConfigFileName;
+
     private List<ClusterEndpointEditItem> endpoints = new();
+
     private ClusterEditViewModel? editVm;
 
     private bool isEdit => ClusterId.HasValue;

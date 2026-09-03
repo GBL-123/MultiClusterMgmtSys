@@ -7,6 +7,12 @@
 @using MultiClusterMgmtSys.Components.Nodes.Shared
 @using MultiClusterMgmtSys.ViewModels
 
+@inject ClusterNodeService ClusterNodeService
+@inject ClusterSelectionState ClusterSelection
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+@inject ExceptionPresenter ExHandler
+
 <PageTitle>节点详情: @NodeName</PageTitle>
 
 <MudStack Class="flex-auto pb-4" Style="align-self: flex-start;">
@@ -68,18 +74,19 @@
 </MudStack>
 
 @code {
-    [Parameter] public int ClusterId { get; set; }
-    [Parameter] public string NodeName { get; set; } = "";
+    [Parameter]
+    public int ClusterId { get; set; }
 
-    [Inject] private ClusterNodeService ClusterNodeService { get; set; } = default!;
-    [Inject] private ClusterSelectionState ClusterSelection { get; set; } = default!;
-    [Inject] private ISnackbar Snackbar { get; set; } = default!;
-    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
-    [Inject] private ExceptionPresenter ExHandler { get; set; } = default!;
+    [Parameter]
+    public string NodeName { get; set; } = "";
+
 
     private ClusterNodeDetailViewModel? node;
+
     private bool loading;
+
     private int previousClusterId;
+
     private string previousNodeName = "";
 
     protected override async Task OnInitializedAsync()

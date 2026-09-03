@@ -63,10 +63,17 @@
 </MudTable>
 
 @code {
-    [Parameter] public IReadOnlyList<ClusterNodeViewModel> Nodes { get; set; } = new List<ClusterNodeViewModel>();
-    [Parameter] public bool FilterActive { get; set; }
-    [Parameter] public bool Loading { get; set; }
-    [Parameter] public EventCallback<string> OnNavigateNode { get; set; }
+    [Parameter]
+    public IReadOnlyList<ClusterNodeViewModel> Nodes { get; set; } = new List<ClusterNodeViewModel>();
+
+    [Parameter]
+    public bool FilterActive { get; set; }
+
+    [Parameter]
+    public bool Loading { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnNavigateNode { get; set; }
 
     private static string GetNodeStatusClass(string status) => status switch
     {

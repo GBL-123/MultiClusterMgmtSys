@@ -1,5 +1,5 @@
 @using MultiClusterMgmtSys.ViewModels
-@namespace MultiClusterMgmtSys.Features.Configmaps.Shared
+
 @inject NavigationManager NavigationManager
 
 <MudPaper Class="pa-4">
@@ -43,10 +43,21 @@
 </MudPaper>
 
 @code {
-    [Parameter] public int ClusterId { get; set; }
-    [Parameter] public string Name { get; set; } = "";
-    [Parameter] public ConfigMapDetailViewModel? Detail { get; set; }
-    [Parameter] public bool Processing { get; set; }
-    [Parameter] public EventCallback OnRefresh { get; set; }
-    [Parameter] public EventCallback OnEditYaml { get; set; }
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    [Parameter]
+    public string Name { get; set; } = "";
+
+    [Parameter]
+    public ConfigMapDetailViewModel? Detail { get; set; }
+
+    [Parameter]
+    public bool Processing { get; set; }
+
+    [Parameter]
+    public EventCallback OnRefresh { get; set; }
+
+    [Parameter]
+    public EventCallback OnEditYaml { get; set; }
 }

@@ -54,9 +54,14 @@
 </MudStack>
 
 @code {
-    [Parameter] public NodeListFilter Filter { get; set; } = default!;
-    [Parameter] public EventCallback OnFilterChanged { get; set; }
-    [Parameter] public EventCallback OnReset { get; set; }
+    [Parameter]
+    public NodeListFilter Filter { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnFilterChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnReset { get; set; }
 
     private Task NotifyFilterChanged() => OnFilterChanged.InvokeAsync();
 

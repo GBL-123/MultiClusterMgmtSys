@@ -45,12 +45,23 @@
 </MudPaper>
 
 @code {
-    [Parameter] public ClusterDetailViewModel Cluster { get; set; } = default!;
-    [Parameter] public bool Processing { get; set; }
-    [Parameter] public EventCallback OnBack { get; set; }
-    [Parameter] public EventCallback OnRefresh { get; set; }
-    [Parameter] public EventCallback OnEdit { get; set; }
-    [Parameter] public EventCallback OnDelete { get; set; }
+    [Parameter]
+    public ClusterDetailViewModel Cluster { get; set; } = default!;
+
+    [Parameter]
+    public bool Processing { get; set; }
+
+    [Parameter]
+    public EventCallback OnBack { get; set; }
+
+    [Parameter]
+    public EventCallback OnRefresh { get; set; }
+
+    [Parameter]
+    public EventCallback OnEdit { get; set; }
+
+    [Parameter]
+    public EventCallback OnDelete { get; set; }
 
     private static string GetStatusClass(ClusterStatus status) => status switch
     {

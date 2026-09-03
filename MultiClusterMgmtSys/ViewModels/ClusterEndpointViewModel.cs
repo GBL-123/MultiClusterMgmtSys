@@ -9,9 +9,14 @@ namespace MultiClusterMgmtSys.Components.Clusters.ViewModels;
 public class ClusterEndpointViewModel
 {
     public int Id { get; set; }
+
     public ClusterEndpointKind Kind { get; set; }
+
     public string KindText { get; set; } = "";
+
     public string Value { get; set; } = "";
+
     public string? Note { get; set; }
+
     public int SortOrder { get; set; }
 }

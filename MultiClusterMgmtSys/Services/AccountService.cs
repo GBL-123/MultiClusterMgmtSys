@@ -20,15 +20,23 @@ public class AccountService(
     ILogger<AccountService> logger)
 {
     private const string AdminRole = "Admin";
+
     private const string MemberRole = "Member";
+
     private const string BuiltInAdminName = "admin";
+
     private const string DefaultPassword = "Changeme_123";
 
     private readonly UserManager<ApplicationUser> userManager = userManger;
+
     private readonly RoleManager<IdentityRole<int>> roleManager = roleManager;
+
     private readonly SignInManager<ApplicationUser> signInManager = signInManager;
+
     private readonly ApplicationDbContext db = db;
+
     private readonly AuditService auditService = auditService;
+
     private readonly ILogger<AccountService> logger = logger;
 
     public async Task CreateAdminAsync()

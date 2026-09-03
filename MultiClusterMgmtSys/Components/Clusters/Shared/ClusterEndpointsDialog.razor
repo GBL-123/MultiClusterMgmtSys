@@ -43,11 +43,16 @@
 </AuthorizeView>
 
 @code {
-    [Parameter] public int ClusterId { get; set; }
-    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
 
     private List<ClusterEndpointEditItem> Items = new();
+
     private bool loading = true;
+
     private bool saving;
 
     protected override async Task OnInitializedAsync()

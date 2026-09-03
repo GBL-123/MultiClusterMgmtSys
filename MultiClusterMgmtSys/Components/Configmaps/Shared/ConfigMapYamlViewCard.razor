@@ -1,5 +1,3 @@
-@using MultiClusterMgmtSys.ViewModels
-@namespace MultiClusterMgmtSys.Features.Configmaps.Shared
 
 <MudCard Class="pa-4 yaml-card">
     <MudCardHeader>
@@ -22,5 +20,6 @@
 </MudCard>
 
 @code {
-    [Parameter] public string Yaml { get; set; } = "";
+    [Parameter]
+    public string Yaml { get; set; } = "";
 }

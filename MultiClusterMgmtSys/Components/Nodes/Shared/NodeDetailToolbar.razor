@@ -26,10 +26,17 @@
 </MudPaper>
 
 @code {
-    [Parameter] public ClusterNodeDetailViewModel Node { get; set; } = default!;
-    [Parameter] public bool Processing { get; set; }
-    [Parameter] public EventCallback OnBack { get; set; }
-    [Parameter] public EventCallback OnRefresh { get; set; }
+    [Parameter]
+    public ClusterNodeDetailViewModel Node { get; set; } = default!;
+
+    [Parameter]
+    public bool Processing { get; set; }
+
+    [Parameter]
+    public EventCallback OnBack { get; set; }
+
+    [Parameter]
+    public EventCallback OnRefresh { get; set; }
 
     private static string GetNodeStatusClass(string status) => status switch
     {

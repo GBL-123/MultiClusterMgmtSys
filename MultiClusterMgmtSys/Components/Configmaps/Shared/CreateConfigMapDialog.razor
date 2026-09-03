@@ -2,7 +2,11 @@
 @using k8s.Models
 @using MultiClusterMgmtSys.Common.Exceptions
 @using MultiClusterMgmtSys.Services
-@namespace MultiClusterMgmtSys.Features.Configmaps.Shared
+
+@inject ConfigMapService ConfigMapService
+@inject ISnackbar Snackbar
+@inject ExceptionPresenter ExHandler
+
 <MudDialog>
     <DialogContent>
         <MudText Typo="Typo.h6" Class="mb-2">新建 ConfigMap</MudText>
@@ -28,14 +32,14 @@
 </MudDialog>
 
 @code {
-    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
-[Inject] private ConfigMapService ConfigMapService { get; set; } = default!;
-[Inject] private ISnackbar Snackbar { get; set; } = default!;
-[Inject] private ExceptionPresenter ExHandler { get; set; } = default!;
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
 
-    [Parameter] public int ClusterId { get; set; }
+    [Parameter]
+    public int ClusterId { get; set; }
 
     private string yamlContent = "";
+
     private bool saving;
 
     private const string MinimalTemplate = @"apiVersion: v1

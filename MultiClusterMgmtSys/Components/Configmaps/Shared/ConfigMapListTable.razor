@@ -1,5 +1,4 @@
 @using MultiClusterMgmtSys.ViewModels
-@namespace MultiClusterMgmtSys.Features.Configmaps.Shared
 
 <MudTable T="ConfigMapListViewModel"
           Items="@Items"
@@ -71,9 +70,18 @@
 </MudTable>
 
 @code {
-    [Parameter] public IReadOnlyList<ConfigMapListViewModel> Items { get; set; } = new List<ConfigMapListViewModel>();
-    [Parameter] public bool Loading { get; set; }
-    [Parameter] public EventCallback<(string Namespace, string Name)> OnNavigateDetail { get; set; }
-    [Parameter] public EventCallback<(string Namespace, string Name)> OnNavigateEditYaml { get; set; }
-    [Parameter] public EventCallback<(string Namespace, string Name)> OnDelete { get; set; }
+    [Parameter]
+    public IReadOnlyList<ConfigMapListViewModel> Items { get; set; } = new List<ConfigMapListViewModel>();
+
+    [Parameter]
+    public bool Loading { get; set; }
+
+    [Parameter]
+    public EventCallback<(string Namespace, string Name)> OnNavigateDetail { get; set; }
+
+    [Parameter]
+    public EventCallback<(string Namespace, string Name)> OnNavigateEditYaml { get; set; }
+
+    [Parameter]
+    public EventCallback<(string Namespace, string Name)> OnDelete { get; set; }
 }

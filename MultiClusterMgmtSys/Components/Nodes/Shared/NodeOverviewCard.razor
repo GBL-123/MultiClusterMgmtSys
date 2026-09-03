@@ -106,8 +106,11 @@
 </MudCard>
 
 @code {
-    [Parameter] public ClusterNodeDetailViewModel Node { get; set; } = default!;
-    [Parameter] public EventCallback OnRemarksChanged { get; set; }
+    [Parameter]
+    public ClusterNodeDetailViewModel Node { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnRemarksChanged { get; set; }
 
     private async Task OpenManageDialog()
     {

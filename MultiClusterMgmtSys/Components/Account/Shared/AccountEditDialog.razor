@@ -2,6 +2,9 @@
 @using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.ViewModels
 
+@inject AccountService AccountSvc
+@inject ISnackbar Snackbar
+
 <MudDialog>
     <DialogContent>
         <MudForm @ref="form">
@@ -63,18 +66,24 @@
 </MudDialog>
 
 @code {
-    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
-    [Inject] private AccountService AccountSvc { get; set; } = default!;
-    [Inject] private ISnackbar Snackbar { get; set; } = default!;
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
 
-    [Parameter] public AccountViewModel? EditingAccount { get; set; }
+    [Parameter]
+    public AccountViewModel? EditingAccount { get; set; }
 
     private MudForm form = default!;
+
     private bool isEdit => EditingAccount is not null;
+
     private string userName = "";
+
     private string roleName = "Member";
+
     private string password = "";
+
     private bool showPassword;
+
     private bool saving;
 
     protected override void OnInitialized()

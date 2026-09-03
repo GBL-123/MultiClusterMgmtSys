@@ -10,6 +10,7 @@ namespace MultiClusterMgmtSys.Components.Common;
 public class ExceptionPresenter(ISnackbar snackbar, ILogger<ExceptionPresenter> logger)
 {
     private readonly ISnackbar snackbar = snackbar;
+
     private readonly ILogger<ExceptionPresenter> logger = logger;
 
     public Task HandleAsync(Exception ex, string fallbackMessage)

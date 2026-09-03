@@ -7,7 +7,13 @@
 @using MultiClusterMgmtSys.Common.Exceptions
 @using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.ViewModels
-@using MultiClusterMgmtSys.Features.Configmaps.Shared
+@using MultiClusterMgmtSys.Components.Configmaps.Shared
+
+@inject ConfigMapService ConfigMapService
+@inject ClusterSelectionState ClusterSelection
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+@inject ExceptionPresenter ExHandler
 
 <PageTitle>编辑 YAML: @Name</PageTitle>
 
@@ -61,19 +67,22 @@
 </MudStack>
 
 @code {
-    [Parameter] public int ClusterId { get; set; }
-    [Parameter] public string Namespace { get; set; } = "";
-    [Parameter] public string Name { get; set; } = "";
+    [Parameter]
+    public int ClusterId { get; set; }
 
-    [Inject] private ConfigMapService ConfigMapService { get; set; } = default!;
-    [Inject] private ClusterSelectionState ClusterSelection { get; set; } = default!;
-[Inject] private ISnackbar Snackbar { get; set; } = default!;
-[Inject] private NavigationManager NavigationManager { get; set; } = default!;
-[Inject] private ExceptionPresenter ExHandler { get; set; } = default!;
+    [Parameter]
+    public string Namespace { get; set; } = "";
+
+    [Parameter]
+    public string Name { get; set; } = "";
+
 
     private string yamlContent = "";
+
     private bool loading = true;
+
     private bool loadError;
+
     private bool saving;
 
     protected override async Task OnInitializedAsync()

@@ -15,8 +15,11 @@ public class GroupService(
     ILogger<GroupService> logger)
 {
     private readonly GroupRepository repo = repo;
+
     private readonly ClusterRepository clusterRepo = clusterRepo;
+
     private readonly AuditService auditService = auditService;
+
     private readonly ILogger<GroupService> logger = logger;
 
     public async Task<List<ClusterGroupViewModel>> GetGroupsAsync()

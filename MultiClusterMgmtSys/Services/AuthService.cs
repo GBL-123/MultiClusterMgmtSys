@@ -14,8 +14,11 @@ public class AuthService(
     private const string MemberRole = "Member";
 
     private readonly UserManager<ApplicationUser> userManager = userManger;
+
     private readonly SignInManager<ApplicationUser> signInManager = signInManager;
+
     private readonly AuditService auditService = auditService;
+
     private readonly ILogger<AuthService> logger = logger;
 
     public async Task<IdentityResult> RegisterAsync(RegisterRequest request)

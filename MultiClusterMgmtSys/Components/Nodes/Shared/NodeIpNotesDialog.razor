@@ -61,10 +61,17 @@
 </AuthorizeView>
 
 @code {
-    [Parameter] public int ClusterId { get; set; }
-    [Parameter] public string NodeName { get; set; } = "";
-    [Parameter] public List<NodeAddressViewModel> Addresses { get; set; } = new();
-    [CascadingParameter] public IMudDialogInstance Dialog { get; set; } = default!;
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    [Parameter]
+    public string NodeName { get; set; } = "";
+
+    [Parameter]
+    public List<NodeAddressViewModel> Addresses { get; set; } = new();
+
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
 
     private bool saving;
 

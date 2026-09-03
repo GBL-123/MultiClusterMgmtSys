@@ -29,9 +29,14 @@
 </MudStack>
 
 @code {
-    [Parameter] public ClusterDetailViewModel Cluster { get; set; } = default!;
-    [Parameter] public bool Processing { get; set; }
-    [Parameter] public EventCallback OnRefresh { get; set; }
+    [Parameter]
+    public ClusterDetailViewModel Cluster { get; set; } = default!;
+
+    [Parameter]
+    public bool Processing { get; set; }
+
+    [Parameter]
+    public EventCallback OnRefresh { get; set; }
 
     private static Color GetClusterStatusColor(ClusterStatus status) => status switch
     {

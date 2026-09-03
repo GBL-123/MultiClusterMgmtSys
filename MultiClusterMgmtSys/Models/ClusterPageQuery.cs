@@ -36,5 +36,6 @@ public record ClusterPageQuery
 public static class VersionFilterSentinel
 {
     public const string All = "";
+
     public const string OnlyNull = "__null__";
 }

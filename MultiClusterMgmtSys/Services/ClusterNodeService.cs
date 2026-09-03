@@ -19,7 +19,9 @@ namespace MultiClusterMgmtSys.Services;
 public class ClusterNodeService(ClusterRepository repo, AuditService auditService, ILogger<ClusterNodeService> logger)
 {
     private readonly ClusterRepository repo = repo;
+
     private readonly AuditService auditService = auditService;
+
     private readonly ILogger<ClusterNodeService> logger = logger;
 
     private static readonly string[] IpAddressTypes = ["InternalIP", "ExternalIP"];

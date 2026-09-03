@@ -1,4 +1,4 @@
-﻿@page "/register/confirmation"
+@page "/register/confirmation"
 @layout EmptyLayout
 
 @using MultiClusterMgmtSys.Components.Auth.Shared
@@ -20,6 +20,7 @@
 
 @code {
     private bool isSuccess = true;
+
     private string? successMessage;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

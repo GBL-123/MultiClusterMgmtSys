@@ -8,6 +8,13 @@
 @using MultiClusterMgmtSys.Components.Clusters.ViewModels
 @using MultiClusterMgmtSys.Components.Nodes.Shared
 
+@inject ClusterService ClusterService
+@inject ClusterNodeService ClusterNodeService
+@inject ClusterSelectionState ClusterSelection
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+@inject ExceptionPresenter ExHandler
+
 <PageTitle>节点管理</PageTitle>
 
 <MudStack Row="true" Spacing="3" Class="d-flex flex-auto">
@@ -74,21 +81,22 @@
 </MudStack>
 
 @code {
-    [Parameter] public int? ClusterId { get; set; }
+    [Parameter]
+    public int? ClusterId { get; set; }
 
-    [Inject] private ClusterService ClusterService { get; set; } = default!;
-    [Inject] private ClusterNodeService ClusterNodeService { get; set; } = default!;
-    [Inject] private ClusterSelectionState ClusterSelection { get; set; } = default!;
-[Inject] private ISnackbar Snackbar { get; set; } = default!;
-[Inject] private NavigationManager NavigationManager { get; set; } = default!;
-[Inject] private ExceptionPresenter ExHandler { get; set; } = default!;
 
     private List<ClusterViewModel> clusters = new();
+
     private ClusterDetailViewModel? cluster;
+
     private List<ClusterNodeViewModel> nodes = new();
+
     private bool loading;
+
     private int? previousClusterId;
+
     private bool hasInitialized;
+
     private NodeListFilter filter = new();
 
     /// <summary>

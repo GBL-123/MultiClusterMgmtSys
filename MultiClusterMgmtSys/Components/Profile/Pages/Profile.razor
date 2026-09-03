@@ -6,6 +6,13 @@
 @using MultiClusterMgmtSys.Components.Profile.Shared
 @using MultiClusterMgmtSys.ViewModels
 
+@inject AccountService AccountSvc
+@inject AuditService AuditSvc
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ExceptionPresenter ExHandler
+
 <PageTitle>个人资料</PageTitle>
 
 <MudStack Class="flex-auto pb-4">
@@ -106,21 +113,21 @@
 </MudStack>
 
 @code {
-    [Inject] private AccountService AccountSvc { get; set; } = default!;
-    [Inject] private AuditService AuditSvc { get; set; } = default!;
-    [Inject] private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
-    [Inject] private IDialogService DialogService { get; set; } = default!;
-    [Inject] private ISnackbar Snackbar { get; set; } = default!;
-    [Inject] private ExceptionPresenter ExHandler { get; set; } = default!;
 
     private const int RecentOpsCount = 5;
 
     private string currentUserName = "";
+
     private string currentUserRole = "";
+
     private DateTime? createdAt;
+
     private DateTime? updatedAt;
+
     private DateTime? lastLoginAt;
+
     private List<AuditLogViewModel> recentOps = new();
+
     private bool loading;
 
     private string UserInitial => string.IsNullOrEmpty(currentUserName) ? "?" : currentUserName.Substring(0, 1).ToUpperInvariant();

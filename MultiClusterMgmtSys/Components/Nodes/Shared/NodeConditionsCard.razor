@@ -46,7 +46,8 @@
 </MudCard>
 
 @code {
-    [Parameter] public ClusterNodeDetailViewModel Node { get; set; } = default!;
+    [Parameter]
+    public ClusterNodeDetailViewModel Node { get; set; } = default!;
 
     private static string GetConditionClass(string type, string status)
     {

@@ -68,8 +68,11 @@
 
 @code {
     private bool isSuccess = false;
+
     private string? errorMessage;
+
     private EditContext editContext = default!;
+
     private Dictionary<string, object> userNameTextFieldAttr = new()
     {
         { "autocomplete", "username webauthn"},

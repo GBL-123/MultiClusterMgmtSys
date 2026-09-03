@@ -3,8 +3,11 @@ namespace MultiClusterMgmtSys.Requests;
 public class NodeListFilter
 {
     public string Name { get; set; } = "";
+
     public string? Role { get; set; }
+
     public string? Status { get; set; }
+
     public bool? Schedulable { get; set; }
 
     public bool IsActive =>

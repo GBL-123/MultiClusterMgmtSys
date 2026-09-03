@@ -14,7 +14,9 @@ public class AuditService(
     ILogger<AuditService> logger)
 {
     private readonly AuditLogRepository repo = repo;
+
     private readonly IHttpContextAccessor httpContextAccessor = httpContextAccessor;
+
     private readonly ILogger<AuditService> logger = logger;
 
     public async Task LogAsync(AuditCategory category, AuditAction action, string target, string? userName = null)

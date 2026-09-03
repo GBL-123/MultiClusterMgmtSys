@@ -8,7 +8,15 @@
 @using MultiClusterMgmtSys.Components.Clusters.ViewModels
 @using MultiClusterMgmtSys.Components.Common
 @using MultiClusterMgmtSys.ViewModels
-@using MultiClusterMgmtSys.Features.Configmaps.Shared
+@using MultiClusterMgmtSys.Components.Configmaps.Shared
+
+@inject ClusterService ClusterService
+@inject ConfigMapService ConfigMapService
+@inject ClusterSelectionState ClusterSelection
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+@inject ExceptionPresenter ExHandler
 
 <PageTitle>配置管理</PageTitle>
 
@@ -111,25 +119,28 @@
 </MudStack>
 
 @code {
-    [Parameter] public int? ClusterId { get; set; }
+    [Parameter]
+    public int? ClusterId { get; set; }
 
-    [Inject] private ClusterService ClusterService { get; set; } = default!;
-    [Inject] private ConfigMapService ConfigMapService { get; set; } = default!;
-    [Inject] private ClusterSelectionState ClusterSelection { get; set; } = default!;
-    [Inject] private IDialogService DialogService { get; set; } = default!;
-[Inject] private ISnackbar Snackbar { get; set; } = default!;
-[Inject] private NavigationManager NavigationManager { get; set; } = default!;
-[Inject] private ExceptionPresenter ExHandler { get; set; } = default!;
 
     private List<ClusterViewModel> clusters = new();
+
     private ClusterDetailViewModel? cluster;
+
     private List<ConfigMapListViewModel> configMaps = new();
+
     private List<string> namespaces = new();
+
     private bool loading;
+
     private string searchName = "";
+
     private string appliedSearchName = "";
+
     private string? selectedNamespace;
+
     private int? previousClusterId;
+
     private bool hasInitialized;
 
     /// <summary>
