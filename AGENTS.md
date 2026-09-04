@@ -20,11 +20,21 @@ The Swiss Industrial Print redesign (88b0984)、业务异常体系 (`business-ex
 
 ```pwsh
 dotnet build MultiClusterMgmtSys.slnx       # passes (0 errors)
+dotnet test MultiClusterMgmtSys.Tests       # 66 tests, all green
 dotnet run  --project MultiClusterMgmtSys                                    # http://localhost:5021
 dotnet run  --project MultiClusterMgmtSys --launch-profile https             # https://localhost:7081
 ```
 
-No test project, no lint/format/typecheck config. Do not invent test commands.
+No test project? — there IS one: `MultiClusterMgmtSys.Tests/`(xUnit + Moq + bUnit + SQLite 内存库)。无 lint/format/typecheck config。Do not invent test commands.
+
+## Testing conventions
+
+- 测试项目 `MultiClusterMgmtSys.Tests/`,目录镜像主项目(`Services/`、`Common/`、`Components/`)+ `TestInfrastructure/`(SqliteDbFactory、TestData、SeedUser、TestServices、BunitHost)。
+- **后端测试以服务为边界**:直接调 Service 公开方法,仓库经真实 SQLite 内存库(`SqliteDbFactory.CreateContext()`)覆盖;断言语义 = 业务异常类型 + 中文 UserMessage + 查询结果。
+- **K8s 服务可测**:`Func<KubernetesClientConfiguration, IKubernetes>` 工厂注入(Program.cs 注册真实工厂);测试用 Moq mock 接口的 `*WithHttpMessagesAsync` 方法(扩展方法的底层),抛 `KubernetesException(new V1Status{Code=…})` 验证翻译链路。`TestServices.ThrowingFactory()` 返回惰性 mock(工厂调用不抛,真正走到 K8s 才失败)。
+- **bUnit 只测"接线契约"**:`FindComponent<T>()` 取 MudBlazor 组件实例、触发公开事件/参数,断言自己组件的状态/渲染分支/自有 CSS 类(`.status-badge`/`.empty-state` 等);**禁止断言 `.mud-*` 内部 DOM**。bUnit 测试需要 `TimeProvider.System` + `JSRuntimeMode.Loose` + MudServices(BunitHost 已配)。
+- 主项目 `WarningsAsErrors` 含 `MUD0002`(MudBlazor 分析器)——组件 API 误用(如给无 `Value` 参数的组件 `@bind-Value`)会直接编译失败,不要用 `NoWarn` 绕过。
+- 验证:`dotnet build` 0 错误 + `dotnet test` 全绿。
 
 Build gotcha: if `dotnet build` fails with MSB3021 (exe locked), a running app instance is holding `bin/.../MultiClusterMgmtSys.exe` — stop that process (or `Stop-Process` it) and rebuild.
 

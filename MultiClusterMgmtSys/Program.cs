@@ -1,3 +1,4 @@
+using k8s;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
@@ -54,6 +55,8 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<RedirectManager>();
 builder.Services.AddScoped<ExceptionPresenter>();
+builder.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(
+    config => new Kubernetes(config));
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 
 builder.Services.AddAuthorization();

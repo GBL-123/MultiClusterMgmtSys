@@ -53,16 +53,16 @@
                 <div @onclick:stopPropagation="true" class="d-flex" style="gap: 4px;">
                     <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                    Size="Size.Small"
-                                   Title="编辑"
+                                   aria-label="编辑"
                                    OnClick="@(() => OnEditAccount.InvokeAsync(context))" />
                     <MudIconButton Icon="@Icons.Material.Filled.LockReset"
                                    Size="Size.Small"
-                                   Title="重置密码"
+                                   aria-label="重置密码"
                                    OnClick="@(() => OnResetPassword.InvokeAsync(context))" />
                     <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
                                    Size="Size.Small"
                                    Color="Color.Error"
-                                   Title="删除"
+                                   aria-label="删除"
                                    OnClick="@(() => OnDeleteAccount.InvokeAsync(context))" />
                 </div>
             }

@@ -10,7 +10,7 @@ using System.Text;
 
 namespace MultiClusterMgmtSys.Services;
 
-public class ConfigMapService(ClusterRepository repo, AuditService auditService, ILogger<ConfigMapService> logger)
+public class ConfigMapService(ClusterRepository repo, AuditService auditService, ILogger<ConfigMapService> logger, Func<KubernetesClientConfiguration, IKubernetes> clientFactory)
 {
     private readonly ClusterRepository repo = repo;
 
@@ -23,7 +23,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
         var entity = await repo.GetByIdAsync(clusterId)
             ?? throw new NotFoundException($"集群 {clusterId} 不存在");
         var config = BuildConfig(entity);
-        using var client = new Kubernetes(config);
+        using var client = clientFactory(config);
         try
         {
             var nsList = await client.CoreV1.ListNamespaceAsync();
@@ -41,7 +41,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
         var entity = await repo.GetByIdAsync(clusterId)
             ?? throw new NotFoundException($"集群 {clusterId} 不存在");
         var config = BuildConfig(entity);
-        using var client = new Kubernetes(config);
+        using var client = clientFactory(config);
         try
         {
             var list = ns is null
@@ -61,7 +61,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
         var entity = await repo.GetByIdAsync(clusterId);
         if (entity is null) return null;
         var config = BuildConfig(entity);
-        using var client = new Kubernetes(config);
+        using var client = clientFactory(config);
         try
         {
             var cm = await client.CoreV1.ReadNamespacedConfigMapAsync(name, ns);
@@ -79,7 +79,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
         var entity = await repo.GetByIdAsync(clusterId)
             ?? throw new NotFoundException($"集群 {clusterId} 不存在");
         var config = BuildConfig(entity);
-        using var client = new Kubernetes(config);
+        using var client = clientFactory(config);
         try
         {
             await client.CoreV1.DeleteNamespacedConfigMapAsync(name, ns);
@@ -97,7 +97,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
         var entity = await repo.GetByIdAsync(clusterId)
             ?? throw new NotFoundException($"集群 {clusterId} 不存在");
         var config = BuildConfig(entity);
-        using var client = new Kubernetes(config);
+        using var client = clientFactory(config);
         V1ConfigMap deserialized;
         try
         {
@@ -128,7 +128,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
         var entity = await repo.GetByIdAsync(clusterId)
             ?? throw new NotFoundException($"集群 {clusterId} 不存在");
         var config = BuildConfig(entity);
-        using var client = new Kubernetes(config);
+        using var client = clientFactory(config);
         V1ConfigMap body;
         try
         {

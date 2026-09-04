@@ -46,7 +46,6 @@
         {
             <MudTable T="ClusterEndpointViewModel"
                       Items="@Cluster.Endpoints"
-                      Dense="true"
                       Hover="true"
                       Elevation="0">
                 <HeaderContent>
@@ -66,7 +65,7 @@
                     <MudTd>
                         <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
                                        Size="Size.Small"
-                                       Title="复制到剪贴板"
+                                       aria-label="复制到剪贴板"
                                        OnClick="@(() => CopyToClipboard(context.Value))" />
                     </MudTd>
                 </RowTemplate>

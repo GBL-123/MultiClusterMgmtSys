@@ -16,7 +16,7 @@ namespace MultiClusterMgmtSys.Services;
 /// 与 <see cref="ClusterService"/> 解耦，后者负责集群 CRUD 与连通性探测。
 /// 节点 IP 备注（<see cref="NodeIpRemark"/>）在读取时合并进地址数据。
 /// </summary>
-public class ClusterNodeService(ClusterRepository repo, AuditService auditService, ILogger<ClusterNodeService> logger)
+public class ClusterNodeService(ClusterRepository repo, AuditService auditService, ILogger<ClusterNodeService> logger, Func<KubernetesClientConfiguration, IKubernetes> clientFactory)
 {
     private readonly ClusterRepository repo = repo;
 
@@ -39,7 +39,7 @@ public class ClusterNodeService(ClusterRepository repo, AuditService auditServic
         var remarks = BuildRemarkLookup(entity);
 
         var config = BuildConfig(entity);
-        using var client = new Kubernetes(config);
+        using var client = clientFactory(config);
         IList<V1Node> nodeItems;
         try
         {
@@ -74,7 +74,7 @@ public class ClusterNodeService(ClusterRepository repo, AuditService auditServic
         var remarks = BuildRemarkLookup(entity);
 
         var config = BuildConfig(entity);
-        using var client = new Kubernetes(config);
+        using var client = clientFactory(config);
         V1Node node;
         try
         {

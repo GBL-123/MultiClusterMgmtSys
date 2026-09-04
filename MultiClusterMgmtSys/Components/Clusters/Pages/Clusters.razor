@@ -36,7 +36,7 @@
                             <MudButton Variant="Variant.Text"
                                        Color="Color.Inherit"
                                        StartIcon="@Icons.Material.Filled.Refresh"
-                                       @bind-Disabled="@isRefreshingAll"
+                                       Disabled="@isRefreshingAll"
                                        OnClick="RefreshAllClustersAsync">
                                 @(isRefreshingAll ? "刷新中..." : "刷新所有集群")
                             </MudButton>

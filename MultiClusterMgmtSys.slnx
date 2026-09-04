@@ -2,5 +2,6 @@
   <Project Path="docker-compose.dcproj">
     <Build />
   </Project>
+  <Project Path="MultiClusterMgmtSys.Tests/MultiClusterMgmtSys.Tests.csproj" />
   <Project Path="MultiClusterMgmtSys/MultiClusterMgmtSys.csproj" />
 </Solution>

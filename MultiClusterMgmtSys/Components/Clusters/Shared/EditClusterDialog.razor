@@ -96,9 +96,8 @@
                               Margin="Margin.Dense"
                               Class="mb-3" />
 
-                <MudCheckBox T="bool" @bind-Checked="SkipTlsVerify"
+                <MudCheckBox T="bool" @bind-Value="SkipTlsVerify"
                              Label="跳过 TLS 验证"
-                             HelperText="自签证书建议勾选（有安全风险）"
                              Color="Color.Warning" />
             }
 

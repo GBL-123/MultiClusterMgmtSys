@@ -13,7 +13,7 @@ using MultiClusterMgmtSys.Models;
 
 namespace MultiClusterMgmtSys.Services;
 
-public class ClusterService(ClusterRepository repo, ClusterNodeService nodeService, AuditService auditService, ILogger<ClusterService> logger)
+public class ClusterService(ClusterRepository repo, ClusterNodeService nodeService, AuditService auditService, ILogger<ClusterService> logger, Func<KubernetesClientConfiguration, IKubernetes> clientFactory)
 {
     private readonly ClusterRepository repo = repo;
 
@@ -236,7 +236,7 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         try
         {
             var config = BuildConfig(cluster);
-            using var client = new Kubernetes(config);
+            using var client = clientFactory(config);
             var versionInfo = await client.Version.GetCodeAsync();
             var nodeList = await client.CoreV1.ListNodeAsync();
 
