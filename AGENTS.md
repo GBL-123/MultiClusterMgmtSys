@@ -2,9 +2,9 @@
 
 Repo-specific guidance for OpenCode agents working in `MultiClusterMgmtSys`.
 
-## Current state (2026-09-03)
+## Current state (2026-09-04)
 
-The Swiss Industrial Print redesign (88b0984)、业务异常体系 (`business-exception-handling`)、个人资料页重构 (`profile-page-redesign`) 均已归档并同步 specs;`unify-code-style`(注入顶部化/参数注解独立行/成员间空行)已实施(12/12),尚未归档。`dotnet build MultiClusterMgmtSys.slnx` passes (0 errors). If you ever see CS0246/CS0234 errors mentioning `MultiClusterMgmtSys.Components.<Feature>.Services`, `MultiClusterMgmtSys.Features.*` or `MultiClusterMgmtSys.Common.Queries`, that file's `@using`s are stale — target namespaces are in the Namespaces section below.
+Swiss Industrial Print redesign (88b0984)、业务异常体系 (`business-exception-handling`)、个人资料页重构 (`profile-page-redesign`)、统一代码风格 (`unify-code-style`)、单元测试 (`add-unit-tests`) 均已归档并同步 specs(`ui-theme`、`exception-handling`、`profile-page`、`code-style`、`unit-testing`)。`dotnet build MultiClusterMgmtSys.slnx` passes (0 errors),`dotnet test MultiClusterMgmtSys.Tests` 66/66 green. If you ever see CS0246/CS0234 errors mentioning `MultiClusterMgmtSys.Components.<Feature>.Services`, `MultiClusterMgmtSys.Features.*` or `MultiClusterMgmtSys.Common.Queries`, that file's `@using`s are stale — target namespaces are in the Namespaces section below.
 
 ## Stack
 
@@ -62,7 +62,7 @@ Folder-to-namespace mapping is **inconsistent** (post-restructure). Never assume
 - `Requests/**` → `MultiClusterMgmtSys.Requests`
 - `Models/**` → `MultiClusterMgmtSys.Models` (`ClusterPageQuery`, `VersionFilterSentinel`)
 - `Common/Enums`, `Data/**`, `Components/Common` → match physical path (`MultiClusterMgmtSys.Common.Enums`, `.Data[.Entities|.Repositories]`, `.Components.Common`)
-- Razor under `Components/<Feature>/{Pages,Shared}` → `MultiClusterMgmtSys.Components.<Feature>`(无 `@namespace` 覆盖,全部跟随物理路径)
+- Razor under `Components/<Feature>/{Pages,Shared}` → `MultiClusterMgmtSys.Components.<Feature>`(无 `@namespace` 覆盖,全部跟随物理路径);顶层 `Components/Pages`(Error/Home/NotFound)、`Components/Shared`(RedirectToLogin)、`Components/Layout`(AppBar/Drawer/MainLayout/ReconnectModal)同理 → `.Components.Pages` / `.Components.Shared` / `.Components.Layout`
 
 ## Architecture notes
 
@@ -108,9 +108,18 @@ Folder-to-namespace mapping is **inconsistent** (post-restructure). Never assume
 - Services log `logger.LogInformation` at enter/done and `logger.LogWarning` on failures; mutating methods (create/update/delete/move/rename/login/logout/register/batch ops) write audit entries via `auditService.LogAsync(AuditCategory.X, AuditAction.Y, "中文描述")` after success (enums in `Common/Enums/AuditCategory.cs` / `AuditAction.cs`, entity `Data/Entities/AuditLog.cs`).
 - `_Imports.razor` is the source of implied `@using`s; check it before adding `@using` to pages.
 - `BlazorDisableThrowNavigationException` is enabled in the csproj — leave it on.
-- Prefer MudBlazor components over raw HTML/CSS (only exception: full-height YAML textareas, see UI section). Inline action buttons inside a `@onclick` row must be wrapped in `<span @onclick:stopPropagation="true">` — `@onclick` + `@onclick:stopPropagation` on the same MudBlazor component is a Razor error (RZ10010).
+- Prefer MudBlazor components over raw HTML/CSS (buttons/inputs/selects/switches/tables/dialogs/cards/progress → MudBlazor). Documented exceptions only: (1) full-height YAML textareas (`yaml-textarea`), (2) `ReconnectModal.razor` raw buttons whose ids are Blazor framework JS contract, (3) Blazor built-in `InputFile` (no core MudBlazor equivalent), (4) design-system display spans (`.status-badge`/`.brand-mark`/`.role-badge`/`.empty-state`/mono hint rows) — see ui-theme spec. Inline action buttons inside a `@onclick` row must be wrapped in `<span @onclick:stopPropagation="true">` — `@onclick` + `@onclick:stopPropagation` on the same MudBlazor component is a Razor error (RZ10010).
 - Admin-only actions (create/rename/delete/batch/cluster delete/endpoints/IP notes) are gated via `<AuthorizeView Roles="Admin"><Authorized>`; view and filter actions are role-agnostic.
 - Commit messages are short Chinese one-liners (e.g. `修改项目结构`, `重设计前端UI为工业印刷风格`) — match that style when asked to commit.
+
+## Service contracts
+
+- **输入**:服务方法接收前端传入的参数,一律收拢为 `Requests/` 下的 `*Request` 对象;**单原语参数豁免**(如 `GetClusterDetailAsync(int id)`、`GetNamespacesAsync(int)`)。ViewModel 不得充当服务入参。
+- **输出**:返回给前端展示的数据一律用 `ViewModels/` 下的 ViewModel(含 `PagedResult<T>` 包装、`AccountBatchResult` 等结果类);不得返回 `Data/Entities/` 实体。
+- **豁免**:框架类型返回值(`IdentityResult`/`SignInResult`)、裸 `List<string>` 下拉数据(`GetAvailableVersionsAsync`/`GetNamespacesAsync`)、`AuditService.LogAsync`(内部审计)、`IProgress` 进度回调。
+- **操作者上下文**:服务需要当前用户(用户名/ID/角色)时,注入 `IHttpContextAccessor` 从 `HttpContext.User` 获取(如 `AccountService`、`AuthService`),**前端不得传 `currentUserId`/`currentUserName` 参数**;取不到身份且为安全判断前提时抛 `PermissionException`。
+- **服务层禁前端框架类型**:`Services/` 与 `Data/Repositories/` 签名不得出现 MudBlazor 类型(`TableState`/`DateRange` 等);分页/排序/过滤并入 `*QueryRequest`(对齐 `ClusterQueryRequest` 范本)。`MudTable` 的 `TableState` 在组件边界翻译成 Request 字段(见 `AccountTable`/`AuditLogs` 的 `LoadData`)。
+- **目录归属**:`Requests/` = 输入类(含输入编辑行 `NodeIpNoteEditItem`/`ClusterEndpointEditItem`);`ViewModels/` = 展示输出类;`Models/` = 其余(纯前端状态 `NodeListFilter`、哨兵 `VersionFilterSentinel`)。
 
 ## Code style
 

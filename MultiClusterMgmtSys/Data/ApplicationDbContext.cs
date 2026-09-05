@@ -18,6 +18,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
+    public DbSet<AppSetting> AppSettings => Set<AppSetting>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -71,6 +73,13 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         {
             entity.Property(e => e.Target).IsRequired();
             entity.HasIndex(e => e.CreatedAt);
+        });
+
+        modelBuilder.Entity<AppSetting>(entity =>
+        {
+            entity.Property(e => e.Key).IsRequired().HasMaxLength(128);
+            entity.Property(e => e.Value).IsRequired().HasMaxLength(256);
+            entity.HasIndex(e => e.Key).IsUnique();
         });
     }
 }

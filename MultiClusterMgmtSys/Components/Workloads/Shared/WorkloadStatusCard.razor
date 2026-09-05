@@ -1,0 +1,67 @@
+@using MultiClusterMgmtSys.ViewModels
+
+<MudCard Class="pa-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">运行状态</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudSimpleTable Hover="true" Dense="true" Class="workload-status-table">
+            <tbody>
+                <tr>
+                    <td class="mud-text-secondary">副本数</td>
+                    <td><span class="font-mono">@Detail.DesiredCount</span></td>
+                </tr>
+                <tr>
+                    <td class="mud-text-secondary">就绪</td>
+                    <td><span class="font-mono">@Detail.ReadyCount</span></td>
+                </tr>
+                <tr>
+                    <td class="mud-text-secondary">已更新</td>
+                    <td><span class="font-mono">@Detail.UpdatedCount</span></td>
+                </tr>
+                <tr>
+                    <td class="mud-text-secondary">标签选择器</td>
+                    <td><span class="font-mono">@(string.IsNullOrEmpty(Detail.Selector) ? "—" : Detail.Selector)</span></td>
+                </tr>
+                <tr>
+                    <td class="mud-text-secondary">UID</td>
+                    <td><span class="font-mono">@Detail.Uid</span></td>
+                </tr>
+                <tr>
+                    <td class="mud-text-secondary">创建时间</td>
+                    <td><span class="font-mono">@(Detail.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</span></td>
+                </tr>
+            </tbody>
+        </MudSimpleTable>
+
+        @if (Detail.Conditions.Count > 0)
+        {
+            <MudText Typo="Typo.h6" Class="mt-4 mb-2">条件</MudText>
+            <MudTable T="WorkloadConditionViewModel"
+                      Items="@Detail.Conditions"
+                      Hover="true"
+                      Dense="true"
+                      Elevation="0">
+                <HeaderContent>
+                    <MudTh>类型</MudTh>
+                    <MudTh>状态</MudTh>
+                    <MudTh>原因</MudTh>
+                    <MudTh>信息</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="类型"><span class="font-mono">@context.Type</span></MudTd>
+                    <MudTd DataLabel="状态"><span class="font-mono">@context.Status</span></MudTd>
+                    <MudTd DataLabel="原因">@context.Reason</MudTd>
+                    <MudTd DataLabel="信息">@context.Message</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public WorkloadDetailViewModel Detail { get; set; } = default!;
+}

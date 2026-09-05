@@ -12,5 +12,7 @@ public enum AuditAction
     Update = 4,
     Delete = 5,
     Move = 6,
-    Rename = 7
+    Rename = 7,
+    Scale = 8,
+    Restart = 9
 }

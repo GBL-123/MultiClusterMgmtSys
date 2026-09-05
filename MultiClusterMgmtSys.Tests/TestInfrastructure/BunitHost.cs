@@ -1,4 +1,5 @@
 using Bunit;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using MudBlazor.Services;
@@ -15,17 +16,26 @@ namespace MultiClusterMgmtSys.Tests.TestInfrastructure;
 /// </summary>
 public static class BunitHost
 {
-    public static TestContext Create(ApplicationDbContext db)
+    public static TestContext Create(ApplicationDbContext db, IConfiguration? configuration = null)
     {
         var ctx = new TestContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddSingleton(TimeProvider.System);
+        ctx.Services.AddSingleton(configuration ?? new ConfigurationBuilder().Build());
 
         ctx.Services.AddMudServices();
         ctx.Services.AddScoped(_ => db);
         ctx.Services.AddScoped<ClusterRepository>();
         ctx.Services.AddScoped<GroupRepository>();
         ctx.Services.AddScoped<AuditLogRepository>();
+        ctx.Services.AddScoped<AppSettingRepository>();
+        ctx.Services.AddScoped<ClusterSyncSettingService>(sp =>
+            new ClusterSyncSettingService(
+                sp.GetRequiredService<AppSettingRepository>(),
+                sp.GetRequiredService<IConfiguration>(),
+                new TestServices.NullHttpContextAccessor(),
+                sp.GetRequiredService<AuditService>(),
+                NullLogger<ClusterSyncSettingService>.Instance));
         ctx.Services.AddScoped<ClusterSelectionState>();
         ctx.Services.AddScoped<AuditService>(sp =>
             new AuditService(sp.GetRequiredService<AuditLogRepository>(), new TestServices.NullHttpContextAccessor(), NullLogger<AuditService>.Instance));

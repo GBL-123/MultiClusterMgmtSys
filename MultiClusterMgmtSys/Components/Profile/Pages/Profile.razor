@@ -4,9 +4,11 @@
 @using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.Components.Profile.Shared
 @using MultiClusterMgmtSys.ViewModels
+@using MultiClusterMgmtSys.Requests
 
 @inject AccountService AccountSvc
 @inject AuditService AuditSvc
+@inject ClusterSyncSettingService SyncSettingSvc
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
@@ -70,6 +72,37 @@
             </MudCardContent>
         </MudCard>
 
+        @if (isAdmin)
+        {
+            <MudCard Class="pa-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">定时同步设置</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4" Class="flex-wrap">
+                        <MudSwitch @bind-Value="syncEnabled" Label="启用定时同步" Color="Color.Primary" />
+                        <MudNumericField @bind-Value="syncIntervalMinutes"
+                                         Label="同步间隔(分钟)"
+                                         Min="1" Max="1440" Step="1"
+                                         Class="font-mono sync-interval-field" />
+                        <MudSpacer />
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Save"
+                                   Disabled="@savingSync"
+                                   OnClick="SaveSyncSettingsAsync">
+                            保存
+                        </MudButton>
+                    </MudStack>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary mt-2">
+                        间隔范围 1~1440 分钟;保存后下一轮同步生效,列表页提示同步更新。
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        }
+
         <MudCard Class="pa-4">
             <MudCardHeader>
                 <CardHeaderContent>
@@ -129,6 +162,14 @@
 
     private bool loading;
 
+    private bool isAdmin;
+
+    private bool syncEnabled = true;
+
+    private int syncIntervalMinutes = 5;
+
+    private bool savingSync;
+
     private string UserInitial => string.IsNullOrEmpty(currentUserName) ? "?" : currentUserName.Substring(0, 1).ToUpperInvariant();
 
     protected override async Task OnInitializedAsync()
@@ -152,6 +193,14 @@
                 lastLoginAt = user.LastLoginAt;
             }
             recentOps = recentTask.Result;
+
+            if (authState.User.IsInRole("Admin"))
+            {
+                isAdmin = true;
+                var settings = await SyncSettingSvc.GetClusterSyncSettingsAsync();
+                syncEnabled = settings.Enabled;
+                syncIntervalMinutes = settings.IntervalMinutes;
+            }
         }
         catch (Exception ex)
         {
@@ -169,5 +218,23 @@
 
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
         await DialogService.ShowAsync<ChangePasswordDialog>("修改密码", options);
+    }
+
+    private async Task SaveSyncSettingsAsync()
+    {
+        savingSync = true;
+        try
+        {
+            await SyncSettingSvc.UpdateClusterSyncSettingsAsync(new ClusterSyncSettingsUpdateRequest(syncEnabled, syncIntervalMinutes));
+            Snackbar.Add("定时同步设置已保存,下一轮同步生效", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "保存定时同步设置");
+        }
+        finally
+        {
+            savingSync = false;
+        }
     }
 }

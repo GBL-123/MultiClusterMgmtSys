@@ -9,6 +9,7 @@
 
 @inject ClusterService ClusterService
 @inject GroupService GroupService
+@inject ClusterSyncSettingService SyncSettingSvc
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
 @inject RedirectManager RedirectManager
@@ -76,6 +77,8 @@
                     </MudStack>
                 }
 
+                <MudText Typo="Typo.caption" Class="font-mono sync-hint">@autoSyncHint</MudText>
+
                 <ClusterFilterBar Query="@query"
                                   AvailableVersions="@availableVersions"
                                   OnFilterChanged="RefreshTable"
@@ -124,6 +127,8 @@
 
     private List<string> availableVersions = [];
 
+    private string autoSyncHint = "";
+
     private ClusterQueryRequest query = new();
 
     private HashSet<int> processingClusterIds = new();
@@ -150,13 +155,22 @@
 
         try
         {
+            var hintTask = SyncSettingSvc.GetClusterSyncSettingsAsync();
             await LoadSidebarAndVersionsAsync();
+            autoSyncHint = BuildSyncHint(await hintTask);
             ApplyGroupFromUrl();
         }
         catch (Exception ex)
         {
             await ExHandler.HandleAsync(ex, "加载数据");
         }
+    }
+
+    private static string BuildSyncHint(ClusterSyncSettingsViewModel settings)
+    {
+        return settings.Enabled
+            ? $"// 每 {settings.IntervalMinutes} 分钟自动同步"
+            : "// 自动同步已停用";
     }
 
     public void Dispose()

@@ -1,7 +1,12 @@
+using k8s;
+using k8s.Autorest;
+using k8s.Models;
+using Moq;
 using MultiClusterMgmtSys.Common.Enums;
 using MultiClusterMgmtSys.Common.Exceptions;
 using MultiClusterMgmtSys.Models;
 using MultiClusterMgmtSys.Requests;
+using MultiClusterMgmtSys.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 using Xunit;
 
@@ -155,5 +160,95 @@ public class ClusterServiceTests
         var succeeded = await svc.RefreshAllClustersStatusAsync();
 
         Assert.Equal(0, succeeded);
+    }
+
+    [Fact]
+    public async Task RefreshAll_StatusFlips_RecordsAuditWithScheduledSource()
+    {
+        using var db = SqliteDbFactory.CreateContext();
+        db.Clusters.Add(TestData.NewCluster("down", status: ClusterStatus.Online));
+        await db.SaveChangesAsync();
+        var svc = TestServices.Cluster(db, TestServices.ThrowingFactory());
+
+        var succeeded = await svc.RefreshAllClustersStatusAsync(source: ClusterSyncSource.Scheduled);
+
+        Assert.Equal(1, succeeded);
+        var entry = Assert.Single(db.AuditLogs.ToList());
+        Assert.Equal(AuditCategory.Cluster, entry.Category);
+        Assert.Equal(AuditAction.Update, entry.Action);
+        Assert.Contains("状态由 在线 变为 离线(定时同步)", entry.Target);
+    }
+
+    [Fact]
+    public async Task RefreshAll_StatusFlips_RecordsAuditWithManualSource()
+    {
+        using var db = SqliteDbFactory.CreateContext();
+        db.Clusters.Add(TestData.NewCluster("down", status: ClusterStatus.Online));
+        await db.SaveChangesAsync();
+        var svc = TestServices.Cluster(db, TestServices.ThrowingFactory());
+
+        var succeeded = await svc.RefreshAllClustersStatusAsync();
+
+        Assert.Equal(1, succeeded);
+        var entry = Assert.Single(db.AuditLogs.ToList());
+        Assert.Contains("状态由 在线 变为 离线(手动刷新)", entry.Target);
+    }
+
+    [Fact]
+    public async Task RefreshAll_StatusUnchanged_NoAudit()
+    {
+        using var db = SqliteDbFactory.CreateContext();
+        db.Clusters.Add(TestData.NewCluster("still-down", status: ClusterStatus.Offline));
+        await db.SaveChangesAsync();
+        var svc = TestServices.Cluster(db, TestServices.ThrowingFactory());
+
+        await svc.RefreshAllClustersStatusAsync();
+
+        Assert.Empty(db.AuditLogs.ToList());
+    }
+
+    [Fact]
+    public async Task RefreshAll_ConcurrentCalls_AreSerialized()
+    {
+        using var dbA = SqliteDbFactory.CreateContext();
+        dbA.Clusters.Add(TestData.NewCluster("blocked"));
+        await dbA.SaveChangesAsync();
+
+        using var dbB = SqliteDbFactory.CreateContext();
+        dbB.Clusters.Add(TestData.NewCluster("other"));
+        await dbB.SaveChangesAsync();
+
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var fake = new Mock<IKubernetes>();
+        fake.Setup(c => c.Version.GetCodeWithHttpMessagesAsync(
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(async () =>
+            {
+                entered.TrySetResult();
+                await release.Task;
+                return new HttpOperationResponse<VersionInfo> { Body = new VersionInfo { GitVersion = "v1.30.3" } };
+            });
+        fake.Setup(c => c.CoreV1.ListNodeWithHttpMessagesAsync(
+                It.IsAny<bool?>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int?>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool?>(), It.IsAny<int?>(), It.IsAny<bool?>(), It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HttpOperationResponse<V1NodeList> { Body = new V1NodeList() });
+
+        var svcA = TestServices.Cluster(dbA, _ => fake.Object);
+        var svcB = TestServices.Cluster(dbB, TestServices.ThrowingFactory());
+
+        var first = svcA.RefreshAllClustersStatusAsync();
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        var second = svcB.RefreshAllClustersStatusAsync();
+        await Task.Delay(300);
+        Assert.False(second.IsCompleted);
+
+        release.TrySetResult();
+        var results = await Task.WhenAll(first, second).WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.Equal([1, 1], results);
     }
 }

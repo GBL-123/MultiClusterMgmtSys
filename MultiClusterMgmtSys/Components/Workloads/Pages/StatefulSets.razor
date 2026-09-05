@@ -1,0 +1,13 @@
+@attribute [Authorize]
+@page "/workloads/statefulsets"
+@page "/workloads/statefulsets/{ClusterId:int}"
+
+@using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Components.Workloads.Shared
+
+<WorkloadListView Kind="WorkloadKind.StatefulSet" ClusterId="ClusterId" />
+
+@code {
+    [Parameter]
+    public int? ClusterId { get; set; }
+}

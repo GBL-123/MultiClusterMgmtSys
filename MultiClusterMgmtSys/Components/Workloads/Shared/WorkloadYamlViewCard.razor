@@ -1,0 +1,26 @@
+@using MultiClusterMgmtSys.ViewModels
+
+<MudCard Class="pa-4 yaml-card">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">YAML</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (string.IsNullOrEmpty(Yaml))
+        {
+            <div class="empty-state">[ 暂无 YAML ]</div>
+        }
+        else
+        {
+            <div class="yaml-textarea-wrap">
+                <textarea class="yaml-textarea" readonly spellcheck="false">@Yaml</textarea>
+            </div>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public string Yaml { get; set; } = "";
+}

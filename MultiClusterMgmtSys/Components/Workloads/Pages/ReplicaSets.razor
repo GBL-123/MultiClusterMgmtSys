@@ -1,0 +1,13 @@
+@attribute [Authorize]
+@page "/workloads/replicasets"
+@page "/workloads/replicasets/{ClusterId:int}"
+
+@using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Components.Workloads.Shared
+
+<WorkloadListView Kind="WorkloadKind.ReplicaSet" ClusterId="ClusterId" />
+
+@code {
+    [Parameter]
+    public int? ClusterId { get; set; }
+}

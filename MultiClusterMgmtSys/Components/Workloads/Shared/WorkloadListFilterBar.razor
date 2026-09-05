@@ -1,0 +1,69 @@
+
+<MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
+    <MudSelect T="string?"
+               Value="SelectedNamespace"
+               ValueChanged="OnNamespaceChanged"
+               Label="命名空间"
+               Variant="Variant.Outlined"
+               Margin="Margin.Dense"
+               Style="min-width:160px;">
+        <MudSelectItem Value="@((string?)null)">全部命名空间</MudSelectItem>
+        @foreach (var ns in Namespaces)
+        {
+            <MudSelectItem Value="@ns">@ns</MudSelectItem>
+        }
+    </MudSelect>
+
+    <MudTextField T="string"
+                  Value="SearchName"
+                  ValueChanged="OnSearchNameChanged"
+                  Label="名称"
+                  Placeholder="请输入名称"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  Style="min-width:200px; flex:1;" />
+
+    <MudSpacer />
+
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Search"
+               OnClick="OnQuery">
+        查询
+    </MudButton>
+    <MudButton Variant="Variant.Outlined"
+               Color="Color.Secondary"
+               StartIcon="@Icons.Material.Filled.Refresh"
+               OnClick="OnReset">
+        重置
+    </MudButton>
+</MudStack>
+
+@code {
+    [Parameter]
+    public List<string> Namespaces { get; set; } = new();
+
+    [Parameter]
+    public string? SelectedNamespace { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> SelectedNamespaceChanged { get; set; }
+
+    [Parameter]
+    public string SearchName { get; set; } = "";
+
+    [Parameter]
+    public EventCallback<string> SearchNameChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnQuery { get; set; }
+
+    [Parameter]
+    public EventCallback OnReset { get; set; }
+
+    private Task OnNamespaceChanged(string? ns) => SelectedNamespaceChanged.InvokeAsync(ns);
+
+    private Task OnSearchNameChanged(string value) => SearchNameChanged.InvokeAsync(value);
+}

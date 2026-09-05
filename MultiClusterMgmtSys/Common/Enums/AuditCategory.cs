@@ -10,5 +10,6 @@ public enum AuditCategory
     Cluster = 2,
     Group = 3,
     Configmap = 4,
-    Node = 5
+    Node = 5,
+    Workload = 6
 }

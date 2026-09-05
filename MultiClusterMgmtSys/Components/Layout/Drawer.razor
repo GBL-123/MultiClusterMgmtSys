@@ -1,4 +1,6 @@
-﻿<MudDrawer @bind-Open="@IsOpen"
+﻿@inject NavigationManager NavigationManager
+
+<MudDrawer @bind-Open="@IsOpen"
            ClipMode="@DrawerClipMode.Always"
            Variant="@DrawerVariant.Mini"
            Elevation="0">
@@ -12,6 +14,22 @@
         <MudNavLink Href="/configmaps" Icon="@Icons.Material.Filled.Settings" Match="NavLinkMatch.Prefix">
             配置管理
         </MudNavLink>
+        <MudNavGroup Title="工作负载"
+                     Icon="@Icons.Material.Filled.Widgets"
+                     Expanded="@workloadsExpanded">
+            <MudNavLink Href="/workloads/deployments" Icon="@Icons.Material.Filled.Dns" Match="NavLinkMatch.Prefix">
+                部署管理
+            </MudNavLink>
+            <MudNavLink Href="/workloads/statefulsets" Icon="@Icons.Material.Filled.Storage" Match="NavLinkMatch.Prefix">
+                有状态应用
+            </MudNavLink>
+            <MudNavLink Href="/workloads/daemonsets" Icon="@Icons.Material.Filled.Memory" Match="NavLinkMatch.Prefix">
+                守护进程
+            </MudNavLink>
+            <MudNavLink Href="/workloads/replicasets" Icon="@Icons.Material.Filled.Layers" Match="NavLinkMatch.Prefix">
+                副本集
+            </MudNavLink>
+        </MudNavGroup>
         <AuthorizeView Roles="Admin">
             <Authorized>
                 <MudNavLink Href="/accounts" Icon="@Icons.Material.Filled.ManageAccounts" Match="NavLinkMatch.Prefix">
@@ -31,4 +49,11 @@
 @code {
     [Parameter]
     public bool IsOpen { get; set; }
+
+    private bool workloadsExpanded;
+
+    protected override void OnInitialized()
+    {
+        workloadsExpanded = NavigationManager.Uri.Contains("/workloads", StringComparison.OrdinalIgnoreCase);
+    }
 }

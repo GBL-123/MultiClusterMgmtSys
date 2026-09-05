@@ -1,0 +1,116 @@
+@using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.ViewModels
+
+@inject NavigationManager NavigationManager
+
+<MudPaper Class="pa-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center">
+        <MudButton Variant="Variant.Text"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="@(() => NavigationManager.NavigateTo($"/workloads/{Kind.ToRouteSegment()}/{ClusterId}"))">
+            返回列表
+        </MudButton>
+        <MudText Typo="Typo.h4" Class="flex-auto ml-2 font-mono">@Name</MudText>
+        @if (Detail is not null)
+        {
+            <span class="status-badge @GetRolloutClass(Detail.RolloutState)">
+                <span class="status-dot"></span>@GetRolloutText(Detail.RolloutState)
+            </span>
+            <span class="font-mono ml-2">@Detail.ReadyText</span>
+        }
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="OnRefresh"
+                   Disabled="Processing">
+            @if (Processing)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
+            }
+            刷新
+        </MudButton>
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Warning"
+                           StartIcon="@Icons.Material.Filled.Code"
+                           OnClick="OnEditYaml">
+                    编辑 YAML
+                </MudButton>
+                @if (Kind.SupportsScale())
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.OpenInFull"
+                               OnClick="OnScale"
+                               Disabled="Processing">
+                        扩缩容
+                    </MudButton>
+                }
+                @if (Kind.SupportsRestart())
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Autorenew"
+                               OnClick="OnRestart"
+                               Disabled="Processing">
+                        重启
+                    </MudButton>
+                }
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.DeleteOutline"
+                           OnClick="OnDelete"
+                           Disabled="Processing">
+                    删除
+                </MudButton>
+            </Authorized>
+        </AuthorizeView>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    [Parameter]
+    public WorkloadKind Kind { get; set; }
+
+    [Parameter]
+    public string Name { get; set; } = "";
+
+    [Parameter]
+    public WorkloadDetailViewModel? Detail { get; set; }
+
+    [Parameter]
+    public bool Processing { get; set; }
+
+    [Parameter]
+    public EventCallback OnRefresh { get; set; }
+
+    [Parameter]
+    public EventCallback OnEditYaml { get; set; }
+
+    [Parameter]
+    public EventCallback OnScale { get; set; }
+
+    [Parameter]
+    public EventCallback OnRestart { get; set; }
+
+    [Parameter]
+    public EventCallback OnDelete { get; set; }
+
+    private static string GetRolloutClass(WorkloadRolloutState state) => state switch
+    {
+        WorkloadRolloutState.Ready => "online",
+        WorkloadRolloutState.Rolling => "unknown",
+        _ => "offline"
+    };
+
+    private static string GetRolloutText(WorkloadRolloutState state) => state switch
+    {
+        WorkloadRolloutState.Ready => "就绪",
+        WorkloadRolloutState.Rolling => "滚动中",
+        _ => "未就绪"
+    };
+}

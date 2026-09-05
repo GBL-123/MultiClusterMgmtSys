@@ -1,0 +1,178 @@
+@using k8s
+@using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Common.Exceptions
+@using MultiClusterMgmtSys.Requests
+@using MultiClusterMgmtSys.Services
+@using MultiClusterMgmtSys.ViewModels
+@using MultiClusterMgmtSys.Components.Workloads.Shared
+
+@inject WorkloadService WorkloadService
+@inject ClusterSelectionState ClusterSelection
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+@inject ExceptionPresenter ExHandler
+
+<PageTitle>编辑 YAML: @Name</PageTitle>
+
+<MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else if (loadError)
+    {
+        <MudCard Class="pa-4">
+            <MudCardContent>
+                <MudText Align="Align.Center" Class="mud-text-secondary" Typo="Typo.h6">@(Kind.ToDisplayText())不存在或已被删除</MudText>
+                <div class="d-flex justify-center mt-4">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.ArrowBack"
+                               OnClick="BackToDetail">
+                        返回详情
+                    </MudButton>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    }
+    else
+    {
+        <MudPaper Class="pa-4">
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudButton Variant="Variant.Text"
+                           StartIcon="@Icons.Material.Filled.ArrowBack"
+                           OnClick="BackToDetail">
+                    返回详情
+                </MudButton>
+                <MudText Typo="Typo.h4" Class="flex-auto ml-2 font-mono">编辑 YAML: @Name</MudText>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Save"
+                           OnClick="Save"
+                           Disabled="saving">
+                    @if (saving)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    保存
+                </MudButton>
+            </MudStack>
+        </MudPaper>
+
+        <WorkloadYamlEditCard @bind-Yaml="yamlContent" />
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public WorkloadKind Kind { get; set; }
+
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    [Parameter]
+    public string Namespace { get; set; } = "";
+
+    [Parameter]
+    public string Name { get; set; } = "";
+
+    private string yamlContent = "";
+
+    private bool loading = true;
+
+    private bool loadError;
+
+    private bool saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ClusterSelection.Set(ClusterId);
+        try
+        {
+            loadError = false;
+            var request = new WorkloadKeyRequest(ClusterId, Name, Namespace);
+            var detail = await GetWorkloadAsync(request);
+            if (detail is null)
+            {
+                Snackbar.Add($"{Kind.ToDisplayText()}不存在或已被删除", Severity.Warning);
+                loadError = true;
+                return;
+            }
+
+            yamlContent = detail.Yaml;
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, $"加载{Kind.ToDisplayText()}详情");
+            loadError = true;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private Task<WorkloadDetailViewModel?> GetWorkloadAsync(WorkloadKeyRequest request) => Kind switch
+    {
+        WorkloadKind.Deployment => WorkloadService.GetDeploymentAsync(request),
+        WorkloadKind.StatefulSet => WorkloadService.GetStatefulSetAsync(request),
+        WorkloadKind.DaemonSet => WorkloadService.GetDaemonSetAsync(request),
+        _ => WorkloadService.GetReplicaSetAsync(request)
+    };
+
+    private async Task Save()
+    {
+        try
+        {
+            _ = DeserializeWorkload(yamlContent);
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(new ValidationException($"YAML 格式错误:{ex.Message}"), "保存");
+            return;
+        }
+
+        saving = true;
+        try
+        {
+            var request = new WorkloadUpdateRequest(ClusterId, Name, Namespace, yamlContent);
+            switch (Kind)
+            {
+                case WorkloadKind.Deployment:
+                    await WorkloadService.UpdateDeploymentFromYamlAsync(request);
+                    break;
+                case WorkloadKind.StatefulSet:
+                    await WorkloadService.UpdateStatefulSetFromYamlAsync(request);
+                    break;
+                case WorkloadKind.DaemonSet:
+                    await WorkloadService.UpdateDaemonSetFromYamlAsync(request);
+                    break;
+                case WorkloadKind.ReplicaSet:
+                    await WorkloadService.UpdateReplicaSetFromYamlAsync(request);
+                    break;
+            }
+
+            Snackbar.Add("修改成功", Severity.Success);
+            BackToDetail();
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, $"保存{Kind.ToDisplayText()}");
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private object DeserializeWorkload(string yaml) => Kind switch
+    {
+        WorkloadKind.Deployment => KubernetesYaml.Deserialize<k8s.Models.V1Deployment>(yaml),
+        WorkloadKind.StatefulSet => KubernetesYaml.Deserialize<k8s.Models.V1StatefulSet>(yaml),
+        WorkloadKind.DaemonSet => KubernetesYaml.Deserialize<k8s.Models.V1DaemonSet>(yaml),
+        _ => KubernetesYaml.Deserialize<k8s.Models.V1ReplicaSet>(yaml)
+    };
+
+    private void BackToDetail()
+        => NavigationManager.NavigateTo($"/workloads/{Kind.ToRouteSegment()}/{ClusterId}/{Namespace}/{Name}");
+}

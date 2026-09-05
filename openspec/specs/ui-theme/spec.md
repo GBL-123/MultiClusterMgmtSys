@@ -2,7 +2,7 @@
 
 ## Purpose
 
-为系统提供 "Swiss Industrial Print" 工业印刷视觉系统契约：暖纸色基底 + 墨色文字 + 单一琥珀强调色、发丝线分格、小圆角、无投影阴影；自托管拉丁字体（Space Grotesk / IBM Plex Mono）+ 系统中文栈；淡彩底状态徽章；AppBar 品牌区与墨块导航激活态；密集表格、等宽数据列；空态虚线框与加载反馈；琥珀焦点环与按压缩放反馈；并约定移除暗色模式（无 `PaletteDark`、无主题切换入口、无本地偏好残留）。
+为系统提供 "Swiss Industrial Print" 工业印刷视觉系统契约：暖纸色基底 + 墨色文字 + 单一琥珀强调色、发丝线分格、小圆角、无投影阴影；自托管拉丁字体（Space Grotesk / IBM Plex Mono）+ 系统中文栈；淡彩底状态徽章；AppBar 品牌区与墨块导航激活态；密集表格、等宽数据列；空态虚线框与加载反馈；琥珀焦点环与按压缩放反馈；组件选型优先 MudBlazor（原生元素仅限文档化例外）；并约定移除暗色模式（无 `PaletteDark`、无主题切换入口、无本地偏好残留）。
 
 ## Requirements
 
@@ -89,6 +89,25 @@ AppBar SHALL 为纸色背景 + 底部发丝线,左侧依次为菜单按钮、琥
 #### Scenario: 按钮按压
 - **WHEN** 用户按下主按钮
 - **THEN** 按钮轻微缩小并在松开后恢复
+
+### Requirement: 组件优先策略
+页面实现 SHALL 优先使用 MudBlazor 组件(按钮、输入框、下拉、开关、表格、对话框、卡片、进度条等),SHALL NOT 用原生 HTML 元素加自定义 CSS 重新实现 MudBlazor 已提供的交互组件。以下例外 SHALL 被允许并视为契约的一部分:(1) 全高 YAML 查看/编辑用原生 `<textarea class="yaml-textarea">`(MudTextField multiline 存在 CSS 特异性与降级问题);(2) `ReconnectModal.razor` 中 Blazor Server 框架依赖的原生按钮(`components-reconnect-button`/`components-resume-button` 等 id 为框架 JS 契约);(3) Blazor 内置 `InputFile` 组件(核心 MudBlazor 无对应文件上传组件)。设计系统自有的展示性 span(状态徽章、品牌方牌、角色徽章、空态框、mono 提示行)属于设计词汇,不算违规。
+
+#### Scenario: 新增交互元素选型
+- **WHEN** 开发者为页面新增按钮、输入框、下拉或开关
+- **THEN** 使用 MudButton、MudTextField、MudSelect、MudSwitch 等 MudBlazor 组件,而非原生 `<button>`/`<input>`/`<select>`
+
+#### Scenario: YAML 编辑例外
+- **WHEN** 实现 ConfigMap 或 Workload 的 YAML 查看/编辑卡片
+- **THEN** 使用原生 `<textarea class="yaml-textarea">`,不使用 MudTextField multiline
+
+#### Scenario: 重连弹窗例外
+- **WHEN** 检查 `ReconnectModal.razor` 的按钮
+- **THEN** 保留框架依赖的原生按钮及其 id,不替换为 MudButton
+
+#### Scenario: 文件上传例外
+- **WHEN** 页面需要上传 kubeconfig 等本地文件
+- **THEN** 使用 Blazor 内置 `InputFile` 组件
 
 ### Requirement: 暗色模式移除
 系统 SHALL NOT 提供暗色模式:SHALL 移除 `PaletteDark` 定义、AppBar 主题切换按钮、`ThemeManager` 的 `IsDarkMode`/`ObserveSystemDarkModeChange`/`ToggleDarkModeAsync`/`InitializeAsync` 与 `mcm-theme-dark-mode` localStorage 读写逻辑。移除后 SHALL 无相关死代码残留。

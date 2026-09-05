@@ -1,0 +1,115 @@
+@using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.ViewModels
+
+<MudTable T="WorkloadListViewModel"
+          Items="@Items"
+          Hover="true"
+          FixedHeader="true"
+          Loading="Loading"
+          Class="workloads-table">
+    <HeaderContent>
+        <MudTh><MudTableSortLabel T="WorkloadListViewModel" SortBy="@(x => x.Name)" SortLabel="Name">名称</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="WorkloadListViewModel" SortBy="@(x => x.Namespace)" SortLabel="Namespace">命名空间</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="WorkloadListViewModel" SortBy="@(x => x.ReadyCount)" SortLabel="ReadyCount">就绪</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="WorkloadListViewModel" SortBy="@(x => x.RolloutState)" SortLabel="RolloutState">滚动状态</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="WorkloadListViewModel" SortBy="@(x => x.CreatedAt)" SortLabel="CreatedAt">创建时间</MudTableSortLabel></MudTh>
+        <MudTh>操作</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="名称">
+            <MudText Class="font-mono link-primary"
+                     @onclick="() => OnNavigateDetail.InvokeAsync((context.Namespace, context.Name))">
+                @context.Name
+            </MudText>
+        </MudTd>
+        <MudTd DataLabel="命名空间">
+            <MudChip T="string" Size="Size.Small" Class="font-mono">@context.Namespace</MudChip>
+        </MudTd>
+        <MudTd DataLabel="就绪"><span class="font-mono">@context.ReadyText</span></MudTd>
+        <MudTd DataLabel="滚动状态">
+            <span class="status-badge @GetRolloutClass(context.RolloutState)">
+                <span class="status-dot"></span>@GetRolloutText(context.RolloutState)
+            </span>
+        </MudTd>
+        <MudTd DataLabel="创建时间"><span class="font-mono">@(context.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</span></MudTd>
+        <MudTd DataLabel="操作">
+            <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
+                <AuthorizeView Roles="Admin">
+                    <Authorized Context="authContext">
+                        @if (Kind.SupportsScale())
+                        {
+                            <MudTooltip Text="扩缩容">
+                                <MudIconButton Icon="@Icons.Material.Filled.OpenInFull"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => OnScale.InvokeAsync((context.Namespace, context.Name)))" />
+                            </MudTooltip>
+                        }
+                        @if (Kind.SupportsRestart())
+                        {
+                            <MudTooltip Text="重启">
+                                <MudIconButton Icon="@Icons.Material.Filled.Autorenew"
+                                               Size="Size.Small"
+                                               OnClick="@(() => OnRestart.InvokeAsync((context.Namespace, context.Name)))" />
+                            </MudTooltip>
+                        }
+                        <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                                 Color="Color.Inherit"
+                                 Size="Size.Small"
+                                 Dense="true">
+                            <MudMenuItem OnClick="@(() => OnDelete.InvokeAsync((context.Namespace, context.Name)))">
+                                删除
+                            </MudMenuItem>
+                        </MudMenu>
+                    </Authorized>
+                </AuthorizeView>
+            </MudStack>
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager RowsPerPageString="每页条数：" InfoFormat="共 {all_items} 条" />
+    </PagerContent>
+    <LoadingContent>
+        <MudText Class="pa-4 font-mono mud-text-secondary">// 正在加载...</MudText>
+    </LoadingContent>
+    <NoRecordsContent>
+        <div class="empty-state">[ 暂无@(Kind.ToDisplayText()) ]</div>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    [Parameter]
+    public WorkloadKind Kind { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<WorkloadListViewModel> Items { get; set; } = new List<WorkloadListViewModel>();
+
+    [Parameter]
+    public bool Loading { get; set; }
+
+    [Parameter]
+    public EventCallback<(string Namespace, string Name)> OnNavigateDetail { get; set; }
+
+    [Parameter]
+    public EventCallback<(string Namespace, string Name)> OnScale { get; set; }
+
+    [Parameter]
+    public EventCallback<(string Namespace, string Name)> OnRestart { get; set; }
+
+    [Parameter]
+    public EventCallback<(string Namespace, string Name)> OnDelete { get; set; }
+
+    private static string GetRolloutClass(WorkloadRolloutState state) => state switch
+    {
+        WorkloadRolloutState.Ready => "online",
+        WorkloadRolloutState.Rolling => "unknown",
+        _ => "offline"
+    };
+
+    private static string GetRolloutText(WorkloadRolloutState state) => state switch
+    {
+        WorkloadRolloutState.Ready => "就绪",
+        WorkloadRolloutState.Rolling => "滚动中",
+        _ => "未就绪"
+    };
+}

@@ -1,0 +1,18 @@
+@attribute [Authorize(Roles = "Admin")]
+@page "/workloads/replicasets/{ClusterId:int}/{Namespace}/{Name}/yaml"
+
+@using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Components.Workloads.Shared
+
+<WorkloadYamlEditView Kind="WorkloadKind.ReplicaSet" ClusterId="ClusterId" Namespace="@Namespace" Name="@Name" />
+
+@code {
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    [Parameter]
+    public string Namespace { get; set; } = "";
+
+    [Parameter]
+    public string Name { get; set; } = "";
+}

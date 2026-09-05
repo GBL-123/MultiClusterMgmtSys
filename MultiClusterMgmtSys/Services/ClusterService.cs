@@ -13,6 +13,8 @@ namespace MultiClusterMgmtSys.Services;
 
 public class ClusterService(ClusterRepository repo, ClusterNodeService nodeService, AuditService auditService, ILogger<ClusterService> logger, Func<KubernetesClientConfiguration, IKubernetes> clientFactory)
 {
+    private static readonly SemaphoreSlim syncGate = new(1, 1);
+
     private readonly ClusterRepository repo = repo;
 
     private readonly ClusterNodeService nodeService = nodeService;
@@ -172,42 +174,63 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
     public async Task<ClusterViewModel> RefreshClusterStatusAsync(int id)
     {
         logger.LogInformation("RefreshClusterStatus id={ClusterId}", id);
+        var (entity, _) = await RefreshClusterStatusCoreAsync(id);
+        return entity.ToViewModel();
+    }
+
+    public async Task<int> RefreshAllClustersStatusAsync(IProgress<(int current, int total)>? progress = null, string source = ClusterSyncSource.Manual)
+    {
+        logger.LogInformation("RefreshAllClustersStatus start source={Source}", source);
+        await syncGate.WaitAsync();
+        try
+        {
+            var ids = await repo.GetAllIdsAsync();
+            var total = ids.Count;
+            var succeeded = 0;
+            var current = 0;
+            progress?.Report((0, total));
+            foreach (var id in ids)
+            {
+                try
+                {
+                    var (entity, previousStatus) = await RefreshClusterStatusCoreAsync(id);
+                    succeeded++;
+                    if (previousStatus != entity.Status)
+                    {
+                        await auditService.LogAsync(AuditCategory.Cluster, AuditAction.Update,
+                            $"集群 {entity.Name} 状态由 {previousStatus.ToChineseText()} 变为 {entity.Status.ToChineseText()}({source})");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "RefreshAllClustersStatus id={ClusterId} failed", id);
+                }
+                current++;
+                progress?.Report((current, total));
+            }
+            logger.LogInformation("RefreshAllClustersStatus done succeeded={Succeeded} of {Total}", succeeded, total);
+            return succeeded;
+        }
+        finally
+        {
+            syncGate.Release();
+        }
+    }
+
+    private async Task<(ClusterInfo Entity, ClusterStatus PreviousStatus)> RefreshClusterStatusCoreAsync(int id)
+    {
         var entity = await repo.GetByIdAsync(id);
         if (entity is null)
         {
             logger.LogWarning("Cluster {ClusterId} not found", id);
             throw new NotFoundException($"集群 {id} 不存在");
         }
+
+        var previousStatus = entity.Status;
         await ProbeAsync(entity);
         logger.LogInformation("RefreshClusterStatus id={ClusterId} status={Status}", id, entity.Status);
         await repo.UpdateAsync(entity);
-        return entity.ToViewModel();
-    }
-
-    public async Task<int> RefreshAllClustersStatusAsync(IProgress<(int current, int total)>? progress = null)
-    {
-        logger.LogInformation("RefreshAllClustersStatus start");
-        var ids = await repo.GetAllIdsAsync();
-        var total = ids.Count;
-        var succeeded = 0;
-        var current = 0;
-        progress?.Report((0, total));
-        foreach (var id in ids)
-        {
-            try
-            {
-                await RefreshClusterStatusAsync(id);
-                succeeded++;
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "RefreshAllClustersStatus id={ClusterId} failed", id);
-            }
-            current++;
-            progress?.Report((current, total));
-        }
-        logger.LogInformation("RefreshAllClustersStatus done succeeded={Succeeded} of {Total}", succeeded, total);
-        return succeeded;
+        return (entity, previousStatus);
     }
 
     // ---- Private k8s helpers ----

@@ -186,7 +186,8 @@ html, body {
 .accounts-table,
 .audit-logs-table,
 .nodes-table,
-.configmaps-table {
+.configmaps-table,
+.workloads-table {
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
@@ -197,7 +198,8 @@ html, body {
     .accounts-table .mud-table-container,
     .audit-logs-table .mud-table-container,
     .nodes-table .mud-table-container,
-    .configmaps-table .mud-table-container {
+    .configmaps-table .mud-table-container,
+    .workloads-table .mud-table-container {
         flex: 1 1 auto;
     }
 
@@ -205,7 +207,8 @@ html, body {
     .accounts-table .mud-table-pagination,
     .audit-logs-table .mud-table-pagination,
     .nodes-table .mud-table-pagination,
-    .configmaps-table .mud-table-pagination {
+    .configmaps-table .mud-table-pagination,
+    .workloads-table .mud-table-pagination {
         overflow: visible;
     }
 
@@ -327,6 +330,10 @@ a:focus-visible {
 }
 
 /* ---------- 8. Empty states: dashed mono frame ---------- */
+
+.sync-hint {
+    color: #6E675C;
+}
 
 .empty-state {
     display: flex;

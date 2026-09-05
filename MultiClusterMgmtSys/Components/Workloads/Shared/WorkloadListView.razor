@@ -1,0 +1,472 @@
+@using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Requests
+@using MultiClusterMgmtSys.Services
+@using MultiClusterMgmtSys.ViewModels
+@using MultiClusterMgmtSys.Components.Workloads.Shared
+
+@inject ClusterService ClusterService
+@inject WorkloadService WorkloadService
+@inject ClusterSelectionState ClusterSelection
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+@inject ExceptionPresenter ExHandler
+
+<PageTitle>@(Kind.ToDisplayText())管理</PageTitle>
+
+<MudStack Row="true" Spacing="3" Class="d-flex flex-auto">
+    <ClusterSelectSidebar Clusters="@clusters"
+                          SelectedClusterId="@EffectiveClusterId"
+                          OnClusterSelected="SelectCluster" />
+
+    <MudStack Class="flex-auto">
+        @if (!EffectiveClusterId.HasValue)
+        {
+            <MudStack Spacing="0"
+                      AlignItems="AlignItems.Center"
+                      Justify="Justify.Center"
+                      Style="min-height:60vh;">
+                <MudIcon Icon="@Icons.Material.Filled.Widgets" Size="Size.Large" Class="mud-text-secondary mb-4" />
+                <MudText Typo="Typo.h6" Class="mud-text-secondary">请从左侧选择一个集群</MudText>
+            </MudStack>
+        }
+        else if (loading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+        }
+        else if (cluster is null)
+        {
+            <MudCard Class="pa-8" Elevation="2">
+                <MudCardContent>
+                    <MudText Align="Align.Center" Class="mud-text-secondary">未找到该集群</MudText>
+                    <div class="d-flex justify-center mt-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                                   OnClick="@(() => NavigationManager.NavigateTo("/clusters"))">
+                            返回集群列表
+                        </MudButton>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        }
+        else
+        {
+            <MudPaper Class="pa-4">
+                <MudStack>
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudText Typo="Typo.h5">@(Kind.ToDisplayText())管理</MudText>
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Color="GetClusterStatusColor(cluster.Status)"
+                                 Variant="Variant.Filled"
+                                 Class="ml-2">
+                            @cluster.Name · @cluster.StatusText
+                        </MudChip>
+                        <MudSpacer />
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Inherit"
+                                   StartIcon="@Icons.Material.Filled.Refresh"
+                                   OnClick="@(() => LoadAsync(EffectiveClusterId!.Value))"
+                                   Disabled="@loading">
+                            刷新
+                        </MudButton>
+                        <AuthorizeView Roles="Admin">
+                            <Authorized>
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.Add"
+                                           OnClick="OpenCreateDialog"
+                                           Disabled="@(!cluster.IsReachable)">
+                                    新建@(Kind.ToDisplayText())
+                                </MudButton>
+                            </Authorized>
+                        </AuthorizeView>
+                    </MudStack>
+
+                    @if (cluster.IsReachable)
+                    {
+                        <WorkloadListFilterBar @bind-SelectedNamespace="selectedNamespace"
+                                               @bind-SearchName="searchName"
+                                               Namespaces="@namespaces"
+                                               OnQuery="OnQueryClick"
+                                               OnReset="OnResetClick" />
+                    }
+                </MudStack>
+            </MudPaper>
+
+            @if (!cluster.IsReachable)
+            {
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudText Align="Align.Center" Class="mud-text-secondary">集群不可达，无法获取@(Kind.ToDisplayText())</MudText>
+                    </MudCardContent>
+                </MudCard>
+            }
+            else
+            {
+                <WorkloadListTable Kind="@Kind"
+                                   Items="@filteredWorkloads"
+                                   Loading="@loading"
+                                   OnNavigateDetail="NavigateToDetail"
+                                   OnScale="OpenScaleDialog"
+                                   OnRestart="RestartWorkload"
+                                   OnDelete="DeleteWorkload" />
+            }
+        }
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter]
+    public WorkloadKind Kind { get; set; }
+
+    [Parameter]
+    public int? ClusterId { get; set; }
+
+    private List<ClusterViewModel> clusters = new();
+
+    private ClusterDetailViewModel? cluster;
+
+    private List<WorkloadListViewModel> workloads = new();
+
+    private List<string> namespaces = new();
+
+    private bool loading;
+
+    private string searchName = "";
+
+    private string appliedSearchName = "";
+
+    private string? selectedNamespace;
+
+    private int? previousClusterId;
+
+    private bool hasInitialized;
+
+    private int? EffectiveClusterId => ClusterId ?? ClusterSelection.SelectedClusterId;
+
+    private List<WorkloadListViewModel> filteredWorkloads
+    {
+        get
+        {
+            var q = workloads.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(appliedSearchName))
+            {
+                q = q.Where(w => w.Name.Contains(appliedSearchName, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return q.ToList();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClustersAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (ClusterId.HasValue)
+        {
+            ClusterSelection.Set(ClusterId.Value);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ClusterId == previousClusterId && hasInitialized)
+        {
+            return;
+        }
+
+        hasInitialized = true;
+        previousClusterId = ClusterId;
+
+        if (EffectiveClusterId.HasValue)
+        {
+            await LoadAsync(EffectiveClusterId.Value);
+        }
+        else
+        {
+            cluster = null;
+            workloads = new();
+            namespaces = new();
+            loading = false;
+        }
+    }
+
+    private async Task LoadClustersAsync()
+    {
+        try
+        {
+            var request = new ClusterQueryRequest { Page = 1, PageSize = 1000, SortBy = ClusterSortField.Name, SortDescending = false };
+            var result = await ClusterService.GetPagedAsync(request);
+            clusters = result.Items;
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载集群列表");
+        }
+    }
+
+    private async Task LoadAsync(int id)
+    {
+        loading = true;
+        try
+        {
+            cluster = await ClusterService.GetClusterDetailAsync(id);
+            if (cluster is not null)
+            {
+                ClusterSelection.Set(id);
+            }
+
+            if (cluster is not null && cluster.IsReachable)
+            {
+                try
+                {
+                    namespaces = await WorkloadService.GetNamespacesAsync(id);
+                }
+                catch (Exception ex)
+                {
+                    await ExHandler.HandleAsync(ex, "加载命名空间列表");
+                }
+
+                try
+                {
+                    workloads = await ListWorkloadsAsync(id);
+                }
+                catch (Exception ex)
+                {
+                    await ExHandler.HandleAsync(ex, $"加载{Kind.ToDisplayText()}列表");
+                }
+            }
+            else
+            {
+                workloads = new();
+                namespaces = new();
+            }
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载集群详情");
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task<List<WorkloadListViewModel>> ListWorkloadsAsync(int clusterId)
+    {
+        var request = new WorkloadQueryRequest(clusterId, selectedNamespace);
+        return Kind switch
+        {
+            WorkloadKind.Deployment => await WorkloadService.ListDeploymentsAsync(request),
+            WorkloadKind.StatefulSet => await WorkloadService.ListStatefulSetsAsync(request),
+            WorkloadKind.DaemonSet => await WorkloadService.ListDaemonSetsAsync(request),
+            _ => await WorkloadService.ListReplicaSetsAsync(request)
+        };
+    }
+
+    private void SelectCluster(int id)
+    {
+        NavigationManager.NavigateTo($"/workloads/{Kind.ToRouteSegment()}/{id}");
+    }
+
+    private async Task OnQueryClick()
+    {
+        if (!EffectiveClusterId.HasValue)
+        {
+            return;
+        }
+
+        appliedSearchName = searchName;
+        loading = true;
+        try
+        {
+            workloads = await ListWorkloadsAsync(EffectiveClusterId.Value);
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, $"加载{Kind.ToDisplayText()}列表");
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task OnResetClick()
+    {
+        selectedNamespace = null;
+        searchName = "";
+        appliedSearchName = "";
+        if (EffectiveClusterId.HasValue)
+        {
+            await LoadAsync(EffectiveClusterId.Value);
+        }
+    }
+
+    private void NavigateToDetail((string Namespace, string Name) args)
+    {
+        NavigationManager.NavigateTo($"/workloads/{Kind.ToRouteSegment()}/{EffectiveClusterId!.Value}/{args.Namespace}/{args.Name}");
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            { "ClusterId", EffectiveClusterId!.Value },
+            { "Kind", Kind }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<CreateWorkloadDialog>($"新建{Kind.ToDisplayText()}", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await LoadAsync(EffectiveClusterId!.Value);
+        }
+    }
+
+    private async Task OpenScaleDialog((string Namespace, string Name) args)
+    {
+        var current = workloads.FirstOrDefault(w => w.Namespace == args.Namespace && w.Name == args.Name);
+        var parameters = new DialogParameters
+        {
+            { "Name", args.Name },
+            { "CurrentReplicas", current?.DesiredCount ?? 0 }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<WorkloadScaleDialog>("扩缩容", parameters, options);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled || result.Data is not int replicas)
+        {
+            return;
+        }
+
+        var scaleRequest = new WorkloadScaleRequest(EffectiveClusterId!.Value, args.Name, args.Namespace, replicas);
+        try
+        {
+            await ScaleWorkloadAsync(scaleRequest);
+            Snackbar.Add("扩缩容成功", Severity.Success);
+            await LoadAsync(EffectiveClusterId.Value);
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, $"扩缩容{Kind.ToDisplayText()}");
+        }
+    }
+
+    private async Task ScaleWorkloadAsync(WorkloadScaleRequest request)
+    {
+        switch (Kind)
+        {
+            case WorkloadKind.Deployment:
+                await WorkloadService.ScaleDeploymentAsync(request);
+                break;
+            case WorkloadKind.StatefulSet:
+                await WorkloadService.ScaleStatefulSetAsync(request);
+                break;
+            case WorkloadKind.ReplicaSet:
+                await WorkloadService.ScaleReplicaSetAsync(request);
+                break;
+        }
+    }
+
+    private async Task RestartWorkload((string Namespace, string Name) args)
+    {
+        var confirmed = await ConfirmAsync($"确认重启{Kind.ToDisplayText()}「{args.Name}」？将触发滚动更新，Pod 会逐步替换。");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        var key = new WorkloadKeyRequest(EffectiveClusterId!.Value, args.Name, args.Namespace);
+        try
+        {
+            await RestartWorkloadAsync(key);
+            Snackbar.Add("重启成功", Severity.Success);
+            await LoadAsync(EffectiveClusterId.Value);
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, $"重启{Kind.ToDisplayText()}");
+        }
+    }
+
+    private async Task RestartWorkloadAsync(WorkloadKeyRequest request)
+    {
+        switch (Kind)
+        {
+            case WorkloadKind.Deployment:
+                await WorkloadService.RestartDeploymentAsync(request);
+                break;
+            case WorkloadKind.StatefulSet:
+                await WorkloadService.RestartStatefulSetAsync(request);
+                break;
+            case WorkloadKind.DaemonSet:
+                await WorkloadService.RestartDaemonSetAsync(request);
+                break;
+        }
+    }
+
+    private async Task DeleteWorkload((string Namespace, string Name) args)
+    {
+        var confirmed = await ConfirmAsync($"确认删除{Kind.ToDisplayText()}「{args.Name}」？将连带删除其管理的副本与 Pod，此操作不可撤销。");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        var key = new WorkloadKeyRequest(EffectiveClusterId!.Value, args.Name, args.Namespace);
+        try
+        {
+            await DeleteWorkloadAsync(key);
+            Snackbar.Add("删除成功", Severity.Success);
+            await LoadAsync(EffectiveClusterId.Value);
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, $"删除{Kind.ToDisplayText()}");
+        }
+    }
+
+    private async Task DeleteWorkloadAsync(WorkloadKeyRequest request)
+    {
+        switch (Kind)
+        {
+            case WorkloadKind.Deployment:
+                await WorkloadService.DeleteDeploymentAsync(request);
+                break;
+            case WorkloadKind.StatefulSet:
+                await WorkloadService.DeleteStatefulSetAsync(request);
+                break;
+            case WorkloadKind.DaemonSet:
+                await WorkloadService.DeleteDaemonSetAsync(request);
+                break;
+            case WorkloadKind.ReplicaSet:
+                await WorkloadService.DeleteReplicaSetAsync(request);
+                break;
+        }
+    }
+
+    private async Task<bool> ConfirmAsync(string message)
+    {
+        var parameters = new DialogParameters
+        {
+            { "Message", message }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("确认操作", parameters, options);
+        var result = await dialog.Result;
+        return result is not null && !result.Canceled;
+    }
+
+    private static Color GetClusterStatusColor(ClusterStatus status) => status switch
+    {
+        ClusterStatus.Online => Color.Success,
+        ClusterStatus.Offline => Color.Error,
+        _ => Color.Default
+    };
+}

@@ -1,0 +1,243 @@
+@using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Requests
+@using MultiClusterMgmtSys.Services
+@using MultiClusterMgmtSys.ViewModels
+@using MultiClusterMgmtSys.Components.Workloads.Shared
+
+@inject WorkloadService WorkloadService
+@inject ClusterSelectionState ClusterSelection
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+@inject ExceptionPresenter ExHandler
+
+<PageTitle>@(Kind.ToDisplayText())详情: @Name</PageTitle>
+
+<MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else if (detail is null)
+    {
+        <MudCard Class="pa-4">
+            <MudCardContent>
+                <MudText Align="Align.Center" Class="mud-text-secondary">@(Kind.ToDisplayText())不存在或已被删除</MudText>
+                <div class="d-flex justify-center mt-4">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.ArrowBack"
+                               OnClick="@(() => NavigationManager.NavigateTo($"/workloads/{Kind.ToRouteSegment()}/{ClusterId}"))">
+                        返回列表
+                    </MudButton>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    }
+    else
+    {
+        <WorkloadDetailToolbar ClusterId="@ClusterId"
+                               Kind="@Kind"
+                               Name="@Name"
+                               Detail="@detail"
+                               Processing="@processing"
+                               OnRefresh="LoadAsync"
+                               OnEditYaml="@(() => NavigationManager.NavigateTo($"/workloads/{Kind.ToRouteSegment()}/{ClusterId}/{Namespace}/{Name}/yaml"))"
+                               OnScale="OpenScaleDialog"
+                               OnRestart="RestartWorkload"
+                               OnDelete="DeleteWorkload" />
+        <WorkloadStatusCard Detail="@detail" />
+        <WorkloadYamlViewCard Yaml="@detail.Yaml" />
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public WorkloadKind Kind { get; set; }
+
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    [Parameter]
+    public string Namespace { get; set; } = "";
+
+    [Parameter]
+    public string Name { get; set; } = "";
+
+    private WorkloadDetailViewModel? detail;
+
+    private bool loading = true;
+
+    private bool processing;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ClusterSelection.Set(ClusterId);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        try
+        {
+            detail = await GetWorkloadAsync(new WorkloadKeyRequest(ClusterId, Name, Namespace));
+            if (detail is null)
+            {
+                Snackbar.Add($"{Kind.ToDisplayText()}不存在或已被删除", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, $"加载{Kind.ToDisplayText()}详情");
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private Task<WorkloadDetailViewModel?> GetWorkloadAsync(WorkloadKeyRequest request) => Kind switch
+    {
+        WorkloadKind.Deployment => WorkloadService.GetDeploymentAsync(request),
+        WorkloadKind.StatefulSet => WorkloadService.GetStatefulSetAsync(request),
+        WorkloadKind.DaemonSet => WorkloadService.GetDaemonSetAsync(request),
+        _ => WorkloadService.GetReplicaSetAsync(request)
+    };
+
+    private async Task OpenScaleDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            { "Name", Name },
+            { "CurrentReplicas", detail?.DesiredCount ?? 0 }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<WorkloadScaleDialog>("扩缩容", parameters, options);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled || result.Data is not int replicas)
+        {
+            return;
+        }
+
+        processing = true;
+        try
+        {
+            var request = new WorkloadScaleRequest(ClusterId, Name, Namespace, replicas);
+            switch (Kind)
+            {
+                case WorkloadKind.Deployment:
+                    await WorkloadService.ScaleDeploymentAsync(request);
+                    break;
+                case WorkloadKind.StatefulSet:
+                    await WorkloadService.ScaleStatefulSetAsync(request);
+                    break;
+                case WorkloadKind.ReplicaSet:
+                    await WorkloadService.ScaleReplicaSetAsync(request);
+                    break;
+            }
+
+            Snackbar.Add("扩缩容成功", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, $"扩缩容{Kind.ToDisplayText()}");
+        }
+        finally
+        {
+            processing = false;
+        }
+    }
+
+    private async Task RestartWorkload()
+    {
+        var parameters = new DialogParameters
+        {
+            { "Message", $"确认重启{Kind.ToDisplayText()}「{Name}」？将触发滚动更新，Pod 会逐步替换。" }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("确认操作", parameters, options);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        processing = true;
+        try
+        {
+            var request = new WorkloadKeyRequest(ClusterId, Name, Namespace);
+            switch (Kind)
+            {
+                case WorkloadKind.Deployment:
+                    await WorkloadService.RestartDeploymentAsync(request);
+                    break;
+                case WorkloadKind.StatefulSet:
+                    await WorkloadService.RestartStatefulSetAsync(request);
+                    break;
+                case WorkloadKind.DaemonSet:
+                    await WorkloadService.RestartDaemonSetAsync(request);
+                    break;
+            }
+
+            Snackbar.Add("重启成功", Severity.Success);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, $"重启{Kind.ToDisplayText()}");
+        }
+        finally
+        {
+            processing = false;
+        }
+    }
+
+    private async Task DeleteWorkload()
+    {
+        var parameters = new DialogParameters
+        {
+            { "Message", $"确认删除{Kind.ToDisplayText()}「{Name}」？将连带删除其管理的副本与 Pod，此操作不可撤销。" }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("确认删除", parameters, options);
+        var result = await dialog.Result;
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        processing = true;
+        try
+        {
+            var request = new WorkloadKeyRequest(ClusterId, Name, Namespace);
+            switch (Kind)
+            {
+                case WorkloadKind.Deployment:
+                    await WorkloadService.DeleteDeploymentAsync(request);
+                    break;
+                case WorkloadKind.StatefulSet:
+                    await WorkloadService.DeleteStatefulSetAsync(request);
+                    break;
+                case WorkloadKind.DaemonSet:
+                    await WorkloadService.DeleteDaemonSetAsync(request);
+                    break;
+                case WorkloadKind.ReplicaSet:
+                    await WorkloadService.DeleteReplicaSetAsync(request);
+                    break;
+            }
+
+            Snackbar.Add("删除成功", Severity.Success);
+            NavigationManager.NavigateTo($"/workloads/{Kind.ToRouteSegment()}/{ClusterId}");
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, $"删除{Kind.ToDisplayText()}");
+        }
+        finally
+        {
+            processing = false;
+        }
+    }
+}

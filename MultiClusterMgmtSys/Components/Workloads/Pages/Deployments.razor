@@ -1,0 +1,13 @@
+@attribute [Authorize]
+@page "/workloads/deployments"
+@page "/workloads/deployments/{ClusterId:int}"
+
+@using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Components.Workloads.Shared
+
+<WorkloadListView Kind="WorkloadKind.Deployment" ClusterId="ClusterId" />
+
+@code {
+    [Parameter]
+    public int? ClusterId { get; set; }
+}

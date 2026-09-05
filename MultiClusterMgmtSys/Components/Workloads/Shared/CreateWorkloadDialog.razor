@@ -1,0 +1,178 @@
+@using k8s
+@using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Common.Exceptions
+@using MultiClusterMgmtSys.Requests
+@using MultiClusterMgmtSys.Services
+
+@inject WorkloadService WorkloadService
+@inject ISnackbar Snackbar
+@inject ExceptionPresenter ExHandler
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Class="mb-2">新建@(Kind.ToDisplayText())</MudText>
+        <MudTextField T="string"
+                      @bind-Value="yamlContent"
+                      Label="YAML"
+                      Lines="25"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Style="font-family: monospace;" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Text" Disabled="saving">取消</MudButton>
+        <MudButton OnClick="Submit" Color="Color.Primary" Variant="Variant.Filled" Disabled="saving"
+                   StartIcon="@(saving ? null : Icons.Material.Filled.Save)">
+            @if (saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            创建
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    [Parameter]
+    public WorkloadKind Kind { get; set; }
+
+    private string yamlContent = "";
+
+    private bool saving;
+
+    protected override void OnInitialized()
+    {
+        yamlContent = BuildTemplate(Kind);
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task Submit()
+    {
+        saving = true;
+        try
+        {
+            var request = new WorkloadCreateRequest(ClusterId, yamlContent);
+            switch (Kind)
+            {
+                case WorkloadKind.Deployment:
+                    await WorkloadService.CreateDeploymentFromYamlAsync(request);
+                    break;
+                case WorkloadKind.StatefulSet:
+                    await WorkloadService.CreateStatefulSetFromYamlAsync(request);
+                    break;
+                case WorkloadKind.DaemonSet:
+                    await WorkloadService.CreateDaemonSetFromYamlAsync(request);
+                    break;
+                case WorkloadKind.ReplicaSet:
+                    await WorkloadService.CreateReplicaSetFromYamlAsync(request);
+                    break;
+            }
+
+            Snackbar.Add("创建成功", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (ConflictException)
+        {
+            Snackbar.Add("同名对象已存在", Severity.Warning);
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, $"创建{Kind.ToDisplayText()}");
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private static string BuildTemplate(WorkloadKind kind) => kind switch
+    {
+        WorkloadKind.Deployment => """
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: 
+              namespace: 
+            spec:
+              replicas: 1
+              selector:
+                matchLabels:
+                  app: my-app
+              template:
+                metadata:
+                  labels:
+                    app: my-app
+                spec:
+                  containers:
+                    - name: my-app
+                      image: nginx:latest
+            """,
+        WorkloadKind.StatefulSet => """
+            apiVersion: apps/v1
+            kind: StatefulSet
+            metadata:
+              name: 
+              namespace: 
+            spec:
+              serviceName: my-svc
+              replicas: 1
+              selector:
+                matchLabels:
+                  app: my-app
+              template:
+                metadata:
+                  labels:
+                    app: my-app
+                spec:
+                  containers:
+                    - name: my-app
+                      image: nginx:latest
+            """,
+        WorkloadKind.DaemonSet => """
+            apiVersion: apps/v1
+            kind: DaemonSet
+            metadata:
+              name: 
+              namespace: 
+            spec:
+              selector:
+                matchLabels:
+                  app: my-agent
+              template:
+                metadata:
+                  labels:
+                    app: my-agent
+                spec:
+                  containers:
+                    - name: my-agent
+                      image: nginx:latest
+            """,
+        _ => """
+            apiVersion: apps/v1
+            kind: ReplicaSet
+            metadata:
+              name: 
+              namespace: 
+            spec:
+              replicas: 1
+              selector:
+                matchLabels:
+                  app: my-app
+              template:
+                metadata:
+                  labels:
+                    app: my-app
+                spec:
+                  containers:
+                    - name: my-app
+                      image: nginx:latest
+            """
+    };
+}

@@ -45,18 +45,22 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ClusterRepository>();
 builder.Services.AddScoped<GroupRepository>();
 builder.Services.AddScoped<AuditLogRepository>();
+builder.Services.AddScoped<AppSettingRepository>();
 builder.Services.AddScoped<ClusterNodeService>();
 builder.Services.AddScoped<ConfigMapService>();
+builder.Services.AddScoped<WorkloadService>();
 builder.Services.AddScoped<ClusterService>();
 builder.Services.AddScoped<GroupService>();
 builder.Services.AddScoped<AuditService>();
 builder.Services.AddScoped<ClusterSelectionState>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AccountService>();
+builder.Services.AddScoped<ClusterSyncSettingService>();
 builder.Services.AddScoped<RedirectManager>();
 builder.Services.AddScoped<ExceptionPresenter>();
 builder.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(
     config => new Kubernetes(config));
+builder.Services.AddHostedService<ClusterSyncBackgroundService>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 
 builder.Services.AddAuthorization();
@@ -115,6 +119,17 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.EnsureCreated();
+
+    // EnsureCreated 不会给已存在的库补建新表:老库升级时手动补 AppSettings(列定义须与 ApplicationDbContext 保持一致)
+    await db.Database.ExecuteSqlRawAsync("""
+        CREATE TABLE IF NOT EXISTS AppSettings (
+            "Id" INTEGER NOT NULL CONSTRAINT "PK_AppSettings" PRIMARY KEY AUTOINCREMENT,
+            "Key" TEXT NOT NULL,
+            "Value" TEXT NOT NULL,
+            "UpdatedAt" TEXT NOT NULL
+        )
+        """);
+    await db.Database.ExecuteSqlRawAsync("""CREATE UNIQUE INDEX IF NOT EXISTS "IX_AppSettings_Key" ON "AppSettings" ("Key")""");
 
     var accountService = scope.ServiceProvider.GetRequiredService<AccountService>();
     await accountService.CreateAdminAsync();

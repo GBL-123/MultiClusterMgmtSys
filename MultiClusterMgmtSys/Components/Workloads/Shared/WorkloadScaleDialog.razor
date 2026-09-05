@@ -1,0 +1,56 @@
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Class="mb-2">扩缩容</MudText>
+        <MudText Class="mud-text-secondary mb-4">将「@Name」的副本数调整为:</MudText>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudIconButton Icon="@Icons.Material.Filled.Remove"
+                           Variant="Variant.Outlined"
+                           Size="Size.Small"
+                           OnClick="@(() => Adjust(-1))" />
+            <MudNumericField T="int"
+                             @bind-Value="replicas"
+                             Min="0"
+                             Max="500"
+                             Variant="Variant.Outlined"
+                             Style="width:120px;"
+                             Class="font-mono" />
+            <MudIconButton Icon="@Icons.Material.Filled.Add"
+                           Variant="Variant.Outlined"
+                           Size="Size.Small"
+                           OnClick="@(() => Adjust(1))" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Text">取消</MudButton>
+        <MudButton OnClick="Submit" Color="Color.Primary" Variant="Variant.Filled">确认</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter]
+    public string Name { get; set; } = "";
+
+    [Parameter]
+    public int CurrentReplicas { get; set; }
+
+    private int replicas;
+
+    protected override void OnInitialized()
+    {
+        replicas = CurrentReplicas;
+    }
+
+    private void Adjust(int delta)
+    {
+        var next = replicas + delta;
+        replicas = next < 0 ? 0 : next;
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private void Submit() => Dialog.Close(DialogResult.Ok(replicas));
+}

@@ -2,6 +2,7 @@ using k8s;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -109,6 +110,14 @@ public static class TestServices
         return new(new AuditLogRepository(db), accessor, NullLogger<AuditService>.Instance);
     }
 
+    public static ClusterSyncSettingService SyncSetting(ApplicationDbContext db, IConfiguration configuration, string? userName = null, string? role = null)
+    {
+        IHttpContextAccessor accessor = userName is null
+            ? new NullHttpContextAccessor()
+            : new FakeHttpContextAccessor(userName, roles: role is null ? [] : [role]);
+        return new(new AppSettingRepository(db), configuration, accessor, Audit(db, userName), NullLogger<ClusterSyncSettingService>.Instance);
+    }
+
     public static ClusterNodeService NodeService(ApplicationDbContext db, Func<KubernetesClientConfiguration, IKubernetes> factory)
         => new(new ClusterRepository(db), Audit(db), NullLogger<ClusterNodeService>.Instance, factory);
 
@@ -117,6 +126,9 @@ public static class TestServices
 
     public static ConfigMapService ConfigMap(ApplicationDbContext db, Func<KubernetesClientConfiguration, IKubernetes> factory)
         => new(new ClusterRepository(db), Audit(db), NullLogger<ConfigMapService>.Instance, factory);
+
+    public static WorkloadService Workload(ApplicationDbContext db, Func<KubernetesClientConfiguration, IKubernetes> factory)
+        => new(new ClusterRepository(db), Audit(db), NullLogger<WorkloadService>.Instance, factory);
 
     public static GroupService Group(ApplicationDbContext db)
         => new(new GroupRepository(db), new ClusterRepository(db), Audit(db), NullLogger<GroupService>.Instance);
