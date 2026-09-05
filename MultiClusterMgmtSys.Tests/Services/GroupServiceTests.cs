@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using MultiClusterMgmtSys.Common.Exceptions;
+using MultiClusterMgmtSys.Requests;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 using Xunit;
 
@@ -24,7 +25,7 @@ public class GroupServiceTests
         using var db = SqliteDbFactory.CreateContext();
         var svc = TestServices.Group(db);
 
-        var ex = await Assert.ThrowsAsync<NotFoundException>(() => svc.RenameGroupAsync(999, "新名"));
+        var ex = await Assert.ThrowsAsync<NotFoundException>(() => svc.RenameGroupAsync(new GroupRenameRequest(999, "新名")));
 
         Assert.Contains("999", ex.UserMessage);
     }
@@ -38,7 +39,7 @@ public class GroupServiceTests
         await db.SaveChangesAsync();
         var svc = TestServices.Group(db);
 
-        await svc.RenameGroupAsync(group.Id, "新名");
+        await svc.RenameGroupAsync(new GroupRenameRequest(group.Id, "新名"));
 
         Assert.Equal("新名", db.ClusterGroups.Single(g => g.Id == group.Id).Name);
     }
@@ -50,7 +51,7 @@ public class GroupServiceTests
         var svc = TestServices.Group(db);
 
         await Assert.ThrowsAsync<ValidationException>(
-            () => svc.MoveClustersToGroupAsync([1], 0));
+            () => svc.MoveClustersToGroupAsync(new MoveClustersRequest([1], 0)));
     }
 
     [Fact]
@@ -64,7 +65,7 @@ public class GroupServiceTests
         await db.SaveChangesAsync();
         var svc = TestServices.Group(db);
 
-        var affected = await svc.MoveClustersToGroupAsync([1], null);
+        var affected = await svc.MoveClustersToGroupAsync(new MoveClustersRequest([1], null));
 
         Assert.Equal(1, affected);
         Assert.Null(db.Clusters.AsNoTracking().Single(c => c.Id == 1).GroupId);
@@ -81,7 +82,7 @@ public class GroupServiceTests
         await db.SaveChangesAsync();
         var svc = TestServices.Group(db);
 
-        var affected = await svc.MoveClustersToGroupAsync([1], group.Id);
+        var affected = await svc.MoveClustersToGroupAsync(new MoveClustersRequest([1], group.Id));
 
         Assert.Equal(1, affected);
         Assert.Equal(group.Id, db.Clusters.AsNoTracking().Single(c => c.Id == 1).GroupId);

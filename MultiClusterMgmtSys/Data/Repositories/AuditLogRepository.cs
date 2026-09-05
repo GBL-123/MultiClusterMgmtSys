@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using MudBlazor;
 using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Requests;
 
@@ -27,14 +26,13 @@ public class AuditLogRepository(ApplicationDbContext db)
     }
 
     public async Task<(List<AuditLog> Items, int Total)> GetPagedAsync(
-        TableState state,
         AuditLogQueryRequest query,
         string? currentUserName,
         bool isAdmin)
     {
-        var page = state.Page > 0 ? state.Page + 1 : Math.Max(query.Page, 1);
-        var pageSize = Math.Max(state.PageSize > 0 ? state.PageSize : query.PageSize, 1);
-        var sortDescending = state.SortDirection != SortDirection.Ascending;
+        var page = Math.Max(query.Page, 1);
+        var pageSize = Math.Max(query.PageSize, 1);
+        var sortDescending = query.SortDescending;
 
         IQueryable<AuditLog> q = db.AuditLogs.AsNoTracking();
 

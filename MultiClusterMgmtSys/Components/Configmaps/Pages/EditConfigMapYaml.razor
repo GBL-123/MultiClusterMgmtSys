@@ -3,8 +3,8 @@
 
 @using k8s
 @using k8s.Models
-@using MultiClusterMgmtSys.Components.Common
 @using MultiClusterMgmtSys.Common.Exceptions
+@using MultiClusterMgmtSys.Requests
 @using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.ViewModels
 @using MultiClusterMgmtSys.Components.Configmaps.Shared
@@ -91,7 +91,7 @@
         try
         {
             loadError = false;
-            var detail = await ConfigMapService.GetConfigMapAsync(ClusterId, Name, Namespace);
+            var detail = await ConfigMapService.GetConfigMapAsync(new ConfigMapKeyRequest(ClusterId, Name, Namespace));
             if (detail is null)
             {
                 Snackbar.Add("ConfigMap 不存在或已被删除", Severity.Warning);
@@ -126,7 +126,7 @@
         saving = true;
         try
         {
-            await ConfigMapService.UpdateConfigMapFromYamlAsync(ClusterId, Name, Namespace, yamlContent);
+            await ConfigMapService.UpdateConfigMapFromYamlAsync(new ConfigMapUpdateRequest(ClusterId, Name, Namespace, yamlContent));
             Snackbar.Add("修改成功", Severity.Success);
             NavigationManager.NavigateTo($"/configmaps/{ClusterId}");
         }

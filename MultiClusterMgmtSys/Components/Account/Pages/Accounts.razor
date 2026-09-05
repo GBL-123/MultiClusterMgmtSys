@@ -9,7 +9,6 @@
 @inject AccountService AccountSvc
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
-@inject AuthenticationStateProvider AuthStateProvider
 @inject ExceptionPresenter ExHandler
 
 <PageTitle>账号管理</PageTitle>
@@ -86,14 +85,7 @@
 
     private AccountTable? tableComponent;
 
-    private int currentUserId;
-
-    protected override async Task OnInitializedAsync()
-    {
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var idStr = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        int.TryParse(idStr, out currentUserId);
-    }
+    protected override Task OnInitializedAsync() => Task.CompletedTask;
 
     private Task RefreshTable() => tableComponent?.ReloadDataAsync() ?? Task.CompletedTask;
 
@@ -177,7 +169,7 @@
         var dialogResult = await dialog.Result;
         if (dialogResult is not null && !dialogResult.Canceled)
         {
-            var result = await AccountSvc.DeleteAccountAsync(account.Id, currentUserId);
+            var result = await AccountSvc.DeleteAccountAsync(account.Id);
             if (result.Succeeded)
             {
                 Snackbar.Add("账号已删除", Severity.Success);
@@ -204,7 +196,7 @@
         {
             try
             {
-                var result = await AccountSvc.BatchDeleteAsync(selectedAccountIds.ToList(), currentUserId);
+                var result = await AccountSvc.BatchDeleteAsync(selectedAccountIds.ToList());
                 ShowBatchResult(result, "已删除");
                 ClearSelection();
                 await RefreshTable();
@@ -220,7 +212,7 @@
     {
         try
         {
-            var result = await AccountSvc.BatchUpdateRoleAsync(selectedAccountIds.ToList(), currentUserId, roleName);
+            var result = await AccountSvc.BatchUpdateRoleAsync(new BatchRoleUpdateRequest(selectedAccountIds.ToList(), roleName));
             ShowBatchResult(result, $"已设置为 {roleName}");
             ClearSelection();
             await RefreshTable();

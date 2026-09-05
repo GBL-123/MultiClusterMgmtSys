@@ -5,7 +5,7 @@
 @using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.Components.Clusters.Shared
 @using MultiClusterMgmtSys.Requests
-@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+@using MultiClusterMgmtSys.ViewModels
 
 @inject ClusterService ClusterService
 @inject GroupService GroupService
@@ -252,7 +252,7 @@
 
         try
         {
-            var affected = await GroupService.MoveClustersToGroupAsync(selectedClusterIds.ToList(), effectiveGroupId);
+            var affected = await GroupService.MoveClustersToGroupAsync(new MoveClustersRequest(selectedClusterIds.ToList(), effectiveGroupId));
             Snackbar.Add($"已移动 {affected} 个集群到分组", Severity.Success);
             ClearSelection();
             await LoadSidebarAndVersionsAsync();

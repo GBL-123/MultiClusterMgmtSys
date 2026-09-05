@@ -1,4 +1,3 @@
-using MudBlazor;
 using MultiClusterMgmtSys.Common.Enums;
 using MultiClusterMgmtSys.Models;
 
@@ -19,7 +18,9 @@ public class ClusterQueryRequest
 
     public string VersionSelection { get; set; } = VersionFilterSentinel.All;
 
-    public DateRange? DateRange { get; set; }
+    public DateTime? CreatedFrom { get; set; }
+
+    public DateTime? CreatedTo { get; set; }
 
     public int Page { get; set; } = 1;
 

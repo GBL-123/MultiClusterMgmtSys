@@ -1,9 +1,11 @@
 using MultiClusterMgmtSys.Common.Enums;
 
-namespace MultiClusterMgmtSys.Components.Clusters.ViewModels;
+namespace MultiClusterMgmtSys.Requests;
+
+public record ClusterEndpointsUpdateRequest(int ClusterId, IReadOnlyList<ClusterEndpointEditItem> Items);
 
 /// <summary>
-/// 集群端点编辑行 VM：编辑器（ClusterEndpointEditor）每行一条。
+/// 集群端点编辑行：编辑器（ClusterEndpointEditor）每行一条，作为提交输入传给服务。
 /// Id == 0 表示新增行；持久化时服务端采用全量替换，Id 仅为编辑器内跟踪用。
 /// IsDeleted 为编辑器软删除标记，提交时不传（删掉的行根本不出现在提交列表里）。
 /// </summary>

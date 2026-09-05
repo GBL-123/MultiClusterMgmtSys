@@ -1,6 +1,6 @@
 using MultiClusterMgmtSys.Common.Enums;
 
-namespace MultiClusterMgmtSys.Components.Clusters.ViewModels;
+namespace MultiClusterMgmtSys.ViewModels;
 
 public class ClusterEditViewModel
 {

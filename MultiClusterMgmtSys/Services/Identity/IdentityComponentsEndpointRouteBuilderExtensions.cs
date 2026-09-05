@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using MultiClusterMgmtSys.Services;
-using System.Security.Claims;
 
 namespace MultiClusterMgmtSys.Services.Identity;
 
@@ -18,11 +17,7 @@ internal static class IdentityComponentsEndpointRouteBuilderExtensions
             [FromServices] AuthService authService,
             [FromQuery] string returnUrl) =>
         {
-            var userName = context.User.FindFirstValue(ClaimTypes.Name);
-            if (!string.IsNullOrEmpty(userName))
-            {
-                await authService.LogoutAsync(userName);
-            }
+            await authService.LogoutAsync();
             return TypedResults.LocalRedirect($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}");
         });
 

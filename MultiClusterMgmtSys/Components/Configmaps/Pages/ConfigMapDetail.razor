@@ -1,7 +1,7 @@
 @attribute [Authorize]
 @page "/configmaps/{ClusterId:int}/{Namespace}/{Name}"
 
-@using MultiClusterMgmtSys.Components.Common
+@using MultiClusterMgmtSys.Requests
 @using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.ViewModels
 @using MultiClusterMgmtSys.Components.Configmaps.Shared
@@ -73,7 +73,7 @@
         loading = true;
         try
         {
-            detail = await ConfigMapService.GetConfigMapAsync(ClusterId, Name, Namespace);
+            detail = await ConfigMapService.GetConfigMapAsync(new ConfigMapKeyRequest(ClusterId, Name, Namespace));
             if (detail is null)
             {
                 Snackbar.Add("ConfigMap 不存在或已被删除", Severity.Warning);

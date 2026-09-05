@@ -2,7 +2,6 @@
 @page "/profile"
 
 @using MultiClusterMgmtSys.Services
-@using MultiClusterMgmtSys.Components.Common
 @using MultiClusterMgmtSys.Components.Profile.Shared
 @using MultiClusterMgmtSys.ViewModels
 
@@ -142,7 +141,7 @@
             currentUserRole = authState.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
 
             var userTask = AccountSvc.GetUserByNameAsync(currentUserName);
-            var recentTask = AuditSvc.GetRecentAsync(currentUserName, RecentOpsCount);
+            var recentTask = AuditSvc.GetRecentAsync(RecentOpsCount);
             await Task.WhenAll(userTask, recentTask);
 
             var user = userTask.Result;
@@ -168,11 +167,7 @@
     {
         if (string.IsNullOrEmpty(currentUserName)) return;
 
-        var parameters = new DialogParameters<ChangePasswordDialog>
-        {
-            { d => d.UserName, currentUserName }
-        };
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
-        await DialogService.ShowAsync<ChangePasswordDialog>("修改密码", parameters, options);
+        await DialogService.ShowAsync<ChangePasswordDialog>("修改密码", options);
     }
 }

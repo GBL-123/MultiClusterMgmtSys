@@ -1,4 +1,4 @@
-namespace MultiClusterMgmtSys.Requests;
+namespace MultiClusterMgmtSys.Models;
 
 public class NodeListFilter
 {

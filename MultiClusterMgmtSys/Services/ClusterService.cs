@@ -1,12 +1,10 @@
 using k8s;
-using MudBlazor;
 using System.Text;
 using MultiClusterMgmtSys.Data.Repositories;
 using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Common.Enums;
 using MultiClusterMgmtSys.Common.Exceptions;
 using MultiClusterMgmtSys.ViewModels.Mappings;
-using MultiClusterMgmtSys.Components.Clusters.ViewModels;
 using MultiClusterMgmtSys.ViewModels;
 using MultiClusterMgmtSys.Requests;
 using MultiClusterMgmtSys.Models;
@@ -83,25 +81,25 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         return entity.ToEditViewModel();
     }
 
-    public async Task<ClusterViewModel> AddClusterAsync(ClusterCreateViewModel vm)
+    public async Task<ClusterViewModel> AddClusterAsync(ClusterCreateRequest request)
     {
-        logger.LogInformation("AddCluster name={Name} groupId={GroupId}", vm.Name, vm.GroupId);
+        logger.LogInformation("AddCluster name={Name} groupId={GroupId}", request.Name, request.GroupId);
         var entity = new ClusterInfo
         {
-            Name = vm.Name,
-            GroupId = vm.GroupId,
-            ApiServer = vm.ApiServer,
-            ConnectionType = vm.ConnectionType,
-            KubeConfig = vm.ConnectionType == ConnectionType.KubeConfig ? vm.KubeConfig : null,
-            Token = vm.ConnectionType == ConnectionType.Token ? vm.Token : null,
-            SkipTlsVerify = vm.SkipTlsVerify,
+            Name = request.Name,
+            GroupId = request.GroupId,
+            ApiServer = request.ApiServer,
+            ConnectionType = request.ConnectionType,
+            KubeConfig = request.ConnectionType == ConnectionType.KubeConfig ? request.KubeConfig : null,
+            Token = request.ConnectionType == ConnectionType.Token ? request.Token : null,
+            SkipTlsVerify = request.SkipTlsVerify,
             Status = ClusterStatus.Unknown,
             CreatedAt = DateTime.UtcNow
         };
 
         await repo.AddAsync(entity);
         logger.LogInformation("AddCluster created id={ClusterId}", entity.Id);
-        entity.ApplyEndpoints(vm.Endpoints);
+        entity.ApplyEndpoints(request.Endpoints);
         await ProbeAsync(entity);
         logger.LogInformation("AddCluster probed id={ClusterId} status={Status}", entity.Id, entity.Status);
         await repo.UpdateAsync(entity);
@@ -109,33 +107,33 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         return entity.ToViewModel();
     }
 
-    public async Task<ClusterViewModel> UpdateClusterAsync(ClusterUpdateViewModel vm)
+    public async Task<ClusterViewModel> UpdateClusterAsync(ClusterUpdateRequest request)
     {
-        logger.LogInformation("UpdateCluster id={ClusterId}", vm.Id);
-        var entity = await repo.GetByIdAsync(vm.Id);
+        logger.LogInformation("UpdateCluster id={ClusterId}", request.Id);
+        var entity = await repo.GetByIdAsync(request.Id);
         if (entity is null)
         {
-            logger.LogWarning("Cluster {ClusterId} not found", vm.Id);
-            throw new NotFoundException($"集群 {vm.Id} 不存在");
+            logger.LogWarning("Cluster {ClusterId} not found", request.Id);
+            throw new NotFoundException($"集群 {request.Id} 不存在");
         }
 
-        var configChanged = entity.ConnectionType != vm.ConnectionType
-            || entity.ApiServer != vm.ApiServer
-            || entity.KubeConfig != vm.KubeConfig
-            || entity.Token != vm.Token
-            || entity.SkipTlsVerify != vm.SkipTlsVerify;
+        var configChanged = entity.ConnectionType != request.ConnectionType
+            || entity.ApiServer != request.ApiServer
+            || entity.KubeConfig != request.KubeConfig
+            || entity.Token != request.Token
+            || entity.SkipTlsVerify != request.SkipTlsVerify;
 
-        entity.Name = vm.Name;
-        entity.GroupId = vm.GroupId;
-        entity.ApiServer = vm.ApiServer;
-        entity.ConnectionType = vm.ConnectionType;
-        entity.SkipTlsVerify = vm.SkipTlsVerify;
-        entity.KubeConfig = vm.ConnectionType == ConnectionType.KubeConfig ? vm.KubeConfig : null;
-        entity.Token = vm.ConnectionType == ConnectionType.Token ? vm.Token : null;
+        entity.Name = request.Name;
+        entity.GroupId = request.GroupId;
+        entity.ApiServer = request.ApiServer;
+        entity.ConnectionType = request.ConnectionType;
+        entity.SkipTlsVerify = request.SkipTlsVerify;
+        entity.KubeConfig = request.ConnectionType == ConnectionType.KubeConfig ? request.KubeConfig : null;
+        entity.Token = request.ConnectionType == ConnectionType.Token ? request.Token : null;
 
         if (configChanged)
         {
-            logger.LogInformation("UpdateCluster id={ClusterId} config changed, probing", vm.Id);
+            logger.LogInformation("UpdateCluster id={ClusterId} config changed, probing", request.Id);
             await ProbeAsync(entity);
         }
 
@@ -155,19 +153,19 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         }
     }
 
-    public async Task UpdateClusterEndpointsAsync(int clusterId, List<ClusterEndpointEditItem> items)
+    public async Task UpdateClusterEndpointsAsync(ClusterEndpointsUpdateRequest request)
     {
-        logger.LogInformation("UpdateClusterEndpoints id={ClusterId} count={Count}", clusterId, items.Count);
-        var entity = await repo.GetByIdAsync(clusterId);
+        logger.LogInformation("UpdateClusterEndpoints id={ClusterId} count={Count}", request.ClusterId, request.Items.Count);
+        var entity = await repo.GetByIdAsync(request.ClusterId);
         if (entity is null)
         {
-            logger.LogWarning("Cluster {ClusterId} not found", clusterId);
-            throw new NotFoundException($"集群 {clusterId} 不存在");
+            logger.LogWarning("Cluster {ClusterId} not found", request.ClusterId);
+            throw new NotFoundException($"集群 {request.ClusterId} 不存在");
         }
 
-        entity.ApplyEndpoints(items);
+        entity.ApplyEndpoints(request.Items);
         await repo.UpdateAsync(entity);
-        logger.LogInformation("UpdateClusterEndpoints persisted id={ClusterId}", clusterId);
+        logger.LogInformation("UpdateClusterEndpoints persisted id={ClusterId}", request.ClusterId);
         await auditService.LogAsync(AuditCategory.Cluster, AuditAction.Update, $"集群: {entity.Name} 端点");
     }
 
@@ -271,11 +269,11 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
             _ => r.VersionSelection
         };
 
-        DateTime? createdAfter = r.DateRange?.Start is not null
-            ? DateTime.SpecifyKind(r.DateRange.Start.Value, DateTimeKind.Utc)
+        DateTime? createdAfter = r.CreatedFrom is not null
+            ? DateTime.SpecifyKind(r.CreatedFrom.Value, DateTimeKind.Utc)
             : null;
-        DateTime? createdBefore = r.DateRange?.End is not null
-            ? DateTime.SpecifyKind(r.DateRange.End.Value, DateTimeKind.Utc)
+        DateTime? createdBefore = r.CreatedTo is not null
+            ? DateTime.SpecifyKind(r.CreatedTo.Value, DateTimeKind.Utc)
             : null;
 
         return new ClusterPageQuery

@@ -15,9 +15,9 @@ public class AuditServiceTests
             TestData.NewAuditLog("alice", AuditCategory.Cluster, AuditAction.Update, "集群: prod", new DateTime(2026, 1, 3)),
             TestData.NewAuditLog("bob", AuditCategory.Cluster, AuditAction.Delete, "集群: staging", new DateTime(2026, 1, 2)));
         await db.SaveChangesAsync();
-        var svc = TestServices.Audit(db);
+        var svc = TestServices.Audit(db, "alice");
 
-        var items = await svc.GetRecentAsync("alice", 5);
+        var items = await svc.GetRecentAsync(5);
 
         Assert.Equal(2, items.Count);
         Assert.All(items, i => Assert.Equal("alice", i.UserName));
@@ -34,21 +34,34 @@ public class AuditServiceTests
             db.AuditLogs.Add(TestData.NewAuditLog("alice", AuditCategory.Authentication, AuditAction.Login, $"t{i}", new DateTime(2026, 1, 1).AddDays(i)));
         }
         await db.SaveChangesAsync();
-        var svc = TestServices.Audit(db);
+        var svc = TestServices.Audit(db, "alice");
 
-        var items = await svc.GetRecentAsync("alice", 5);
+        var items = await svc.GetRecentAsync(5);
 
         Assert.Equal(5, items.Count);
         Assert.Equal("t7", items[0].Target);
     }
 
     [Fact]
-    public async Task GetRecent_EmptyUser_ReturnsEmpty()
+    public async Task GetRecent_UnknownUser_ReturnsEmpty()
     {
         using var db = SqliteDbFactory.CreateContext();
+        var svc = TestServices.Audit(db, "nobody");
+
+        var items = await svc.GetRecentAsync(5);
+
+        Assert.Empty(items);
+    }
+
+    [Fact]
+    public async Task GetRecent_NoIdentity_ReturnsEmpty()
+    {
+        using var db = SqliteDbFactory.CreateContext();
+        db.AuditLogs.Add(TestData.NewAuditLog("alice", AuditCategory.Authentication, AuditAction.Login, "t", new DateTime(2026, 1, 1)));
+        await db.SaveChangesAsync();
         var svc = TestServices.Audit(db);
 
-        var items = await svc.GetRecentAsync("nobody", 5);
+        var items = await svc.GetRecentAsync(5);
 
         Assert.Empty(items);
     }

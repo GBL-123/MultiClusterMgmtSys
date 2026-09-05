@@ -10,5 +10,7 @@ public class AccountQueryRequest
 
     public int PageSize { get; set; } = 20;
 
+    public string SortBy { get; set; } = "CreatedAt";
+
     public bool SortDescending { get; set; } = true;
 }

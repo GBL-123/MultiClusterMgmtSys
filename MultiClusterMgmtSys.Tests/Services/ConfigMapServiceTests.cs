@@ -2,6 +2,7 @@ using k8s;
 using k8s.Models;
 using Moq;
 using MultiClusterMgmtSys.Common.Exceptions;
+using MultiClusterMgmtSys.Requests;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 using Xunit;
 
@@ -24,7 +25,7 @@ public class ConfigMapServiceTests
         using var db = SqliteDbFactory.CreateContext();
         var svc = TestServices.ConfigMap(db, TestServices.ThrowingFactory());
 
-        await Assert.ThrowsAsync<NotFoundException>(() => svc.ListConfigMapsAsync(999, "default"));
+        await Assert.ThrowsAsync<NotFoundException>(() => svc.ListConfigMapsAsync(new ConfigMapQueryRequest(999, "default")));
     }
 
     [Fact]
@@ -33,7 +34,7 @@ public class ConfigMapServiceTests
         using var db = SqliteDbFactory.CreateContext();
         var svc = TestServices.ConfigMap(db, TestServices.ThrowingFactory());
 
-        var result = await svc.GetConfigMapAsync(999, "cm", "default");
+        var result = await svc.GetConfigMapAsync(new ConfigMapKeyRequest(999, "cm", "default"));
 
         Assert.Null(result);
     }
@@ -44,7 +45,7 @@ public class ConfigMapServiceTests
         using var db = SqliteDbFactory.CreateContext();
         var svc = TestServices.ConfigMap(db, TestServices.ThrowingFactory());
 
-        await Assert.ThrowsAsync<NotFoundException>(() => svc.DeleteConfigMapAsync(999, "cm", "default"));
+        await Assert.ThrowsAsync<NotFoundException>(() => svc.DeleteConfigMapAsync(new ConfigMapKeyRequest(999, "cm", "default")));
     }
 
     [Fact]
@@ -53,7 +54,7 @@ public class ConfigMapServiceTests
         using var db = SqliteDbFactory.CreateContext();
         var svc = TestServices.ConfigMap(db, TestServices.ThrowingFactory());
 
-        await Assert.ThrowsAsync<NotFoundException>(() => svc.UpdateConfigMapFromYamlAsync(999, "cm", "default", "{}"));
+        await Assert.ThrowsAsync<NotFoundException>(() => svc.UpdateConfigMapFromYamlAsync(new ConfigMapUpdateRequest(999, "cm", "default", "{}")));
     }
 
     [Fact]
@@ -62,7 +63,7 @@ public class ConfigMapServiceTests
         using var db = SqliteDbFactory.CreateContext();
         var svc = TestServices.ConfigMap(db, TestServices.ThrowingFactory());
 
-        await Assert.ThrowsAsync<NotFoundException>(() => svc.CreateConfigMapFromYamlAsync(999, "{}"));
+        await Assert.ThrowsAsync<NotFoundException>(() => svc.CreateConfigMapFromYamlAsync(new ConfigMapCreateRequest(999, "{}")));
     }
 
     [Fact]
@@ -81,7 +82,7 @@ public class ConfigMapServiceTests
 
         var svc = TestServices.ConfigMap(db, _ => fake.Object);
 
-        var ex = await Assert.ThrowsAsync<NotFoundException>(() => svc.DeleteConfigMapAsync(1, "cm", "default"));
+        var ex = await Assert.ThrowsAsync<NotFoundException>(() => svc.DeleteConfigMapAsync(new ConfigMapKeyRequest(1, "cm", "default")));
 
         Assert.Contains("删除配置", ex.UserMessage);
     }
@@ -102,7 +103,7 @@ public class ConfigMapServiceTests
         var svc = TestServices.ConfigMap(db, _ => fake.Object);
 
         await Assert.ThrowsAsync<ConflictException>(
-            () => svc.UpdateConfigMapFromYamlAsync(1, "cm", "default", "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm"));
+            () => svc.UpdateConfigMapFromYamlAsync(new ConfigMapUpdateRequest(1, "cm", "default", "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm")));
     }
 
     [Fact]
@@ -121,7 +122,7 @@ public class ConfigMapServiceTests
         var svc = TestServices.ConfigMap(db, _ => fake.Object);
 
         var ex = await Assert.ThrowsAsync<ValidationException>(
-            () => svc.CreateConfigMapFromYamlAsync(1, "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm\n  namespace: default"));
+            () => svc.CreateConfigMapFromYamlAsync(new ConfigMapCreateRequest(1, "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm\n  namespace: default")));
 
         Assert.Contains("字段非法", ex.UserMessage);
     }
@@ -135,7 +136,7 @@ public class ConfigMapServiceTests
         var svc = TestServices.ConfigMap(db, TestServices.ThrowingFactory());
 
         var ex = await Assert.ThrowsAsync<ValidationException>(
-            () => svc.CreateConfigMapFromYamlAsync(1, "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm"));
+            () => svc.CreateConfigMapFromYamlAsync(new ConfigMapCreateRequest(1, "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: cm")));
 
         Assert.Contains("namespace", ex.UserMessage);
     }

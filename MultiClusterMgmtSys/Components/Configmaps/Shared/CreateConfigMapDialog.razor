@@ -1,6 +1,7 @@
 @using k8s
 @using k8s.Models
 @using MultiClusterMgmtSys.Common.Exceptions
+@using MultiClusterMgmtSys.Requests
 @using MultiClusterMgmtSys.Services
 
 @inject ConfigMapService ConfigMapService
@@ -72,7 +73,7 @@ data: {}
         saving = true;
         try
         {
-            await ConfigMapService.CreateConfigMapFromYamlAsync(ClusterId, yamlContent);
+            await ConfigMapService.CreateConfigMapFromYamlAsync(new ConfigMapCreateRequest(ClusterId, yamlContent));
             Snackbar.Add("创建成功", Severity.Success);
             Dialog.Close(DialogResult.Ok(true));
         }

@@ -1,4 +1,3 @@
-using MudBlazor;
 using MultiClusterMgmtSys.Common.Enums;
 using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Data.Repositories;
@@ -42,22 +41,25 @@ public class AuditService(
         }
     }
 
-    public async Task<List<AuditLogViewModel>> GetRecentAsync(string userName, int count)
+    public async Task<List<AuditLogViewModel>> GetRecentAsync(int count)
     {
+        var userName = httpContextAccessor.HttpContext?.User.Identity?.Name;
         logger.LogInformation("GetRecentAuditLogs user={UserName} count={Count}", userName, count);
+        if (string.IsNullOrEmpty(userName))
+        {
+            return [];
+        }
         var items = await repo.GetRecentForUserAsync(userName, count);
         logger.LogInformation("GetRecentAuditLogs returned {Count} for user={UserName}", items.Count, userName);
         return [.. items.Select(l => l.ToAuditLogViewModel())];
     }
 
-    public async Task<PagedResult<AuditLogViewModel>> GetPagedAsync(
-        TableState state,
-        AuditLogQueryRequest query,
-        string? currentUserName,
-        bool isAdmin)
+    public async Task<PagedResult<AuditLogViewModel>> GetPagedAsync(AuditLogQueryRequest query)
     {
-        logger.LogInformation("GetAuditLogs page={Page} isAdmin={IsAdmin}", state.Page, isAdmin);
-        var (items, total) = await repo.GetPagedAsync(state, query, currentUserName, isAdmin);
+        var currentUserName = httpContextAccessor.HttpContext?.User.Identity?.Name;
+        var isAdmin = httpContextAccessor.HttpContext?.User.IsInRole("Admin") == true;
+        logger.LogInformation("GetAuditLogs page={Page} isAdmin={IsAdmin}", query.Page, isAdmin);
+        var (items, total) = await repo.GetPagedAsync(query, currentUserName, isAdmin);
         logger.LogInformation("GetAuditLogs returned {Count} of {Total}", items.Count, total);
         return new PagedResult<AuditLogViewModel>([.. items.Select(l => l.ToAuditLogViewModel())], total);
     }

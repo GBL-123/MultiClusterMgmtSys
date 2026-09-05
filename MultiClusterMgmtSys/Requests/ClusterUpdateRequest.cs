@@ -1,9 +1,11 @@
 using MultiClusterMgmtSys.Common.Enums;
 
-namespace MultiClusterMgmtSys.Components.Clusters.ViewModels;
+namespace MultiClusterMgmtSys.Requests;
 
-public class ClusterCreateViewModel
+public class ClusterUpdateRequest
 {
+    public int Id { get; set; }
+
     public string Name { get; set; } = "";
 
     public int? GroupId { get; set; }
@@ -17,6 +19,4 @@ public class ClusterCreateViewModel
     public string? Token { get; set; }
 
     public bool SkipTlsVerify { get; set; } = true;
-
-    public List<ClusterEndpointEditItem> Endpoints { get; set; } = new();
 }

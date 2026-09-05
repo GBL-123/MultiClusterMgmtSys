@@ -1,6 +1,3 @@
-using k8s;
-using Moq;
-using MudBlazor;
 using MultiClusterMgmtSys.Common.Enums;
 using MultiClusterMgmtSys.Common.Exceptions;
 using MultiClusterMgmtSys.Models;
@@ -84,7 +81,8 @@ public class ClusterServiceTests
         var svc = TestServices.Cluster(db, TestServices.ThrowingFactory());
 
         var req = Query();
-        req.DateRange = new DateRange(new DateTime(2026, 1, 10), new DateTime(2026, 1, 10));
+        req.CreatedFrom = new DateTime(2026, 1, 10);
+        req.CreatedTo = new DateTime(2026, 1, 10);
 
         var result = await svc.GetPagedAsync(req);
 
@@ -143,7 +141,7 @@ public class ClusterServiceTests
         var svc = TestServices.Cluster(db, TestServices.ThrowingFactory());
 
         var ex = await Assert.ThrowsAsync<NotFoundException>(
-            () => svc.UpdateClusterEndpointsAsync(999, []));
+            () => svc.UpdateClusterEndpointsAsync(new ClusterEndpointsUpdateRequest(999, [])));
 
         Assert.Contains("999", ex.UserMessage);
     }

@@ -1,5 +1,7 @@
 namespace MultiClusterMgmtSys.Requests;
 
+public record NodeIpNotesUpdateRequest(int ClusterId, string NodeName, IReadOnlyList<NodeIpNoteEditItem> Items);
+
 /// <summary>
 /// 节点 IP 备注编辑行：Dialog 每行一个 IP 的备注。
 /// </summary>

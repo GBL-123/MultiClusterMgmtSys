@@ -1,5 +1,4 @@
 using Bunit;
-using Bunit.TestDoubles;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using MudBlazor.Services;
@@ -60,13 +59,13 @@ public static class BunitHost
         ctx.Services.AddScoped<AccountService>(sp =>
         {
             var db = sp.GetRequiredService<ApplicationDbContext>();
-            var (userManager, roleManager, signInManager) = SeedUser.CreateIdentityAsync(db).GetAwaiter().GetResult();
+            var (userManager, roleManager, _) = SeedUser.CreateIdentityAsync(db).GetAwaiter().GetResult();
             return new AccountService(
                 userManager,
                 roleManager,
-                signInManager,
                 db,
                 sp.GetRequiredService<AuditService>(),
+                new TestServices.NullHttpContextAccessor(),
                 NullLogger<AccountService>.Instance);
         });
 

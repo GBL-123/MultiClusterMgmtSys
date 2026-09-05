@@ -1,8 +1,8 @@
 using Bunit;
 using Bunit.TestDoubles;
 using MultiClusterMgmtSys.Components.Clusters.Shared;
-using MultiClusterMgmtSys.Components.Clusters.ViewModels;
 using MultiClusterMgmtSys.Common.Enums;
+using MultiClusterMgmtSys.ViewModels;
 using Xunit;
 
 namespace MultiClusterMgmtSys.Tests.Components.Clusters.Shared;

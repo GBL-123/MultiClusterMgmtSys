@@ -1,6 +1,6 @@
 using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Components.Clusters.ViewModels;
 using MultiClusterMgmtSys.Data.Entities;
+using MultiClusterMgmtSys.Requests;
 
 namespace MultiClusterMgmtSys.ViewModels.Mappings;
 

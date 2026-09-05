@@ -9,6 +9,7 @@ public class AuthService(
     UserManager<ApplicationUser> userManger,
     SignInManager<ApplicationUser> signInManager,
     AuditService auditService,
+    IHttpContextAccessor httpContextAccessor,
     ILogger<AuthService> logger)
 {
     private const string MemberRole = "Member";
@@ -18,6 +19,8 @@ public class AuthService(
     private readonly SignInManager<ApplicationUser> signInManager = signInManager;
 
     private readonly AuditService auditService = auditService;
+
+    private readonly IHttpContextAccessor httpContextAccessor = httpContextAccessor;
 
     private readonly ILogger<AuthService> logger = logger;
 
@@ -66,8 +69,9 @@ public class AuthService(
         return result;
     }
 
-    public async Task LogoutAsync(string userName)
+    public async Task LogoutAsync()
     {
+        var userName = httpContextAccessor.HttpContext?.User.Identity?.Name;
         logger.LogInformation("{userName} logging out", userName);
         await signInManager.SignOutAsync();
         await auditService.LogAsync(AuditCategory.Authentication, AuditAction.Logout, $"账号: {userName}", userName);

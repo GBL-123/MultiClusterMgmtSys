@@ -68,15 +68,12 @@
 
     private bool isAdmin;
 
-    private string currentUserName = "";
-
     private MudTable<AuditLogViewModel> table = new();
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         isAdmin = authState.User.IsInRole("Admin");
-        currentUserName = authState.User.Identity?.Name ?? "";
     }
 
     private Task RefreshTable() => table.ReloadServerData();
@@ -85,7 +82,11 @@
 
     private async Task<TableData<AuditLogViewModel>> LoadData(TableState state, CancellationToken _)
     {
-        var result = await AuditSvc.GetPagedAsync(state, query, currentUserName, isAdmin);
+        query.Page = state.Page > 0 ? state.Page + 1 : Math.Max(query.Page, 1);
+        query.PageSize = Math.Max(state.PageSize > 0 ? state.PageSize : query.PageSize, 1);
+        query.SortBy = string.IsNullOrEmpty(state.SortLabel) ? "CreatedAt" : state.SortLabel;
+        query.SortDescending = state.SortDirection != SortDirection.Ascending;
+        var result = await AuditSvc.GetPagedAsync(query);
         return new TableData<AuditLogViewModel>
         {
             Items = result.Items,

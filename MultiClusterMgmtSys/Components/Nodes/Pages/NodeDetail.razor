@@ -1,9 +1,9 @@
 @attribute [Authorize]
 @page "/nodes/{ClusterId:int}/{NodeName}"
 
+@using MultiClusterMgmtSys.Requests
 @using MultiClusterMgmtSys.Services
-@using MultiClusterMgmtSys.Components.Clusters.ViewModels
-@using MultiClusterMgmtSys.Components.Common
+@using MultiClusterMgmtSys.ViewModels
 @using MultiClusterMgmtSys.Components.Nodes.Shared
 @using MultiClusterMgmtSys.ViewModels
 
@@ -114,7 +114,7 @@
         loading = true;
         try
         {
-            node = await ClusterNodeService.GetNodeDetailAsync(ClusterId, NodeName);
+            node = await ClusterNodeService.GetNodeDetailAsync(new NodeDetailQueryRequest(ClusterId, NodeName));
         }
         catch (Exception ex)
         {

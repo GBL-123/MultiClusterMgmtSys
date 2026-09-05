@@ -1,6 +1,7 @@
 @using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Requests
 @using MultiClusterMgmtSys.Services
-@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+@using MultiClusterMgmtSys.ViewModels
 
 @inject ClusterService ClusterService
 @inject GroupService GroupService
@@ -229,7 +230,7 @@
         {
             if (isEdit)
             {
-                var vm = new ClusterUpdateViewModel
+                var request = new ClusterUpdateRequest
                 {
                     Id = ClusterId!.Value,
                     Name = Name,
@@ -245,12 +246,12 @@
                     SkipTlsVerify = SkipTlsVerify
                 };
 
-                await ClusterService.UpdateClusterAsync(vm);
+                await ClusterService.UpdateClusterAsync(request);
                 Snackbar.Add("集群已更新", Severity.Success);
             }
             else
             {
-                var vm = new ClusterCreateViewModel
+                var request = new ClusterCreateRequest
                 {
                     Name = Name,
                     GroupId = GroupId,
@@ -262,7 +263,7 @@
                     Endpoints = endpoints
                 };
 
-                await ClusterService.AddClusterAsync(vm);
+                await ClusterService.AddClusterAsync(request);
                 Snackbar.Add("集群添加成功", Severity.Success);
             }
 

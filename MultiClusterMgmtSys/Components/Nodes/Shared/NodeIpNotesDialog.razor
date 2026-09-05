@@ -89,7 +89,7 @@
                 Note = string.IsNullOrWhiteSpace(a.Note) ? null : a.Note.Trim()
             }).ToList();
 
-            await ClusterNodeService.UpdateNodeIpNotesAsync(ClusterId, NodeName, items);
+            await ClusterNodeService.UpdateNodeIpNotesAsync(new NodeIpNotesUpdateRequest(ClusterId, NodeName, items));
             Snackbar.Add("节点 IP 备注已更新", Severity.Success);
             Dialog.Close(DialogResult.Ok(true));
         }

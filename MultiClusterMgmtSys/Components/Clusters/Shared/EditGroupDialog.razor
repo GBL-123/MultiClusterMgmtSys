@@ -1,3 +1,4 @@
+@using MultiClusterMgmtSys.Requests
 @using MultiClusterMgmtSys.Services
 
 @inject GroupService GroupService
@@ -74,7 +75,7 @@
             }
             else
             {
-                await GroupService.RenameGroupAsync(GroupId.Value, groupName);
+                await GroupService.RenameGroupAsync(new GroupRenameRequest(GroupId.Value, groupName));
                 Snackbar.Add("分组已重命名", Severity.Success);
             }
             Dialog.Close(DialogResult.Ok(true));

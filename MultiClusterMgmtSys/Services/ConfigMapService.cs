@@ -4,6 +4,7 @@ using MultiClusterMgmtSys.Common.Enums;
 using MultiClusterMgmtSys.Common.Exceptions;
 using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Data.Repositories;
+using MultiClusterMgmtSys.Requests;
 using MultiClusterMgmtSys.ViewModels;
 using MultiClusterMgmtSys.ViewModels.Mappings;
 using System.Text;
@@ -36,107 +37,111 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
         }
     }
 
-    public async Task<List<ConfigMapListViewModel>> ListConfigMapsAsync(int clusterId, string? ns)
+    public async Task<List<ConfigMapListViewModel>> ListConfigMapsAsync(ConfigMapQueryRequest request)
     {
-        var entity = await repo.GetByIdAsync(clusterId)
-            ?? throw new NotFoundException($"集群 {clusterId} 不存在");
+        var entity = await repo.GetByIdAsync(request.ClusterId)
+            ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
         var config = BuildConfig(entity);
         using var client = clientFactory(config);
         try
         {
-            var list = ns is null
+            var list = request.Namespace is null
                 ? await client.CoreV1.ListConfigMapForAllNamespacesAsync()
-                : await client.CoreV1.ListNamespacedConfigMapAsync(ns);
+                : await client.CoreV1.ListNamespacedConfigMapAsync(request.Namespace);
             return list.Items.Select(cm => cm.ToConfigMapListViewModel()).ToList();
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "ListConfigMaps failed clusterId={ClusterId} ns={Namespace}", clusterId, ns);
+            logger.LogWarning(ex, "ListConfigMaps failed clusterId={ClusterId} ns={Namespace}", request.ClusterId, request.Namespace);
             throw K8sExceptionMapper.Translate(ex, "加载配置列表");
         }
     }
 
-    public async Task<ConfigMapDetailViewModel?> GetConfigMapAsync(int clusterId, string name, string ns)
+    public async Task<ConfigMapDetailViewModel?> GetConfigMapAsync(ConfigMapKeyRequest request)
     {
-        var entity = await repo.GetByIdAsync(clusterId);
+        var entity = await repo.GetByIdAsync(request.ClusterId);
         if (entity is null) return null;
         var config = BuildConfig(entity);
         using var client = clientFactory(config);
         try
         {
-            var cm = await client.CoreV1.ReadNamespacedConfigMapAsync(name, ns);
+            var cm = await client.CoreV1.ReadNamespacedConfigMapAsync(request.Name, request.Namespace);
             return cm.ToConfigMapDetailViewModel();
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "ReadConfigMap failed clusterId={ClusterId} ns={Namespace} name={Name}", clusterId, ns, name);
+            logger.LogWarning(ex, "ReadConfigMap failed clusterId={ClusterId} ns={Namespace} name={Name}",
+                request.ClusterId, request.Namespace, request.Name);
             throw K8sExceptionMapper.Translate(ex, "加载配置详情");
         }
     }
 
-    public async Task DeleteConfigMapAsync(int clusterId, string name, string ns)
+    public async Task DeleteConfigMapAsync(ConfigMapKeyRequest request)
     {
-        var entity = await repo.GetByIdAsync(clusterId)
-            ?? throw new NotFoundException($"集群 {clusterId} 不存在");
+        var entity = await repo.GetByIdAsync(request.ClusterId)
+            ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
         var config = BuildConfig(entity);
         using var client = clientFactory(config);
         try
         {
-            await client.CoreV1.DeleteNamespacedConfigMapAsync(name, ns);
+            await client.CoreV1.DeleteNamespacedConfigMapAsync(request.Name, request.Namespace);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "DeleteConfigMap failed clusterId={ClusterId} ns={Namespace} name={Name}", clusterId, ns, name);
+            logger.LogWarning(ex, "DeleteConfigMap failed clusterId={ClusterId} ns={Namespace} name={Name}",
+                request.ClusterId, request.Namespace, request.Name);
             throw K8sExceptionMapper.Translate(ex, "删除配置");
         }
-        await auditService.LogAsync(AuditCategory.Configmap, AuditAction.Delete, $"配置: {ns}/{name} @ 集群 {entity.Name}");
+        await auditService.LogAsync(AuditCategory.Configmap, AuditAction.Delete, $"配置: {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
     }
 
-    public async Task UpdateConfigMapFromYamlAsync(int clusterId, string name, string ns, string yaml)
+    public async Task UpdateConfigMapFromYamlAsync(ConfigMapUpdateRequest request)
     {
-        var entity = await repo.GetByIdAsync(clusterId)
-            ?? throw new NotFoundException($"集群 {clusterId} 不存在");
+        var entity = await repo.GetByIdAsync(request.ClusterId)
+            ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
         var config = BuildConfig(entity);
         using var client = clientFactory(config);
         V1ConfigMap deserialized;
         try
         {
-            deserialized = KubernetesYaml.Deserialize<V1ConfigMap>(yaml);
+            deserialized = KubernetesYaml.Deserialize<V1ConfigMap>(request.Yaml);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Deserialize YAML failed for update clusterId={ClusterId} ns={Namespace} name={Name}", clusterId, ns, name);
+            logger.LogWarning(ex, "Deserialize YAML failed for update clusterId={ClusterId} ns={Namespace} name={Name}",
+                request.ClusterId, request.Namespace, request.Name);
             throw new ValidationException($"YAML 格式错误:{ex.Message}");
         }
         try
         {
-            var existing = await client.CoreV1.ReadNamespacedConfigMapAsync(name, ns);
+            var existing = await client.CoreV1.ReadNamespacedConfigMapAsync(request.Name, request.Namespace);
             existing.Data = deserialized.Data;
             existing.BinaryData = deserialized.BinaryData;
-            await client.CoreV1.ReplaceNamespacedConfigMapAsync(existing, name, ns);
+            await client.CoreV1.ReplaceNamespacedConfigMapAsync(existing, request.Name, request.Namespace);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "ReplaceConfigMap failed clusterId={ClusterId} ns={Namespace} name={Name}", clusterId, ns, name);
+            logger.LogWarning(ex, "ReplaceConfigMap failed clusterId={ClusterId} ns={Namespace} name={Name}",
+                request.ClusterId, request.Namespace, request.Name);
             throw K8sExceptionMapper.Translate(ex, "保存配置");
         }
-        await auditService.LogAsync(AuditCategory.Configmap, AuditAction.Update, $"配置: {ns}/{name} @ 集群 {entity.Name}");
+        await auditService.LogAsync(AuditCategory.Configmap, AuditAction.Update, $"配置: {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
     }
 
-    public async Task CreateConfigMapFromYamlAsync(int clusterId, string yaml)
+    public async Task CreateConfigMapFromYamlAsync(ConfigMapCreateRequest request)
     {
-        var entity = await repo.GetByIdAsync(clusterId)
-            ?? throw new NotFoundException($"集群 {clusterId} 不存在");
+        var entity = await repo.GetByIdAsync(request.ClusterId)
+            ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
         var config = BuildConfig(entity);
         using var client = clientFactory(config);
         V1ConfigMap body;
         try
         {
-            body = KubernetesYaml.Deserialize<V1ConfigMap>(yaml);
+            body = KubernetesYaml.Deserialize<V1ConfigMap>(request.Yaml);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Deserialize YAML failed for create clusterId={ClusterId}", clusterId);
+            logger.LogWarning(ex, "Deserialize YAML failed for create clusterId={ClusterId}", request.ClusterId);
             throw new ValidationException($"YAML 格式错误:{ex.Message}");
         }
         var ns = body.Metadata?.NamespaceProperty;
@@ -148,7 +153,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "CreateConfigMap failed clusterId={ClusterId} ns={Namespace}", clusterId, ns);
+            logger.LogWarning(ex, "CreateConfigMap failed clusterId={ClusterId} ns={Namespace}", request.ClusterId, ns);
             throw K8sExceptionMapper.Translate(ex, "创建配置");
         }
         await auditService.LogAsync(AuditCategory.Configmap, AuditAction.Create, $"配置: {ns}/{body.Metadata?.Name ?? "未知"} @ 集群 {entity.Name}");

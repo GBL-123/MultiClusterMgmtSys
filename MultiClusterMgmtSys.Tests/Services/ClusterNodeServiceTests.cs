@@ -26,7 +26,7 @@ public class ClusterNodeServiceTests
         };
 
         var ex = await Assert.ThrowsAsync<ValidationException>(
-            () => svc.UpdateNodeIpNotesAsync(1, "node-a", items));
+            () => svc.UpdateNodeIpNotesAsync(new NodeIpNotesUpdateRequest(1, "node-a", items)));
 
         Assert.Contains("64", ex.UserMessage);
     }
@@ -38,7 +38,7 @@ public class ClusterNodeServiceTests
         var svc = TestServices.NodeService(db, TestServices.ThrowingFactory());
 
         await Assert.ThrowsAsync<NotFoundException>(
-            () => svc.UpdateNodeIpNotesAsync(999, "node-a", []));
+            () => svc.UpdateNodeIpNotesAsync(new NodeIpNotesUpdateRequest(999, "node-a", [])));
     }
 
     [Fact]
@@ -56,7 +56,7 @@ public class ClusterNodeServiceTests
             new() { Address = "10.0.0.2", Note = "更新" }
         };
 
-        await svc.UpdateNodeIpNotesAsync(1, "node-a", items);
+        await svc.UpdateNodeIpNotesAsync(new NodeIpNotesUpdateRequest(1, "node-a", items));
 
         var remarks = db.NodeIpRemarks.Where(r => r.NodeName == "node-a").OrderBy(r => r.Address).ToList();
         Assert.Equal(2, remarks.Count);
@@ -113,7 +113,7 @@ public class ClusterNodeServiceTests
         await db.SaveChangesAsync();
         var svc = TestServices.NodeService(db, TestServices.ThrowingFactory());
 
-        var result = await svc.GetNodeDetailAsync(1, "node-a");
+        var result = await svc.GetNodeDetailAsync(new NodeDetailQueryRequest(1, "node-a"));
 
         Assert.NotNull(result);
         Assert.False(result.IsReachable);

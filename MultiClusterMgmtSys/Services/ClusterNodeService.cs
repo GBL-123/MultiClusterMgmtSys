@@ -2,7 +2,6 @@ using k8s;
 using k8s.Models;
 using MultiClusterMgmtSys.Common.Enums;
 using MultiClusterMgmtSys.Common.Exceptions;
-using MultiClusterMgmtSys.Components.Clusters.ViewModels;
 using MultiClusterMgmtSys.ViewModels;
 using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Data.Repositories;
@@ -56,16 +55,16 @@ public class ClusterNodeService(ClusterRepository repo, AuditService auditServic
         return result;
     }
 
-    public async Task<ClusterNodeDetailViewModel?> GetNodeDetailAsync(int clusterId, string nodeName)
+    public async Task<ClusterNodeDetailViewModel?> GetNodeDetailAsync(NodeDetailQueryRequest request)
     {
-        var entity = await repo.GetByIdAsync(clusterId);
+        var entity = await repo.GetByIdAsync(request.ClusterId);
         if (entity is null) return null;
 
         if (entity.Status == ClusterStatus.Offline)
         {
             return new ClusterNodeDetailViewModel
             {
-                ClusterId = clusterId,
+                ClusterId = request.ClusterId,
                 ClusterName = entity.Name,
                 IsReachable = false
             };
@@ -78,43 +77,44 @@ public class ClusterNodeService(ClusterRepository repo, AuditService auditServic
         V1Node node;
         try
         {
-            node = await client.CoreV1.ReadNodeAsync(nodeName);
+            node = await client.CoreV1.ReadNodeAsync(request.NodeName);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "ReadNode failed clusterId={ClusterId} node={NodeName}", clusterId, nodeName);
+            logger.LogWarning(ex, "ReadNode failed clusterId={ClusterId} node={NodeName}", request.ClusterId, request.NodeName);
             throw K8sExceptionMapper.Translate(ex, "加载节点详情");
         }
         var vm = MapNodeDetail(node, entity, remarks);
-        vm.ClusterId = clusterId;
+        vm.ClusterId = request.ClusterId;
         vm.ClusterName = entity.Name;
         vm.IsReachable = true;
         return vm;
     }
 
-    public async Task UpdateNodeIpNotesAsync(int clusterId, string nodeName, List<NodeIpNoteEditItem> items)
+    public async Task UpdateNodeIpNotesAsync(NodeIpNotesUpdateRequest request)
     {
-        logger.LogInformation("UpdateNodeIpNotes clusterId={ClusterId} node={NodeName} count={Count}", clusterId, nodeName, items.Count);
-        var entity = await repo.GetByIdAsync(clusterId);
+        logger.LogInformation("UpdateNodeIpNotes clusterId={ClusterId} node={NodeName} count={Count}",
+            request.ClusterId, request.NodeName, request.Items.Count);
+        var entity = await repo.GetByIdAsync(request.ClusterId);
         if (entity is null)
         {
-            logger.LogWarning("Cluster {ClusterId} not found", clusterId);
-            throw new NotFoundException($"集群 {clusterId} 不存在");
+            logger.LogWarning("Cluster {ClusterId} not found", request.ClusterId);
+            throw new NotFoundException($"集群 {request.ClusterId} 不存在");
         }
 
-        var incoming = items
+        var incoming = request.Items
             .Where(i => !string.IsNullOrWhiteSpace(i.Address))
             .ToDictionary(i => i.Address, i => i.Note);
 
         var existing = entity.NodeIpRemarks
-            .Where(r => r.NodeName == nodeName)
+            .Where(r => r.NodeName == request.NodeName)
             .ToDictionary(r => r.Address);
 
         foreach (var (address, note) in incoming)
         {
             if (note is not null && note.Length > 64)
             {
-                logger.LogWarning("NodeIpRemark note too long node={NodeName} address={Address}", nodeName, address);
+                logger.LogWarning("NodeIpRemark note too long node={NodeName} address={Address}", request.NodeName, address);
                 throw new ValidationException("备注长度不能超过 64 个字符");
             }
 
@@ -126,8 +126,8 @@ public class ClusterNodeService(ClusterRepository repo, AuditService auditServic
             {
                 entity.NodeIpRemarks.Add(new NodeIpRemark
                 {
-                    ClusterId = clusterId,
-                    NodeName = nodeName,
+                    ClusterId = request.ClusterId,
+                    NodeName = request.NodeName,
                     Address = address,
                     Note = note
                 });
@@ -143,8 +143,8 @@ public class ClusterNodeService(ClusterRepository repo, AuditService auditServic
         }
 
         await repo.UpdateAsync(entity);
-        logger.LogInformation("UpdateNodeIpNotes persisted clusterId={ClusterId} node={NodeName}", clusterId, nodeName);
-        await auditService.LogAsync(AuditCategory.Node, AuditAction.Update, $"节点: {nodeName} @ 集群 {entity.Name}");
+        logger.LogInformation("UpdateNodeIpNotes persisted clusterId={ClusterId} node={NodeName}", request.ClusterId, request.NodeName);
+        await auditService.LogAsync(AuditCategory.Node, AuditAction.Update, $"节点: {request.NodeName} @ 集群 {entity.Name}");
     }
 
     // ---- Private k8s helpers ----

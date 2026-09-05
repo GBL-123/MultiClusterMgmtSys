@@ -1,7 +1,8 @@
 @using MultiClusterMgmtSys.Common.Enums
 @using MultiClusterMgmtSys.Common.Exceptions
+@using MultiClusterMgmtSys.Requests
 @using MultiClusterMgmtSys.Services
-@using MultiClusterMgmtSys.Components.Clusters.ViewModels
+@using MultiClusterMgmtSys.ViewModels
 
 @inject ClusterService ClusterService
 @inject ISnackbar Snackbar
@@ -92,7 +93,7 @@
         saving = true;
         try
         {
-            await ClusterService.UpdateClusterEndpointsAsync(ClusterId, Items);
+            await ClusterService.UpdateClusterEndpointsAsync(new ClusterEndpointsUpdateRequest(ClusterId, Items));
             Snackbar.Add("端点已更新", Severity.Success);
             Dialog.Close(DialogResult.Ok(true));
         }

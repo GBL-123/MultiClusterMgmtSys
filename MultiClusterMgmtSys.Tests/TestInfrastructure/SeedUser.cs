@@ -9,6 +9,7 @@ using MultiClusterMgmtSys.Data;
 using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Data.Repositories;
 using MultiClusterMgmtSys.Services;
+using System.Security.Claims;
 
 namespace MultiClusterMgmtSys.Tests.TestInfrastructure;
 
@@ -79,8 +80,34 @@ public static class TestServices
         public HttpContext? HttpContext { get; set; }
     }
 
-    public static AuditService Audit(ApplicationDbContext db)
-        => new(new AuditLogRepository(db), new NullHttpContextAccessor(), NullLogger<AuditService>.Instance);
+    /// <summary>
+    /// 可构造身份的 HttpContext:按用户名/用户 ID/角色注入 Claims。
+    /// userName 为 null 时代表"无身份"(等价 NullHttpContextAccessor)。
+    /// </summary>
+    public sealed class FakeHttpContextAccessor : IHttpContextAccessor
+    {
+        public FakeHttpContextAccessor(string? userName, int? userId = null, params string[] roles)
+        {
+            var claims = new List<Claim>();
+            if (userName is not null) claims.Add(new Claim(ClaimTypes.Name, userName));
+            if (userId.HasValue) claims.Add(new Claim(ClaimTypes.NameIdentifier, userId.Value.ToString()));
+            claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(claims, "test"))
+            };
+        }
+
+        public HttpContext? HttpContext { get; set; }
+    }
+
+    public static AuditService Audit(ApplicationDbContext db, string? userName = null)
+    {
+        IHttpContextAccessor accessor = userName is null
+            ? new NullHttpContextAccessor()
+            : new FakeHttpContextAccessor(userName);
+        return new(new AuditLogRepository(db), accessor, NullLogger<AuditService>.Instance);
+    }
 
     public static ClusterNodeService NodeService(ApplicationDbContext db, Func<KubernetesClientConfiguration, IKubernetes> factory)
         => new(new ClusterRepository(db), Audit(db), NullLogger<ClusterNodeService>.Instance, factory);

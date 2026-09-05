@@ -1,10 +1,10 @@
 using MultiClusterMgmtSys.Requests;
-using MultiClusterMgmtSys.Components.Clusters.ViewModels;
 using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Data.Repositories;
 using MultiClusterMgmtSys.Common.Enums;
 using MultiClusterMgmtSys.Common.Exceptions;
 using MultiClusterMgmtSys.ViewModels.Mappings;
+using MultiClusterMgmtSys.ViewModels;
 
 namespace MultiClusterMgmtSys.Services;
 
@@ -58,39 +58,39 @@ public class GroupService(
         logger.LogInformation("DeleteGroup done id={GroupId}", id);
     }
 
-    public async Task RenameGroupAsync(int id, string newName)
+    public async Task RenameGroupAsync(GroupRenameRequest request)
     {
-        logger.LogInformation("RenameGroup id={GroupId} newName={NewName}", id, newName);
-        var existing = await repo.GetByIdAsync(id);
+        logger.LogInformation("RenameGroup id={GroupId} newName={NewName}", request.Id, request.NewName);
+        var existing = await repo.GetByIdAsync(request.Id);
         if (existing is null)
         {
-            logger.LogWarning("RenameGroup id={GroupId} not found", id);
-            throw new NotFoundException($"分组 {id} 不存在");
+            logger.LogWarning("RenameGroup id={GroupId} not found", request.Id);
+            throw new NotFoundException($"分组 {request.Id} 不存在");
         }
 
-        await repo.RenameAsync(id, newName);
-        logger.LogInformation("RenameGroup done id={GroupId}", id);
+        await repo.RenameAsync(request.Id, request.NewName);
+        logger.LogInformation("RenameGroup done id={GroupId}", request.Id);
         await auditService.LogAsync(AuditCategory.Group, AuditAction.Rename, $"分组: {existing.Name}");
     }
 
-    public async Task<int> MoveClustersToGroupAsync(IEnumerable<int> clusterIds, int? targetGroupId)
+    public async Task<int> MoveClustersToGroupAsync(MoveClustersRequest request)
     {
-        if (targetGroupId == 0)
+        if (request.TargetGroupId == 0)
         {
             logger.LogWarning("MoveClustersToGroup rejected targetGroupId=0 (sentinel must be translated to null before service call)");
             throw new ValidationException("目标分组无效,请刷新后重试");
         }
 
-        var ids = clusterIds.ToList();
-        logger.LogInformation("MoveClustersToGroup count={Count} targetGroupId={TargetGroupId}", ids.Count, targetGroupId);
+        var ids = request.ClusterIds.ToList();
+        logger.LogInformation("MoveClustersToGroup count={Count} targetGroupId={TargetGroupId}", ids.Count, request.TargetGroupId);
 
-        var affected = await clusterRepo.SetGroupIdForClustersAsync(ids, targetGroupId);
-        logger.LogInformation("MoveClustersToGroup affected={Affected} targetGroupId={TargetGroupId}", affected, targetGroupId);
+        var affected = await clusterRepo.SetGroupIdForClustersAsync(ids, request.TargetGroupId);
+        logger.LogInformation("MoveClustersToGroup affected={Affected} targetGroupId={TargetGroupId}", affected, request.TargetGroupId);
         if (affected > 0)
         {
-            var groupName = targetGroupId is null
+            var groupName = request.TargetGroupId is null
                 ? "未分组"
-                : (await repo.GetByIdAsync(targetGroupId.Value))?.Name ?? $"#{targetGroupId}";
+                : (await repo.GetByIdAsync(request.TargetGroupId.Value))?.Name ?? $"#{request.TargetGroupId}";
             await auditService.LogAsync(AuditCategory.Group, AuditAction.Move, $"集群 {affected} 个 → {groupName}");
         }
         return affected;

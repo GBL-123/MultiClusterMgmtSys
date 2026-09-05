@@ -112,7 +112,11 @@
 
     private async Task<TableData<AccountViewModel>> LoadData(TableState state, CancellationToken _)
     {
-        var result = await AccountSvc.GetPagedAccountsAsync(state, Query);
+        Query.Page = state.Page > 0 ? state.Page + 1 : Math.Max(Query.Page, 1);
+        Query.PageSize = Math.Max(state.PageSize > 0 ? state.PageSize : Query.PageSize, 1);
+        Query.SortBy = string.IsNullOrEmpty(state.SortLabel) ? "CreatedAt" : state.SortLabel;
+        Query.SortDescending = state.SortDirection != SortDirection.Ascending;
+        var result = await AccountSvc.GetPagedAccountsAsync(Query);
         return new TableData<AccountViewModel>
         {
             Items = result.Items,

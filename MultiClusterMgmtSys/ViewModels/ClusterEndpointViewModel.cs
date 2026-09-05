@@ -1,6 +1,6 @@
 using MultiClusterMgmtSys.Common.Enums;
 
-namespace MultiClusterMgmtSys.Components.Clusters.ViewModels;
+namespace MultiClusterMgmtSys.ViewModels;
 
 /// <summary>
 /// 集群端点展示 VM：详情页只读视图，不暴露任何编辑状态。

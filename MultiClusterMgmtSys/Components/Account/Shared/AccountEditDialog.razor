@@ -1,4 +1,5 @@
 @using Microsoft.AspNetCore.Identity
+@using MultiClusterMgmtSys.Requests
 @using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.ViewModels
 
@@ -104,8 +105,8 @@
         try
         {
             var result = isEdit
-                ? await AccountSvc.UpdateAccountAsync(EditingAccount!.Id, roleName)
-                : await AccountSvc.CreateAccountAsync(userName, password, roleName);
+                ? await AccountSvc.UpdateAccountAsync(new AccountUpdateRequest(EditingAccount!.Id, roleName))
+                : await AccountSvc.CreateAccountAsync(new AccountCreateRequest(userName, password, roleName));
             if (result.Succeeded)
             {
                 Dialog.Close(DialogResult.Ok(true));

@@ -5,8 +5,7 @@
 @using MultiClusterMgmtSys.Common.Enums
 @using MultiClusterMgmtSys.Requests
 @using MultiClusterMgmtSys.Services
-@using MultiClusterMgmtSys.Components.Clusters.ViewModels
-@using MultiClusterMgmtSys.Components.Common
+@using MultiClusterMgmtSys.ViewModels
 @using MultiClusterMgmtSys.ViewModels
 @using MultiClusterMgmtSys.Components.Configmaps.Shared
 
@@ -232,7 +231,7 @@
 
                 try
                 {
-                    configMaps = await ConfigMapService.ListConfigMapsAsync(id, selectedNamespace);
+                    configMaps = await ConfigMapService.ListConfigMapsAsync(new ConfigMapQueryRequest(id, selectedNamespace));
                 }
                 catch (Exception ex)
                 {
@@ -267,7 +266,7 @@
         loading = true;
         try
         {
-            configMaps = await ConfigMapService.ListConfigMapsAsync(EffectiveClusterId.Value, selectedNamespace);
+            configMaps = await ConfigMapService.ListConfigMapsAsync(new ConfigMapQueryRequest(EffectiveClusterId.Value, selectedNamespace));
         }
         catch (Exception ex)
         {
@@ -314,7 +313,7 @@
         {
             try
             {
-                await ConfigMapService.DeleteConfigMapAsync(EffectiveClusterId!.Value, args.Name, args.Namespace);
+                await ConfigMapService.DeleteConfigMapAsync(new ConfigMapKeyRequest(EffectiveClusterId!.Value, args.Name, args.Namespace));
                 Snackbar.Add("删除成功", Severity.Success);
                 await LoadAsync(EffectiveClusterId!.Value);
             }

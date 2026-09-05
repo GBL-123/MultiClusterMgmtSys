@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using MudBlazor;
 using MultiClusterMgmtSys.Common.Enums;
 using MultiClusterMgmtSys.Common.Exceptions;
 using MultiClusterMgmtSys.Data;
@@ -8,15 +7,16 @@ using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Requests;
 using MultiClusterMgmtSys.ViewModels;
 using MultiClusterMgmtSys.ViewModels.Mappings;
+using System.Security.Claims;
 
 namespace MultiClusterMgmtSys.Services;
 
 public class AccountService(
     UserManager<ApplicationUser> userManger,
     RoleManager<IdentityRole<int>> roleManager,
-    SignInManager<ApplicationUser> signInManager,
     ApplicationDbContext db,
     AuditService auditService,
+    IHttpContextAccessor httpContextAccessor,
     ILogger<AccountService> logger)
 {
     private const string AdminRole = "Admin";
@@ -31,11 +31,11 @@ public class AccountService(
 
     private readonly RoleManager<IdentityRole<int>> roleManager = roleManager;
 
-    private readonly SignInManager<ApplicationUser> signInManager = signInManager;
-
     private readonly ApplicationDbContext db = db;
 
     private readonly AuditService auditService = auditService;
+
+    private readonly IHttpContextAccessor httpContextAccessor = httpContextAccessor;
 
     private readonly ILogger<AccountService> logger = logger;
 
@@ -74,12 +74,12 @@ public class AccountService(
         logger.LogInformation("Create admin account succeeded");
     }
 
-    public async Task<PagedResult<AccountViewModel>> GetPagedAccountsAsync(TableState state, AccountQueryRequest query)
+    public async Task<PagedResult<AccountViewModel>> GetPagedAccountsAsync(AccountQueryRequest query)
     {
         logger.LogInformation("Querying accounts: search={SearchName}, role={RoleFilter}", query.SearchName, query.RoleFilter);
-        var page = state.Page > 0 ? state.Page + 1 : Math.Max(query.Page, 1);
-        var pageSize = Math.Max(state.PageSize > 0 ? state.PageSize : query.PageSize, 1);
-        var sortDescending = state.SortDirection != SortDirection.Ascending;
+        var page = Math.Max(query.Page, 1);
+        var pageSize = Math.Max(query.PageSize, 1);
+        var sortDescending = query.SortDescending;
 
         IQueryable<ApplicationUser> q = userManager.Users.AsNoTracking();
 
@@ -107,7 +107,7 @@ public class AccountService(
         }
 
         var total = await q.CountAsync();
-        var users = await (state.SortLabel switch
+        var users = await (query.SortBy switch
         {
             "UserName" => sortDescending
                 ? q.OrderByDescending(u => u.UserName)
@@ -134,12 +134,12 @@ public class AccountService(
         return new PagedResult<AccountViewModel>(vms, total);
     }
 
-    public async Task<AccountBatchResult> BatchDeleteAsync(IReadOnlyList<int> ids, int currentUserId)
+    public async Task<AccountBatchResult> BatchDeleteAsync(IReadOnlyList<int> ids)
     {
         logger.LogInformation("Batch deleting accounts: count={Count}", ids.Count);
         if (ids.Count == 0) return new AccountBatchResult(0, 0);
 
-        var skipSet = new HashSet<int> { currentUserId };
+        var skipSet = new HashSet<int> { GetCurrentUserId() };
         var builtIn = await userManager.FindByNameAsync(BuiltInAdminName);
         if (builtIn is not null) skipSet.Add(builtIn.Id);
 
@@ -179,8 +179,10 @@ public class AccountService(
         return new AccountBatchResult(processed, users.Count - processed);
     }
 
-    public async Task<AccountBatchResult> BatchUpdateRoleAsync(IReadOnlyList<int> ids, int currentUserId, string roleName)
+    public async Task<AccountBatchResult> BatchUpdateRoleAsync(BatchRoleUpdateRequest request)
     {
+        var ids = request.Ids;
+        var roleName = request.RoleName;
         logger.LogInformation("Batch updating role: count={Count}, role={Role}", ids.Count, roleName);
         if (ids.Count == 0) return new AccountBatchResult(0, 0);
         if (!await roleManager.RoleExistsAsync(roleName))
@@ -188,7 +190,7 @@ public class AccountService(
             throw new NotFoundException($"角色 {roleName} 不存在");
         }
 
-        var skipSet = new HashSet<int> { currentUserId };
+        var skipSet = new HashSet<int> { GetCurrentUserId() };
         var builtIn = await userManager.FindByNameAsync(BuiltInAdminName);
         if (builtIn is not null) skipSet.Add(builtIn.Id);
 
@@ -242,36 +244,36 @@ public class AccountService(
         return new AccountBatchResult(processed, users.Count - processed);
     }
 
-    public async Task<IdentityResult> CreateAccountAsync(string username, string password, string roleName)
+    public async Task<IdentityResult> CreateAccountAsync(AccountCreateRequest request)
     {
-        if (!await roleManager.RoleExistsAsync(roleName))
+        if (!await roleManager.RoleExistsAsync(request.RoleName))
         {
             return IdentityResult.Failed(new IdentityError
             {
                 Code = "InvalidRole",
-                Description = $"角色 {roleName} 不存在"
+                Description = $"角色 {request.RoleName} 不存在"
             });
         }
 
         var user = new ApplicationUser
         {
-            UserName = username,
-            NormalizedUserName = username.ToUpperInvariant(),
+            UserName = request.UserName,
+            NormalizedUserName = request.UserName.ToUpperInvariant(),
             CreatedAt = DateTime.UtcNow,
             EmailConfirmed = true
         };
-        var result = await userManager.CreateAsync(user, password);
+        var result = await userManager.CreateAsync(user, request.Password);
         if (result.Succeeded)
         {
-            await userManager.AddToRoleAsync(user, roleName);
-            await auditService.LogAsync(AuditCategory.Account, AuditAction.Create, $"账号: {username}");
+            await userManager.AddToRoleAsync(user, request.RoleName);
+            await auditService.LogAsync(AuditCategory.Account, AuditAction.Create, $"账号: {request.UserName}");
         }
         return result;
     }
 
-    public async Task<IdentityResult> UpdateAccountAsync(int id, string? roleName)
+    public async Task<IdentityResult> UpdateAccountAsync(AccountUpdateRequest request)
     {
-        var user = await userManager.FindByIdAsync(id.ToString());
+        var user = await userManager.FindByIdAsync(request.Id.ToString());
         if (user is null)
         {
             return IdentityResult.Failed(new IdentityError
@@ -291,16 +293,16 @@ public class AccountService(
             });
         }
 
-        if (!string.IsNullOrEmpty(roleName) && await roleManager.RoleExistsAsync(roleName))
+        if (!string.IsNullOrEmpty(request.RoleName) && await roleManager.RoleExistsAsync(request.RoleName))
         {
             var currentRoles = await userManager.GetRolesAsync(user);
-            if (!currentRoles.Contains(roleName))
+            if (!currentRoles.Contains(request.RoleName))
             {
                 if (currentRoles.Any())
                 {
                     await userManager.RemoveFromRolesAsync(user, currentRoles);
                 }
-                await userManager.AddToRoleAsync(user, roleName);
+                await userManager.AddToRoleAsync(user, request.RoleName);
             }
         }
 
@@ -308,7 +310,7 @@ public class AccountService(
         return IdentityResult.Success;
     }
 
-    public async Task<IdentityResult> DeleteAccountAsync(int id, int currentUserId)
+    public async Task<IdentityResult> DeleteAccountAsync(int id)
     {
         var user = await userManager.FindByIdAsync(id.ToString());
         if (user is null)
@@ -330,7 +332,7 @@ public class AccountService(
             });
         }
 
-        if (id == currentUserId)
+        if (id == GetCurrentUserId())
         {
             return IdentityResult.Failed(new IdentityError
             {
@@ -365,9 +367,9 @@ public class AccountService(
         return deleteResult;
     }
 
-    public async Task<IdentityResult> ResetPasswordAsync(int id, string newPassword)
+    public async Task<IdentityResult> ResetPasswordAsync(ResetPasswordRequest request)
     {
-        var user = await userManager.FindByIdAsync(id.ToString());
+        var user = await userManager.FindByIdAsync(request.Id.ToString());
         if (user is null)
         {
             return IdentityResult.Failed(new IdentityError
@@ -389,7 +391,7 @@ public class AccountService(
 
         // Validate via Create + Remove approach to leverage IPasswordValidator pipeline
         var token = await userManager.GeneratePasswordResetTokenAsync(user);
-        var result = await userManager.ResetPasswordAsync(user, token, newPassword);
+        var result = await userManager.ResetPasswordAsync(user, token, request.NewPassword);
         if (result.Succeeded)
         {
             await auditService.LogAsync(AuditCategory.Account, AuditAction.Update, $"账号: {user.UserName} 重置密码");
@@ -397,8 +399,9 @@ public class AccountService(
         return result;
     }
 
-    public async Task<IdentityResult> ChangePasswordAsync(string username, string currentPassword, string newPassword)
+    public async Task<IdentityResult> ChangePasswordAsync(ChangePasswordRequest request)
     {
+        var username = GetCurrentUserName();
         var user = await userManager.FindByNameAsync(username);
         if (user is null)
         {
@@ -409,12 +412,12 @@ public class AccountService(
             });
         }
 
-        if (string.Equals(currentPassword, newPassword, StringComparison.Ordinal))
+        if (string.Equals(request.CurrentPassword, request.NewPassword, StringComparison.Ordinal))
         {
             throw new ValidationException("新密码不能与当前密码相同");
         }
 
-        var result = await userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+        var result = await userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
         if (result.Succeeded)
         {
             user.UpdatedAt = DateTime.UtcNow;
@@ -424,11 +427,35 @@ public class AccountService(
         return result;
     }
 
-
-    
-
-    public async Task<ApplicationUser?> GetUserByNameAsync(string username)
+    public async Task<AccountViewModel?> GetUserByNameAsync(string username)
     {
-        return await userManager.FindByNameAsync(username);
+        var user = await userManager.FindByNameAsync(username);
+        if (user is null)
+        {
+            return null;
+        }
+
+        var roles = await userManager.GetRolesAsync(user);
+        return user.ToAccountViewModel(roles.FirstOrDefault() ?? "");
+    }
+
+    private int GetCurrentUserId()
+    {
+        var idStr = httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(idStr, out var id))
+        {
+            throw new PermissionException("无法获取当前登录账号信息");
+        }
+        return id;
+    }
+
+    private string GetCurrentUserName()
+    {
+        var name = httpContextAccessor.HttpContext?.User.Identity?.Name;
+        if (string.IsNullOrEmpty(name))
+        {
+            throw new PermissionException("无法获取当前登录账号信息");
+        }
+        return name;
     }
 }
