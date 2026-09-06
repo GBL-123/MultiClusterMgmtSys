@@ -4,13 +4,14 @@ Repo-specific guidance for OpenCode agents working in `MultiClusterMgmtSys`.
 
 ## Current state (2026-09-04)
 
-Swiss Industrial Print redesign (88b0984)、业务异常体系 (`business-exception-handling`)、个人资料页重构 (`profile-page-redesign`)、统一代码风格 (`unify-code-style`)、单元测试 (`add-unit-tests`) 均已归档并同步 specs(`ui-theme`、`exception-handling`、`profile-page`、`code-style`、`unit-testing`)。`dotnet build MultiClusterMgmtSys.slnx` passes (0 errors),`dotnet test MultiClusterMgmtSys.Tests` 66/66 green. If you ever see CS0246/CS0234 errors mentioning `MultiClusterMgmtSys.Components.<Feature>.Services`, `MultiClusterMgmtSys.Features.*` or `MultiClusterMgmtSys.Common.Queries`, that file's `@using`s are stale — target namespaces are in the Namespaces section below.
+Swiss Industrial Print redesign (88b0984)、业务异常体系 (`business-exception-handling`)、个人资料页重构 (`profile-page-redesign`)、统一代码风格 (`unify-code-style`)、单元测试 (`add-unit-tests`) 均已归档并同步 specs(`ui-theme`、`exception-handling`、`profile-page`、`code-style`、`unit-testing`)。`dotnet build MultiClusterMgmtSys.slnx` passes (0 errors),`dotnet test MultiClusterMgmtSys.Tests` 129/129 green (xunit.v3 4.0.0 + MTP runner,see Testing conventions). If you ever see CS0246/CS0234 errors mentioning `MultiClusterMgmtSys.Components.<Feature>.Services`, `MultiClusterMgmtSys.Features.*` or `MultiClusterMgmtSys.Common.Queries`, that file's `@using`s are stale — target namespaces are in the Namespaces section below.
 
 ## Stack
 
 - .NET 10 / ASP.NET Core, Blazor **interactive server** render mode, MudBlazor 9.9.0 + `Extensions.MudBlazor.StaticInput` (`@using MudBlazor.StaticInput` lives in `_Imports.razor`)
 - EF Core 10 with **SQLite** + ASP.NET Identity (roles `Admin`/`Member`, keys `int`)
 - Kubernetes cluster access via `KubernetesClient` 19.0.2
+- Unit tests: **xunit.v3 4.0.0 + MTP** (Microsoft.Testing.Platform v2, enabled by root `global.json` `test.runner`; no `sdk` pin — Docker uses the floating `sdk:10.0` image). No VSTest bridge — never re-add `Microsoft.NET.Test.Sdk` / `xunit.runner.visualstudio` / coverlet packages. Test project has `OutputType Exe` (xunit.v3 4.0.0 does not set it implicitly).
 - Serilog: console + daily rolling file `logs/app-.log` (30-day retention); path configurable via `Logging:File:Path`. EF SQL statement logs are Development-only (`Program.cs`).
 - UI strings are **Chinese** (e.g. `ChineseIdentityErrorDescriber`, service messages, audit descriptions). Keep new user-facing strings consistent.
 - Single project solution `MultiClusterMgmtSys.slnx` (new XML format; VS 17.14+ / current `dotnet`). Projects: `MultiClusterMgmtSys/MultiClusterMgmtSys.csproj`, `docker-compose.dcproj`.
@@ -20,12 +21,12 @@ Swiss Industrial Print redesign (88b0984)、业务异常体系 (`business-except
 
 ```pwsh
 dotnet build MultiClusterMgmtSys.slnx       # passes (0 errors)
-dotnet test MultiClusterMgmtSys.Tests       # 66 tests, all green
+dotnet test MultiClusterMgmtSys.Tests       # 129 tests, all green (MTP)
 dotnet run  --project MultiClusterMgmtSys                                    # http://localhost:5021
 dotnet run  --project MultiClusterMgmtSys --launch-profile https             # https://localhost:7081
 ```
 
-No test project? — there IS one: `MultiClusterMgmtSys.Tests/`(xUnit + Moq + bUnit + SQLite 内存库)。无 lint/format/typecheck config。Do not invent test commands.
+No test project? — there IS one: `MultiClusterMgmtSys.Tests/`(xunit.v3 + Moq + bUnit + SQLite 内存库)。无 lint/format/typecheck config。Do not invent test commands.
 
 ## Testing conventions
 
@@ -33,6 +34,8 @@ No test project? — there IS one: `MultiClusterMgmtSys.Tests/`(xUnit + Moq + bU
 - **后端测试以服务为边界**:直接调 Service 公开方法,仓库经真实 SQLite 内存库(`SqliteDbFactory.CreateContext()`)覆盖;断言语义 = 业务异常类型 + 中文 UserMessage + 查询结果。
 - **K8s 服务可测**:`Func<KubernetesClientConfiguration, IKubernetes>` 工厂注入(Program.cs 注册真实工厂);测试用 Moq mock 接口的 `*WithHttpMessagesAsync` 方法(扩展方法的底层),抛 `KubernetesException(new V1Status{Code=…})` 验证翻译链路。`TestServices.ThrowingFactory()` 返回惰性 mock(工厂调用不抛,真正走到 K8s 才失败)。
 - **bUnit 只测"接线契约"**:`FindComponent<T>()` 取 MudBlazor 组件实例、触发公开事件/参数,断言自己组件的状态/渲染分支/自有 CSS 类(`.status-badge`/`.empty-state` 等);**禁止断言 `.mud-*` 内部 DOM**。bUnit 测试需要 `TimeProvider.System` + `JSRuntimeMode.Loose` + MudServices(BunitHost 已配)。
+- **bUnit 2.x API**:`BunitContext`(不是 `TestContext`,也与 xunit.v3 的 `Xunit.TestContext` 撞名)、`Render<T>()`(不是 `RenderComponent`)、`AddAuthorization()`(不是 `AddTestAuthorization`);创建过 MudBlazor 组件的 ctx 用 `await using var ctx = ...` 释放 —— MudBlazor 的 KeyInterceptor/PointerEventsNone 服务仅实现 `IAsyncDisposable`,同步 `Dispose()` 会在测试逻辑已通过后抛异常;此类测试方法签名用 `async Task`。
+- **MTP runner gotchas**(xunit.v3 4.0.0 + MTP v2,由根 `global.json` `test.runner` 启用):不要传 VSTest 时代参数 —— `--nologo` 会被测试应用拒绝(exit 5,且误导性报告为 "Zero tests ran",见 dotnet/sdk#55309);零执行测试 = exit 8;过滤用 MTP/xunit 语法(`--filter-class`/`--filter-trait`),不是 VSTest 的 `--filter` 表达式。测试数量基线:129。
 - 主项目 `WarningsAsErrors` 含 `MUD0002`(MudBlazor 分析器)——组件 API 误用(如给无 `Value` 参数的组件 `@bind-Value`)会直接编译失败,不要用 `NoWarn` 绕过。
 - 验证:`dotnet build` 0 错误 + `dotnet test` 全绿。
 

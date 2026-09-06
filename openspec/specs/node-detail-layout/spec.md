@@ -2,25 +2,29 @@
 
 ## Purpose
 
-Define the redesigned node detail page composition (`/nodes/{ClusterId}/{NodeName}`): a focused five-card layout that consolidates scheduling, metadata, addresses (with stored remarks), and taints into a single 基本信息 overview card — replacing the previous 10-card page — plus the matching node list surfaces: a toolbar mirroring the cluster management page, a sortable client-side six-column table, and multi-IP rendering with remarks.
+Define the redesigned node detail page composition (`/nodes/{ClusterId}/{NodeName}`): a focused five-tab layout (`NodeDetailToolbar` + `MudTabs`, tabs 基本信息 → 资源容量 → 条件 → 标签与注解 → 系统信息) that consolidates scheduling, metadata, addresses (with stored remarks), and taints into the 基本信息 tab's single overview card — replacing the previous 10-card page — plus the matching node list surfaces: a toolbar mirroring the cluster management page, a sortable client-side six-column table, and multi-IP rendering with remarks.
 
 ## Requirements
 
-### Requirement: Node detail page five-card composition
+### Requirement: Node detail page five-tab composition
 
-The system SHALL render the node detail page (`/nodes/{ClusterId}/{NodeName}`) as a `NodeDetailToolbar` `MudPaper` followed by exactly five focused MudCards in this vertical order: `NodeOverviewCard` (基本信息, full width), `NodeResourcesCard` (资源容量, full width), `NodeConditionsCard` (条件, full width), the paired row `NodeLabelsCard` + `NodeAnnotationsCard` (each `xs=12 md=6`), and `NodeSystemInfoCard` (系统信息, full width). The former standalone `NodeSchedulingCard`, `NodeMetadataCard`, `NodeAddressesCard`, and `NodeTaintsCard` components SHALL be deleted — their content is absorbed into `NodeOverviewCard` per the requirements below. The page MUST NOT render the previous 10-card composition.
+The system SHALL render the node detail page (`/nodes/{ClusterId}/{NodeName}`) as a `NodeDetailToolbar` `MudPaper` followed by a `MudTabs` area with exactly five tabs in this order: 基本信息 → 资源容量 → 条件 → 标签与注解 → 系统信息. The 基本信息 tab contains `NodeOverviewCard` (full width); the 资源容量 tab contains `NodeResourcesCard`; the 条件 tab contains `NodeConditionsCard`; the 标签与注解 tab contains `NodeLabelsCard` and `NodeAnnotationsCard` side by side (each `xs=12 md=6` within the tab panel); the 系统信息 tab contains `NodeSystemInfoCard`. The former standalone `NodeSchedulingCard`, `NodeMetadataCard`, `NodeAddressesCard`, and `NodeTaintsCard` components SHALL remain deleted. Tab selection is page-local state per the `detail-page-tabs` capability; the 基本信息 tab SHALL be selected by default.
 
-#### Scenario: Card composition order
+#### Scenario: Tab composition order
 - **WHEN** a reachable node is rendered
-- **THEN** the cards appear in this order: `NodeOverviewCard`, `NodeResourcesCard`, `NodeConditionsCard`, then the paired row `NodeLabelsCard` + `NodeAnnotationsCard`, then `NodeSystemInfoCard`
+- **THEN** the tabs appear in this order: 基本信息, 资源容量, 条件, 标签与注解, 系统信息, with 基本信息 selected by default
 
 #### Scenario: Cards that lost their standalone component
 - **WHEN** the detail page renders
 - **THEN** no `NodeSchedulingCard`, `NodeMetadataCard`, `NodeAddressesCard`, or `NodeTaintsCard` component is instantiated anywhere
 
-#### Scenario: Full-width cards
-- **WHEN** `NodeConditionsCard` or `NodeSystemInfoCard` renders
-- **THEN** each occupies `xs=12` as a direct child of the outer `MudStack` (no longer `md=6`-paired)
+#### Scenario: Labels and annotations share one tab
+- **WHEN** the 标签与注解 tab renders
+- **THEN** `NodeLabelsCard` and `NodeAnnotationsCard` appear side by side, each occupying `xs=12 md=6` inside the tab panel
+
+#### Scenario: Overview card content unchanged inside its tab
+- **WHEN** the 基本信息 tab renders
+- **THEN** `NodeOverviewCard` keeps its existing contract: identity/scheduling fields, the 地址 section (with stored remarks), and the 污点 section rendered only when taints exist
 
 ### Requirement: Node overview card consolidates scheduling, metadata, addresses, and taints
 

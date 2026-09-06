@@ -2,7 +2,7 @@
 
 ## Purpose
 
-ConfigMap management pages for multi-cluster administration: a cluster-sidebar list page (`/configmaps`, `/configmaps/{ClusterId}`) with namespace filtering and client-side name search, a read-only YAML detail page, an Admin-only YAML-only editor for existing ConfigMaps, and a YAML-only create dialog. Cluster context is shared across pages via the scoped `ClusterSelectionState` service so Drawer-driven switches restore the most recently viewed cluster in place.
+ConfigMap management pages for multi-cluster administration: a cluster-sidebar list page (`/configmaps`, `/configmaps/{ClusterId}`) with namespace filtering and client-side name search, a read-only detail page (YAML | 键值 double tabs), an Admin-only YAML-only editor for existing ConfigMaps, and a YAML-only create dialog. Cluster context is shared across pages via the scoped `ClusterSelectionState` service so Drawer-driven switches restore the most recently viewed cluster in place.
 
 ## Requirements
 
@@ -206,21 +206,35 @@ Each table row SHALL expose three action icon buttons: 详情 (always visible to
 - **WHEN** the delete API returns a 404 / Not Found error
 - **THEN** the system shows a ConfigMap 不存在或已被删除 warning snackbar (not an error)
 
-### Requirement: ConfigMap detail page as read-only YAML
+### Requirement: ConfigMap detail page as read-only tabs
 
-The system SHALL render a ConfigMap detail page at `/configmaps/{ClusterId}/{Namespace}/{Name}` as a toolbar (`ConfigMapDetailToolbar`: 返回列表 + `{Name}` h4 + "Data 键数: {n}" `MudChip` + 编辑 YAML button admin-gated + 刷新 button) followed by a single `ConfigMapYamlViewCard` containing a read-only `MudTextField` Lines=30 monospace bound to `ConfigMapDetailViewModel.Yaml`. The page SHALL NOT render `MudTabs`, per-key `TabPanel`s, or any per-data-key editing surface — the YAML is the only view of the resource.
+The system SHALL render a ConfigMap detail page at `/configmaps/{ClusterId}/{Namespace}/{Name}` as a toolbar (`ConfigMapDetailToolbar`: 返回列表 + `{Name}` h4 + "Data 键数: {n}" `MudChip` + 编辑 YAML button admin-gated + 刷新 button) followed by a `MudTabs` area with exactly two tabs in this order: YAML → 键值. The YAML tab contains the existing read-only `ConfigMapYamlViewCard` (plain `<textarea class="yaml-textarea">` in a `MudCard Class="pa-4 yaml-card"`, unchanged). The 键值 tab contains a read-only table listing every entry of `ConfigMapDetailViewModel.Data` with 键 and 值 columns in monospace; long values follow the `detail-page-tabs` truncation + click-to-expand contract. An empty `Data` dictionary SHALL show the `.empty-state` placeholder in the 键值 tab. The page SHALL NOT render any per-data-key editing surface — both tabs are read-only; editing remains on the separate Admin-only YAML editor route.
 
 #### Scenario: Successful detail load
 
 - **WHEN** an authenticated user navigates to `/configmaps/{ClusterId}/{Namespace}/{Name}` for a real ConfigMap
-- **THEN** the page renders the toolbar with the resource's `Name` in the h4 and a chip showing the count of `Data` keys
-- **AND** a single read-only monospace YAML field renders the full `V1ConfigMap` YAML (including `data`, `binaryData`, `labels`, `annotations`, `metadata`)
+- **THEN** the page renders the toolbar and two tabs (YAML, 键值) with the YAML tab selected by default
+- **AND** the YAML tab renders the full `V1ConfigMap` YAML read-only (including `data`, `binaryData`, `labels`, `annotations`, `metadata`)
+
+#### Scenario: 键值 tab lists every key
+
+- **WHEN** the ConfigMap's `Data` contains three keys
+- **THEN** the 键值 tab's table lists three rows with monospace 键 and truncated 值 cells
+
+#### Scenario: 键值 tab empty state
+
+- **WHEN** the ConfigMap's `Data` dictionary is empty
+- **THEN** the 键值 tab shows the `.empty-state` placeholder(如 `[ 暂无键值 ]`),不渲染表格
+
+#### Scenario: 键值 tab is read-only
+
+- **WHEN** an Admin views the 键值 tab
+- **THEN** no editing affordance exists; the only edit path remains the toolbar's 编辑 YAML navigation to the YAML editor route
 
 #### Scenario: ConfigMap not found
 
 - **WHEN** the detail page loads a ConfigMap whose `GetConfigMapAsync` returns null
-- **THEN** the page renders a ConfigMap 不存在或已被删除 empty state with a 返回列表 button
-- **AND** a warning snackbar appears
+- **THEN** the page shows the "ConfigMap 不存在或已被删除" empty-state card with a back affordance and no tab bar
 
 ### Requirement: Admin-only edit-YAML navigation from the detail page
 
