@@ -1,0 +1,58 @@
+@using MultiClusterMgmtSys.ViewModels
+@using MultiClusterMgmtSys.Services
+
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject IDialogService DialogService
+@inject ExceptionPresenter ExHandler
+
+<MudCard Class="pa-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">键值</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (Data.Count == 0)
+        {
+            <div class="empty-state">[ 暂无键值 ]</div>
+        }
+        else
+        {
+            <MudTable T="KeyValuePair<string, string>"
+                      Items="@Data.OrderBy(kvp => kvp.Key).ToList()"
+                      Hover="true"
+                      Elevation="0"
+                      OnRowClick="OpenValueDialog">
+                <HeaderContent>
+                    <MudTh Style="width:30%;">键</MudTh>
+                    <MudTh>值</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="键">
+                        <span class="font-mono">@context.Key</span>
+                    </MudTd>
+                    <MudTd DataLabel="值">
+                        <div class="cm-value-cell font-mono">@context.Value</div>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public Dictionary<string, string> Data { get; set; } = new();
+
+    private async Task OpenValueDialog(TableRowClickEventArgs<KeyValuePair<string, string>> args)
+    {
+        var parameters = new DialogParameters
+        {
+            { "Key", args.Item.Key },
+            { "Value", args.Item.Value }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        await DialogService.ShowAsync<ConfigMapValueDialog>(args.Item.Key, parameters, options);
+    }
+}

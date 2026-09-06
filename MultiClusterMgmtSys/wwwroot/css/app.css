@@ -349,7 +349,79 @@ a:focus-visible {
     color: #6E675C;
 }
 
-/* ---------- 9. Scrollbars: slim graphite ---------- */
+/* ---------- 9. Detail page tabs: amber slider, hairline bar, dense ---------- */
+/* 注意:app.css 先于 MudBlazor.min.css 加载,选择器须比 MudBlazor 内部规则有更高特异性 */
+
+.detail-tabs {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+    .detail-tabs .mud-tabs-tabbar {
+        background: #FCFBF7;
+        border-bottom: 1px solid #E2DED5;
+    }
+
+    .detail-tabs .mud-tab {
+        min-height: 40px;
+        border-radius: 0;
+        color: #6E675C;
+        text-transform: none;
+    }
+
+    .detail-tabs .mud-tabs-tabbar .mud-tab:hover {
+        background: #E7E2D8;
+    }
+
+    .detail-tabs .mud-tab.mud-tab-active {
+        color: #111111;
+    }
+
+    .detail-tabs .mud-tabs-tabbar .mud-tab-slider {
+        background: #D97706;
+        height: 2px;
+    }
+
+.detail-tabs .detail-tabs-panels {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+/* 面板包装层在 v9 为 display:contents(激活面板)——内容直接成为上面 flex 容器的项,
+   yaml-card / MudCard 自身的 flex 属性即可撑满,无需对包装层再加规则 */
+
+/* ConfigMap 键值表:value 单行省略截断,不撑高行 */
+.cm-value-cell {
+    max-width: 480px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+/* 键值全文查看对话框 */
+.cm-value-viewer {
+    max-height: 50vh;
+    overflow: auto;
+    border: 1px solid #E2DED5;
+    border-radius: 3px;
+    padding: 12px;
+    background: #FCFBF7;
+    color: #111111;
+    font-size: 12.5px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* ---------- 10. Scrollbars: slim graphite ---------- */
 
 ::-webkit-scrollbar {
     width: 8px;
@@ -369,7 +441,7 @@ a:focus-visible {
     background: #A9A193;
 }
 
-/* ---------- 10. Legacy layout workarounds ---------- */
+/* ---------- 11. Legacy layout workarounds ---------- */
 
 .group-dialog {
     overflow: visible !important;

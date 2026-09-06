@@ -18,19 +18,44 @@
 #     -subj "/CN=192.168.1.100" -addext "subjectAltName=IP:192.168.1.100,DNS:mcms.local"
 # （把 192.168.1.100 换成你的服务器 IP；自签名浏览器会有"不安全"警告，属正常）
 #
-# 首次部署前在宿主机执行一次（否则容器内非 root 用户无法写入）：
-#   mkdir -p db logs nginx/certs && sudo chown 1654:1654 db logs
-# （1654 是 .NET 镜像内置 app 用户的 UID；也可用 `sudo chown -R $(id -u):$(id -g) db logs` 配合自定义 UID）
+# 挂载目录（./db ./logs ./nginx/certs）由 fs-init 容器在部署时自动创建并修正属主，
+# 不再需要手工 mkdir/chown：fs-init 用应用镜像以 root 一次性执行（幂等），完成后即退出；
+# 目录属主默认 1654（.NET 镜像内置 app 用户的 UID），服务器上可用环境变量覆盖：
+#   MCMS_APP_UID=1000 docker compose -f docker-compose.prod.yml up -d
+# （也可用 `sudo chown -R $(id -u):$(id -g) db logs` 配合自定义 UID，效果等价）
 #
 # 升级：docker compose -f docker-compose.prod.yml up -d（数据保留在 ./db，日志保留在 ./logs）
 
 name: multiclustermgmtsys
 
 services:
+  # 一次性目录初始化：创建 ./db ./logs ./nginx/certs（若缺失）并把 db/logs 属主
+  # 修正为运行应用的用户。幂等，每次 up 都会跑一遍，跑完即退出。
+  # 复用应用镜像（Debian 系含 /bin/sh），不额外拉取镜像。
+  fs-init:
+    image: multiclustermgmtsys:v1.0.0
+    container_name: mcms-fs-init
+    user: "0"
+    restart: "no"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - mkdir -p /data/db /data/logs /data/certs
+        && chown -R ${MCMS_APP_UID:-1654}:${MCMS_APP_UID:-1654} /data/db /data/logs
+    volumes:
+      # 与应用/nginx 挂载同一批宿主机目录；bind 目录若缺失由 Docker 以 root 自动创建，
+      # fs-init 再 chown 成应用可写
+      - ./db:/data/db
+      - ./logs:/data/logs
+      - ./nginx/certs:/data/certs
+
   multiclustermgmtsys:
     image: multiclustermgmtsys:v1.0.0
     container_name: multiclustermgmtsys
     restart: unless-stopped
+    depends_on:
+      fs-init:
+        condition: service_completed_successfully
     # 应用不再对外暴露端口，仅经 compose 内部网络被 nginx 访问
     environment:
       ASPNETCORE_ENVIRONMENT: Production

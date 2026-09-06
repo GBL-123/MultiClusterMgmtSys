@@ -2,6 +2,7 @@ using k8s;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 using MultiClusterMgmtSys.Components;
@@ -92,10 +93,19 @@ builder.Services.ConfigureApplicationCookie(options =>
     };
 });
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+var rawConnectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+// 相对路径的 SQLite 库一律锚定到内容根解析(工作目录随 dotnet run 的调用位置漂移),
+// 并确保父目录存在——SQLite 只建文件不建目录,目录缺失时报 SQLite Error 14
+var sqliteBuilder = new SqliteConnectionStringBuilder(rawConnectionString);
+if (!string.IsNullOrEmpty(sqliteBuilder.DataSource) && !Path.IsPathRooted(sqliteBuilder.DataSource))
+{
+    var dbPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, sqliteBuilder.DataSource));
+    Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+    sqliteBuilder.DataSource = dbPath;
+}
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(connectionString));
+    options.UseSqlite(sqliteBuilder.ToString()));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
@@ -119,17 +129,6 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.EnsureCreated();
-
-    // EnsureCreated 不会给已存在的库补建新表:老库升级时手动补 AppSettings(列定义须与 ApplicationDbContext 保持一致)
-    await db.Database.ExecuteSqlRawAsync("""
-        CREATE TABLE IF NOT EXISTS AppSettings (
-            "Id" INTEGER NOT NULL CONSTRAINT "PK_AppSettings" PRIMARY KEY AUTOINCREMENT,
-            "Key" TEXT NOT NULL,
-            "Value" TEXT NOT NULL,
-            "UpdatedAt" TEXT NOT NULL
-        )
-        """);
-    await db.Database.ExecuteSqlRawAsync("""CREATE UNIQUE INDEX IF NOT EXISTS "IX_AppSettings_Key" ON "AppSettings" ("Key")""");
 
     var accountService = scope.ServiceProvider.GetRequiredService<AccountService>();
     await accountService.CreateAdminAsync();

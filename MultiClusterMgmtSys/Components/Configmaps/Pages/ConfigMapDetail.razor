@@ -1,4 +1,4 @@
-@attribute [Authorize]
+﻿@attribute [Authorize]
 @page "/configmaps/{ClusterId:int}/{Namespace}/{Name}"
 
 @using MultiClusterMgmtSys.Requests
@@ -43,7 +43,23 @@
                                 Processing="@loading"
                                 OnRefresh="LoadAsync"
                                 OnEditYaml="@(() => NavigationManager.NavigateTo($"/configmaps/{ClusterId}/{Namespace}/{Name}/yaml"))" />
-        <ConfigMapYamlViewCard Yaml="@detail.Yaml" />
+        <MudTabs @bind-ActivePanelIndex="activeTabIndex"
+                 Class="detail-tabs"
+                 Elevation="0"
+                 Rounded="false"
+                 TabPanelsClass="detail-tabs-panels">
+            <MudTabPanel Text="YAML">
+                <ConfigMapYamlViewCard Yaml="@detail.Yaml" />
+            </MudTabPanel>
+            <MudTabPanel>
+                <TabContent>
+                    <span>键值&nbsp;<span class="font-mono">@detail.Data.Count</span></span>
+                </TabContent>
+                <ChildContent>
+                    <ConfigMapDataViewCard Data="@detail.Data" />
+                </ChildContent>
+            </MudTabPanel>
+        </MudTabs>
     }
 </MudStack>
 
@@ -61,6 +77,8 @@
     private ConfigMapDetailViewModel? detail;
 
     private bool loading = true;
+
+    private int activeTabIndex;
 
     protected override async Task OnInitializedAsync()
     {

@@ -44,12 +44,32 @@
                              OnEdit="OpenEditDialog"
                              OnDelete="DeleteCluster" />
 
-        <ClusterOverviewCard Cluster="@cluster" />
-
-        <ClusterEndpointsCard Cluster="@cluster"
-                              OnEndpointsChanged="LoadAsync" />
-
-        <ClusterNodesCard Cluster="@cluster" />
+        <MudTabs @bind-ActivePanelIndex="activeTabIndex"
+                 Class="detail-tabs"
+                 Elevation="0"
+                 Rounded="false"
+                 TabPanelsClass="detail-tabs-panels">
+            <MudTabPanel Text="概览">
+                <ClusterOverviewCard Cluster="@cluster" />
+            </MudTabPanel>
+            <MudTabPanel>
+                <TabContent>
+                    <span>集群端点&nbsp;<span class="font-mono">@cluster.Endpoints.Count</span></span>
+                </TabContent>
+                <ChildContent>
+                    <ClusterEndpointsCard Cluster="@cluster"
+                                          OnEndpointsChanged="LoadAsync" />
+                </ChildContent>
+            </MudTabPanel>
+            <MudTabPanel>
+                <TabContent>
+                    <span>节点&nbsp;<span class="font-mono">@cluster.Nodes.Count</span></span>
+                </TabContent>
+                <ChildContent>
+                    <ClusterNodesCard Cluster="@cluster" />
+                </ChildContent>
+            </MudTabPanel>
+        </MudTabs>
     }
 </MudStack>
 
@@ -63,6 +83,8 @@
     private bool loading;
 
     private bool processing;
+
+    private int activeTabIndex;
 
     protected override async Task OnInitializedAsync()
     {

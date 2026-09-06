@@ -1,0 +1,46 @@
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject ExceptionPresenter ExHandler
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.subtitle2" Class="font-mono">@Key</MudText>
+        <div class="cm-value-viewer font-mono">@Value</div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text"
+                   StartIcon="@Icons.Material.Filled.ContentCopy"
+                   OnClick="CopyValue">
+            复制
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="() => Dialog.Cancel()">
+            关闭
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter]
+    public string Key { get; set; } = "";
+
+    [Parameter]
+    public string Value { get; set; } = "";
+
+    private async Task CopyValue()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", Value);
+            Snackbar.Add("已复制到剪贴板", Severity.Success);
+        }
+        catch (JSException ex)
+        {
+            await ExHandler.HandleAsync(ex, "复制");
+        }
+    }
+}

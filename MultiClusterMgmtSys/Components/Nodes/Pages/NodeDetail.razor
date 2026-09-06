@@ -1,9 +1,8 @@
-@attribute [Authorize]
+﻿@attribute [Authorize]
 @page "/nodes/{ClusterId:int}/{NodeName}"
 
 @using MultiClusterMgmtSys.Requests
 @using MultiClusterMgmtSys.Services
-@using MultiClusterMgmtSys.ViewModels
 @using MultiClusterMgmtSys.Components.Nodes.Shared
 @using MultiClusterMgmtSys.ViewModels
 
@@ -60,16 +59,30 @@
                            OnBack="@(() => NavigationManager.NavigateTo($"/nodes/{ClusterId}"))"
                            OnRefresh="LoadAsync" />
 
-        <NodeOverviewCard Node="@node" OnRemarksChanged="LoadAsync" />
-        <NodeResourcesCard Node="@node" />
-        <NodeConditionsCard Node="@node" />
-
-        <MudGrid Spacing="3">
-            <MudItem xs="12" md="6"><NodeLabelsCard Node="@node" /></MudItem>
-            <MudItem xs="12" md="6"><NodeAnnotationsCard Node="@node" /></MudItem>
-        </MudGrid>
-
-        <NodeSystemInfoCard Node="@node" />
+        <MudTabs @bind-ActivePanelIndex="activeTabIndex"
+                 Class="detail-tabs"
+                 Elevation="0"
+                 Rounded="false"
+                 TabPanelsClass="detail-tabs-panels">
+            <MudTabPanel Text="基本信息">
+                <NodeOverviewCard Node="@node" OnRemarksChanged="LoadAsync" />
+            </MudTabPanel>
+            <MudTabPanel Text="资源容量">
+                <NodeResourcesCard Node="@node" />
+            </MudTabPanel>
+            <MudTabPanel Text="条件">
+                <NodeConditionsCard Node="@node" />
+            </MudTabPanel>
+            <MudTabPanel Text="标签与注解">
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" md="6"><NodeLabelsCard Node="@node" /></MudItem>
+                    <MudItem xs="12" md="6"><NodeAnnotationsCard Node="@node" /></MudItem>
+                </MudGrid>
+            </MudTabPanel>
+            <MudTabPanel Text="系统信息">
+                <NodeSystemInfoCard Node="@node" />
+            </MudTabPanel>
+        </MudTabs>
     }
 </MudStack>
 
@@ -84,6 +97,8 @@
     private ClusterNodeDetailViewModel? node;
 
     private bool loading;
+
+    private int activeTabIndex;
 
     private int previousClusterId;
 

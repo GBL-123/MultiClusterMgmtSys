@@ -1,4 +1,4 @@
-@using MultiClusterMgmtSys.Common.Enums
+﻿@using MultiClusterMgmtSys.Common.Enums
 @using MultiClusterMgmtSys.Requests
 @using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.ViewModels
@@ -46,8 +46,18 @@
                                OnScale="OpenScaleDialog"
                                OnRestart="RestartWorkload"
                                OnDelete="DeleteWorkload" />
-        <WorkloadStatusCard Detail="@detail" />
-        <WorkloadYamlViewCard Yaml="@detail.Yaml" />
+        <MudTabs @bind-ActivePanelIndex="activeTabIndex"
+                 Class="detail-tabs"
+                 Elevation="0"
+                 Rounded="false"
+                 TabPanelsClass="detail-tabs-panels">
+            <MudTabPanel Text="运行状态">
+                <WorkloadStatusCard Detail="@detail" />
+            </MudTabPanel>
+            <MudTabPanel Text="YAML">
+                <WorkloadYamlViewCard Yaml="@detail.Yaml" />
+            </MudTabPanel>
+        </MudTabs>
     }
 </MudStack>
 
@@ -69,6 +79,8 @@
     private bool loading = true;
 
     private bool processing;
+
+    private int activeTabIndex;
 
     protected override async Task OnInitializedAsync()
     {
