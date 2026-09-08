@@ -1,8 +1,9 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.Mvc;
-using MultiClusterMgmtSys.Services;
 
 namespace MultiClusterMgmtSys.Services.Identity;
 
+[ExcludeFromCodeCoverage]
 internal static class IdentityComponentsEndpointRouteBuilderExtensions
 {
     // These endpoints are required by the Identity Razor components defined in the /Components/Account/Pages directory of this project.

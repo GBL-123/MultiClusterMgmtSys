@@ -1,4 +1,6 @@
-﻿@using MultiClusterMgmtSys.Components.Shared
+﻿@using System.Diagnostics.CodeAnalysis
+@using MultiClusterMgmtSys.Components.Shared
+@attribute [ExcludeFromCodeCoverage]
 
 <Router AppAssembly="typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
     <Found Context="routeData">

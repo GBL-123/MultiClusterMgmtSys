@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using k8s;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -169,3 +170,8 @@ app.MapRazorComponents<App>()
 app.MapAdditionalIdentityEndpoints();
 
 app.Run();
+
+[ExcludeFromCodeCoverage]
+internal partial class Program
+{
+}
