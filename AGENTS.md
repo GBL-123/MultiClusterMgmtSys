@@ -20,14 +20,14 @@ Swiss Industrial Print redesign (88b0984)、业务异常体系 (`business-except
 - Unit tests: **xunit.v3 4.0.0 + MTP** (Microsoft.Testing.Platform v2, enabled by root `global.json` `test.runner`; no `sdk` pin — Docker uses the floating `sdk:10.0` image). No VSTest bridge — never re-add `Microsoft.NET.Test.Sdk` / `xunit.runner.visualstudio` / coverlet packages. Test project has `OutputType Exe` (xunit.v3 4.0.0 does not set it implicitly).
 - Serilog: console + daily rolling file `logs/app-.log` (30-day retention); path configurable via `Logging:File:Path`. EF SQL statement logs are Development-only (`Program.cs`).
 - UI strings are **Chinese** (e.g. `ChineseIdentityErrorDescriber`, service messages, audit descriptions). Keep new user-facing strings consistent.
-- Single project solution `MultiClusterMgmtSys.slnx` (new XML format; VS 17.14+ / current `dotnet`). Projects: `MultiClusterMgmtSys/MultiClusterMgmtSys.csproj`, `docker-compose.dcproj`.
+- Single project solution `MultiClusterMgmtSys.slnx` (new XML format; VS 17.14+ / current `dotnet`). Projects: `MultiClusterMgmtSys/MultiClusterMgmtSys.csproj`, `MultiClusterMgmtSys.Tests/MultiClusterMgmtSys.Tests.csproj`, `docker-compose.dcproj`.
 - Design system is **Swiss Industrial Print, light-only**: static theme, no dark mode (see "UI / CSS conventions" below).
 
 ## Commands
 
 ```pwsh
 dotnet build MultiClusterMgmtSys.slnx       # passes (0 errors)
-dotnet test MultiClusterMgmtSys.Tests       # 129 tests, all green (MTP)
+dotnet test MultiClusterMgmtSys.Tests       # 344 tests, all green (MTP)
 dotnet run  --project MultiClusterMgmtSys                                    # http://localhost:5021
 dotnet run  --project MultiClusterMgmtSys --launch-profile https             # https://localhost:7081
 ```
@@ -76,7 +76,7 @@ Folder-to-namespace mapping is **inconsistent** (post-restructure). Never assume
 
 ## Architecture notes
 
-- `Program.cs`: MudBlazor, Razor components (interactive server), Identity (cookie `MultiClusterMgmtSys.Auth`, 8h sliding, login `/login`, access-denied `/access-denied`, default redirect `/clusters`), `ApplicationDbContext` (SQLite), scoped services/repos (`ClusterRepository`, `GroupRepository`, `AuditLogRepository`, `ClusterNodeService`, `ConfigMapService`, `ClusterService`, `GroupService`, `AuditService`, `ClusterSelectionState`, `AuthService`, `AccountService`, `RedirectManager`, `ExceptionPresenter`). `ThemeManager` is **static** (see UI section) — not registered, never injected.
+- `Program.cs`: MudBlazor, Razor components (interactive server), Identity (cookie `MultiClusterMgmtSys.Auth`, 8h sliding, login `/login`, access-denied `/access-denied`, default redirect `/clusters`), `ApplicationDbContext` (SQLite), scoped services/repos (`ClusterRepository`, `GroupRepository`, `AuditLogRepository`, `AppSettingRepository`, `ClusterNodeService`, `ConfigMapService`, `WorkloadService`, `ClusterService`, `GroupService`, `AuditService`, `ClusterSelectionState`, `AuthService`, `AccountService`, `ClusterSyncSettingService`, `RedirectManager`, `ExceptionPresenter`, singleton `Func<KubernetesClientConfiguration, IKubernetes>` 工厂 + hosted `ClusterSyncBackgroundService`). `ThemeManager` is **static** (see UI section) — not registered, never injected.
 - **Exception handling**: services throw `BusinessException` subclasses (中文 `UserMessage`); K8s 调用点 catch → `K8sExceptionMapper.Translate(ex, "操作")` 再抛;UI catch → `await ExHandler.HandleAsync(ex, "操作")`,不直出 `ex.Message`。详见下方 "Exception handling" 节。
 - Pipeline extras: `UseForwardedHeaders` trusting **all** proxies (required by prod nginx TLS termination — keep), `UseStatusCodePagesWithReExecute("/not-found")`, dev-only `UseMigrationsEndPoint` + `AddDatabaseDeveloperPageExceptionFilter`.
 - Repositories surface data; services compose logic + K8s calls; `.razor` pages bind ViewModels via `*.ViewModels.Mappings` extension methods.
