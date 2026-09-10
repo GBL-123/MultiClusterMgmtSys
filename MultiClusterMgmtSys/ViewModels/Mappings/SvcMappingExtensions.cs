@@ -4,10 +4,15 @@ using MultiClusterMgmtSys.ViewModels;
 
 namespace MultiClusterMgmtSys.ViewModels.Mappings;
 
+/// <summary>
+/// V1 Service/EndpointSlice/Endpoints → 服务展示模型的映射(列表/详情/端口/端点)。
+/// </summary>
 public static class SvcMappingExtensions
 {
+    /// <summary>EndpointSlice 上标记所属 Service 的标签键。</summary>
     public const string EndpointSliceServiceLabel = "kubernetes.io/service-name";
 
+    /// <summary>将 <see cref="V1Service"/> 映射为服务列表展示数据。</summary>
     public static SvcListViewModel ToSvcListViewModel(this V1Service svc)
     {
         return new SvcListViewModel
@@ -23,6 +28,7 @@ public static class SvcMappingExtensions
         };
     }
 
+    /// <summary>将 <see cref="V1Service"/> 映射为服务详情展示数据(含 YAML)。</summary>
     public static SvcDetailViewModel ToSvcDetailViewModel(this V1Service svc)
     {
         return new SvcDetailViewModel
@@ -42,6 +48,7 @@ public static class SvcMappingExtensions
         };
     }
 
+    /// <summary>端口定义列表 → 端口展示数据列表映射;null 输入返回空列表。</summary>
     public static List<SvcPortViewModel> ToSvcPortViewModels(IList<V1ServicePort>? ports)
         => ports?.Select(p => new SvcPortViewModel
         {
@@ -52,6 +59,7 @@ public static class SvcMappingExtensions
             NodePort = p.NodePort
         }).ToList() ?? new();
 
+    /// <summary>EndpointSlice 列表 → 端点展示数据列表映射(地址带端口,Ready 取条件)。</summary>
     public static List<SvcEndpointViewModel> ToSvcEndpointViewModels(this V1EndpointSliceList list)
         => list.Items?
             .SelectMany(slice => (slice.Endpoints ?? new List<V1Endpoint>())
@@ -64,6 +72,7 @@ public static class SvcMappingExtensions
                         }))))
             .ToList() ?? new();
 
+    /// <summary>旧版 Endpoints → 端点展示数据列表映射(ready 与 notReady 分开标记)。</summary>
     public static List<SvcEndpointViewModel> ToSvcEndpointViewModels(this V1Endpoints endpoints)
         => (endpoints.Subsets ?? new List<V1EndpointSubset>())
             .SelectMany(subset => (subset.Addresses ?? new List<V1EndpointAddress>())

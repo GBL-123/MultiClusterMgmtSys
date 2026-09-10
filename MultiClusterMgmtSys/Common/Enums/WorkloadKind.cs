@@ -6,20 +6,29 @@ namespace MultiClusterMgmtSys.Common.Enums;
 /// </summary>
 public enum WorkloadKind
 {
+    /// <summary>无状态部署(Deployment)。</summary>
     Deployment = 0,
+
+    /// <summary>有状态应用(StatefulSet)。</summary>
     StatefulSet = 1,
+
+    /// <summary>守护进程集(DaemonSet)。</summary>
     DaemonSet = 2,
+
+    /// <summary>副本集(ReplicaSet)。</summary>
     ReplicaSet = 3
 }
 
 /// <summary>工作负载的类型级能力矩阵:扩缩容适用 Deployment/StatefulSet/ReplicaSet,滚动重启适用 Deployment/StatefulSet/DaemonSet。</summary>
 public static class WorkloadCapabilities
 {
+    /// <summary>该工作负载类型是否支持扩缩容(Deployment/StatefulSet/ReplicaSet 支持)。</summary>
     public static bool SupportsScale(this WorkloadKind kind) => kind
         is WorkloadKind.Deployment
         or WorkloadKind.StatefulSet
         or WorkloadKind.ReplicaSet;
 
+    /// <summary>该工作负载类型是否支持滚动重启(Deployment/StatefulSet/DaemonSet 支持)。</summary>
     public static bool SupportsRestart(this WorkloadKind kind) => kind
         is WorkloadKind.Deployment
         or WorkloadKind.StatefulSet
@@ -29,6 +38,7 @@ public static class WorkloadCapabilities
 /// <summary>工作负载类型的中文显示名与路由段。</summary>
 public static class WorkloadKindExtensions
 {
+    /// <summary>工作负载类型的中文显示名(部署/有状态应用/守护进程/副本集)。</summary>
     public static string ToDisplayText(this WorkloadKind kind) => kind switch
     {
         WorkloadKind.Deployment => "部署",
@@ -38,6 +48,7 @@ public static class WorkloadKindExtensions
         _ => kind.ToString()
     };
 
+    /// <summary>工作负载类型对应的 URL 路由段(复数小写形式)。</summary>
     public static string ToRouteSegment(this WorkloadKind kind) => kind switch
     {
         WorkloadKind.Deployment => "deployments",

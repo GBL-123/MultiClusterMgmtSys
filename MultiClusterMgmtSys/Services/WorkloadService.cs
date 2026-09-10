@@ -26,6 +26,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
 
     private readonly ILogger<WorkloadService> logger = logger;
 
+    /// <summary>拉取集群命名空间列表(升序),供工作负载页筛选下拉使用;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
     public async Task<List<string>> GetNamespacesAsync(int clusterId)
     {
         var entity = await repo.GetByIdAsync(clusterId)
@@ -44,6 +45,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         }
     }
 
+    /// <summary>查询 Deployment 列表;Namespace 为 null 时查全部命名空间。集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
     public async Task<List<WorkloadListViewModel>> ListDeploymentsAsync(WorkloadQueryRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
@@ -63,6 +65,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         }
     }
 
+    /// <summary>查询 StatefulSet 列表;Namespace 为 null 时查全部命名空间。集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
     public async Task<List<WorkloadListViewModel>> ListStatefulSetsAsync(WorkloadQueryRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
@@ -82,6 +85,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         }
     }
 
+    /// <summary>查询 DaemonSet 列表;Namespace 为 null 时查全部命名空间。集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
     public async Task<List<WorkloadListViewModel>> ListDaemonSetsAsync(WorkloadQueryRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
@@ -101,6 +105,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         }
     }
 
+    /// <summary>查询 ReplicaSet 列表;Namespace 为 null 时查全部命名空间。集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
     public async Task<List<WorkloadListViewModel>> ListReplicaSetsAsync(WorkloadQueryRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
@@ -120,6 +125,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         }
     }
 
+    /// <summary>读取单个 Deployment 详情;集群不存在返回 null,K8s 失败经翻译后抛业务异常。</summary>
     public async Task<WorkloadDetailViewModel?> GetDeploymentAsync(WorkloadKeyRequest request)
     {
         var entity = await repo.GetByIdAsync(request.ClusterId);
@@ -139,6 +145,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         }
     }
 
+    /// <summary>读取单个 StatefulSet 详情;集群不存在返回 null,K8s 失败经翻译后抛业务异常。</summary>
     public async Task<WorkloadDetailViewModel?> GetStatefulSetAsync(WorkloadKeyRequest request)
     {
         var entity = await repo.GetByIdAsync(request.ClusterId);
@@ -158,6 +165,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         }
     }
 
+    /// <summary>读取单个 DaemonSet 详情;集群不存在返回 null,K8s 失败经翻译后抛业务异常。</summary>
     public async Task<WorkloadDetailViewModel?> GetDaemonSetAsync(WorkloadKeyRequest request)
     {
         var entity = await repo.GetByIdAsync(request.ClusterId);
@@ -177,6 +185,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         }
     }
 
+    /// <summary>读取单个 ReplicaSet 详情;集群不存在返回 null,K8s 失败经翻译后抛业务异常。</summary>
     public async Task<WorkloadDetailViewModel?> GetReplicaSetAsync(WorkloadKeyRequest request)
     {
         var entity = await repo.GetByIdAsync(request.ClusterId);
@@ -196,6 +205,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         }
     }
 
+    /// <summary>以 YAML 创建 Deployment,命名空间取自 YAML 的 metadata.namespace;YAML 非法或未指定命名空间抛 <see cref="ValidationException"/>,成功后写创建审计。</summary>
     public async Task CreateDeploymentFromYamlAsync(WorkloadCreateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
@@ -215,6 +225,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         await auditService.LogAsync(AuditCategory.Workload, AuditAction.Create, AuditTarget(WorkloadKind.Deployment, ns, body.Metadata?.Name, entity.Name));
     }
 
+    /// <summary>以 YAML 创建 StatefulSet,命名空间取自 YAML 的 metadata.namespace;YAML 非法或未指定命名空间抛 <see cref="ValidationException"/>,成功后写创建审计。</summary>
     public async Task CreateStatefulSetFromYamlAsync(WorkloadCreateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
@@ -234,6 +245,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         await auditService.LogAsync(AuditCategory.Workload, AuditAction.Create, AuditTarget(WorkloadKind.StatefulSet, ns, body.Metadata?.Name, entity.Name));
     }
 
+    /// <summary>以 YAML 创建 DaemonSet,命名空间取自 YAML 的 metadata.namespace;YAML 非法或未指定命名空间抛 <see cref="ValidationException"/>,成功后写创建审计。</summary>
     public async Task CreateDaemonSetFromYamlAsync(WorkloadCreateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
@@ -253,6 +265,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         await auditService.LogAsync(AuditCategory.Workload, AuditAction.Create, AuditTarget(WorkloadKind.DaemonSet, ns, body.Metadata?.Name, entity.Name));
     }
 
+    /// <summary>以 YAML 创建 ReplicaSet,命名空间取自 YAML 的 metadata.namespace;YAML 非法或未指定命名空间抛 <see cref="ValidationException"/>,成功后写创建审计。</summary>
     public async Task CreateReplicaSetFromYamlAsync(WorkloadCreateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
@@ -272,6 +285,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         await auditService.LogAsync(AuditCategory.Workload, AuditAction.Create, AuditTarget(WorkloadKind.ReplicaSet, ns, body.Metadata?.Name, entity.Name));
     }
 
+    /// <summary>以 YAML 更新 Deployment:读取服务器最新对象,仅以提交的 spec 覆盖(metadata/status 保持服务器侧,携带最新 resourceVersion);YAML 非法抛 <see cref="ValidationException"/>,成功后写更新审计。</summary>
     public async Task UpdateDeploymentFromYamlAsync(WorkloadUpdateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
@@ -294,6 +308,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         await auditService.LogAsync(AuditCategory.Workload, AuditAction.Update, AuditTarget(WorkloadKind.Deployment, request.Namespace, request.Name, entity.Name));
     }
 
+    /// <summary>以 YAML 更新 StatefulSet:读取服务器最新对象,仅以提交的 spec 覆盖(metadata/status 保持服务器侧);YAML 非法抛 <see cref="ValidationException"/>,成功后写更新审计。</summary>
     public async Task UpdateStatefulSetFromYamlAsync(WorkloadUpdateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
@@ -315,6 +330,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         await auditService.LogAsync(AuditCategory.Workload, AuditAction.Update, AuditTarget(WorkloadKind.StatefulSet, request.Namespace, request.Name, entity.Name));
     }
 
+    /// <summary>以 YAML 更新 DaemonSet:读取服务器最新对象,仅以提交的 spec 覆盖(metadata/status 保持服务器侧);YAML 非法抛 <see cref="ValidationException"/>,成功后写更新审计。</summary>
     public async Task UpdateDaemonSetFromYamlAsync(WorkloadUpdateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
@@ -336,6 +352,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         await auditService.LogAsync(AuditCategory.Workload, AuditAction.Update, AuditTarget(WorkloadKind.DaemonSet, request.Namespace, request.Name, entity.Name));
     }
 
+    /// <summary>以 YAML 更新 ReplicaSet:读取服务器最新对象,仅以提交的 spec 覆盖(metadata/status 保持服务器侧);YAML 非法抛 <see cref="ValidationException"/>,成功后写更新审计。</summary>
     public async Task UpdateReplicaSetFromYamlAsync(WorkloadUpdateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
@@ -357,6 +374,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         await auditService.LogAsync(AuditCategory.Workload, AuditAction.Update, AuditTarget(WorkloadKind.ReplicaSet, request.Namespace, request.Name, entity.Name));
     }
 
+    /// <summary>删除指定 Deployment,成功后写删除审计;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
     public async Task DeleteDeploymentAsync(WorkloadKeyRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
@@ -375,6 +393,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         await auditService.LogAsync(AuditCategory.Workload, AuditAction.Delete, AuditTarget(WorkloadKind.Deployment, request.Namespace, request.Name, entity.Name));
     }
 
+    /// <summary>删除指定 StatefulSet,成功后写删除审计;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
     public async Task DeleteStatefulSetAsync(WorkloadKeyRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
@@ -393,6 +412,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         await auditService.LogAsync(AuditCategory.Workload, AuditAction.Delete, AuditTarget(WorkloadKind.StatefulSet, request.Namespace, request.Name, entity.Name));
     }
 
+    /// <summary>删除指定 DaemonSet,成功后写删除审计;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
     public async Task DeleteDaemonSetAsync(WorkloadKeyRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
@@ -411,6 +431,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         await auditService.LogAsync(AuditCategory.Workload, AuditAction.Delete, AuditTarget(WorkloadKind.DaemonSet, request.Namespace, request.Name, entity.Name));
     }
 
+    /// <summary>删除指定 ReplicaSet,成功后写删除审计;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
     public async Task DeleteReplicaSetAsync(WorkloadKeyRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
@@ -429,6 +450,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         await auditService.LogAsync(AuditCategory.Workload, AuditAction.Delete, AuditTarget(WorkloadKind.ReplicaSet, request.Namespace, request.Name, entity.Name));
     }
 
+    /// <summary>扩缩容 Deployment:经 Scale 子资源读取后改写 replicas 再替换,成功后写扩缩容审计;K8s 失败经翻译后抛业务异常。</summary>
     public async Task ScaleDeploymentAsync(WorkloadScaleRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
@@ -450,6 +472,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         await auditService.LogAsync(AuditCategory.Workload, AuditAction.Scale, ScaleTarget(WorkloadKind.Deployment, request, entity.Name));
     }
 
+    /// <summary>扩缩容 StatefulSet:经 Scale 子资源读取后改写 replicas 再替换,成功后写扩缩容审计;K8s 失败经翻译后抛业务异常。</summary>
     public async Task ScaleStatefulSetAsync(WorkloadScaleRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
@@ -471,6 +494,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         await auditService.LogAsync(AuditCategory.Workload, AuditAction.Scale, ScaleTarget(WorkloadKind.StatefulSet, request, entity.Name));
     }
 
+    /// <summary>扩缩容 ReplicaSet:经 Scale 子资源读取后改写 replicas 再替换,成功后写扩缩容审计;K8s 失败经翻译后抛业务异常。</summary>
     public async Task ScaleReplicaSetAsync(WorkloadScaleRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
@@ -492,6 +516,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         await auditService.LogAsync(AuditCategory.Workload, AuditAction.Scale, ScaleTarget(WorkloadKind.ReplicaSet, request, entity.Name));
     }
 
+    /// <summary>滚动重启 Deployment:以 StrategicMerge Patch 给 Pod 模板打 restartedAt 注解触发滚动重建,成功后写重启审计。</summary>
     public async Task RestartDeploymentAsync(WorkloadKeyRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
@@ -511,6 +536,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         await auditService.LogAsync(AuditCategory.Workload, AuditAction.Restart, AuditTarget(WorkloadKind.Deployment, request.Namespace, request.Name, entity.Name));
     }
 
+    /// <summary>滚动重启 StatefulSet:以 StrategicMerge Patch 给 Pod 模板打 restartedAt 注解触发滚动重建,成功后写重启审计。</summary>
     public async Task RestartStatefulSetAsync(WorkloadKeyRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
@@ -530,6 +556,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
         await auditService.LogAsync(AuditCategory.Workload, AuditAction.Restart, AuditTarget(WorkloadKind.StatefulSet, request.Namespace, request.Name, entity.Name));
     }
 
+    /// <summary>滚动重启 DaemonSet:以 StrategicMerge Patch 给 Pod 模板打 restartedAt 注解触发滚动重建,成功后写重启审计。</summary>
     public async Task RestartDaemonSetAsync(WorkloadKeyRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);

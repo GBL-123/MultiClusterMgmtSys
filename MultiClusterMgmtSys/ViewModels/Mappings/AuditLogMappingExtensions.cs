@@ -4,8 +4,12 @@ using MultiClusterMgmtSys.ViewModels;
 
 namespace MultiClusterMgmtSys.ViewModels.Mappings;
 
+/// <summary>
+/// 审计日志实体与类别/动作枚举 → 中文展示文本的映射。
+/// </summary>
 public static class AuditLogMappingExtensions
 {
+    /// <summary>审计日志实体 → 审计日志展示 ViewModel 映射(类别与动作转中文名)。</summary>
     public static AuditLogViewModel ToAuditLogViewModel(this AuditLog log)
     {
         return new AuditLogViewModel
@@ -19,6 +23,7 @@ public static class AuditLogMappingExtensions
         };
     }
 
+    /// <summary>审计类别枚举 → 中文展示名。</summary>
     public static string ToDisplayName(this AuditCategory category)
     {
         return category switch
@@ -34,6 +39,7 @@ public static class AuditLogMappingExtensions
         };
     }
 
+    /// <summary>审计动作枚举 → 中文展示名。</summary>
     public static string ToDisplayName(this AuditAction action)
     {
         return action switch

@@ -11,6 +11,10 @@ using System.Security.Claims;
 
 namespace MultiClusterMgmtSys.Services;
 
+/// <summary>
+/// 账号管理服务：面向管理员的账号增删改查、批量删除/批量改角色、密码重置与自助改密。
+/// 操作者身份经 IHttpContextAccessor 从当前登录上下文解析,变更类操作成功后写审计日志。
+/// </summary>
 public class AccountService(
     UserManager<ApplicationUser> userManger,
     RoleManager<IdentityRole<int>> roleManager,
@@ -39,6 +43,7 @@ public class AccountService(
 
     private readonly ILogger<AccountService> logger = logger;
 
+    /// <summary>种子内置角色 Admin/Member 与内置管理员账号 admin(初始密码 Changeme_123,已存在则跳过),应用每次启动都会调用。</summary>
     public async Task CreateAdminAsync()
     {
         // Ensure roles
@@ -74,6 +79,9 @@ public class AccountService(
         logger.LogInformation("Create admin account succeeded");
     }
 
+    /// <summary>分页查询账号列表,支持按用户名模糊搜索、按角色过滤,并按创建时间/用户名/最后登录时间排序(均以 Id 作次级稳定排序)。</summary>
+    /// <param name="query">分页、搜索、过滤与排序参数,页码/页大小不合法时按最小值处理。</param>
+    /// <returns>账号视图分页结果,每项附带该用户的首个角色名。</returns>
     public async Task<PagedResult<AccountViewModel>> GetPagedAccountsAsync(AccountQueryRequest query)
     {
         logger.LogInformation("Querying accounts: search={SearchName}, role={RoleFilter}", query.SearchName, query.RoleFilter);
@@ -134,6 +142,9 @@ public class AccountService(
         return new PagedResult<AccountViewModel>(vms, total);
     }
 
+    /// <summary>批量删除账号:跳过当前登录账号与内置管理员;删除 Admin 将导致系统无剩余管理员时,该批 Admin 全部跳过。成功删除数大于 0 时写审计。</summary>
+    /// <param name="ids">待删除账号 ID 列表,为空直接返回零结果。</param>
+    /// <returns>实际删除数与跳过数。</returns>
     public async Task<AccountBatchResult> BatchDeleteAsync(IReadOnlyList<int> ids)
     {
         logger.LogInformation("Batch deleting accounts: count={Count}", ids.Count);
@@ -179,6 +190,7 @@ public class AccountService(
         return new AccountBatchResult(processed, users.Count - processed);
     }
 
+    /// <summary>批量修改账号角色:先移除现有全部角色再赋予目标角色。角色不存在抛 <see cref="NotFoundException"/>;跳过当前登录账号与内置管理员,降级为 Member 时保证至少保留一名管理员。成功数大于 0 时写审计。</summary>
     public async Task<AccountBatchResult> BatchUpdateRoleAsync(BatchRoleUpdateRequest request)
     {
         var ids = request.Ids;
@@ -244,6 +256,9 @@ public class AccountService(
         return new AccountBatchResult(processed, users.Count - processed);
     }
 
+    /// <summary>创建新账号并赋予指定角色;角色不存在时返回 InvalidRole 失败结果,成功后写创建审计。</summary>
+    /// <param name="request">用户名、密码与角色名。</param>
+    /// <returns>Identity 结果(错误文案为中文)。</returns>
     public async Task<IdentityResult> CreateAccountAsync(AccountCreateRequest request)
     {
         if (!await roleManager.RoleExistsAsync(request.RoleName))
@@ -271,6 +286,7 @@ public class AccountService(
         return result;
     }
 
+    /// <summary>更新账号信息并按需切换角色(先移除旧角色再赋予新角色);账号不存在或目标是内置管理员时返回失败结果,无论角色是否变化都写更新审计。</summary>
     public async Task<IdentityResult> UpdateAccountAsync(AccountUpdateRequest request)
     {
         var user = await userManager.FindByIdAsync(request.Id.ToString());
@@ -310,6 +326,7 @@ public class AccountService(
         return IdentityResult.Success;
     }
 
+    /// <summary>删除单个账号。禁止删除内置管理员与当前登录账号,并保证系统至少保留一个 Admin;以上保护以失败结果返回,正常删除成功后写审计。</summary>
     public async Task<IdentityResult> DeleteAccountAsync(int id)
     {
         var user = await userManager.FindByIdAsync(id.ToString());
@@ -367,6 +384,7 @@ public class AccountService(
         return deleteResult;
     }
 
+    /// <summary>管理员重置指定账号密码,经 Identity 重置令牌与密码策略校验;内置管理员不可重置,成功后写审计。</summary>
     public async Task<IdentityResult> ResetPasswordAsync(ResetPasswordRequest request)
     {
         var user = await userManager.FindByIdAsync(request.Id.ToString());
@@ -399,6 +417,7 @@ public class AccountService(
         return result;
     }
 
+    /// <summary>当前登录用户自助修改密码;新旧密码相同抛 <see cref="ValidationException"/>,成功后更新用户 UpdatedAt 并写审计。</summary>
     public async Task<IdentityResult> ChangePasswordAsync(ChangePasswordRequest request)
     {
         var username = GetCurrentUserName();
@@ -427,6 +446,7 @@ public class AccountService(
         return result;
     }
 
+    /// <summary>按用户名查询单个账号(含其首个角色名);用户不存在返回 null。</summary>
     public async Task<AccountViewModel?> GetUserByNameAsync(string username)
     {
         var user = await userManager.FindByNameAsync(username);

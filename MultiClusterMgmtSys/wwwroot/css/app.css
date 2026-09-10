@@ -227,6 +227,10 @@ html, body {
     font-size: 12px;
 }
 
+.svc-port-target {
+    color: #6E675C;
+}
+
 .svc-port-overflow {
     font-size: 12px;
     color: #6E675C;

@@ -12,6 +12,12 @@ namespace MultiClusterMgmtSys.Common.Exceptions;
 /// </summary>
 public static class K8sExceptionMapper
 {
+    /// <summary>
+    /// 将 K8s 客户端异常翻译为业务异常;无法识别的异常原样返回。
+    /// </summary>
+    /// <param name="ex">捕获到的原始异常。</param>
+    /// <param name="operation">操作名称,用于构造中文提示(如"删除集群")。</param>
+    /// <returns>业务异常;或无法识别时返回 <paramref name="ex"/> 原样。</returns>
     public static Exception Translate(Exception ex, string operation)
     {
         // KubernetesClient 19 将带状态码的错误抛为 KubernetesException(V1Status)。

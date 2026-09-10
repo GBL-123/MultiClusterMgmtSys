@@ -101,8 +101,8 @@
     private NodeListFilter filter = new();
 
     /// <summary>
-    /// The cluster currently being shown: the URL parameter when present,
-    /// otherwise the session-remembered selection (restored in place on /nodes).
+    /// 当前生效的集群上下文:URL 参数存在时用 URL 参数,
+    /// 否则用会话级记忆的选择(回到 /nodes 时原位恢复)。
     /// </summary>
     private int? EffectiveClusterId => ClusterId ?? ClusterSelection.SelectedClusterId;
 

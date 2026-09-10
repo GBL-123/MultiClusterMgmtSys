@@ -19,6 +19,7 @@ public class CreateWorkloadDialogTests
         ctx.Services.AddScoped(_ => harness.ClusterRepo);
         ctx.Services.AddScoped<WorkloadService>();
         ctx.Services.AddScoped(_ => harness.Audit);
+        ctx.AddYamlTemplates();
     }
 
     [Fact]
@@ -38,8 +39,6 @@ public class CreateWorkloadDialogTests
                     new DialogParameters { { "ClusterId", 1 }, { "Kind", WorkloadKind.StatefulSet } });
 
             provider.WaitForState(() => provider.Markup.Contains("kind: StatefulSet"));
-
-            Assert.Contains("新建有状态应用", provider.Markup);
         }
         finally
         {

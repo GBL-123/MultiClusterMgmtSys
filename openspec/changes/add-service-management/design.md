@@ -72,6 +72,27 @@ DiscoveryV1.ListNamespacedEndpointSlice(label: kubernetes.io/service-name=<svc>)
 
 `AuditCategory` 追加 `Service = 7`,`AuditAction` 复用现有 创建/修改/删除;三个写操作成功后 `auditService.LogAsync(AuditCategory.Service, …)`,目标格式 `服务: {ns}/{name} @ 集群 {clusterName}`(与 ConfigMap 一致)。
 
+### D8:创建模板外置为配置文件(实施期反馈追加)
+
+所有新建 YAML 对话框(Service/ConfigMap/Workload)的模板不再写死在组件代码里:
+
+- 文件布局:`wwwroot/templates/{资源}/{类型}.yaml`(service/clusterip|nodeport|loadbalancer|externalname、configmap/default、workload/deployment|statefulset|daemonset|replicaset,共 9 个)。
+- 读取:`Services/YamlTemplateService.cs`(`IYamlTemplateService`,单例),`GetTemplateAsync(category, name)` 按路径读文件;`WebRootPath` 为空时回退 `BaseDirectory/wwwroot`。
+- 降级:文件缺失/读取失败 → 返回最小骨架(含 `# 模板文件缺失` 注释与 PascalCase 的 kind)+ `LogWarning`,对话框仍可打开。
+- 可运维性:模板随镜像发布;Docker 可 `volume` 挂载 `wwwroot/templates` 覆盖,无需改代码重编译。
+- 测试护栏:`TemplateFilesValidationTests` 用真实 wwwroot 文件逐个反序列化校验(Service→V1Service、ConfigMap→V1ConfigMap、workload→对应 apps/v1 类型),模板文件打错字会直接红。对话框组件不写任何模板字面量。
+
+### D9:对话框标题去重(实施期反馈追加)
+
+`DialogService.ShowAsync<T>(title,…)` 的 title 已渲染进 MudBlazor 标题栏;四个对话框(ConfigMap/Workload/Service 创建 + WorkloadScaleDialog)内容区再手写 `MudText h6` 同名标题,属祖传模板缺陷——统一删除内容区重复标题,标题只留标题栏一处。
+
+### D7:端口行可读性、端口搜索与类型化创建(实施期反馈追加)
+
+- **端口行两段式着色**:kubectl 原生段(`80:30080/TCP`)保持墨色,自加的 `→ 8080`(容器端口)用次色 `#6E675C` 弱化,视觉上区分"两种来源的语法";每行附 `title` 提示逐段解释("服务端口 443 / TCP,转发到容器端口 6443")。格式本身不变(kubectl 语法保留)。
+- **端口搜索提取为 `Models/SvcListFilter` 静态过滤器**:统一匹配服务端口/NodePort/**容器端口 targetPort**(数字与命名形式);类型筛选(ClusterIP/NodePort/LoadBalancer/ExternalName)与名称搜索同样走该过滤器,可单元测试。
+- **创建对话框按类型切换模板**:类型下拉(ClusterIP/NodePort/LoadBalancer/ExternalName)→ 对应 YAML 模板;ExternalName 模板无 selector/端口,nodePort 以注释提示可省略(自动分配)。切换即重置内容(模板优先的创建流)。
+- 创建时间列维持与 ConfigMap 一致的完整时间格式(Open Question 落定)。
+
 ## Risks / Trade-offs
 
 - [K8s 不可变性规则演进(ipFamilyPolicy 等边缘字段)] → 守卫仅锁定三类核心不可变字段,其余交由 API 校验,409/422 经异常翻译呈现中文 Conflict 错误。
@@ -86,5 +107,5 @@ DiscoveryV1.ListNamespacedEndpointSlice(label: kubernetes.io/service-name=<svc>)
 
 ## Open Questions
 
-- 列表筛选栏是否加"端口搜索"(文本匹配 port/nodePort)?成本低、排障价值真实,默认**做**,实施时若发现过滤链复杂可降级为后续 change。
-- 创建时间列显示完整时间(与 ConfigMap 一致)还是 Age?默认与 ConfigMap 一致。
+- ~~列表筛选栏是否加"端口搜索"~~ 已实现,且覆盖容器端口(targetPort)匹配(D7)。
+- ~~创建时间列显示完整时间还是 Age~~ 维持与 ConfigMap 一致的完整时间(D7)。

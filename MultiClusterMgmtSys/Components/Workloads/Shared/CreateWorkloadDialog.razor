@@ -5,12 +5,12 @@
 @using MultiClusterMgmtSys.Services
 
 @inject WorkloadService WorkloadService
+@inject IYamlTemplateService YamlTemplateService
 @inject ISnackbar Snackbar
 @inject ExceptionPresenter ExHandler
 
 <MudDialog>
     <DialogContent>
-        <MudText Typo="Typo.h6" Class="mb-2">新建@(Kind.ToDisplayText())</MudText>
         <MudTextField T="string"
                       @bind-Value="yamlContent"
                       Label="YAML"
@@ -46,9 +46,9 @@
 
     private bool saving;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        yamlContent = BuildTemplate(Kind);
+        yamlContent = await YamlTemplateService.GetTemplateAsync("workload", Kind.ToString().ToLowerInvariant());
     }
 
     private void Cancel() => Dialog.Cancel();
@@ -91,88 +91,4 @@
             saving = false;
         }
     }
-
-    private static string BuildTemplate(WorkloadKind kind) => kind switch
-    {
-        WorkloadKind.Deployment => """
-            apiVersion: apps/v1
-            kind: Deployment
-            metadata:
-              name: 
-              namespace: 
-            spec:
-              replicas: 1
-              selector:
-                matchLabels:
-                  app: my-app
-              template:
-                metadata:
-                  labels:
-                    app: my-app
-                spec:
-                  containers:
-                    - name: my-app
-                      image: nginx:latest
-            """,
-        WorkloadKind.StatefulSet => """
-            apiVersion: apps/v1
-            kind: StatefulSet
-            metadata:
-              name: 
-              namespace: 
-            spec:
-              serviceName: my-svc
-              replicas: 1
-              selector:
-                matchLabels:
-                  app: my-app
-              template:
-                metadata:
-                  labels:
-                    app: my-app
-                spec:
-                  containers:
-                    - name: my-app
-                      image: nginx:latest
-            """,
-        WorkloadKind.DaemonSet => """
-            apiVersion: apps/v1
-            kind: DaemonSet
-            metadata:
-              name: 
-              namespace: 
-            spec:
-              selector:
-                matchLabels:
-                  app: my-agent
-              template:
-                metadata:
-                  labels:
-                    app: my-agent
-                spec:
-                  containers:
-                    - name: my-agent
-                      image: nginx:latest
-            """,
-        _ => """
-            apiVersion: apps/v1
-            kind: ReplicaSet
-            metadata:
-              name: 
-              namespace: 
-            spec:
-              replicas: 1
-              selector:
-                matchLabels:
-                  app: my-app
-              template:
-                metadata:
-                  labels:
-                    app: my-app
-                spec:
-                  containers:
-                    - name: my-app
-                      image: nginx:latest
-            """
-    };
 }

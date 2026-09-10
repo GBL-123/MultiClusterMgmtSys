@@ -42,7 +42,8 @@ public class SvcListTableTests
                 .Add(p => p.Items, [Item("ingress-gw", type: "NodePort", ports: [Port(80, "8080", nodePort: 30080)], externalEntry: "*:30080")]));
 
         Assert.Contains("ingress-gw", cut.Markup);
-        Assert.Contains("80:30080/TCP → 8080", cut.Markup);
+        Assert.Contains("80:30080/TCP", cut.Markup);
+        Assert.Contains("→ 8080", cut.Markup);
         Assert.Contains("NodePort", cut.Markup);
         Assert.Contains("*:30080", cut.Markup);
     }

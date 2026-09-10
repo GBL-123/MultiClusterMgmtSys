@@ -14,11 +14,19 @@
 - **THEN** 页面恢复会话中上次选择的集群并加载其服务列表
 
 ### Requirement: 服务列表页
-系统 SHALL 提供服务列表页,页面结构沿用 ConfigMap 列表骨架:集群选择侧栏、集群状态徽章、刷新按钮、命名空间下拉过滤(选项来自集群命名空间列表)、名称搜索、统一列表表格。列表行 SHALL 展示:名称(`.link-primary` 链接,进入详情)、命名空间、类型(ClusterIP/NodePort/LoadBalancer/ExternalName,等宽字体)、端口列(见端口展示要求)、对外入口列、ClusterIP、创建时间、操作列(详情、编辑 YAML、删除,删除与编辑仅 Admin 可见)。未选择集群时 SHALL 显示空态引导;集群不可达时 SHALL 显示不可达提示并禁用写操作入口。
+系统 SHALL 提供服务列表页,页面结构沿用 ConfigMap 列表骨架:集群选择侧栏、集群状态徽章、刷新按钮、命名空间下拉过滤(选项来自集群命名空间列表)、类型下拉过滤(ClusterIP/NodePort/LoadBalancer/ExternalName)、名称搜索、端口搜索、统一列表表格。列表行 SHALL 展示:名称(`.link-primary` 链接,进入详情)、命名空间、类型(ClusterIP/NodePort/LoadBalancer/ExternalName,等宽字体)、端口列(见端口展示要求)、对外入口列、ClusterIP、创建时间、操作列(详情、编辑 YAML、删除,删除与编辑仅 Admin 可见)。端口搜索 SHALL 同时匹配服务端口、NodePort 与容器端口(targetPort)。未选择集群时 SHALL 显示空态引导;集群不可达时 SHALL 显示不可达提示并禁用写操作入口。
 
 #### Scenario: 列表加载与过滤
-- **WHEN** 用户选择集群并按命名空间过滤、输入名称搜索
-- **THEN** 表格只显示匹配命名空间且名称包含搜索词的服务,行内展示类型、端口与对外入口
+- **WHEN** 用户选择集群并按命名空间、类型过滤,输入名称或端口搜索
+- **THEN** 表格只显示匹配条件的服务,行内展示类型、端口与对外入口
+
+#### Scenario: 端口搜索命中容器端口
+- **WHEN** 用户在端口搜索框输入某服务的容器端口数值(如 apiserver 服务的 6443)
+- **THEN** 列表仍能筛出该服务
+
+#### Scenario: 类型筛选
+- **WHEN** 用户在类型下拉选择 NodePort
+- **THEN** 列表只显示 NodePort 型服务
 
 #### Scenario: 集群不可达
 - **WHEN** 所选集群状态为不可达
@@ -88,7 +96,11 @@
 - **THEN** 系统改用旧 Endpoints API 读取,详情页仍正常显示后端列表
 
 ### Requirement: 服务 YAML 新建
-系统 SHALL 允许 Admin 从列表页通过「新建」按钮打开 YAML 编辑对话框(预置 Service YAML 模板);提交时系统 SHALL 反序列化用户 YAML 并校验 `metadata.namespace` 必填后创建。YAML 解析失败 SHALL 抛出中文校验异常(不直出原始异常);创建成功 SHALL 写入审计(类别"服务"、操作"创建")并刷新列表。
+系统 SHALL 允许 Admin 从列表页通过「新建」按钮打开 YAML 编辑对话框;对话框 SHALL 提供 Service 类型选择(ClusterIP/NodePort/LoadBalancer/ExternalName),并按所选类型预置对应 YAML 模板(ExternalName 模板无 selector 与端口,含 externalName;NodePort/LoadBalancer 模板的 nodePort 行以注释说明可省略并由集群自动分配)。创建模板 SHALL 外置为配置文件(`wwwroot/templates/{资源}/{类型}.yaml`),不写死在组件代码中;模板文件缺失或读取失败时 SHALL 回退最小骨架(附缺失提示注释)并记录警告日志,不阻塞对话框打开。提交时系统 SHALL 反序列化用户 YAML 并校验 `metadata.namespace` 必填后创建。YAML 解析失败 SHALL 抛出中文校验异常(不直出原始异常);创建成功 SHALL 写入审计(类别"服务"、操作"创建")并刷新列表。
+
+#### Scenario: 按类型选择模板
+- **WHEN** Admin 在创建对话框中选择 LoadBalancer 类型
+- **THEN** YAML 编辑框内容切换为 `type: LoadBalancer` 的模板
 
 #### Scenario: 从模板新建服务
 - **WHEN** Admin 点击「新建」并提交合法 YAML(含 `metadata.namespace`)
@@ -97,6 +109,10 @@
 #### Scenario: YAML 缺少命名空间
 - **WHEN** Admin 提交的 YAML 未指定 `metadata.namespace`
 - **THEN** 系统提示中文校验错误,不调用 K8s API
+
+#### Scenario: 模板文件缺失仍可打开对话框
+- **WHEN** `wwwroot/templates/service/clusterip.yaml` 不存在且 Admin 打开创建对话框
+- **THEN** YAML 编辑框显示附缺失提示的最小骨架,服务日志记录警告,不抛出用户可见错误
 
 ### Requirement: 服务 YAML 编辑与不可变字段守卫
 系统 SHALL 允许 Admin 对既有服务进行 YAML 编辑:系统读取现有对象后,若用户 YAML 中 `spec.clusterIP`/`spec.clusterIPs`/`spec.ipFamilies` 与现有值不同,SHALL 在调用 K8s API 之前抛出中文校验异常(提示该字段不可变,如需更换请删除后重建);用户 YAML 省略这些字段时 SHALL 以现有值补齐。提交 SHALL 携带现有 `resourceVersion`/`uid` 并保留服务状态(status)后整体替换。编辑成功 SHALL 写入审计(类别"服务"、操作"修改")并刷新详情。

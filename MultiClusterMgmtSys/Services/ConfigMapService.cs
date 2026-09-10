@@ -11,6 +11,10 @@ using System.Text;
 
 namespace MultiClusterMgmtSys.Services;
 
+/// <summary>
+/// ConfigMap(配置)管理服务:基于所选集群的凭据实时读写 k8s ConfigMap。
+/// 支持按命名空间查询、YAML 创建/更新(仅覆盖 data/binaryData)、删除,成功后写审计。
+/// </summary>
 public class ConfigMapService(ClusterRepository repo, AuditService auditService, ILogger<ConfigMapService> logger, Func<KubernetesClientConfiguration, IKubernetes> clientFactory)
 {
     private readonly ClusterRepository repo = repo;
@@ -19,6 +23,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
 
     private readonly ILogger<ConfigMapService> logger = logger;
 
+    /// <summary>拉取集群命名空间列表(升序),供配置页命名空间下拉使用;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
     public async Task<List<string>> GetNamespacesAsync(int clusterId)
     {
         var entity = await repo.GetByIdAsync(clusterId)
@@ -37,6 +42,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
         }
     }
 
+    /// <summary>查询配置列表;Namespace 为 null 时查全部命名空间。集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
     public async Task<List<ConfigMapListViewModel>> ListConfigMapsAsync(ConfigMapQueryRequest request)
     {
         var entity = await repo.GetByIdAsync(request.ClusterId)
@@ -57,6 +63,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
         }
     }
 
+    /// <summary>读取单个配置详情(含 data/binaryData);集群不存在返回 null,K8s 失败经翻译后抛业务异常。</summary>
     public async Task<ConfigMapDetailViewModel?> GetConfigMapAsync(ConfigMapKeyRequest request)
     {
         var entity = await repo.GetByIdAsync(request.ClusterId);
@@ -76,6 +83,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
         }
     }
 
+    /// <summary>删除指定配置,成功后写删除审计;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
     public async Task DeleteConfigMapAsync(ConfigMapKeyRequest request)
     {
         var entity = await repo.GetByIdAsync(request.ClusterId)
@@ -95,6 +103,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
         await auditService.LogAsync(AuditCategory.Configmap, AuditAction.Delete, $"配置: {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
     }
 
+    /// <summary>以 YAML 更新既有配置:反序列化后仅覆盖 data/binaryData 字段,携带服务器最新对象替换提交;YAML 非法抛 <see cref="ValidationException"/>,成功后写更新审计。</summary>
     public async Task UpdateConfigMapFromYamlAsync(ConfigMapUpdateRequest request)
     {
         var entity = await repo.GetByIdAsync(request.ClusterId)
@@ -128,6 +137,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
         await auditService.LogAsync(AuditCategory.Configmap, AuditAction.Update, $"配置: {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
     }
 
+    /// <summary>以 YAML 创建配置,命名空间取自 YAML 的 metadata.namespace;YAML 非法或未指定命名空间抛 <see cref="ValidationException"/>,成功后写创建审计。</summary>
     public async Task CreateConfigMapFromYamlAsync(ConfigMapCreateRequest request)
     {
         var entity = await repo.GetByIdAsync(request.ClusterId)

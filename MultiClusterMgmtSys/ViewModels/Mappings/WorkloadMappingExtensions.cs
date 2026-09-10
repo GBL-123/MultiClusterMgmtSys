@@ -11,6 +11,7 @@ namespace MultiClusterMgmtSys.ViewModels.Mappings;
 /// </summary>
 public static class WorkloadMappingExtensions
 {
+    /// <summary>将 <see cref="V1Deployment"/> 映射为工作负载列表展示数据。</summary>
     public static WorkloadListViewModel ToWorkloadListViewModel(this V1Deployment dep)
     {
         var desired = dep.Spec?.Replicas ?? 0;
@@ -29,6 +30,7 @@ public static class WorkloadMappingExtensions
         };
     }
 
+    /// <summary>将 <see cref="V1StatefulSet"/> 映射为工作负载列表展示数据。</summary>
     public static WorkloadListViewModel ToWorkloadListViewModel(this V1StatefulSet sts)
     {
         var desired = sts.Spec?.Replicas ?? 0;
@@ -49,6 +51,7 @@ public static class WorkloadMappingExtensions
         };
     }
 
+    /// <summary>将 <see cref="V1DaemonSet"/> 映射为工作负载列表展示数据。</summary>
     public static WorkloadListViewModel ToWorkloadListViewModel(this V1DaemonSet ds)
     {
         var desired = ds.Status?.DesiredNumberScheduled ?? 0;
@@ -66,6 +69,7 @@ public static class WorkloadMappingExtensions
         };
     }
 
+    /// <summary>将 <see cref="V1ReplicaSet"/> 映射为工作负载列表展示数据。</summary>
     public static WorkloadListViewModel ToWorkloadListViewModel(this V1ReplicaSet rs)
     {
         var desired = rs.Spec?.Replicas ?? 0;
@@ -82,6 +86,7 @@ public static class WorkloadMappingExtensions
         };
     }
 
+    /// <summary>将 <see cref="V1Deployment"/> 映射为工作负载详情展示数据(含条件列表与 YAML)。</summary>
     public static WorkloadDetailViewModel ToWorkloadDetailViewModel(this V1Deployment dep)
     {
         var list = dep.ToWorkloadListViewModel();
@@ -109,6 +114,7 @@ public static class WorkloadMappingExtensions
         };
     }
 
+    /// <summary>将 <see cref="V1StatefulSet"/> 映射为工作负载详情展示数据(含条件列表与 YAML)。</summary>
     public static WorkloadDetailViewModel ToWorkloadDetailViewModel(this V1StatefulSet sts)
     {
         var list = sts.ToWorkloadListViewModel();
@@ -136,6 +142,7 @@ public static class WorkloadMappingExtensions
         };
     }
 
+    /// <summary>将 <see cref="V1DaemonSet"/> 映射为工作负载详情展示数据(含条件列表与 YAML)。</summary>
     public static WorkloadDetailViewModel ToWorkloadDetailViewModel(this V1DaemonSet ds)
     {
         var list = ds.ToWorkloadListViewModel();
@@ -163,6 +170,7 @@ public static class WorkloadMappingExtensions
         };
     }
 
+    /// <summary>将 <see cref="V1ReplicaSet"/> 映射为工作负载详情展示数据(无条件列表与已更新计数)。</summary>
     public static WorkloadDetailViewModel ToWorkloadDetailViewModel(this V1ReplicaSet rs)
     {
         var list = rs.ToWorkloadListViewModel();

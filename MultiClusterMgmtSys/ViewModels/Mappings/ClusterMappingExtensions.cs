@@ -4,8 +4,12 @@ using MultiClusterMgmtSys.Requests;
 
 namespace MultiClusterMgmtSys.ViewModels.Mappings;
 
+/// <summary>
+/// 集群实体 → 列表/详情/编辑展示模型的映射,及端点集合的写回。
+/// </summary>
 public static class ClusterMappingExtensions
 {
+    /// <summary>集群实体 → 集群列表展示 ViewModel 映射(状态中文文本同步计算)。</summary>
     public static ClusterViewModel ToViewModel(this ClusterInfo e)
     {
         return new ClusterViewModel
@@ -30,6 +34,7 @@ public static class ClusterMappingExtensions
         };
     }
 
+    /// <summary>集群实体 → 集群详情展示 ViewModel 映射(端点按类型与序号排序,节点由服务层另行填充)。</summary>
     public static ClusterDetailViewModel ToDetailViewModel(this ClusterInfo e)
     {
         return new ClusterDetailViewModel
@@ -69,6 +74,7 @@ public static class ClusterMappingExtensions
         };
     }
 
+    /// <summary>集群实体 → 集群编辑表单回填 ViewModel 映射。</summary>
     public static ClusterEditViewModel ToEditViewModel(this ClusterInfo e)
     {
         return new ClusterEditViewModel

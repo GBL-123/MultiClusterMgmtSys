@@ -38,7 +38,9 @@
                 <div class="svc-port-cell font-mono">
                     @foreach (var port in context.Ports.Take(3))
                     {
-                        <div class="svc-port-row">@PortText(port)</div>
+                        <div class="svc-port-row" title="@PortTooltip(port)">
+                            <span>@PortLeft(port)</span><span class="svc-port-target"> → @PortTarget(port)</span>
+                        </div>
                     }
                     @if (context.Ports.Count > 3)
                     {
@@ -105,12 +107,19 @@
     [Parameter]
     public EventCallback<(string Namespace, string Name)> OnDelete { get; set; }
 
-    private static string PortText(SvcPortViewModel port)
+    private static string PortLeft(SvcPortViewModel port)
+        => port.NodePort is int nodePort
+            ? $"{port.Port}:{nodePort}/{port.Protocol}"
+            : $"{port.Port}/{port.Protocol}";
+
+    private static string PortTarget(SvcPortViewModel port)
+        => string.IsNullOrEmpty(port.TargetPort) ? "—" : port.TargetPort;
+
+    private static string PortTooltip(SvcPortViewModel port)
     {
         var left = port.NodePort is int nodePort
-            ? $"{port.Port}:{nodePort}"
-            : $"{port.Port}";
-        var target = string.IsNullOrEmpty(port.TargetPort) ? "" : $" → {port.TargetPort}";
-        return $"{left}/{port.Protocol}{target}";
+            ? $"服务端口 {port.Port},节点端口 {nodePort}"
+            : $"服务端口 {port.Port}";
+        return $"{left} / {port.Protocol},转发到容器端口 {PortTarget(port)}";
     }
 }

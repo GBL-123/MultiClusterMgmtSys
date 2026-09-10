@@ -26,6 +26,11 @@
 - [x] 3.5 `Components/Services/Shared/`:SvcYamlViewCard / SvcYamlEditCard(yaml-textarea 模式)/ CreateServiceDialog(YAML 模板)
 - [x] 3.6 `Components/Services/Pages/ServiceDetail.razor`(路由 /services/{ClusterId:int}/{Namespace}/{Name}):YAML 视图 + 端口表 + Endpoints 卡(.status-badge Ready 徽章)+ 详情工具栏(刷新/编辑/删除,Admin 门控);不存在空态、不可达降级
 - [x] 3.7 `Components/Services/Pages/EditServiceYaml.razor`:编辑页复用 SvcYamlEditCard,异常经 ExHandler.HandleAsync 呈现
+- [x] 3.8 端口行两段式着色(kubectl 段墨色 + 容器端口次色)与 title 逐段提示(实施期反馈)
+- [x] 3.9 `Models/SvcListFilter.cs` 静态过滤器:端口搜索含 targetPort、名称、类型筛选(实施期反馈)
+- [x] 3.10 SvcListFilterBar 增加类型下拉(实施期反馈)
+- [x] 3.11 CreateServiceDialog 增加 Service 类型选择与按类型 YAML 模板(实施期反馈)
+- [x] 3.12 全部创建 YAML 对话框模板外置为 `wwwroot/templates/{资源}/{类型}.yaml`(9 个文件),新增 `IYamlTemplateService` 读取(缺失回退骨架 + LogWarning);ConfigMap/Workload 对话框同步迁移(实施期反馈)
 
 ## 4. 测试(MultiClusterMgmtSys.Tests)
 
@@ -35,6 +40,9 @@
 - [x] 4.4 Endpoints 降级测试:EndpointSlice 200 展平;404 → 旧 Endpoints;其余异常 Translate
 - [x] 4.5 审计断言:创建/修改/删除成功后 AuditCategory.Service 落库,目标含 ns/name/集群名
 - [x] 4.6 bUnit 接线契约:SvcListTable 行内端口行渲染与 +N 截断、Headless/ExternalName 分支、操作按钮 Admin 门控(不测 .mud-* 内部 DOM)
+- [x] 4.7 SvcListFilterTests:端口搜索命中 targetPort/NodePort/服务端口、类型精确匹配、名称组合过滤(实施期反馈)
+- [x] 4.8 YamlTemplateServiceTests(临时目录读写/缺失回退/null WebRootPath)+ TemplateFilesValidationTests:9 个真实模板文件逐个 YAML 反序列化校验(实施期反馈)
+- [x] 4.9 四个对话框内容区重复标题移除,同步调整 CreateWorkloadDialogTests 与 ConfigMapsPageFlowTests 服务注册(实施期反馈)
 
 ## 5. 验证与收尾
 

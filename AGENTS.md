@@ -136,5 +136,6 @@ Folder-to-namespace mapping is **inconsistent** (post-restructure). Never assume
 - **Razor 注入**:一律用页面顶部的 `@inject`(`@using`/`@namespace` 块与 `@inject` 块之间空一行,紧随其后为标记区),`@code` 中不得出现 `[Inject]`。
 - **Razor 参数注解**:`[Parameter]` / `[CascadingParameter]` 注解单独一行,属性声明独立一行;属性之间、属性与方法之间、方法之间空一行。
 - **C# 成员间隔**:字段/属性/方法之间一律空一行(类声明后的首个成员不强制前置空行)。全项目(Components/Services/Data/ViewModels/Requests/Models/Common)适用。
-- 验证方式:`dotnet build` 0 错误 + "连续成员行"静态审计(相邻两行均为成员声明即命中)零命中。
+- **XML 注释**:主项目开启 `GenerateDocumentationFile`(CS1591 清零,**勿**加入 NoWarn);Services/Data/Requests/Models/Common/ViewModels(+Mappings) 的 public 类型/成员一律中文 `/// <summary>`(`/// ` 后带空格;枚举每成员一条;record 位置参数用 `<param>` 标注;.razor 与测试项目豁免)。契约注释须与对应 OpenSpec spec 语义一致(如 cluster-query-layering 哨兵值)。
+- 验证方式:`dotnet build` 0 错误 + "连续成员行"静态审计(相邻两行均为成员声明即命中)零命中 + CS1591 零命中(`rg "^\s*///(?=\S)"` 审计缺空格)。
 

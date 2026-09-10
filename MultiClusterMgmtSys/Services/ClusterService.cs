@@ -11,6 +11,10 @@ using MultiClusterMgmtSys.Models;
 
 namespace MultiClusterMgmtSys.Services;
 
+/// <summary>
+/// 集群信息服务:集群 CRUD、端点维护、连通性探测与状态刷新,以及带过滤/排序/分页的集群查询。
+/// 探测失败按优雅降级处理(状态置 Offline),不向调用方抛 K8s 异常。
+/// </summary>
 public class ClusterService(ClusterRepository repo, ClusterNodeService nodeService, AuditService auditService, ILogger<ClusterService> logger, Func<KubernetesClientConfiguration, IKubernetes> clientFactory)
 {
     private static readonly SemaphoreSlim syncGate = new(1, 1);
@@ -23,6 +27,7 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
 
     private readonly ILogger<ClusterService> logger = logger;
 
+    /// <summary>分页查询集群列表,支持分组/名称/状态/版本/创建时间范围过滤与排序;版本筛选走哨兵语义(见 <see cref="VersionFilterSentinel"/>)。</summary>
     public async Task<PagedResult<ClusterViewModel>> GetPagedAsync(ClusterQueryRequest request)
     {
         var query = ToPageQuery(request);
@@ -35,6 +40,7 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
             total);
     }
 
+    /// <summary>查询集群表中已登记的不重复版本号列表,供版本筛选下拉使用。</summary>
     public async Task<List<string>> GetAvailableVersionsAsync()
     {
         logger.LogInformation("GetAvailableVersions");
@@ -43,6 +49,8 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         return versions;
     }
 
+    /// <summary>查询单个集群详情;非 Offline 状态时实时拉取节点列表,拉取失败降级为 IsReachable=false 而不报错。集群不存在返回 null。</summary>
+    /// <param name="id">集群 ID。</param>
     public async Task<ClusterDetailViewModel?> GetClusterDetailAsync(int id)
     {
         logger.LogInformation("GetClusterDetail id={ClusterId}", id);
@@ -71,6 +79,7 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         return vm;
     }
 
+    /// <summary>查询集群的编辑用数据(含连接类型与凭据),不做连通性探测;集群不存在返回 null。</summary>
     public async Task<ClusterEditViewModel?> GetClusterForEditAsync(int id)
     {
         logger.LogInformation("GetClusterForEdit id={ClusterId}", id);
@@ -83,6 +92,8 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         return entity.ToEditViewModel();
     }
 
+    /// <summary>新建集群:先入库,再应用端点列表并立即连通性探测(结果回写状态/版本/节点数),最后写创建审计。探测失败仅置 Offline,不抛异常。</summary>
+    /// <param name="request">集群基本信息、连接凭据(KubeConfig 或 Token,按连接类型二选一)与端点列表。</param>
     public async Task<ClusterViewModel> AddClusterAsync(ClusterCreateRequest request)
     {
         logger.LogInformation("AddCluster name={Name} groupId={GroupId}", request.Name, request.GroupId);
@@ -109,6 +120,7 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         return entity.ToViewModel();
     }
 
+    /// <summary>更新集群;连接配置(连接类型/ApiServer/凭据/跳过 TLS 校验)发生变化时重新探测并回写结果。集群不存在抛 <see cref="NotFoundException"/>,成功后写更新审计。</summary>
     public async Task<ClusterViewModel> UpdateClusterAsync(ClusterUpdateRequest request)
     {
         logger.LogInformation("UpdateCluster id={ClusterId}", request.Id);
@@ -144,6 +156,7 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         return entity.ToViewModel();
     }
 
+    /// <summary>删除集群及其端点、节点备注(级联);集群不存在时静默返回,删除成功后写删除审计。</summary>
     public async Task DeleteClusterAsync(int id)
     {
         logger.LogInformation("DeleteCluster id={ClusterId}", id);
@@ -155,6 +168,7 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         }
     }
 
+    /// <summary>整体替换集群的管理端点(VIP/域名元数据)列表;集群不存在抛 <see cref="NotFoundException"/>,成功后写更新审计。</summary>
     public async Task UpdateClusterEndpointsAsync(ClusterEndpointsUpdateRequest request)
     {
         logger.LogInformation("UpdateClusterEndpoints id={ClusterId} count={Count}", request.ClusterId, request.Items.Count);
@@ -171,6 +185,7 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         await auditService.LogAsync(AuditCategory.Cluster, AuditAction.Update, $"集群: {entity.Name} 端点");
     }
 
+    /// <summary>立即探测单个集群连通性并回写状态/版本/节点数;探测失败置 Offline,不抛异常。</summary>
     public async Task<ClusterViewModel> RefreshClusterStatusAsync(int id)
     {
         logger.LogInformation("RefreshClusterStatus id={ClusterId}", id);
@@ -178,6 +193,10 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         return entity.ToViewModel();
     }
 
+    /// <summary>串行探测全部集群并回写状态;以信号量防止并发重复执行,单个集群失败仅记警告、不中断整轮,状态发生变化时按来源写审计。</summary>
+    /// <param name="progress">可选进度回调,报告(当前完成数, 总数)。</param>
+    /// <param name="source">触发来源,用于审计文案区分(见 <see cref="ClusterSyncSource"/>)。</param>
+    /// <returns>本轮探测成功的集群数量。</returns>
     public async Task<int> RefreshAllClustersStatusAsync(IProgress<(int current, int total)>? progress = null, string source = ClusterSyncSource.Manual)
     {
         logger.LogInformation("RefreshAllClustersStatus start source={Source}", source);

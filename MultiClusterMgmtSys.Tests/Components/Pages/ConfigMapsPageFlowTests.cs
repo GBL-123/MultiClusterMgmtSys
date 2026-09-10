@@ -30,6 +30,7 @@ public class ConfigMapsPageFlowTests
         ctx.Services.AddScoped(_ => harness.Audit);
         ctx.Services.AddScoped<ConfigMapService>();
         ctx.Services.AddScoped<ClusterSelectionState>();
+        ctx.AddYamlTemplates();
         return k8s;
     }
 

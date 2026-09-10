@@ -7,6 +7,9 @@ namespace MultiClusterMgmtSys.Common.Enums;
 /// </summary>
 public enum ClusterEndpointKind
 {
+    /// <summary>VIP 地址(虚拟 IP)。</summary>
     Vip = 0,
+
+    /// <summary>域名。</summary>
     Domain = 1
 }

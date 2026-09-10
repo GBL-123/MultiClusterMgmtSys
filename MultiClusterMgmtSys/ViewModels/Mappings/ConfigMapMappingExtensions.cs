@@ -4,8 +4,12 @@ using MultiClusterMgmtSys.ViewModels;
 
 namespace MultiClusterMgmtSys.ViewModels.Mappings;
 
+/// <summary>
+/// V1 ConfigMap → 配置展示模型的映射(列表与详情)。
+/// </summary>
 public static class ConfigMapMappingExtensions
 {
+    /// <summary>将 <see cref="V1ConfigMap"/> 映射为 ConfigMap 列表展示数据。</summary>
     public static ConfigMapListViewModel ToConfigMapListViewModel(this V1ConfigMap cm)
     {
         var keys = cm.Data?.Keys.ToList() ?? [];
@@ -22,6 +26,7 @@ public static class ConfigMapMappingExtensions
         };
     }
 
+    /// <summary>将 <see cref="V1ConfigMap"/> 映射为 ConfigMap 详情展示数据(含 YAML)。</summary>
     public static ConfigMapDetailViewModel ToConfigMapDetailViewModel(this V1ConfigMap cm)
     {
         return new ConfigMapDetailViewModel

@@ -161,10 +161,9 @@
     }
 
     /// <summary>
-    /// Cross-page selection: toggling a row's checkbox merges (or removes) the row's id into
-    /// the parent's persistent <see cref="SelectedIds"/> set, then notifies via
-    /// <see cref="OnSelectedIdsChanged"/>. Selection survives page changes because the parent
-    /// owns the canonical state, not MudTable.
+    /// 跨页选中:切换某行复选框时,把该行 Id 合并(或移除)进父组件持有的持久集合
+    /// <see cref="SelectedIds"/>,并通过 <see cref="OnSelectedIdsChanged"/> 通知父组件。
+    /// 因为规范状态由父组件持有而非 MudTable,选中在翻页后仍然保留。
     /// </summary>
     private async Task OnRowCheckChanged(int clusterId, bool @checked)
     {

@@ -88,6 +88,7 @@
                     @if (cluster.IsReachable)
                     {
                         <SvcListFilterBar @bind-SelectedNamespace="selectedNamespace"
+                                          @bind-SelectedType="selectedType"
                                           @bind-SearchName="searchName"
                                           @bind-PortQuery="portQuery"
                                           Namespaces="@namespaces"
@@ -140,6 +141,10 @@
 
     private string appliedPortQuery = "";
 
+    private string? selectedType;
+
+    private string? appliedType;
+
     private string? selectedNamespace;
 
     private int? previousClusterId;
@@ -149,19 +154,7 @@
     private int? EffectiveClusterId => ClusterId ?? ClusterSelection.SelectedClusterId;
 
     private List<SvcListViewModel> filteredServices
-    {
-        get
-        {
-            var q = services.AsEnumerable();
-            if (!string.IsNullOrWhiteSpace(appliedSearchName))
-                q = q.Where(s => s.Name.Contains(appliedSearchName, StringComparison.OrdinalIgnoreCase));
-            if (!string.IsNullOrWhiteSpace(appliedPortQuery))
-                q = q.Where(s => s.Ports.Any(p =>
-                    p.Port.ToString().Contains(appliedPortQuery, StringComparison.OrdinalIgnoreCase) ||
-                    (p.NodePort?.ToString().Contains(appliedPortQuery, StringComparison.OrdinalIgnoreCase) ?? false)));
-            return q.ToList();
-        }
-    }
+        => services.Apply(appliedSearchName, appliedPortQuery, appliedType).ToList();
 
     protected override async Task OnInitializedAsync()
     {
@@ -268,6 +261,7 @@
         if (!EffectiveClusterId.HasValue) return;
         appliedSearchName = searchName;
         appliedPortQuery = portQuery;
+        appliedType = selectedType;
         loading = true;
         try
         {
@@ -290,6 +284,8 @@
         appliedSearchName = "";
         portQuery = "";
         appliedPortQuery = "";
+        selectedType = null;
+        appliedType = null;
         if (EffectiveClusterId.HasValue)
         {
             await LoadAsync(EffectiveClusterId.Value);

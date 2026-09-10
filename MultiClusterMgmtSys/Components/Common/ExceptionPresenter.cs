@@ -13,6 +13,11 @@ public class ExceptionPresenter(ISnackbar snackbar, ILogger<ExceptionPresenter> 
 
     private readonly ILogger<ExceptionPresenter> logger = logger;
 
+    /// <summary>
+    /// 统一处理并呈现异常:业务异常弹其 UserMessage,系统异常弹通用文案并记录日志。
+    /// </summary>
+    /// <param name="ex">捕获到的异常。</param>
+    /// <param name="fallbackMessage">操作描述,非业务异常时拼入"xxx失败,请稍后重试"。</param>
     public Task HandleAsync(Exception ex, string fallbackMessage)
     {
         if (ex is BusinessException business)

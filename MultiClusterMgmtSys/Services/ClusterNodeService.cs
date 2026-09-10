@@ -25,6 +25,7 @@ public class ClusterNodeService(ClusterRepository repo, AuditService auditServic
 
     private static readonly string[] IpAddressTypes = ["InternalIP", "ExternalIP"];
 
+    /// <summary>实时拉取指定集群的节点列表(状态/角色/Kubelet 版本/IP 地址含管理员备注)。集群不存在抛 <see cref="NotFoundException"/>,K8s 调用失败经翻译后抛业务异常。</summary>
     public async Task<List<ClusterNodeViewModel>> GetClusterNodesAsync(int id)
     {
         logger.LogInformation("GetClusterNodes clusterId={ClusterId}", id);
@@ -55,6 +56,7 @@ public class ClusterNodeService(ClusterRepository repo, AuditService auditServic
         return result;
     }
 
+    /// <summary>拉取节点详情(地址/条件/污点/容量/标签/系统信息)。集群状态为 Offline 时直接返回 IsReachable=false 的占位视图;集群不存在返回 null,K8s 调用失败经翻译后抛业务异常。</summary>
     public async Task<ClusterNodeDetailViewModel?> GetNodeDetailAsync(NodeDetailQueryRequest request)
     {
         var entity = await repo.GetByIdAsync(request.ClusterId);
@@ -91,6 +93,7 @@ public class ClusterNodeService(ClusterRepository repo, AuditService auditServic
         return vm;
     }
 
+    /// <summary>整体维护某节点各地址的 IP 备注:提交的条目做新增/更新,提交中未出现的既有备注删除;备注超过 64 字符抛 <see cref="ValidationException"/>,成功后写审计。</summary>
     public async Task UpdateNodeIpNotesAsync(NodeIpNotesUpdateRequest request)
     {
         logger.LogInformation("UpdateNodeIpNotes clusterId={ClusterId} node={NodeName} count={Count}",

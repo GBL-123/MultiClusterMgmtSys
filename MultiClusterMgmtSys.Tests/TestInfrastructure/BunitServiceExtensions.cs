@@ -1,5 +1,6 @@
 using Bunit;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -11,6 +12,12 @@ using MultiClusterMgmtSys.Services;
 using k8s;
 
 namespace MultiClusterMgmtSys.Tests.TestInfrastructure;
+
+public static class TestPaths
+{
+    public static string RepoWwwRoot => Path.GetFullPath(
+        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "MultiClusterMgmtSys", "wwwroot"));
+}
 
 public static class BunitServiceExtensions
 {
@@ -28,6 +35,13 @@ public static class BunitServiceExtensions
         ctx.Services.AddScoped<ExceptionPresenter>();
         ctx.Services.AddSingleton(NullLoggerFactory.Instance);
         return harness;
+    }
+
+    public static void AddYamlTemplates(this BunitContext ctx)
+    {
+        var wwwroot = TestPaths.RepoWwwRoot;
+        ctx.Services.AddSingleton<IWebHostEnvironment>(_ => Mock.Of<IWebHostEnvironment>(e => e.WebRootPath == wwwroot));
+        ctx.Services.AddSingleton<IYamlTemplateService, YamlTemplateService>();
     }
 
     public static (ServiceHarness Harness, Mock<IKubernetes> K8s) AddWorkloadStack(this BunitContext ctx, string actor = "admin")

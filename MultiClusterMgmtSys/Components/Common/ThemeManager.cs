@@ -8,6 +8,7 @@ namespace MultiClusterMgmtSys.Components.Common;
 /// </summary>
 public static class ThemeManager
 {
+    /// <summary>全局 MudTheme 实例(纯亮色),供 <c>MudThemeProvider</c> 直接引用。</summary>
     public static MudTheme Theme { get; } = BuildTheme();
 
     private static MudTheme BuildTheme()

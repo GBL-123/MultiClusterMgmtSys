@@ -5,6 +5,10 @@ using MultiClusterMgmtSys.Requests;
 
 namespace MultiClusterMgmtSys.Services;
 
+/// <summary>
+/// 认证服务:自助注册(默认 Member 角色)、密码登录与登出。
+/// 登录/注册/登出成功后写认证类审计日志。
+/// </summary>
 public class AuthService(
     UserManager<ApplicationUser> userManger,
     SignInManager<ApplicationUser> signInManager,
@@ -24,6 +28,9 @@ public class AuthService(
 
     private readonly ILogger<AuthService> logger = logger;
 
+    /// <summary>注册新用户并默认赋予 Member 角色,成功后写注册审计;失败(如用户名重复)不抛异常,以 Identity 结果返回中文错误文案。</summary>
+    /// <param name="request">用户名与密码。</param>
+    /// <returns>Identity 注册结果。</returns>
     public async Task<IdentityResult> RegisterAsync(RegisterRequest request)
     {
         logger.LogInformation("Registering user: {UserName}", request.UserName);
@@ -48,6 +55,9 @@ public class AuthService(
         return result;
     }
 
+    /// <summary>密码登录;成功后更新用户最后登录时间并写登录审计,失败不抛异常、由调用方处理结果。</summary>
+    /// <param name="request">用户名、密码与是否自动登录(记住会话)。</param>
+    /// <returns>登录结果(Succeeded 表示成功)。</returns>
     public async Task<SignInResult> LoginAsync(LoginRequest request)
     {
         logger.LogInformation("{UserName} login", request.UserName);
@@ -69,6 +79,7 @@ public class AuthService(
         return result;
     }
 
+    /// <summary>登出当前会话并写登出审计;操作者用户名从当前 HTTP 上下文解析。</summary>
     public async Task LogoutAsync()
     {
         var userName = httpContextAccessor.HttpContext?.User.Identity?.Name;
