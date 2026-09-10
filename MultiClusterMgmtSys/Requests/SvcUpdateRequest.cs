@@ -1,7 +1,7 @@
 namespace MultiClusterMgmtSys.Requests;
 
 /// <summary>
-/// 以 YAML 更新 Service 的入参,由 <see cref="MultiClusterMgmtSys.Services.SvcService"/> 的更新方法(UpdateServiceFromYamlAsync)消费。
+/// 以 YAML 更新 Service 的入参,由 <see cref="MultiClusterMgmtSys.Services.SvcService"/> 的更新方法(UpdateSvcFromYamlAsync)消费。
 /// </summary>
 /// <param name="ClusterId">目标集群 Id(数据库主键)。</param>
 /// <param name="Name">Service 名称(Kubernetes 对象名)。</param>

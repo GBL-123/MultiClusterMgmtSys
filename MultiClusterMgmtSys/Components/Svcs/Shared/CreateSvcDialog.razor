@@ -12,7 +12,7 @@
 <MudDialog>
     <DialogContent>
         <MudSelect T="string"
-                   Value="serviceType"
+                   Value="svcType"
                    ValueChanged="OnTypeChanged"
                    Label="Service 类型"
                    Variant="Variant.Outlined"
@@ -59,7 +59,7 @@
     [Parameter]
     public int ClusterId { get; set; }
 
-    private string serviceType = ClusterIPType;
+    private string svcType = ClusterIPType;
 
     private string yamlContent = "";
 
@@ -72,7 +72,7 @@
 
     private async Task OnTypeChanged(string type)
     {
-        serviceType = type;
+        svcType = type;
         yamlContent = await YamlTemplateService.GetTemplateAsync("service", type.ToLowerInvariant());
     }
 
@@ -93,7 +93,7 @@
         saving = true;
         try
         {
-            await SvcService.CreateServiceFromYamlAsync(new SvcCreateRequest(ClusterId, yamlContent));
+            await SvcService.CreateSvcFromYamlAsync(new SvcCreateRequest(ClusterId, yamlContent));
             Snackbar.Add("创建成功", Severity.Success);
             Dialog.Close(DialogResult.Ok(true));
         }

@@ -6,7 +6,7 @@
 @using MultiClusterMgmtSys.Requests
 @using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.ViewModels
-@using MultiClusterMgmtSys.Components.Services.Shared
+@using MultiClusterMgmtSys.Components.Svcs.Shared
 
 @inject ClusterService ClusterService
 @inject SvcService SvcService
@@ -108,11 +108,11 @@
             }
             else
             {
-                <SvcListTable Items="@filteredServices"
+                <SvcListTable Items="@filteredSvcs"
                               Loading="@loading"
                               OnNavigateDetail="NavigateToDetail"
                               OnNavigateEditYaml="NavigateToYamlEdit"
-                              OnDelete="DeleteService" />
+                              OnDelete="DeleteSvc" />
             }
         }
     </MudStack>
@@ -127,7 +127,7 @@
 
     private ClusterDetailViewModel? cluster;
 
-    private List<SvcListViewModel> services = new();
+    private List<SvcListViewModel> svcs = new();
 
     private List<string> namespaces = new();
 
@@ -153,8 +153,8 @@
 
     private int? EffectiveClusterId => ClusterId ?? ClusterSelection.SelectedClusterId;
 
-    private List<SvcListViewModel> filteredServices
-        => services.Apply(appliedSearchName, appliedPortQuery, appliedType).ToList();
+    private List<SvcListViewModel> filteredSvcs
+        => svcs.Apply(appliedSearchName, appliedPortQuery, appliedType).ToList();
 
     protected override async Task OnInitializedAsync()
     {
@@ -185,7 +185,7 @@
         else
         {
             cluster = null;
-            services = new();
+            svcs = new();
             namespaces = new();
             loading = false;
         }
@@ -228,7 +228,7 @@
 
                 try
                 {
-                    services = await SvcService.ListServicesAsync(new SvcQueryRequest(id, selectedNamespace));
+                    svcs = await SvcService.ListSvcsAsync(new SvcQueryRequest(id, selectedNamespace));
                 }
                 catch (Exception ex)
                 {
@@ -237,7 +237,7 @@
             }
             else
             {
-                services = new();
+                svcs = new();
                 namespaces = new();
             }
         }
@@ -265,7 +265,7 @@
         loading = true;
         try
         {
-            services = await SvcService.ListServicesAsync(new SvcQueryRequest(EffectiveClusterId.Value, selectedNamespace));
+            svcs = await SvcService.ListSvcsAsync(new SvcQueryRequest(EffectiveClusterId.Value, selectedNamespace));
         }
         catch (Exception ex)
         {
@@ -302,7 +302,7 @@
         NavigationManager.NavigateTo($"/services/{EffectiveClusterId!.Value}/{args.Namespace}/{args.Name}/yaml");
     }
 
-    private async Task DeleteService((string Namespace, string Name) args)
+    private async Task DeleteSvc((string Namespace, string Name) args)
     {
         var parameters = new DialogParameters
         {
@@ -316,7 +316,7 @@
         {
             try
             {
-                await SvcService.DeleteServiceAsync(new SvcKeyRequest(EffectiveClusterId!.Value, args.Name, args.Namespace));
+                await SvcService.DeleteSvcAsync(new SvcKeyRequest(EffectiveClusterId!.Value, args.Name, args.Namespace));
                 Snackbar.Add("删除成功", Severity.Success);
                 await LoadAsync(EffectiveClusterId!.Value);
             }
@@ -331,7 +331,7 @@
     {
         var parameters = new DialogParameters { { "ClusterId", EffectiveClusterId!.Value } };
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
-        var dialog = await DialogService.ShowAsync<CreateServiceDialog>("新建 Service", parameters, options);
+        var dialog = await DialogService.ShowAsync<CreateSvcDialog>("新建 Service", parameters, options);
         var result = await dialog.Result;
         if (result is not null && !result.Canceled)
             await LoadAsync(EffectiveClusterId!.Value);

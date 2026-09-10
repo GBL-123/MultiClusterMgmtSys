@@ -26,7 +26,7 @@
 
 ## Impact
 
-- **新增**:`Services/SvcService.cs`(服务层)、`Requests/Svc*.cs`(4 个请求对象)、`ViewModels/Svc*.cs`(列表/详情/端口/端点 VM)+ `ViewModels/Mappings/SvcMappingExtensions.cs`、`Components/Services/Pages|Shared`(页面与共享组件)、`Common/Enums/AuditCategory.cs`(新枚举值)。
+- **新增**:`Services/SvcService.cs`(服务层)、`Requests/Svc*.cs`(4 个请求对象)、`ViewModels/Svc*.cs`(列表/详情/端口/端点 VM)+ `ViewModels/Mappings/SvcMappingExtensions.cs`、`Components/Svcs/Pages|Shared`(页面与共享组件)、`Common/Enums/AuditCategory.cs`(新枚举值)。
 - **修改**:`Components/Layout/Drawer.razor`(网络管理分组)、`Program.cs`(注册 `SvcService`)、`Services/ConfigMapService.cs` 不动(`BuildConfig` 模式复制,与现有各服务保持独立)。
 - **测试**:`MultiClusterMgmtSys.Tests` 新增 Services/ViewModels 映射测试(K8s 调用走 Moq `*WithHttpMessagesAsync`,Endpoints 降级路径覆盖 404 → 旧 API)。
 - 不涉及数据库 schema 变更、不涉及新增 NuGet 依赖(k8s `DiscoveryV1` 客户端已随 KubernetesClient 19 提供)。

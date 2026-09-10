@@ -22,7 +22,7 @@
                Margin="Margin.Dense"
                Style="min-width:150px;">
         <MudSelectItem Value="@((string?)null)">全部类型</MudSelectItem>
-        @foreach (var t in ServiceTypes)
+        @foreach (var t in SvcTypes)
         {
             <MudSelectItem Value="@t">@t</MudSelectItem>
         }
@@ -65,7 +65,7 @@
 </MudStack>
 
 @code {
-    private static readonly string[] ServiceTypes = ["ClusterIP", "NodePort", "LoadBalancer", "ExternalName"];
+    private static readonly string[] SvcTypes = ["ClusterIP", "NodePort", "LoadBalancer", "ExternalName"];
 
     [Parameter]
     public List<string> Namespaces { get; set; } = new();

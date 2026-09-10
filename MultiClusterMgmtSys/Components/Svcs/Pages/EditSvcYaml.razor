@@ -7,7 +7,7 @@
 @using MultiClusterMgmtSys.Requests
 @using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.ViewModels
-@using MultiClusterMgmtSys.Components.Services.Shared
+@using MultiClusterMgmtSys.Components.Svcs.Shared
 
 @inject SvcService SvcService
 @inject ClusterSelectionState ClusterSelection
@@ -91,7 +91,7 @@
         try
         {
             loadError = false;
-            var detail = await SvcService.GetServiceAsync(new SvcKeyRequest(ClusterId, Name, Namespace));
+            var detail = await SvcService.GetSvcAsync(new SvcKeyRequest(ClusterId, Name, Namespace));
             if (detail is null)
             {
                 Snackbar.Add("Service 不存在或已被删除", Severity.Warning);
@@ -126,7 +126,7 @@
         saving = true;
         try
         {
-            await SvcService.UpdateServiceFromYamlAsync(new SvcUpdateRequest(ClusterId, Name, Namespace, yamlContent));
+            await SvcService.UpdateSvcFromYamlAsync(new SvcUpdateRequest(ClusterId, Name, Namespace, yamlContent));
             Snackbar.Add("修改成功", Severity.Success);
             NavigationManager.NavigateTo($"/services/{ClusterId}");
         }

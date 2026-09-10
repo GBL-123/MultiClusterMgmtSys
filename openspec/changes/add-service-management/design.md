@@ -25,7 +25,7 @@
 
 ### D1:命名 — 全链路 `Svc` 前缀
 
-`SvcService`(`Services/SvcService.cs`)、`SvcQueryRequest`/`SvcKeyRequest`/`SvcCreateRequest`/`SvcUpdateRequest`、`SvcListViewModel`/`SvcDetailViewModel`/`SvcPortViewModel`/`SvcEndpointViewModel`、`SvcMappingExtensions`、页面 `Components/Services/`(Razor 命名空间随物理路径 `MultiClusterMgmtSys.Components.Services`)、路由 `/services`、`AuditCategory.Service = 7`。
+`SvcService`(`Services/SvcService.cs`)、`SvcQueryRequest`/`SvcKeyRequest`/`SvcCreateRequest`/`SvcUpdateRequest`、`SvcListViewModel`/`SvcDetailViewModel`/`SvcPortViewModel`/`SvcEndpointViewModel`、`SvcMappingExtensions`、页面 `Components/Svcs/`(Razor 命名空间随物理路径 `MultiClusterMgmtSys.Components.Svcs`)、路由 `/services`、`AuditCategory.Service = 7`。
 
 理由:`Service` 一词在本库有三种身份(C# 服务层、K8s 对象、路由),`grep Service` 不可用;`Svc` 唯一且符合 `kubectl get svc` 的圈子习惯。备选 `ServiceService`(机械一致但难读)、`ServiceManagementService`(冗长)已否决。
 
@@ -66,7 +66,7 @@ DiscoveryV1.ListNamespacedEndpointSlice(label: kubernetes.io/service-name=<svc>)
 
 ### D5:结构 — 复制模板 A(ConfigMaps)骨架
 
-`Components/Services/Pages`(Services.razor、ServiceDetail.razor、EditServiceYaml.razor)+ `Shared`(列表表格、过滤栏、YAML 查看/编辑卡、创建对话框、详情工具栏、端口卡、Endpoints 卡)。导航为「网络管理」`MudNavGroup`(图标 `Icons.Material.Filled.Lan`),子项图标避开已占用的 `Dns`(建议 `SettingsEthernet`),展开状态照抄 `workloadsExpanded` 模式。`Program.cs` 注册 `SvcService`(scoped)。
+`Components/Svcs/Pages`(Svcs.razor、SvcDetail.razor、EditSvcYaml.razor)+ `Shared`(列表表格、过滤栏、YAML 查看/编辑卡、创建对话框、详情工具栏、端口卡、Endpoints 卡)。导航为「网络管理」`MudNavGroup`(图标 `Icons.Material.Filled.Lan`),子项图标避开已占用的 `Dns`(建议 `SettingsEthernet`),展开状态照抄 `workloadsExpanded` 模式。`Program.cs` 注册 `SvcService`(scoped)。
 
 ### D6:审计 — 扩展现有枚举与调用点
 

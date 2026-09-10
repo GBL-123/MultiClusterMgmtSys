@@ -115,7 +115,7 @@ public class YamlEditPagesTests
         });
         k8s.SetupReplaceService("web", "app");
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Services.Pages.EditServiceYaml>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Components.Svcs.Pages.EditSvcYaml>(
             parameters => parameters
                 .Add(p => p.ClusterId, cluster.Id)
                 .Add(p => p.Namespace, "app")
