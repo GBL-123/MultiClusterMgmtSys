@@ -30,6 +30,13 @@
                 副本集
             </MudNavLink>
         </MudNavGroup>
+        <MudNavGroup Title="网络管理"
+                     Icon="@Icons.Material.Filled.Lan"
+                     Expanded="@networkExpanded">
+            <MudNavLink Href="/services" Icon="@Icons.Material.Filled.SettingsEthernet" Match="NavLinkMatch.Prefix">
+                服务管理
+            </MudNavLink>
+        </MudNavGroup>
         <AuthorizeView Roles="Admin">
             <Authorized>
                 <MudNavLink Href="/accounts" Icon="@Icons.Material.Filled.ManageAccounts" Match="NavLinkMatch.Prefix">
@@ -52,8 +59,11 @@
 
     private bool workloadsExpanded;
 
+    private bool networkExpanded;
+
     protected override void OnInitialized()
     {
         workloadsExpanded = NavigationManager.Uri.Contains("/workloads", StringComparison.OrdinalIgnoreCase);
+        networkExpanded = NavigationManager.Uri.Contains("/services", StringComparison.OrdinalIgnoreCase);
     }
 }

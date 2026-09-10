@@ -1,0 +1,51 @@
+
+<MudCard Class="pa-4 yaml-card">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">YAML</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        <div class="yaml-textarea-wrap">
+            <textarea class="yaml-textarea"
+                      spellcheck="false"
+                      value="@Yaml"
+                      @oninput="OnInput"></textarea>
+        </div>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    private string _yaml = "";
+
+    [Parameter]
+    public string Yaml
+    {
+        get => _yaml;
+        set
+        {
+            if (_yaml != value)
+            {
+                _yaml = value ?? "";
+                StateHasChanged();
+            }
+        }
+    }
+
+    [Parameter]
+    public EventCallback<string> YamlChanged { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (_yaml != Yaml)
+        {
+            _yaml = Yaml ?? "";
+        }
+    }
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        _yaml = e.Value?.ToString() ?? "";
+        await YamlChanged.InvokeAsync(_yaml);
+    }
+}

@@ -1,0 +1,116 @@
+@using MultiClusterMgmtSys.ViewModels
+@using MultiClusterMgmtSys.ViewModels.Mappings
+
+<MudTable T="SvcListViewModel"
+          Items="@Items"
+          Hover="true"
+          FixedHeader="true"
+          Loading="Loading"
+          Class="services-table">
+    <HeaderContent>
+        <MudTh><MudTableSortLabel T="SvcListViewModel" SortBy="@(x => x.Name)" SortLabel="Name">名称</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="SvcListViewModel" SortBy="@(x => x.Namespace)" SortLabel="Namespace">命名空间</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="SvcListViewModel" SortBy="@(x => x.Type)" SortLabel="Type">类型</MudTableSortLabel></MudTh>
+        <MudTh>端口</MudTh>
+        <MudTh>对外入口</MudTh>
+        <MudTh>ClusterIP</MudTh>
+        <MudTh><MudTableSortLabel T="SvcListViewModel" SortBy="@(x => x.CreatedAt)" SortLabel="CreatedAt">创建时间</MudTableSortLabel></MudTh>
+        <MudTh>操作</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="名称">
+            <MudText Class="font-mono link-primary"
+                     @onclick="() => OnNavigateDetail.InvokeAsync((context.Namespace, context.Name))">
+                @context.Name
+            </MudText>
+        </MudTd>
+        <MudTd DataLabel="命名空间">
+            <MudChip T="string" Size="Size.Small" Class="font-mono">@context.Namespace</MudChip>
+        </MudTd>
+        <MudTd DataLabel="类型"><span class="font-mono">@context.Type</span></MudTd>
+        <MudTd DataLabel="端口">
+            @if (context.Ports.Count == 0)
+            {
+                <span class="font-mono mud-text-secondary">[ 暂无 ]</span>
+            }
+            else
+            {
+                <div class="svc-port-cell font-mono">
+                    @foreach (var port in context.Ports.Take(3))
+                    {
+                        <div class="svc-port-row">@PortText(port)</div>
+                    }
+                    @if (context.Ports.Count > 3)
+                    {
+                        <div class="svc-port-overflow">… +@(context.Ports.Count - 3)</div>
+                    }
+                </div>
+            }
+        </MudTd>
+        <MudTd DataLabel="对外入口">
+            <span class="font-mono @(context.ExternalEntry is "—" or "" ? "mud-text-secondary" : "")">@context.ExternalEntry</span>
+        </MudTd>
+        <MudTd DataLabel="ClusterIP"><span class="font-mono">@(string.IsNullOrEmpty(context.ClusterIP) ? "—" : context.ClusterIP)</span></MudTd>
+        <MudTd DataLabel="创建时间"><span class="font-mono">@(context.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</span></MudTd>
+        <MudTd DataLabel="操作">
+            <div class="d-flex" style="gap: 4px;">
+                <MudTooltip Text="详情">
+                    <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                                   Size="Size.Small"
+                                   Color="Color.Primary"
+                                   OnClick="@(() => OnNavigateDetail.InvokeAsync((context.Namespace, context.Name)))" />
+                </MudTooltip>
+                <AuthorizeView Roles="Admin">
+                    <Authorized Context="authContext">
+                        <MudTooltip Text="编辑 YAML">
+                            <MudIconButton Icon="@Icons.Material.Filled.Code"
+                                           Size="Size.Small"
+                                           OnClick="@(() => OnNavigateEditYaml.InvokeAsync((context.Namespace, context.Name)))" />
+                        </MudTooltip>
+                        <MudTooltip Text="删除">
+                            <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
+                                           Size="Size.Small"
+                                           Color="Color.Error"
+                                           OnClick="@(() => OnDelete.InvokeAsync((context.Namespace, context.Name)))" />
+                        </MudTooltip>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager RowsPerPageString="每页条数：" InfoFormat="共 {all_items} 条" />
+    </PagerContent>
+    <LoadingContent>
+        <MudText Class="pa-4 font-mono mud-text-secondary">// 正在加载...</MudText>
+    </LoadingContent>
+    <NoRecordsContent>
+        <div class="empty-state">[ 暂无 Service ]</div>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<SvcListViewModel> Items { get; set; } = new List<SvcListViewModel>();
+
+    [Parameter]
+    public bool Loading { get; set; }
+
+    [Parameter]
+    public EventCallback<(string Namespace, string Name)> OnNavigateDetail { get; set; }
+
+    [Parameter]
+    public EventCallback<(string Namespace, string Name)> OnNavigateEditYaml { get; set; }
+
+    [Parameter]
+    public EventCallback<(string Namespace, string Name)> OnDelete { get; set; }
+
+    private static string PortText(SvcPortViewModel port)
+    {
+        var left = port.NodePort is int nodePort
+            ? $"{port.Port}:{nodePort}"
+            : $"{port.Port}";
+        var target = string.IsNullOrEmpty(port.TargetPort) ? "" : $" → {port.TargetPort}";
+        return $"{left}/{port.Protocol}{target}";
+    }
+}

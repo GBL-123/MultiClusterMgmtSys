@@ -1,0 +1,38 @@
+@using MultiClusterMgmtSys.ViewModels
+
+<MudCard Class="pa-4" Elevation="0">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">Endpoints</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (Endpoints.Count == 0)
+        {
+            <div class="empty-state">[ 暂无后端 ]</div>
+        }
+        else
+        {
+            <MudTable T="SvcEndpointViewModel" Items="@Endpoints" Hover="true" Dense="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>地址</MudTh>
+                    <MudTh>状态</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="地址"><span class="font-mono">@context.Address</span></MudTd>
+                    <MudTd DataLabel="状态">
+                        <span class="status-badge @(context.Ready ? "online" : "offline")">
+                            <span class="status-dot"></span>
+                            @(context.Ready ? "Ready" : "NotReady")
+                        </span>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<SvcEndpointViewModel> Endpoints { get; set; } = new List<SvcEndpointViewModel>();
+}

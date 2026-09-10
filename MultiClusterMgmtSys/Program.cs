@@ -50,6 +50,7 @@ builder.Services.AddScoped<AuditLogRepository>();
 builder.Services.AddScoped<AppSettingRepository>();
 builder.Services.AddScoped<ClusterNodeService>();
 builder.Services.AddScoped<ConfigMapService>();
+builder.Services.AddScoped<SvcService>();
 builder.Services.AddScoped<WorkloadService>();
 builder.Services.AddScoped<ClusterService>();
 builder.Services.AddScoped<GroupService>();

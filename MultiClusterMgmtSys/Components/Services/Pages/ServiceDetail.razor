@@ -1,0 +1,173 @@
+@attribute [Authorize]
+@page "/services/{ClusterId:int}/{Namespace}/{Name}"
+
+@using MultiClusterMgmtSys.Requests
+@using MultiClusterMgmtSys.Services
+@using MultiClusterMgmtSys.ViewModels
+@using MultiClusterMgmtSys.Components.Services.Shared
+
+@inject SvcService SvcService
+@inject ClusterSelectionState ClusterSelection
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+@inject ExceptionPresenter ExHandler
+
+<PageTitle>Service 详情: @Name</PageTitle>
+
+<MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else if (detail is null)
+    {
+        <MudCard Class="pa-4">
+            <MudCardContent>
+                <MudText Align="Align.Center" Class="mud-text-secondary">Service 不存在或已被删除</MudText>
+                <div class="d-flex justify-center mt-4">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.ArrowBack"
+                               OnClick="@(() => NavigationManager.NavigateTo($"/services/{ClusterId}"))">
+                        返回列表
+                    </MudButton>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    }
+    else
+    {
+        <SvcDetailToolbar ClusterId="@ClusterId"
+                          Name="@Name"
+                          Type="@detail.Type"
+                          ClusterIP="@detail.ClusterIP"
+                          Processing="@loading"
+                          OnRefresh="LoadAsync"
+                          OnEditYaml="@(() => NavigationManager.NavigateTo($"/services/{ClusterId}/{Namespace}/{Name}/yaml"))"
+                          OnDelete="DeleteAsync" />
+        <MudTabs @bind-ActivePanelIndex="activeTabIndex"
+                 Class="detail-tabs"
+                 Elevation="0"
+                 Rounded="false"
+                 TabPanelsClass="detail-tabs-panels">
+            <MudTabPanel Text="YAML">
+                <SvcYamlViewCard Yaml="@detail.Yaml" />
+            </MudTabPanel>
+            <MudTabPanel>
+                <TabContent>
+                    <span>端口&nbsp;<span class="font-mono">@detail.Ports.Count</span></span>
+                </TabContent>
+                <ChildContent>
+                    <SvcPortTable Ports="@detail.Ports" />
+                </ChildContent>
+            </MudTabPanel>
+            <MudTabPanel>
+                <TabContent>
+                    <span>Endpoints&nbsp;<span class="font-mono">@detail.Endpoints.Count</span></span>
+                </TabContent>
+                <ChildContent>
+                    @if (detail.EndpointsLoadFailed)
+                    {
+                        <div class="empty-state">[ 加载 Endpoints 失败 ]</div>
+                    }
+                    else if (detail.Endpoints.Count == 0)
+                    {
+                        <div class="empty-state">[ 暂无后端 ]</div>
+                    }
+                    else
+                    {
+                        <SvcEndpointTable Endpoints="@detail.Endpoints" />
+                    }
+                </ChildContent>
+            </MudTabPanel>
+        </MudTabs>
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    [Parameter]
+    public string Namespace { get; set; } = "";
+
+    [Parameter]
+    public string Name { get; set; } = "";
+
+
+    private SvcDetailViewModel? detail;
+
+    private bool loading = true;
+
+    private int activeTabIndex;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ClusterSelection.Set(ClusterId);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        try
+        {
+            detail = await SvcService.GetServiceAsync(new SvcKeyRequest(ClusterId, Name, Namespace));
+            if (detail is null)
+            {
+                Snackbar.Add("Service 不存在或已被删除", Severity.Warning);
+                return;
+            }
+            await LoadEndpointsAsync();
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载详情");
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task LoadEndpointsAsync()
+    {
+        if (detail is null) return;
+        try
+        {
+            detail.Endpoints = await SvcService.GetServiceEndpointsAsync(new SvcKeyRequest(ClusterId, Name, Namespace));
+            detail.EndpointsLoadFailed = false;
+        }
+        catch (Exception)
+        {
+            detail.EndpointsLoadFailed = true;
+            detail.Endpoints = new();
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        var parameters = new DialogParameters
+        {
+            { "Message", $"确认删除 Service「{Name}」？此操作不可撤销。" }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("确认删除", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            try
+            {
+                await SvcService.DeleteServiceAsync(new SvcKeyRequest(ClusterId, Name, Namespace));
+                Snackbar.Add("删除成功", Severity.Success);
+                NavigationManager.NavigateTo($"/services/{ClusterId}");
+            }
+            catch (Exception ex)
+            {
+                await ExHandler.HandleAsync(ex, "删除服务");
+            }
+        }
+    }
+}

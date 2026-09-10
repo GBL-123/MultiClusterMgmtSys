@@ -37,6 +37,11 @@
 
 > M2 记录:320 tests 全绿,混合覆盖率 **46.65%**(未达 55% 预估——razor 分母比预估更重,靠 M3 页面壳补齐)。
 
+> 本轮续补记录(2026-09-10):新增 Profile 页 / 改密对话框 / 账号编辑对话框 / 重置密码对话框 / Scale 对话框 / Confirm 对话框 / CreateWorkloadDialog / EditClusterDialog / 各页面壳 / ClusterDetail+NodeDetail tab 流 / Clusters 删除确认流 / ConfigMaps+Nodes+Services 页 / SvcService(新功能域)/ 账号重置密码页面流 / Services 域页面与 YAML 保存 / WorkloadService+SvcService 错误翻译分支 / Clusters 删除分组确认流 / ConfigMaps 删除流。当前 **435 tests 全绿,覆盖率 68.89%**(进行中:4.6 检查点,距 75% 差 6 个百分点;剩余:WorkloadListView 交互 ~150、Clusters 移动/批量流 ~140、Accounts 批量流 ~110、Services 页搜索 ~90、ClusterEndpointsDialog 65、CreateWorkloadDialog 52、WorkloadYamlEditView 保存失败 51、Nodes 筛选 47)。
+
+
+> 注:`add-service-management` change(并行进行中)新增了 Services 功能域(SvcService + 11 个组件)与 `AuditCategory.Service` 枚举,这些代码的测试已并入本 change 的 435 个测试。
+
 ## 4. M3 页面与分支收尾
 
 - [x] 4.1 列表页壳:Clusters/Nodes/Deployments/StatefulSets/DaemonSets/ReplicaSets/ConfigMaps/Accounts/AuditLogs 页面渲染 + 加载/空态分支
@@ -45,6 +50,8 @@
 - [x] 4.4 门控两态补全:全部 Admin 门控块 Admin/Member 渲染变体;badge 三态全扫
 - [x] 4.5 Auth 页面:Login/Register/Profile(接线与状态分支)
 - [ ] 4.6 M3 检查点:`--coverage` ≥75%(排除口径),不足则按 HTML 报告下钻补测
+
+> 覆盖率轨迹:40.08%(M1)→ 46.65%(M2)→ 54.72% → 58.53% → 59.41% → 60.60% → 63.18% → 64.72% → 65.78% → **66.40%**(427 tests 全绿,2026-09-10)。新增覆盖:Services 功能域页面(新功能)、ServiceDetail/EditServiceYaml 页、EditServiceYaml/ConfigMapYaml 保存流、ResetPasswordDialog 页面流、EditClusterDialog 编辑提交、EditGroupDialog、WorkloadService/SvcService 错误分支。剩余大头:Clusters 页 MoveClusters/RefreshAll/DeleteGroup、WorkloadListView 交互分支、WorkloadDetailView 分支、Accounts 批量流。
 
 ## 5. 仓库卫生与文档
 

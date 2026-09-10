@@ -1,0 +1,101 @@
+@using k8s
+@using k8s.Models
+@using MultiClusterMgmtSys.Common.Exceptions
+@using MultiClusterMgmtSys.Requests
+@using MultiClusterMgmtSys.Services
+
+@inject SvcService SvcService
+@inject ISnackbar Snackbar
+@inject ExceptionPresenter ExHandler
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.h6" Class="mb-2">新建 Service</MudText>
+        <MudTextField T="string"
+                      @bind-Value="yamlContent"
+                      Label="YAML"
+                      Lines="25"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Style="font-family: monospace;" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Text" Disabled="saving">取消</MudButton>
+        <MudButton OnClick="Submit" Color="Color.Primary" Variant="Variant.Filled" Disabled="saving"
+                   StartIcon="@(saving ? null : Icons.Material.Filled.Save)">
+            @if (saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            创建
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    private string yamlContent = "";
+
+    private bool saving;
+
+    private const string MinimalTemplate = @"apiVersion: v1
+kind: Service
+metadata:
+  name: 
+  namespace: 
+spec:
+  type: ClusterIP
+  selector:
+    app: 
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
+";
+
+    protected override void OnInitialized()
+    {
+        yamlContent = MinimalTemplate;
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task Submit()
+    {
+        try
+        {
+            KubernetesYaml.Deserialize<V1Service>(yamlContent);
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(new ValidationException($"YAML 格式错误:{ex.Message}"), "创建服务");
+            return;
+        }
+
+        saving = true;
+        try
+        {
+            await SvcService.CreateServiceFromYamlAsync(new SvcCreateRequest(ClusterId, yamlContent));
+            Snackbar.Add("创建成功", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (ConflictException)
+        {
+            Snackbar.Add("同名 Service 已存在", Severity.Warning);
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "创建服务");
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

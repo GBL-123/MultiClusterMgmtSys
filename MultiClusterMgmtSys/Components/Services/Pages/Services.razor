@@ -1,0 +1,350 @@
+@attribute [Authorize]
+@page "/services"
+@page "/services/{ClusterId:int}"
+
+@using MultiClusterMgmtSys.Common.Enums
+@using MultiClusterMgmtSys.Requests
+@using MultiClusterMgmtSys.Services
+@using MultiClusterMgmtSys.ViewModels
+@using MultiClusterMgmtSys.Components.Services.Shared
+
+@inject ClusterService ClusterService
+@inject SvcService SvcService
+@inject ClusterSelectionState ClusterSelection
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+@inject ExceptionPresenter ExHandler
+
+<PageTitle>服务管理</PageTitle>
+
+<MudStack Row="true" Spacing="3" Class="d-flex flex-auto">
+    <ClusterSelectSidebar Clusters="@clusters"
+                          SelectedClusterId="@EffectiveClusterId"
+                          OnClusterSelected="SelectCluster" />
+
+    <MudStack Class="flex-auto">
+        @if (!EffectiveClusterId.HasValue)
+        {
+            <div class="d-flex flex-column align-center justify-center" style="min-height:60vh;">
+                <MudIcon Icon="@Icons.Material.Filled.SettingsEthernet" Size="Size.Large" Class="mud-text-secondary mb-4" />
+                <MudText Typo="Typo.h6" Class="mud-text-secondary">请从左侧选择一个集群</MudText>
+            </div>
+        }
+        else if (loading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+        }
+        else if (cluster is null)
+        {
+            <MudCard Class="pa-8" Elevation="2">
+                <MudCardContent>
+                    <MudText Align="Align.Center" Class="mud-text-secondary">未找到该集群</MudText>
+                    <div class="d-flex justify-center mt-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                                   OnClick="@(() => NavigationManager.NavigateTo("/clusters"))">
+                            返回集群列表
+                        </MudButton>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        }
+        else
+        {
+            <MudPaper Class="pa-4">
+                <MudStack>
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudText Typo="Typo.h5">服务管理</MudText>
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Color="GetClusterStatusColor(cluster.Status)"
+                                 Variant="Variant.Filled"
+                                 Class="ml-2">
+                            @cluster.Name · @cluster.StatusText
+                        </MudChip>
+                        <MudSpacer />
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Inherit"
+                                   StartIcon="@Icons.Material.Filled.Refresh"
+                                   OnClick="@(() => LoadAsync(EffectiveClusterId!.Value))"
+                                   Disabled="@loading">
+                            刷新
+                        </MudButton>
+                        <AuthorizeView Roles="Admin">
+                            <Authorized>
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.Add"
+                                           OnClick="OpenCreateDialog"
+                                           Disabled="@(!cluster.IsReachable)">
+                                    新建 Service
+                                </MudButton>
+                            </Authorized>
+                        </AuthorizeView>
+                    </MudStack>
+
+                    @if (cluster.IsReachable)
+                    {
+                        <SvcListFilterBar @bind-SelectedNamespace="selectedNamespace"
+                                          @bind-SearchName="searchName"
+                                          @bind-PortQuery="portQuery"
+                                          Namespaces="@namespaces"
+                                          OnQuery="OnQueryClick"
+                                          OnReset="OnResetClick" />
+                    }
+                </MudStack>
+            </MudPaper>
+
+            @if (!cluster.IsReachable)
+            {
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudText Align="Align.Center" Class="mud-text-secondary">集群不可达，无法获取 Service</MudText>
+                    </MudCardContent>
+                </MudCard>
+            }
+            else
+            {
+                <SvcListTable Items="@filteredServices"
+                              Loading="@loading"
+                              OnNavigateDetail="NavigateToDetail"
+                              OnNavigateEditYaml="NavigateToYamlEdit"
+                              OnDelete="DeleteService" />
+            }
+        }
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter]
+    public int? ClusterId { get; set; }
+
+
+    private List<ClusterViewModel> clusters = new();
+
+    private ClusterDetailViewModel? cluster;
+
+    private List<SvcListViewModel> services = new();
+
+    private List<string> namespaces = new();
+
+    private bool loading;
+
+    private string searchName = "";
+
+    private string appliedSearchName = "";
+
+    private string portQuery = "";
+
+    private string appliedPortQuery = "";
+
+    private string? selectedNamespace;
+
+    private int? previousClusterId;
+
+    private bool hasInitialized;
+
+    private int? EffectiveClusterId => ClusterId ?? ClusterSelection.SelectedClusterId;
+
+    private List<SvcListViewModel> filteredServices
+    {
+        get
+        {
+            var q = services.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(appliedSearchName))
+                q = q.Where(s => s.Name.Contains(appliedSearchName, StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(appliedPortQuery))
+                q = q.Where(s => s.Ports.Any(p =>
+                    p.Port.ToString().Contains(appliedPortQuery, StringComparison.OrdinalIgnoreCase) ||
+                    (p.NodePort?.ToString().Contains(appliedPortQuery, StringComparison.OrdinalIgnoreCase) ?? false)));
+            return q.ToList();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClustersAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (ClusterId.HasValue)
+        {
+            ClusterSelection.Set(ClusterId.Value);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ClusterId == previousClusterId && hasInitialized)
+        {
+            return;
+        }
+        hasInitialized = true;
+        previousClusterId = ClusterId;
+
+        if (EffectiveClusterId.HasValue)
+        {
+            await LoadAsync(EffectiveClusterId.Value);
+        }
+        else
+        {
+            cluster = null;
+            services = new();
+            namespaces = new();
+            loading = false;
+        }
+    }
+
+    private async Task LoadClustersAsync()
+    {
+        try
+        {
+            var request = new ClusterQueryRequest { Page = 1, PageSize = 1000, SortBy = ClusterSortField.Name, SortDescending = false };
+            var result = await ClusterService.GetPagedAsync(request);
+            clusters = result.Items;
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载集群列表");
+        }
+    }
+
+    private async Task LoadAsync(int id)
+    {
+        loading = true;
+        try
+        {
+            cluster = await ClusterService.GetClusterDetailAsync(id);
+            if (cluster is not null)
+            {
+                ClusterSelection.Set(id);
+            }
+            if (cluster is not null && cluster.IsReachable)
+            {
+                try
+                {
+                    namespaces = await SvcService.GetNamespacesAsync(id);
+                }
+                catch (Exception ex)
+                {
+                    await ExHandler.HandleAsync(ex, "加载命名空间列表");
+                }
+
+                try
+                {
+                    services = await SvcService.ListServicesAsync(new SvcQueryRequest(id, selectedNamespace));
+                }
+                catch (Exception ex)
+                {
+                    await ExHandler.HandleAsync(ex, "加载服务列表");
+                }
+            }
+            else
+            {
+                services = new();
+                namespaces = new();
+            }
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载集群详情");
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void SelectCluster(int id)
+    {
+        NavigationManager.NavigateTo($"/services/{id}");
+    }
+
+    private async Task OnQueryClick()
+    {
+        if (!EffectiveClusterId.HasValue) return;
+        appliedSearchName = searchName;
+        appliedPortQuery = portQuery;
+        loading = true;
+        try
+        {
+            services = await SvcService.ListServicesAsync(new SvcQueryRequest(EffectiveClusterId.Value, selectedNamespace));
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载服务列表");
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task OnResetClick()
+    {
+        selectedNamespace = null;
+        searchName = "";
+        appliedSearchName = "";
+        portQuery = "";
+        appliedPortQuery = "";
+        if (EffectiveClusterId.HasValue)
+        {
+            await LoadAsync(EffectiveClusterId.Value);
+        }
+    }
+
+    private void NavigateToDetail((string Namespace, string Name) args)
+    {
+        NavigationManager.NavigateTo($"/services/{EffectiveClusterId!.Value}/{args.Namespace}/{args.Name}");
+    }
+
+    private void NavigateToYamlEdit((string Namespace, string Name) args)
+    {
+        NavigationManager.NavigateTo($"/services/{EffectiveClusterId!.Value}/{args.Namespace}/{args.Name}/yaml");
+    }
+
+    private async Task DeleteService((string Namespace, string Name) args)
+    {
+        var parameters = new DialogParameters
+        {
+            { "Message", $"确认删除 Service「{args.Name}」？此操作不可撤销。" }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("确认删除", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            try
+            {
+                await SvcService.DeleteServiceAsync(new SvcKeyRequest(EffectiveClusterId!.Value, args.Name, args.Namespace));
+                Snackbar.Add("删除成功", Severity.Success);
+                await LoadAsync(EffectiveClusterId!.Value);
+            }
+            catch (Exception ex)
+            {
+                await ExHandler.HandleAsync(ex, "删除服务");
+            }
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters { { "ClusterId", EffectiveClusterId!.Value } };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<CreateServiceDialog>("新建 Service", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+            await LoadAsync(EffectiveClusterId!.Value);
+    }
+
+    private static Color GetClusterStatusColor(ClusterStatus status) => status switch
+    {
+        ClusterStatus.Online => Color.Success,
+        ClusterStatus.Offline => Color.Error,
+        _ => Color.Default
+    };
+}
