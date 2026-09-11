@@ -49,9 +49,11 @@
 - [x] 4.3 对话框交互:Create/Edit/Scale/Endpoints/IpNotes/改密/重置密码(经公开事件驱动,断言服务调用与状态)
 - [x] 4.4 门控两态补全:全部 Admin 门控块 Admin/Member 渲染变体;badge 三态全扫
 - [x] 4.5 Auth 页面:Login/Register/Profile(接线与状态分支)
-- [ ] 4.6 M3 检查点:`--coverage` ≥75%(排除口径),不足则按 HTML 报告下钻补测
+- [x] 4.6 M3 检查点:`--coverage` ≥75%(排除口径),不足则按 HTML 报告下钻补测
 
-> 覆盖率轨迹:40.08%(M1)→ 46.65%(M2)→ 54.72% → 58.53% → 59.41% → 60.60% → 63.18% → 64.72% → 65.78% → **66.40%**(427 tests 全绿,2026-09-10)。新增覆盖:Services 功能域页面(新功能)、ServiceDetail/EditServiceYaml 页、EditServiceYaml/ConfigMapYaml 保存流、ResetPasswordDialog 页面流、EditClusterDialog 编辑提交、EditGroupDialog、WorkloadService/SvcService 错误分支。剩余大头:Clusters 页 MoveClusters/RefreshAll/DeleteGroup、WorkloadListView 交互分支、WorkloadDetailView 分支、Accounts 批量流。
+> **4.6 达成记录(2026-09-11):485 tests 全绿,行覆盖率 75.91% ≥ 75% 目标。** 最终轨迹:40.08%(M1)→ 46.65%(M2)→ 54.72% → … → 68.89% → 70.77% → 72.55% → 74.57% → **75.91%**。收尾批次:AccountService 排序/角色守卫分支、Svcs/ConfigMaps/Workloads 页查询-重置过滤流、Svcs 删除确认流、Workload 行导航、ClusterDetail 刷新/删除/tab 流、Clusters 行刷新/添加对话框/重命名分组、ConfigMap/Svc 详情页、CreateSvcDialog、YAML 编辑非法保存不落审计、NodeIpNotesDialog 提交审计、ClusterSyncBackgroundService 后台循环(含取消停止)。
+
+> 覆盖率完整轨迹:40.08%(M1)→ 46.65%(M2)→ 54.72% → 58.53% → 59.41% → 60.60% → 63.18% → 64.72% → 65.78% → 66.40% → 67.42% → 67.81% → 68.45% → 68.89% → 70.77% → 72.55% → 74.57% → **75.91%(达成)**。期间新增覆盖:Svcs 功能域页面(并行 change)、各页面查询-重置过滤流、详情页 tab/删除/刷新流、YAML 保存流(成功+非法)、对话框提交流(改密/重置/编辑/创建/备注)、服务层错误翻译与排序/守卫分支、ClusterSyncBackgroundService 后台循环。
 
 ## 5. 仓库卫生与文档
 

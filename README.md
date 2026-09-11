@@ -1,6 +1,6 @@
-# MultiClusterMgmtSys
+﻿# MultiClusterMgmtSys
 
-基于 .NET 10 + Blazor 的 Kubernetes 多集群管理平台，统一管理多个集群的节点、工作负载、ConfigMap 与端点信息，内置账号权限体系、操作审计与集群状态定时同步。
+基于 .NET 10 + Blazor 的 Kubernetes 多集群管理平台，统一管理多个集群的节点、工作负载、Service、ConfigMap 与端点信息，内置账号权限体系、操作审计与集群状态定时同步。
 
 界面为中文，使用 MudBlazor 组件库（Swiss Industrial Print 工业印刷风格设计系统，浅色主题），数据存储采用 SQLite（零依赖，开箱即用）。
 
@@ -10,6 +10,7 @@
 - **集群状态定时同步**：后台定时服务周期性探测全部集群状态（间隔可配 1~1440 分钟），状态变更自动写入审计
 - **节点管理**：跨集群节点列表与详情（资源、条件、标签、注解、污点、地址），支持按 IP 登记备注（如管理口 / 数据口）
 - **工作负载管理**：Deployment / StatefulSet / DaemonSet / ReplicaSet 统一列表与详情（副本就绪、滚动三态、条件），YAML 在线编辑、新建、删除、扩缩容与滚动重启（能力矩阵按类型裁剪）
+- **Service 管理**：ClusterIP / NodePort / LoadBalancer / ExternalName 四类 Service 的列表与详情、端口表、后端 EndpointSlice（旧集群自动回退 legacy Endpoints），YAML 在线编辑、新建、删除
 - **ConfigMap 管理**：按集群浏览 ConfigMap，YAML 只读查看与在线编辑、新建、删除
 - **审计日志**：登录 / 注册及所有增删改操作自动记录（操作人、类别、动作、目标），Admin 可查全量，普通用户仅见本人记录
 - **账号与权限**：`Admin` / `Member` 两级角色；管理员可批量删除、批量改角色、重置密码；用户可在个人资料页修改密码
@@ -33,17 +34,18 @@
 
 ```pwsh
 dotnet build MultiClusterMgmtSys.slnx
-dotnet test MultiClusterMgmtSys.Tests           # 344 个单元测试（xunit.v3 + Moq + bUnit，MTP 运行器）
+dotnet test MultiClusterMgmtSys.Tests           # 485 个单元测试（xunit.v3 + Moq + bUnit，MTP 运行器）
 dotnet run --project MultiClusterMgmtSys          # http://localhost:5021
 dotnet run --project MultiClusterMgmtSys --launch-profile https   # https://localhost:7081
 ```
 
-覆盖率（HTML 报告输出到 `coveragereport/index.html`）：
+覆盖率（HTML 报告输出到 `coveragereport/index.html`；**口径以最新单份 cobertura 为准**，通配符合并历史报告会重复计覆盖导致虚高）：
 
 ```pwsh
 dotnet test MultiClusterMgmtSys.Tests --coverage --coverage-output-format cobertura
+$latest = Get-ChildItem TestResults/*.cobertura.xml | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 dotnet "$env:USERPROFILE\.nuget\packages\reportgenerator\5.5.11\tools\net10.0\ReportGenerator.dll" `
-    -reports:"TestResults/*.cobertura.xml" -targetdir:"coveragereport" -reporttypes:Html
+    -reports:$latest.FullName -targetdir:"coveragereport" -reporttypes:Html
 ```
 
 首次启动自动完成：
@@ -97,14 +99,14 @@ Logging__File__Path="/data/logs/app-.log"
 │   ├── Program.cs                 # 入口：DI 注册、Identity、EnsureCreated 与管理员种子
 │   ├── appsettings.json           # 连接串、Serilog 日志路径等配置
 │   ├── Components/                # Razor 组件（Pages/Shared/Layout + 按功能分目录）
-│   │   ├── Clusters/  Nodes/  Workloads/  Configmaps/   # 各功能页与共享组件
+│   │   ├── Clusters/  Nodes/  Workloads/  Svcs/  Configmaps/   # 各功能页与共享组件
 │   │   ├── AuditLogs/  Account/  Profile/  Auth/
 │   │   └── Common/                # 共享组件与服务（ThemeManager、ExceptionPresenter 等）
-│   ├── Services/                  # 业务服务（账号 / 集群 / 分组 / 节点 / 工作负载 / ConfigMap / 审计 / 定时同步）
+│   ├── Services/                  # 业务服务（账号 / 集群 / 分组 / 节点 / 工作负载 / Service / ConfigMap / 审计 / 定时同步 / YAML 模板）
 │   ├── ViewModels/                # 页面绑定模型与映射扩展方法
 │   ├── Requests/  Models/         # 请求 / 查询对象
 │   ├── Common/  Data/             # 跨层枚举、异常体系；实体与仓库
-│   └── wwwroot/                   # 静态资源与自托管字体
+│   └── wwwroot/                   # 静态资源、自托管字体与新建对话框的 YAML 模板（templates/）
 ├── MultiClusterMgmtSys.Tests/     # xUnit.v3 + Moq + bUnit 单元测试（镜像主项目目录 + TestInfrastructure）
 ├── nginx/                         # nginx 配置与 TLS 证书（gitignored）
 ├── docker-compose.prod.yml        # 生产部署编排（应用 + nginx）
@@ -116,3 +118,4 @@ Logging__File__Path="/data/logs/app-.log"
 - 上线后第一时间修改默认管理员密码
 - 集群凭据（kubeconfig / Token）存储于 SQLite 中，请确保部署机与备份文件的访问控制
 - 生产环境启用 HTTPS（由内置 nginx 终止 TLS），并保持数据库目录权限最小化
+

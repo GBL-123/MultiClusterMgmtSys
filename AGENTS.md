@@ -2,14 +2,15 @@
 
 Repo-specific guidance for OpenCode agents working in `MultiClusterMgmtSys`.
 
-## Current state (2026-09-08)
+## Current state (2026-09-11)
 
-Swiss Industrial Print redesign (88b0984)、业务异常体系 (`business-exception-handling`)、个人资料页重构 (`profile-page-redesign`)、统一代码风格 (`unify-code-style`)、单元测试 (`add-unit-tests`) 均已归档并同步 specs(`ui-theme`、`exception-handling`、`profile-page`、`code-style`、`unit-testing`)。`dotnet build MultiClusterMgmtSys.slnx` passes (0 errors),`dotnet test MultiClusterMgmtSys.Tests` 435/435 green (xunit.v3 4.0.0 + MTP runner,see Testing conventions;覆盖率基线 68.9%,目标 75% 的 change `rebuild-unit-tests-75pct` 进行中)。If you ever see CS0246/CS0234 errors mentioning `MultiClusterMgmtSys.Components.<Feature>.Services`, `MultiClusterMgmtSys.Features.*` or `MultiClusterMgmtSys.Common.Queries`, that file's `@using`s are stale — target namespaces are in the Namespaces section below.
+近期 change 均已归档并同步 specs:`add-unit-tests`(→ `unit-testing`)、`workload-management`(→ `workload-management`)、`scheduled-cluster-sync`、`add-service-management`(Service 管理,→ `service-management`)、`detail-pages-tab-redesign`、`add-xml-doc-comments`、`rebuild-unit-tests-75pct`(→ `unit-testing` 扩充,覆盖率 **75.9%** 已达成 75% 目标)。`dotnet build MultiClusterMgmtSys.slnx` passes (0 errors),`dotnet test MultiClusterMgmtSys.Tests` 485/485 green (xunit.v3 4.0.0 + MTP runner,see Testing conventions)。If you ever see CS0246/CS0234 errors mentioning `MultiClusterMgmtSys.Components.<Feature>.Services`, `MultiClusterMgmtSys.Features.*` or `MultiClusterMgmtSys.Common.Queries`, that file's `@using`s are stale — target namespaces are in the Namespaces section below.
 
 ## Coverage 工具链 (覆盖率口径见 `openspec/specs/unit-testing`)
 
 - 收集:`dotnet test MultiClusterMgmtSys.Tests --coverage --coverage-output-format cobertura` → `TestResults/<guid>.cobertura.xml`(落**解决方案根**的 TestResults/);空报告 ≠ 工具故障(dotnet-coverage 动态仪器化,主程序集未被加载时为空)。
-- HTML 报告:`dotnet "<NuGet缓存>\reportgenerator\5.5.11\tools\net10.0\ReportGenerator.dll" -reports:"TestResults/*.cobertura.xml" -targetdir:"coveragereport" -reporttypes:Html`(ReportGenerator 以 PackageReference 形态钉在测试 csproj)。`TestResults/`、`coveragereport/` 已 gitignore。
+- HTML 报告:`dotnet "<NuGet缓存>\reportgenerator\5.5.11\tools\net10.0\ReportGenerator.dll" -reports:"TestResults/<最新单份>.cobertura.xml" -targetdir:"coveragereport" -reporttypes:Html`(ReportGenerator 以 PackageReference 形态钉在测试 csproj)。`TestResults/`、`coveragereport/` 已 gitignore。
+- **口径以最新单份 cobertura 为准**:用 `TestResults/*.cobertura.xml` 通配符会把历史构建的报告合并成 MultiReport,重复计覆盖导致虚高(实测 75.9% 会被报成 77.4%)——查数字时永远只喂最新一份。
 - 排除口径:`[ExcludeFromCodeCoverage]` 已打在 Program(partial class,顶层语句同文件)、IdentityComponentsEndpointRouteBuilderExtensions、App.razor、Routes.razor;`ChineseIdentityErrorDescriber` 不排除(有测试)。
 
 ## Stack
@@ -27,7 +28,7 @@ Swiss Industrial Print redesign (88b0984)、业务异常体系 (`business-except
 
 ```pwsh
 dotnet build MultiClusterMgmtSys.slnx       # passes (0 errors)
-dotnet test MultiClusterMgmtSys.Tests       # 435 tests, all green (MTP)
+dotnet test MultiClusterMgmtSys.Tests       # 485 tests, all green (MTP)
 dotnet run  --project MultiClusterMgmtSys                                    # http://localhost:5021
 dotnet run  --project MultiClusterMgmtSys --launch-profile https             # https://localhost:7081
 ```
@@ -41,7 +42,8 @@ No test project? — there IS one: `MultiClusterMgmtSys.Tests/`(xunit.v3 + Moq +
 - **K8s 服务可测**:`Func<KubernetesClientConfiguration, IKubernetes>` 工厂注入(Program.cs 注册真实工厂);测试用 Moq mock 接口的 `*WithHttpMessagesAsync` 方法(扩展方法的底层,签名用 `sigtool` 反查——k8s 19 的参数顺序与直觉不同),抛 `KubernetesException(new V1Status{Code=…})` 验证翻译链路。`K8sMocks.LazyFailing()` 返回惰性失败 mock(工厂调用不抛,真正走到 K8s 才失败);常用 setup 见 K8sMocks 的 `SetupListNodes/SetupGetVersion/SetupListDeployments/…` 扩展。
 - **bUnit 只测"接线契约"**:`FindComponent<T>()` 取 MudBlazor 组件实例、触发公开事件/参数,断言自己组件的状态/渲染分支/自有 CSS 类(`.status-badge`/`.empty-state` 等);**禁止断言 `.mud-*` 内部 DOM**。bUnit 测试需要 `TimeProvider.System` + `JSRuntimeMode.Loose` + MudServices(BunitHost 已配);事件回调必须经 `cut.InvokeAsync(...)` 调度到 Dispatcher;异步数据(MudTable ServerData)用 `cut.WaitForState(...)` 等待。
 - **bUnit 2.x API(补充:此轮实测)**:`BunitContext`(不是 `TestContext`,也与 xunit.v3 的 `Xunit.TestContext` 撞名)、`Render<T>()`(不是 `RenderComponent`)、`AddAuthorization()`(不是 `AddTestAuthorization`)+ `SetAuthorized(name)`/`SetRoles("Admin")`;创建过 MudBlazor 组件的 ctx 用 `await using var ctx = ...` 释放 —— MudBlazor 的 KeyInterceptor/PointerEventsNone 服务仅实现 `IAsyncDisposable`,同步 `Dispose()` 会在测试逻辑已通过后抛异常;此类测试方法签名用 `async Task`。`BunitContext` 的 Services 在**首次 GetService 后冻结**,所有服务必须在首渲染前注册;对话框测试用 `ctx.Render<MudDialogProvider>()` + `ShowAsync<T>()` 流程;登录页级联 `HttpContext` 用 `AddCascadingValue(new DefaultHttpContext())`(按类型);需要 RendererInfo 的组件在**注册完服务后**调 `ctx.Renderer.SetRendererInfo(new RendererInfo("bunit", true))`。
-- **MTP runner gotchas**(xunit.v3 4.0.0 + MTP v2,由根 `global.json` `test.runner` 启用):不要传 VSTest 时代参数 —— `--nologo` 会被测试应用拒绝(exit 5,且误导性报告为 "Zero tests ran",见 dotnet/sdk#55309);零执行测试 = exit 8;过滤用 MTP/xunit 语法(`--filter-class`/`--filter-trait`),不是 VSTest 的 `--filter` 表达式。测试数量基线:435。
+- **bUnit 交互硬坑(实测)**:① MudMenu 弹层由 JS 渲染,bUnit 中点击后菜单项不出现——菜单驱动的删除/批量改角色无法端到端驱动,改测直接按钮或退到服务层;② DOM `.Click()` 触发含 `await DialogService.ShowAsync(...).Result` 的处理器后,页面续体在调度队列里,需 `await provider.InvokeAsync(() => { })` 冲刷再轮询服务/审计落库,直接 `await dialogReference.Result` 可能死锁;③ 依赖 `MudForm.ValidateAsync()` 的对话框提交流(EditGroupDialog/AccountEditDialog 等)在 bUnit 下不稳定,项目实践改为渲染断言 + 服务层覆盖提交逻辑。
+- **MTP runner gotchas**(xunit.v3 4.0.0 + MTP v2,由根 `global.json` `test.runner` 启用):不要传 VSTest 时代参数 —— `--nologo` 会被测试应用拒绝(exit 5,且误导性报告为 "Zero tests ran",见 dotnet/sdk#55309);零执行测试 = exit 8;过滤用 MTP/xunit 语法(`--filter-class`/`--filter-trait`),不是 VSTest 的 `--filter` 表达式。测试数量基线:485。
 - 主项目 `WarningsAsErrors` 含 `MUD0002`(MudBlazor 分析器)——组件 API 误用(如给无 `Value` 参数的组件 `@bind-Value`)会直接编译失败,不要用 `NoWarn` 绕过。
 - 验证:`dotnet build` 0 错误 + `dotnet test` 全绿。
 
@@ -72,11 +74,12 @@ Folder-to-namespace mapping is **inconsistent** (post-restructure). Never assume
 - `Requests/**` → `MultiClusterMgmtSys.Requests`
 - `Models/**` → `MultiClusterMgmtSys.Models` (`ClusterPageQuery`, `VersionFilterSentinel`)
 - `Common/Enums`, `Data/**`, `Components/Common` → match physical path (`MultiClusterMgmtSys.Common.Enums`, `.Data[.Entities|.Repositories]`, `.Components.Common`)
-- Razor under `Components/<Feature>/{Pages,Shared}` → `MultiClusterMgmtSys.Components.<Feature>`(无 `@namespace` 覆盖,全部跟随物理路径);顶层 `Components/Pages`(Error/Home/NotFound)、`Components/Shared`(RedirectToLogin)、`Components/Layout`(AppBar/Drawer/MainLayout/ReconnectModal)同理 → `.Components.Pages` / `.Components.Shared` / `.Components.Layout`
+- Razor under `Components/<Feature>/{Pages,Shared}` → `MultiClusterMgmtSys.Components.<Feature>`(无 `@namespace` 覆盖,全部跟随物理路径);顶层 `Components/Pages`(Error/Home/NotFound)、`Components/Shared`(RedirectToLogin)、`Components/Layout`(AppBar/Drawer/MainLayout/ReconnectModal)同理 → `.Components.Pages` / `.Components.Shared` / `.Components.Layout`。注意 **Service 管理目录是 `Components/Svcs/`(命名空间 `.Components.Svcs`,路由却是 `/services`)**,别去 `Components/Services` 找。
 
 ## Architecture notes
 
-- `Program.cs`: MudBlazor, Razor components (interactive server), Identity (cookie `MultiClusterMgmtSys.Auth`, 8h sliding, login `/login`, access-denied `/access-denied`, default redirect `/clusters`), `ApplicationDbContext` (SQLite), scoped services/repos (`ClusterRepository`, `GroupRepository`, `AuditLogRepository`, `AppSettingRepository`, `ClusterNodeService`, `ConfigMapService`, `WorkloadService`, `ClusterService`, `GroupService`, `AuditService`, `ClusterSelectionState`, `AuthService`, `AccountService`, `ClusterSyncSettingService`, `RedirectManager`, `ExceptionPresenter`, singleton `Func<KubernetesClientConfiguration, IKubernetes>` 工厂 + hosted `ClusterSyncBackgroundService`). `ThemeManager` is **static** (see UI section) — not registered, never injected.
+- `Program.cs`: MudBlazor, Razor components (interactive server), Identity (cookie `MultiClusterMgmtSys.Auth`, 8h sliding, login `/login`, access-denied `/access-denied`, default redirect `/clusters`), `ApplicationDbContext` (SQLite), scoped services/repos (`ClusterRepository`, `GroupRepository`, `AuditLogRepository`, `AppSettingRepository`, `ClusterNodeService`, `ConfigMapService`, `SvcService`, `WorkloadService`, `ClusterService`, `GroupService`, `AuditService`, `ClusterSelectionState`, `AuthService`, `AccountService`, `ClusterSyncSettingService`, `RedirectManager`, `ExceptionPresenter`, singleton `Func<KubernetesClientConfiguration, IKubernetes>` 工厂 + hosted `ClusterSyncBackgroundService`). `ThemeManager` is **static** (see UI section) — not registered, never injected.
+- **YAML 模板**:`IYamlTemplateService`(singleton,`Services/YamlTemplateService.cs`)从 `wwwroot/templates/{category}/{name}.yaml` 读取新建对话框的初始 YAML(workload/configmap/service 三类);文件缺失或读取失败时回退内置最小骨架且只记日志、不抛异常。新增/调整模板直接放文件即可,无代码分支。
 - **Exception handling**: services throw `BusinessException` subclasses (中文 `UserMessage`); K8s 调用点 catch → `K8sExceptionMapper.Translate(ex, "操作")` 再抛;UI catch → `await ExHandler.HandleAsync(ex, "操作")`,不直出 `ex.Message`。详见下方 "Exception handling" 节。
 - Pipeline extras: `UseForwardedHeaders` trusting **all** proxies (required by prod nginx TLS termination — keep), `UseStatusCodePagesWithReExecute("/not-found")`, dev-only `UseMigrationsEndPoint` + `AddDatabaseDeveloperPageExceptionFilter`.
 - Repositories surface data; services compose logic + K8s calls; `.razor` pages bind ViewModels via `*.ViewModels.Mappings` extension methods.
@@ -111,6 +114,7 @@ Folder-to-namespace mapping is **inconsistent** (post-restructure). Never assume
 - `openspec/specs/cluster-query-layering/spec.md` is the contract for `ClusterPageQuery.GroupId` (null=no filter, `0`=ungrouped sentinel → repo translates to `WHERE GroupId IS NULL`, positive=equality) and the version filter sentinels (`VersionFilterSentinel.All` = `""`, `OnlyNull` = `"__null__"`). Must not drift from `Models/ClusterPageQuery.cs` + `Data/Repositories/ClusterRepository.cs`.
 - `openspec/specs/ui-theme/spec.md` is the design-system contract (tokens, fonts, status badges, AppBar/nav/table rules, dark-mode removal) — keep code consistent with it when touching UI.
 - `openspec/specs/exception-handling/spec.md` 是异常契约(业务异常类型、K8s 翻译、服务日志、UI 提示规则、审计静默)——改异常逻辑前先看它。
+- 其余 feature 契约在 `openspec/specs/` 下同名目录(`workload-management`、`service-management`、`accounts-page`、`audit-log`、`cluster-scheduled-sync`、`detail-page-tabs`、`nodes-page`、`node-ip-notes`、`configmaps-page`、`cluster-endpoints`、`cluster-detail`、`cluster-edit`、`clusters-group-navigation`、`service-contracts`、`code-style`、`unit-testing` 等);动对应 feature 前先读其 spec,行为以 spec 为准。`service-contracts` 是服务输入/输出/操作者上下文的契约范本。
 - OpenSpec `tasks.md` files use `- [ ]`/`- [x]` checkboxes that the apply skill parses — preserve this exact format.
 
 ## Conventions to preserve
@@ -138,4 +142,5 @@ Folder-to-namespace mapping is **inconsistent** (post-restructure). Never assume
 - **C# 成员间隔**:字段/属性/方法之间一律空一行(类声明后的首个成员不强制前置空行)。全项目(Components/Services/Data/ViewModels/Requests/Models/Common)适用。
 - **XML 注释**:主项目开启 `GenerateDocumentationFile`(CS1591 清零,**勿**加入 NoWarn);Services/Data/Requests/Models/Common/ViewModels(+Mappings) 的 public 类型/成员一律中文 `/// <summary>`(`/// ` 后带空格;枚举每成员一条;record 位置参数用 `<param>` 标注;.razor 与测试项目豁免)。契约注释须与对应 OpenSpec spec 语义一致(如 cluster-query-layering 哨兵值)。
 - 验证方式:`dotnet build` 0 错误 + "连续成员行"静态审计(相邻两行均为成员声明即命中)零命中 + CS1591 零命中(`rg "^\s*///(?=\S)"` 审计缺空格)。
+
 
