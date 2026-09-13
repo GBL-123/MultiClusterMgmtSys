@@ -1,5 +1,5 @@
-@using MultiClusterMgmtSys.Common.Enums
 @using MultiClusterMgmtSys.ViewModels
+@using MultiClusterMgmtSys.ViewModels.Mappings
 
 <MudPaper Class="pa-4">
     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
@@ -9,9 +9,7 @@
             返回列表
         </MudButton>
         <MudText Typo="Typo.h4" Class="flex-auto ml-2 font-grotesk">@Cluster.Name</MudText>
-        <span class="status-badge @GetStatusClass(Cluster.Status)">
-            <span class="status-dot"></span>@Cluster.StatusText
-        </span>
+        <StatusBadge Text="@Cluster.StatusText" CssClass="@K8sDisplayText.ClusterStatusCssClass(Cluster.Status)" />
         <AuthorizeView Roles="Admin">
             <Authorized>
                 <MudButton Variant="Variant.Filled"
@@ -62,11 +60,4 @@
 
     [Parameter]
     public EventCallback OnDelete { get; set; }
-
-    private static string GetStatusClass(ClusterStatus status) => status switch
-    {
-        ClusterStatus.Online => "online",
-        ClusterStatus.Offline => "offline",
-        _ => "unknown"
-    };
 }

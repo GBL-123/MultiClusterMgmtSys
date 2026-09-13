@@ -35,6 +35,8 @@ public static class AuditLogMappingExtensions
             AuditCategory.Configmap => "配置",
             AuditCategory.Node => "节点",
             AuditCategory.Workload => "工作负载",
+            AuditCategory.Service => "服务",
+            AuditCategory.Namespace => "命名空间",
             _ => category.ToString()
         };
     }

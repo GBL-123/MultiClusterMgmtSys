@@ -1,3 +1,5 @@
+using MultiClusterMgmtSys.ViewModels.Mappings;
+
 namespace MultiClusterMgmtSys.ViewModels;
 
 /// <summary>
@@ -13,4 +15,7 @@ public class NodeTaintViewModel
 
     /// <summary>污点效果,如 NoSchedule/PreferNoSchedule/NoExecute。</summary>
     public string Effect { get; set; } = "";
+
+    /// <summary>污点效果中文展示名(禁止调度/尽量不调度/驱逐)。</summary>
+    public string EffectText => K8sDisplayText.TaintEffectText(Effect);
 }

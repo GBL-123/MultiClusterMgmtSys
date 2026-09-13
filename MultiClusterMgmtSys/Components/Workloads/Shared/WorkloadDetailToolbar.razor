@@ -13,9 +13,7 @@
         <MudText Typo="Typo.h4" Class="flex-auto ml-2 font-mono">@Name</MudText>
         @if (Detail is not null)
         {
-            <span class="status-badge @GetRolloutClass(Detail.RolloutState)">
-                <span class="status-dot"></span>@GetRolloutText(Detail.RolloutState)
-            </span>
+            <StatusBadge Text="@Detail.RolloutText" CssClass="@Detail.RolloutCssClass" />
             <span class="font-mono ml-2">@Detail.ReadyText</span>
         }
         <MudButton Variant="Variant.Filled"
@@ -99,18 +97,4 @@
 
     [Parameter]
     public EventCallback OnDelete { get; set; }
-
-    private static string GetRolloutClass(WorkloadRolloutState state) => state switch
-    {
-        WorkloadRolloutState.Ready => "online",
-        WorkloadRolloutState.Rolling => "unknown",
-        _ => "offline"
-    };
-
-    private static string GetRolloutText(WorkloadRolloutState state) => state switch
-    {
-        WorkloadRolloutState.Ready => "就绪",
-        WorkloadRolloutState.Rolling => "滚动中",
-        _ => "未就绪"
-    };
 }

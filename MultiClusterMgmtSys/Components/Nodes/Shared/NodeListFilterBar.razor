@@ -16,8 +16,8 @@
                Margin="Margin.Dense"
                Style="min-width:120px;">
         <MudSelectItem Value="@((string?)null)">全部</MudSelectItem>
-        <MudSelectItem Value="@("control-plane")">control-plane</MudSelectItem>
-        <MudSelectItem Value="@("worker")">worker</MudSelectItem>
+        <MudSelectItem Value="@("control-plane")">控制平面 (control-plane)</MudSelectItem>
+        <MudSelectItem Value="@("worker")">工作节点 (worker)</MudSelectItem>
     </MudSelect>
 
     <MudSelect @bind-Value="Filter.Status"
@@ -26,9 +26,9 @@
                Margin="Margin.Dense"
                Style="min-width:120px;">
         <MudSelectItem Value="@((string?)null)">全部</MudSelectItem>
-        <MudSelectItem Value="@("Ready")">Ready</MudSelectItem>
-        <MudSelectItem Value="@("NotReady")">NotReady</MudSelectItem>
-        <MudSelectItem Value="@("Unknown")">Unknown</MudSelectItem>
+        <MudSelectItem Value="@("Ready")">就绪 (Ready)</MudSelectItem>
+        <MudSelectItem Value="@("NotReady")">未就绪 (NotReady)</MudSelectItem>
+        <MudSelectItem Value="@("Unknown")">未知 (Unknown)</MudSelectItem>
     </MudSelect>
 
     <MudSelect @bind-Value="Filter.Schedulable"

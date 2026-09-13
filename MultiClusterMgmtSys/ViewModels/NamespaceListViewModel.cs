@@ -1,3 +1,5 @@
+using MultiClusterMgmtSys.ViewModels.Mappings;
+
 namespace MultiClusterMgmtSys.ViewModels;
 
 /// <summary>
@@ -8,11 +10,14 @@ public class NamespaceListViewModel
     /// <summary>命名空间名称。</summary>
     public string Name { get; set; } = "";
 
+    /// <summary>命名空间阶段原始值(Active/Terminating);供英文次行展示。</summary>
+    public string Phase { get; set; } = "";
+
     /// <summary>状态显示文案(在线/未知)。</summary>
-    public string StatusText { get; set; } = "";
+    public string StatusText => K8sDisplayText.NamespacePhaseText(Phase);
 
     /// <summary>状态徽章 CSS 类(online/unknown),对应设计系统的淡彩状态徽章。</summary>
-    public string StatusCssClass { get; set; } = "unknown";
+    public string StatusCssClass => K8sDisplayText.NamespacePhaseCssClass(Phase);
 
     /// <summary>标签数量。</summary>
     public int LabelCount { get; set; } = 0;

@@ -1,0 +1,43 @@
+<MudTooltip Delay="@Delay"
+            Placement="@Placement"
+            Arrow="true"
+            Inline="@Inline"
+            ShowOnHover="true"
+            ShowOnFocus="true"
+            @bind-Visible="_visible">
+    <TooltipContent>
+        @if (Mono)
+        {
+            <span class="font-mono">@Text</span>
+        }
+        else
+        {
+            @Text
+        }
+    </TooltipContent>
+    <ChildContent>
+        @ChildContent
+    </ChildContent>
+</MudTooltip>
+
+@code {
+    private bool _visible;
+
+    [Parameter]
+    public string Text { get; set; } = "";
+
+    [Parameter]
+    public bool Mono { get; set; }
+
+    [Parameter]
+    public bool Inline { get; set; } = true;
+
+    [Parameter]
+    public Placement Placement { get; set; } = Placement.Top;
+
+    [Parameter]
+    public int Delay { get; set; } = 300;
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

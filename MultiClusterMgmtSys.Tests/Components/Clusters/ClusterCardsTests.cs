@@ -43,6 +43,8 @@ public class ClusterOverviewCardTests
         Assert.Contains("prod-5", cut.Markup);
         Assert.Contains("未分组", cut.Markup);
         Assert.Contains("Token", cut.Markup);
+        Assert.Contains("访问令牌", cut.Markup);
+        Assert.Contains("3 台", cut.Markup);
     }
 
     [Fact]

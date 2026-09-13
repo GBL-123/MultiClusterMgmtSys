@@ -24,18 +24,26 @@
                     <MudTh>最近转换</MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd DataLabel="类型">@context.Type</MudTd>
+                    <MudTd DataLabel="类型">
+                        <StackedText Primary="@context.TypeText" Secondary="@context.Type" />
+                    </MudTd>
                     <MudTd DataLabel="状态">
-                        <span class="status-badge @GetConditionClass(context.Type, context.Status)">
-                            <span class="status-dot"></span>@context.Status
-                        </span>
+                        <StatusBadge Text="@context.StatusText" CssClass="@context.StatusCssClass" Raw="@context.Status" />
                     </MudTd>
                     <MudTd DataLabel="原因">@(context.Reason ?? "—")</MudTd>
                     <MudTd DataLabel="消息">
-                        <span style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;"
-                              title="@context.Message">
-                            @(context.Message ?? "—")
-                        </span>
+                        @if (string.IsNullOrEmpty(context.Message))
+                        {
+                            <span>—</span>
+                        }
+                        else
+                        {
+                            <TextTooltip Text="@context.Message">
+                                <span style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
+                                    @context.Message
+                                </span>
+                            </TextTooltip>
+                        }
                     </MudTd>
                     <MudTd DataLabel="最近心跳"><span class="font-mono">@(context.LastHeartbeatTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")</span></MudTd>
                     <MudTd DataLabel="最近转换"><span class="font-mono">@(context.LastTransitionTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")</span></MudTd>
@@ -48,11 +56,4 @@
 @code {
     [Parameter]
     public ClusterNodeDetailViewModel Node { get; set; } = default!;
-
-    private static string GetConditionClass(string type, string status)
-    {
-        if (status == "Unknown") return "unknown";
-        var isHealthy = type == "Ready" ? status == "True" : status == "False";
-        return isHealthy ? "online" : "offline";
-    }
 }

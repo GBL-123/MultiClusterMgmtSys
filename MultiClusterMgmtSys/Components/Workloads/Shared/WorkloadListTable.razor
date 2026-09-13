@@ -27,9 +27,7 @@
         </MudTd>
         <MudTd DataLabel="就绪"><span class="font-mono">@context.ReadyText</span></MudTd>
         <MudTd DataLabel="滚动状态">
-            <span class="status-badge @GetRolloutClass(context.RolloutState)">
-                <span class="status-dot"></span>@GetRolloutText(context.RolloutState)
-            </span>
+            <StatusBadge Text="@context.RolloutText" CssClass="@context.RolloutCssClass" />
         </MudTd>
         <MudTd DataLabel="创建时间"><span class="font-mono">@(context.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</span></MudTd>
         <MudTd DataLabel="操作">
@@ -94,18 +92,4 @@
 
     [Parameter]
     public EventCallback<(string Namespace, string Name)> OnDelete { get; set; }
-
-    private static string GetRolloutClass(WorkloadRolloutState state) => state switch
-    {
-        WorkloadRolloutState.Ready => "online",
-        WorkloadRolloutState.Rolling => "unknown",
-        _ => "offline"
-    };
-
-    private static string GetRolloutText(WorkloadRolloutState state) => state switch
-    {
-        WorkloadRolloutState.Ready => "就绪",
-        WorkloadRolloutState.Rolling => "滚动中",
-        _ => "未就绪"
-    };
 }

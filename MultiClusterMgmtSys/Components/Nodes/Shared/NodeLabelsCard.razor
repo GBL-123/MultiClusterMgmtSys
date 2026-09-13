@@ -22,10 +22,18 @@
                 <RowTemplate>
                     <MudTd DataLabel="键">@context.Key</MudTd>
                     <MudTd DataLabel="值">
-                        <span style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;"
-                              title="@context.Value">
-                            @context.Value
-                        </span>
+                        @if (string.IsNullOrEmpty(context.Value))
+                        {
+                            <span style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;"></span>
+                        }
+                        else
+                        {
+                            <TextTooltip Text="@context.Value">
+                                <span style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
+                                    @context.Value
+                                </span>
+                            </TextTooltip>
+                        }
                     </MudTd>
                 </RowTemplate>
             </MudTable>

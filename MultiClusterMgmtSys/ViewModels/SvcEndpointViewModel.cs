@@ -1,3 +1,5 @@
+using MultiClusterMgmtSys.ViewModels.Mappings;
+
 namespace MultiClusterMgmtSys.ViewModels;
 
 /// <summary>
@@ -13,4 +15,14 @@ public class SvcEndpointViewModel
 
     /// <summary>后端是否就绪(Ready)。</summary>
     public bool Ready { get; set; }
+
+    /// <summary>就绪状态中文展示名(就绪/未就绪)。</summary>
+    public string StatusText => K8sDisplayText.EndpointStatusText(Ready);
+
+    /// <summary>就绪状态英文原值(Ready/NotReady)。</summary>
+    public string StatusRaw => K8sDisplayText.EndpointStatusRaw(Ready);
+
+    /// <summary>就绪状态对应的状态徽章 CSS 类(online/offline)。</summary>
+    public string StatusCssClass => K8sDisplayText.EndpointStatusCssClass(Ready);
 }
+

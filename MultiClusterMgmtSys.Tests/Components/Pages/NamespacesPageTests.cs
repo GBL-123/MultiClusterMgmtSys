@@ -60,6 +60,8 @@ public class NamespacesPageTests
 
         Assert.Contains("status-badge online", cut.Markup);
         Assert.Contains("status-badge unknown", cut.Markup);
+        Assert.Contains("Active", cut.Markup);
+        Assert.Contains("Terminating", cut.Markup);
 
         var nameField = cut.FindComponents<MudTextField<string>>().First(f => f.Instance.Label == "名称");
         await cut.InvokeAsync(async () => await nameField.Instance.ValueChanged!.InvokeAsync("app"));

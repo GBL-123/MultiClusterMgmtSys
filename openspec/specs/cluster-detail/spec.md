@@ -32,7 +32,7 @@ The detail page SHALL render a top toolbar followed by a `MudTabs` area with exa
 #### Scenario: Overview tab surfaces identity and connection fields
 
 - **WHEN** the 概览 tab renders
-- **THEN** it shows: 集群名称, 版本 (k8s `Version`, `—` if null), 节点数 (`NodeCount`), 所属分组 (`GroupName` or "未分组"), 连接方式 (Kubeconfig / Token), API Server (`ApiServer` or `—`), 创建时间 (`CreatedAt` formatted `yyyy-MM-dd HH:mm`), 最后检测时间 (`LastCheckedAt` or `—`)
+- **THEN** it shows: 集群名称, 版本 (k8s `Version`, `—` if null), 节点数 (`NodeCount` displayed with the 台 unit, e.g. `3 台`), 所属分组 (`GroupName` or "未分组"), 连接方式 (配置文件 (Kubeconfig) / 访问令牌 (Token), per `display-conventions`), API Server (`ApiServer` or `—`), 创建时间 (`CreatedAt` formatted `yyyy-MM-dd HH:mm`), 最后检测时间 (`LastCheckedAt` or `—`)
 
 #### Scenario: Secret reveal is Admin-only and lives in the 概览 tab
 

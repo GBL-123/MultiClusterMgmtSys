@@ -123,7 +123,7 @@ The selected cluster for the node list page SHALL be expressed by the URL path (
 - **AND** the right pane renders the empty-state hint (the user picks a cluster from the sidebar again)
 
 ### Requirement: Node list filter bar with four filters
-The list page SHALL render `NodeListFilterBar` containing exactly four filter controls bound to a single `NodeListFilter` draft held by the page: a free-text Name field (with a search adornment), a Role drop-down, a Status drop-down, and a Schedulability drop-down, followed by a "查询" filled primary button that invokes `OnQuery` and a "重置" outlined button that clears the filter state and invokes `OnReset`. The bar SHALL match the other cluster-scoped list pages' filter bars in structure (spacer pushed query/reset buttons) and SHALL NOT add extra top margin. Editing a control alone SHALL NOT change the table; filtering SHALL be applied only when the user clicks "查询". Filtering MUST be performed client-side against the loaded `List<ClusterNodeViewModel>` — no new server round-trip is introduced when a filter is applied.
+The list page SHALL render `NodeListFilterBar` containing exactly four filter controls bound to a single `NodeListFilter` draft held by the page: a free-text Name field (with a search adornment), a Role drop-down, a Status drop-down, and a Schedulability drop-down, followed by a "查询" filled primary button that invokes `OnQuery` and a "重置" outlined button that clears the filter state and invokes `OnReset`. The bar SHALL match the other cluster-scoped list pages' filter bars in structure (spacer pushed query/reset buttons) and SHALL NOT add extra top margin. Editing a control alone SHALL NOT change the table; filtering SHALL be applied only when the user clicks "查询". Filtering MUST be performed client-side against the loaded `List<ClusterNodeViewModel>` — no new server round-trip is introduced when a filter is applied. The Role and Status drop-down option labels SHALL follow `display-conventions` (e.g. 控制平面 (control-plane), 就绪 (Ready)) while the underlying filter values remain the raw Kubernetes strings.
 
 #### Scenario: Query applies the drafted filters
 - **WHEN** the user edits the Name/Role/Status/Schedulability controls and clicks "查询"
@@ -161,9 +161,16 @@ The list page SHALL render `NodeListFilterBar` containing exactly four filter co
 - **WHEN** multiple filters are applied simultaneously
 - **THEN** the table shows the intersection of all active filters
 
+#### Scenario: Filter option labels are bilingual
+- **WHEN** the user opens the Role drop-down
+- **THEN** it offers 全部 / 控制平面 (control-plane) / 工作节点 (worker)
+- **AND** selecting 控制平面 (control-plane) sets the filter value to the raw string `control-plane`
+- **WHEN** the user opens the Status drop-down
+- **THEN** it offers 全部 / 就绪 (Ready) / 未就绪 (NotReady) / 未知 (Unknown)
+
 ### Requirement: Node list table columns and row interaction
 
-`NodeListTable` SHALL render a `MudTable<ClusterNodeViewModel>` with `Dense`, `Hover`, a client-paging `MudTablePager`, and exactly six columns in this left-to-right order: 名称, 状态, 角色, Kubelet 版本, 操作系统, 内网 IP. The 名称 cell SHALL be a clickable underline-styled `MudText` that navigates to `/nodes/{ClusterId}/{NodeName}`. The 状态 cell SHALL render a `MudChip` colored by the standard node-status color helper (`Ready` → Success, `NotReady` → Error, otherwise Default).
+`NodeListTable` SHALL render a `MudTable<ClusterNodeViewModel>` with `Dense`, `Hover`, a client-paging `MudTablePager`, and exactly six columns in this left-to-right order: 名称, 状态, 角色, Kubelet 版本, 操作系统, IP 地址. The 名称 cell SHALL be a clickable underline-styled `MudText` that navigates to `/nodes/{ClusterId}/{NodeName}`. The 状态 cell SHALL render a `ui-theme` status badge (`.status-badge`) with the standard node-status color helper (`Ready` → online, `NotReady` → offline, otherwise unknown), displaying 就绪 / 未就绪 / 未知 as the primary line and the English raw value (`Ready` / `NotReady` / `Unknown`) as a secondary mono line. The 角色 cell SHALL follow `display-conventions`, displaying Chinese-primary roles (e.g. 控制平面 / 工作节点) with the raw value as a secondary mono line.
 
 #### Scenario: Empty state copy
 - **WHEN** the filtered row set is empty
@@ -176,6 +183,11 @@ The list page SHALL render `NodeListFilterBar` containing exactly four filter co
 #### Scenario: Pager format matches cluster table
 - **WHEN** the pager renders
 - **THEN** it uses the same `RowsPerPageString` / `InfoFormat` ("共 {all_items} 条") convention as `ClusterTable.razor`
+
+#### Scenario: Status and roles render bilingual
+- **WHEN** a row renders a node with status `Ready` and role `control-plane`
+- **THEN** the 状态 cell shows 就绪 with `Ready` on a secondary mono line
+- **AND** the 角色 cell shows 控制平面 with `control-plane` on a secondary mono line
 
 ### Requirement: Node list view model exposes Unschedulable
 

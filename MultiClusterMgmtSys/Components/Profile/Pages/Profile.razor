@@ -4,6 +4,7 @@
 @using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.Components.Profile.Shared
 @using MultiClusterMgmtSys.ViewModels
+@using MultiClusterMgmtSys.ViewModels.Mappings
 @using MultiClusterMgmtSys.Requests
 
 @inject AccountService AccountSvc
@@ -47,8 +48,14 @@
                     <span class="brand-mark large">@UserInitial</span>
                     <MudStack Spacing="1">
                         <MudText Typo="Typo.h6">@(string.IsNullOrEmpty(currentUserName) ? "—" : currentUserName)</MudText>
-                        <span class="role-badge @(currentUserRole == "Admin" ? "admin" : "member")">
-                            @(string.IsNullOrEmpty(currentUserRole) ? "未知角色" : currentUserRole)
+                        <span class="stacked-text">
+                            <span class="role-badge @(currentUserRole == "Admin" ? "admin" : "member")">
+                                @(string.IsNullOrEmpty(currentUserRole) ? "未知角色" : K8sDisplayText.AccountRoleText(currentUserRole))
+                            </span>
+                            @if (!string.IsNullOrEmpty(currentUserRole))
+                            {
+                                <span class="stacked-text-secondary font-mono">@currentUserRole</span>
+                            }
                         </span>
                     </MudStack>
                 </MudStack>
@@ -126,11 +133,12 @@
                             <div class="d-flex align-center py-2" style="gap: 16px;">
                                 <span class="font-mono mud-text-secondary" style="flex: none;">@op.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</span>
                                 <span style="flex: none;">@op.CategoryName · @op.ActionName</span>
-                                <span class="mud-text-secondary"
-                                      style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;"
-                                      title="@op.Target">
-                                    @(string.IsNullOrEmpty(op.Target) ? "—" : op.Target)
-                                </span>
+                                <TextTooltip Text="@op.Target">
+                                    <span class="mud-text-secondary"
+                                          style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;">
+                                        @(string.IsNullOrEmpty(op.Target) ? "—" : op.Target)
+                                    </span>
+                                </TextTooltip>
                             </div>
                             @if (i < recentOps.Count - 1)
                             {

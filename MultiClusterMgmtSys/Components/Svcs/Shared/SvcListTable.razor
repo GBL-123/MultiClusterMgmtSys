@@ -27,7 +27,9 @@
         <MudTd DataLabel="命名空间">
             <MudChip T="string" Size="Size.Small" Class="font-mono">@context.Namespace</MudChip>
         </MudTd>
-        <MudTd DataLabel="类型"><span class="font-mono">@context.Type</span></MudTd>
+        <MudTd DataLabel="类型">
+            <StackedText Primary="@context.TypeText" Secondary="@context.Type" />
+        </MudTd>
         <MudTd DataLabel="端口">
             @if (context.Ports.Count == 0)
             {
@@ -38,9 +40,11 @@
                 <div class="svc-port-cell font-mono">
                     @foreach (var port in context.Ports.Take(3))
                     {
-                        <div class="svc-port-row" title="@PortTooltip(port)">
-                            <span>@PortLeft(port)</span><span class="svc-port-target"> → @PortTarget(port)</span>
-                        </div>
+                        <TextTooltip Text="@PortTooltip(port)">
+                            <div class="svc-port-row">
+                                <span>@PortLeft(port)</span><span class="svc-port-target"> → @PortTarget(port)</span>
+                            </div>
+                        </TextTooltip>
                     }
                     @if (context.Ports.Count > 3)
                     {
@@ -81,7 +85,7 @@
         <MudText Class="pa-4 font-mono mud-text-secondary">// 正在加载...</MudText>
     </LoadingContent>
     <NoRecordsContent>
-        <div class="empty-state">[ 暂无 Service ]</div>
+        <div class="empty-state">[ 暂无服务 ]</div>
     </NoRecordsContent>
 </MudTable>
 

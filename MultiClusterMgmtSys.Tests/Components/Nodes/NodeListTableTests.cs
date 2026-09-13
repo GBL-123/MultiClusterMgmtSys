@@ -40,9 +40,13 @@ public class NodeListTableTests
         Assert.Contains("node-1", cut.Markup);
         Assert.Contains("Ready", cut.Markup);
         Assert.Contains("NotReady", cut.Markup);
+        Assert.Contains("就绪", cut.Markup);
+        Assert.Contains("未就绪", cut.Markup);
         Assert.Contains("control-plane", cut.Markup);
+        Assert.Contains("控制平面", cut.Markup);
         Assert.Contains("v1.30.2", cut.Markup);
         Assert.Contains("10.0.0.1", cut.Markup);
+        Assert.Contains("status-badge-raw", cut.Markup);
     }
 
     [Fact]
@@ -165,6 +169,10 @@ public class NodeCardsTests
         Assert.Contains("不可调度", cut.Markup);
         Assert.Contains("10.244.0.0/24", cut.Markup);
         Assert.Contains("Running", cut.Markup);
+        Assert.Contains("阶段 (Phase)", cut.Markup);
+        Assert.Contains("运行中", cut.Markup);
+        Assert.Contains("内网 IP", cut.Markup);
+        Assert.Contains("控制平面", cut.Markup);
     }
 
     [Fact]
@@ -180,7 +188,9 @@ public class NodeCardsTests
         Assert.Contains("3.8 核", cut.Markup);
         Assert.Contains("15.5 GiB", cut.Markup);
         Assert.Contains("95%", cut.Markup);
-        Assert.Contains("3800m", cut.Markup);
+        var tooltips = cut.FindComponents<MultiClusterMgmtSys.Components.Common.TextTooltip>();
+        Assert.Contains(tooltips, t => t.Instance.Text == "3800m" && t.Instance.Mono);
+        Assert.Contains(tooltips, t => t.Instance.Text == "16297496Ki");
     }
 
     [Fact]
@@ -232,6 +242,21 @@ public class NodeCardsTests
 
         Assert.Contains("Ready", cut.Markup);
         Assert.Contains("KubeletReady", cut.Markup);
+        Assert.Contains("就绪", cut.Markup);
+        Assert.Contains("成立", cut.Markup);
+    }
+
+    [Fact]
+    public async Task System_info_card_labels_are_bilingual()
+    {
+        await using var ctx = new BunitHost();
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeSystemInfoCard>(
+            parameters => parameters.Add(p => p.Node, Detail()));
+
+        Assert.Contains("架构 (Architecture)", cut.Markup);
+        Assert.Contains("操作系统镜像 (OsImage)", cut.Markup);
+        Assert.Contains("amd64", cut.Markup);
     }
 }
 

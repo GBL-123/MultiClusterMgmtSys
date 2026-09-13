@@ -1,3 +1,5 @@
+using MultiClusterMgmtSys.ViewModels.Mappings;
+
 namespace MultiClusterMgmtSys.ViewModels;
 
 /// <summary>
@@ -7,6 +9,9 @@ public class NodeAddressViewModel
 {
     /// <summary>地址类型,如 InternalIP/ExternalIP/Hostname。</summary>
     public string Type { get; set; } = "";
+
+    /// <summary>地址类型中文展示名(内网 IP/外网 IP/主机名)。</summary>
+    public string TypeText => K8sDisplayText.AddressTypeText(Type);
 
     /// <summary>地址值。</summary>
     public string Address { get; set; } = "";

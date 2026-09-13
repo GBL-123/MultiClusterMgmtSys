@@ -13,7 +13,7 @@
 @inject NavigationManager NavigationManager
 @inject ExceptionPresenter ExHandler
 
-<PageTitle>Service 详情: @Name</PageTitle>
+<PageTitle>服务详情: @Name</PageTitle>
 
 <MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
     @if (loading)
@@ -64,7 +64,7 @@
             </MudTabPanel>
             <MudTabPanel>
                 <TabContent>
-                    <span>Endpoints&nbsp;<span class="font-mono">@detail.Endpoints.Count</span></span>
+                    <span>后端端点 (Endpoints)&nbsp;<span class="font-mono">@detail.Endpoints.Count</span></span>
                 </TabContent>
                 <ChildContent>
                     @if (detail.EndpointsLoadFailed)

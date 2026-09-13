@@ -233,7 +233,8 @@ public class NodesPageTests
         cut.FindAll(".mud-tab")[1].Click();
         cut.WaitForState(() => cut.Markup.Contains("3.8 核"));
         Assert.Contains("3.8 核", cut.Markup);
-        Assert.Contains("3800m", cut.Markup);
+        var tooltips = cut.FindComponents<MultiClusterMgmtSys.Components.Common.TextTooltip>();
+        Assert.Contains(tooltips, t => t.Instance.Text == "3800m" && t.Instance.Mono);
 
         cut.FindAll(".mud-tab")[2].Click();
         cut.WaitForState(() => cut.Markup.Contains("KubeletReady"));

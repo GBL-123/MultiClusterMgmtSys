@@ -1,4 +1,5 @@
 using MultiClusterMgmtSys.Common.Enums;
+using MultiClusterMgmtSys.ViewModels.Mappings;
 
 namespace MultiClusterMgmtSys.ViewModels;
 
@@ -23,11 +24,17 @@ public class WorkloadListViewModel
     /// <summary>期望副本数(DaemonSet 为应调度节点数)。</summary>
     public int DesiredCount { get; set; }
 
-    /// <summary>就绪度展示文本,格式"就绪/期望",如 2/3。</summary>
-    public string ReadyText => $"{ReadyCount}/{DesiredCount}";
+    /// <summary>就绪度展示文本,格式"就绪/期望 个",如 2/3 个。</summary>
+    public string ReadyText => $"{ReadyCount}/{DesiredCount} 个";
 
     /// <summary>滚动三态,列表页状态徽标依据。</summary>
     public WorkloadRolloutState RolloutState { get; set; } = WorkloadRolloutState.NotReady;
+
+    /// <summary>滚动三态中文展示名(就绪/滚动中/未就绪)。</summary>
+    public string RolloutText => K8sDisplayText.WorkloadRolloutText(RolloutState);
+
+    /// <summary>滚动三态对应的状态徽章 CSS 类。</summary>
+    public string RolloutCssClass => K8sDisplayText.WorkloadRolloutCssClass(RolloutState);
 
     /// <summary>资源创建时间;null 表示 API 未返回。</summary>
     public DateTime? CreatedAt { get; set; } = null;

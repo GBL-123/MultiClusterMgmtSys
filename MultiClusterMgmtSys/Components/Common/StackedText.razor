@@ -1,0 +1,15 @@
+<span class="stacked-text">
+    <span class="stacked-text-primary">@Primary</span>
+    @if (!string.IsNullOrEmpty(Secondary))
+    {
+        <span class="stacked-text-secondary font-mono">@Secondary</span>
+    }
+</span>
+
+@code {
+    [Parameter]
+    public string Primary { get; set; } = "";
+
+    [Parameter]
+    public string? Secondary { get; set; }
+}

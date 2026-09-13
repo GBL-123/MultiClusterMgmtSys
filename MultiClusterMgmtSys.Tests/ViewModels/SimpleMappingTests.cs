@@ -23,6 +23,7 @@ public class AccountMappingTests
         Assert.Equal(7, vm.Id);
         Assert.Equal("tester", vm.UserName);
         Assert.Equal("Admin", vm.RoleName);
+        Assert.Equal("管理员", vm.RoleText);
         Assert.Equal(user.CreatedAt, vm.CreatedAt);
         Assert.Equal(user.UpdatedAt, vm.UpdatedAt);
         Assert.Equal(user.LastLoginAt, vm.LastLoginAt);
@@ -47,6 +48,8 @@ public class AuditLogMappingTests
     [InlineData(AuditCategory.Configmap, "配置")]
     [InlineData(AuditCategory.Node, "节点")]
     [InlineData(AuditCategory.Workload, "工作负载")]
+    [InlineData(AuditCategory.Service, "服务")]
+    [InlineData(AuditCategory.Namespace, "命名空间")]
     public void Category_display_names_are_chinese(AuditCategory category, string expected)
     {
         Assert.Equal(expected, category.ToDisplayName());

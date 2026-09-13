@@ -30,6 +30,9 @@ public class WorkloadMappingTests
         Assert.Equal(3, vm.DesiredCount);
         Assert.Equal(3, vm.ReadyCount);
         Assert.Equal(WorkloadRolloutState.Ready, vm.RolloutState);
+        Assert.Equal("3/3 个", vm.ReadyText);
+        Assert.Equal("就绪", vm.RolloutText);
+        Assert.Equal("online", vm.RolloutCssClass);
     }
 
     [Fact]
@@ -210,8 +213,13 @@ public class WorkloadMappingTests
         Assert.Equal("uid-9", detail.Uid);
         Assert.Equal("app=web", detail.Selector);
         Assert.Equal(WorkloadRolloutState.Ready, detail.RolloutState);
+        Assert.Equal("就绪", detail.RolloutText);
+        Assert.Equal("online", detail.RolloutCssClass);
+        Assert.Equal("2/2 个", detail.ReadyText);
         Assert.Equal(2, detail.UpdatedCount);
         Assert.Equal("Available", detail.Conditions.Single().Type);
+        Assert.Equal("可用", detail.Conditions.Single().TypeText);
+        Assert.Equal("成立", detail.Conditions.Single().StatusText);
         Assert.Contains("web", detail.Yaml);
     }
 

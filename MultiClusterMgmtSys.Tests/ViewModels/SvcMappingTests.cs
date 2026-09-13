@@ -51,6 +51,7 @@ public class SvcMappingTests
         Assert.Equal("web", vm.Name);
         Assert.Equal("default", vm.Namespace);
         Assert.Equal("ClusterIP", vm.Type);
+        Assert.Equal("集群内 IP", vm.TypeText);
         Assert.Equal("10.96.0.10", vm.ClusterIP);
         Assert.False(vm.Headless);
         Assert.Equal("—", vm.ExternalEntry);
@@ -98,6 +99,7 @@ public class SvcMappingTests
         var vm = NewService(type: "ExternalName", clusterIP: "", externalName: "ext.db.io").ToSvcListViewModel();
 
         Assert.Equal("ExternalName", vm.Type);
+        Assert.Equal("外部名称", vm.TypeText);
         Assert.Equal("ext.db.io", vm.ExternalEntry);
     }
 
@@ -126,6 +128,7 @@ public class SvcMappingTests
         var detail = NewService().ToSvcDetailViewModel();
 
         Assert.Equal("uid-1", detail.Uid);
+        Assert.Equal("集群内 IP", detail.TypeText);
         Assert.Equal("web", detail.Selector["app"]);
         Assert.Contains("kind: Service", detail.Yaml);
         Assert.Single(detail.Ports);
@@ -175,8 +178,12 @@ public class SvcMappingTests
         Assert.Equal(2, rows.Count);
         Assert.Equal("10.244.1.5:8080", rows[0].Address);
         Assert.True(rows[0].Ready);
+        Assert.Equal("就绪", rows[0].StatusText);
+        Assert.Equal("Ready", rows[0].StatusRaw);
         Assert.Equal("10.244.2.3:8080", rows[1].Address);
         Assert.False(rows[1].Ready);
+        Assert.Equal("未就绪", rows[1].StatusText);
+        Assert.Equal("offline", rows[1].StatusCssClass);
     }
 
     [Fact]

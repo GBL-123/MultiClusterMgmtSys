@@ -47,6 +47,7 @@ public class AccountTableTests
             cut.WaitForState(() => cut.Markup.Contains("u1"));
 
             Assert.Contains("Member", cut.Markup);
+            Assert.Contains("成员", cut.Markup);
         }
         finally
         {

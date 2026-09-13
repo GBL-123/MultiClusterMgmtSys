@@ -51,8 +51,12 @@
                     <MudTh>信息</MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd DataLabel="类型"><span class="font-mono">@context.Type</span></MudTd>
-                    <MudTd DataLabel="状态"><span class="font-mono">@context.Status</span></MudTd>
+                    <MudTd DataLabel="类型">
+                        <StackedText Primary="@context.TypeText" Secondary="@context.Type" />
+                    </MudTd>
+                    <MudTd DataLabel="状态">
+                        <StackedText Primary="@context.StatusText" Secondary="@context.Status" />
+                    </MudTd>
                     <MudTd DataLabel="原因">@context.Reason</MudTd>
                     <MudTd DataLabel="信息">@context.Message</MudTd>
                 </RowTemplate>

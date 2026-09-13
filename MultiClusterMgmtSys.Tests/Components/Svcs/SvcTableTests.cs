@@ -109,7 +109,7 @@ public class SvcListTableTests
         var cut = ctx.Render<MultiClusterMgmtSys.Components.Svcs.Shared.SvcListTable>(
             parameters => parameters.Add(p => p.Items, Array.Empty<SvcListViewModel>()));
 
-        Assert.Contains("暂无 Service", cut.Markup);
+        Assert.Contains("暂无服务", cut.Markup);
     }
 
     [Fact]

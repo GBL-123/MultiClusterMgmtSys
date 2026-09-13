@@ -61,8 +61,8 @@
                 <MudText>@selectedAccountIds.Count 个账号已选</MudText>
                 <MudSpacer />
                 <MudMenu Label="批量改角色" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.SupervisorAccount">
-                    <MudMenuItem OnClick="@(() => BatchUpdateRoleAsync("Admin"))">Admin</MudMenuItem>
-                    <MudMenuItem OnClick="@(() => BatchUpdateRoleAsync("Member"))">Member</MudMenuItem>
+                    <MudMenuItem OnClick="@(() => BatchUpdateRoleAsync("Admin"))">管理员 (Admin)</MudMenuItem>
+                    <MudMenuItem OnClick="@(() => BatchUpdateRoleAsync("Member"))">成员 (Member)</MudMenuItem>
                 </MudMenu>
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Error"

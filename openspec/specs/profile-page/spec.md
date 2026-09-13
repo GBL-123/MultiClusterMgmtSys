@@ -22,7 +22,7 @@ The system SHALL provide a personal profile page at the `/profile` route, reacha
 - **THEN** it navigates to `/profile` and the page renders without a 404
 
 ### Requirement: Profile page shows read-only account information
-The system SHALL display the signed-in user's username, role, registration time, modification time, and last login time on the profile page. All fields SHALL be read-only; the username SHALL be used as the identity directly, and there SHALL be no display-name concept. Presentation SHALL follow the Swiss Industrial Print design system: a 40px amber square avatar (brand-mark language) showing the username's initial, a pale-fill role badge instead of a filled chip, and timestamps rendered in the mono data font.
+The system SHALL display the signed-in user's username, role, registration time, modification time, and last login time on the profile page. All fields SHALL be read-only; the username SHALL be used as the identity directly, and there SHALL be no display-name concept. Presentation SHALL follow the Swiss Industrial Print design system: a 40px amber square avatar (brand-mark language) showing the username's initial, a pale-fill role badge instead of a filled chip, and timestamps rendered in the mono data font. Per `display-conventions`, the role badge SHALL display the Chinese role as its primary text (Admin → 管理员, Member → 成员) with the raw role name (`Admin` / `Member`) as an adjacent secondary mono line.
 
 #### Scenario: Rendering account fields
 - **WHEN** the profile page loads for the signed-in user
@@ -35,6 +35,7 @@ The system SHALL display the signed-in user's username, role, registration time,
 #### Scenario: Role badge presentation
 - **WHEN** the profile page renders the user's role
 - **THEN** the role is shown as a pale-fill badge (amber tint for Admin, neutral tint otherwise) with deep text, not a filled chip
+- **AND** the badge primary text is 管理员 or 成员, with the raw `Admin` / `Member` as a secondary mono line
 
 #### Scenario: Timestamp font
 - **WHEN** registration, modification, or last-login time renders

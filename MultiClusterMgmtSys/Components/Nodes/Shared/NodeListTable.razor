@@ -22,11 +22,18 @@
             </MudText>
         </MudTd>
         <MudTd DataLabel="状态">
-            <span class="status-badge @GetNodeStatusClass(context.Status)">
-                <span class="status-dot"></span>@context.Status
-            </span>
+            <StatusBadge Text="@context.StatusText" CssClass="@context.StatusCssClass" Raw="@context.Status" />
         </MudTd>
-        <MudTd DataLabel="角色">@(string.IsNullOrEmpty(context.Roles) ? "—" : context.Roles)</MudTd>
+        <MudTd DataLabel="角色">
+            @if (string.IsNullOrEmpty(context.Roles))
+            {
+                <span>—</span>
+            }
+            else
+            {
+                <StackedText Primary="@context.RolesText" Secondary="@context.Roles" />
+            }
+        </MudTd>
         <MudTd DataLabel="Kubelet 版本"><span class="font-mono">@(string.IsNullOrEmpty(context.KubeletVersion) ? "—" : context.KubeletVersion)</span></MudTd>
         <MudTd DataLabel="操作系统">@(string.IsNullOrEmpty(context.OsImage) ? "—" : context.OsImage)</MudTd>
         <MudTd DataLabel="IP 地址">
@@ -74,11 +81,4 @@
 
     [Parameter]
     public EventCallback<string> OnNavigateNode { get; set; }
-
-    private static string GetNodeStatusClass(string status) => status switch
-    {
-        "Ready" => "online",
-        "NotReady" => "offline",
-        _ => "unknown"
-    };
 }

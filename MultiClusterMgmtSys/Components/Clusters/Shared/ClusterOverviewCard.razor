@@ -36,7 +36,7 @@
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">节点数</MudText>
-                <MudText Typo="Typo.body1" Class="font-mono">@Cluster.NodeCount</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@Cluster.NodeCountText</MudText>
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">所属分组</MudText>
@@ -44,9 +44,14 @@
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">连接方式</MudText>
-                <MudText Typo="Typo.body1">
-                    @(Cluster.ConnectionType == ConnectionType.KubeConfig ? "Kubeconfig" : "Token")
-                </MudText>
+                @if (Cluster.ConnectionType is null)
+                {
+                    <MudText Typo="Typo.body1">—</MudText>
+                }
+                else
+                {
+                    <StackedText Primary="@Cluster.ConnectionTypeText" Secondary="@Cluster.ConnectionTypeRawText" />
+                }
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">API Server</MudText>

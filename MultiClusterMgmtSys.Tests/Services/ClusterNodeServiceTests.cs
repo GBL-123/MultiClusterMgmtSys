@@ -65,7 +65,10 @@ public class ClusterNodeServiceTests : IDisposable
         var node = nodes.Single();
         Assert.Equal("node-1", node.Name);
         Assert.Equal("Ready", node.Status);
+        Assert.Equal("就绪", node.StatusText);
+        Assert.Equal("online", node.StatusCssClass);
         Assert.Equal("control-plane", node.Roles);
+        Assert.Equal("控制平面", node.RolesText);
         Assert.True(node.Unschedulable);
         Assert.Equal("v1.30.2", node.KubeletVersion);
         var ip = node.IpAddresses.Single();
@@ -146,8 +149,11 @@ public class ClusterNodeServiceTests : IDisposable
         Assert.True(detail!.IsReachable);
         Assert.Equal("n1", detail.Name);
         Assert.Equal("Ready", detail.Status);
+        Assert.Equal("就绪", detail.StatusText);
+        Assert.Equal("online", detail.StatusCssClass);
         Assert.Equal("10.244.0.0/24", detail.PodCIDR);
         Assert.Equal("Running", detail.Phase);
+        Assert.Equal("运行中", detail.PhaseText);
         var cpu = Assert.Single(detail.Resources);
         Assert.Equal("cpu", cpu.Key);
         Assert.Equal("CPU", cpu.Label);
@@ -157,12 +163,17 @@ public class ClusterNodeServiceTests : IDisposable
         Assert.Equal("amd64", detail.SystemInfo.Architecture);
         Assert.Single(detail.Conditions);
         Assert.Equal("KubeletReady", detail.Conditions[0].Reason);
+        Assert.Equal("就绪", detail.Conditions[0].TypeText);
+        Assert.Equal("成立", detail.Conditions[0].StatusText);
+        Assert.Equal("online", detail.Conditions[0].StatusCssClass);
         Assert.Single(detail.Taints);
         Assert.Equal("NoSchedule", detail.Taints[0].Effect);
+        Assert.Equal("禁止调度", detail.Taints[0].EffectText);
         Assert.Equal("prod", detail.Labels["env"]);
         Assert.Equal("v", detail.Annotations["k"]);
         var addr = detail.Addresses.Single();
         Assert.Equal("10.0.0.5", addr.Address);
+        Assert.Equal("内网 IP", addr.TypeText);
     }
 
     [Fact]

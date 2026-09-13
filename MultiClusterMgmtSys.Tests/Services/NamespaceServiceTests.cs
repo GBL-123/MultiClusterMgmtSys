@@ -69,9 +69,11 @@ public class NamespaceServiceTests : IDisposable
 
         Assert.Equal(2, items.Count);
         Assert.Equal("default", items[0].Name);
+        Assert.Equal("Active", items[0].Phase);
         Assert.Equal("在线", items[0].StatusText);
         Assert.Equal("online", items[0].StatusCssClass);
         Assert.Equal(2, items[0].LabelCount);
+        Assert.Equal("Terminating", items[1].Phase);
         Assert.Equal("未知", items[1].StatusText);
         Assert.Equal("unknown", items[1].StatusCssClass);
     }

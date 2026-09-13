@@ -1,3 +1,5 @@
+using MultiClusterMgmtSys.ViewModels.Mappings;
+
 namespace MultiClusterMgmtSys.ViewModels;
 
 /// <summary>
@@ -13,6 +15,9 @@ public class SvcListViewModel
 
     /// <summary>服务类型,如 ClusterIP/NodePort/LoadBalancer/ExternalName。</summary>
     public string Type { get; set; } = "";
+
+    /// <summary>服务类型中文展示名(集群内 IP/节点端口/负载均衡/外部名称)。</summary>
+    public string TypeText => K8sDisplayText.SvcTypeText(Type);
 
     /// <summary>集群内虚拟 IP;Headless 服务为 None。</summary>
     public string ClusterIP { get; set; } = "";

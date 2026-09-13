@@ -1,0 +1,20 @@
+<span class="status-stack">
+    <span class="status-badge @CssClass">
+        <span class="status-dot"></span>@Text
+    </span>
+    @if (!string.IsNullOrEmpty(Raw))
+    {
+        <span class="status-badge-raw font-mono">@Raw</span>
+    }
+</span>
+
+@code {
+    [Parameter]
+    public string Text { get; set; } = "";
+
+    [Parameter]
+    public string CssClass { get; set; } = "unknown";
+
+    [Parameter]
+    public string? Raw { get; set; }
+}

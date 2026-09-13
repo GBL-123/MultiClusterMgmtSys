@@ -1,3 +1,5 @@
+using MultiClusterMgmtSys.ViewModels.Mappings;
+
 namespace MultiClusterMgmtSys.ViewModels;
 
 /// <summary>
@@ -13,6 +15,9 @@ public class AccountViewModel
 
     /// <summary>角色名(Admin/Member)。</summary>
     public string RoleName { get; set; } = "";
+
+    /// <summary>角色中文展示名(管理员/成员);未知角色回退原文。</summary>
+    public string RoleText => K8sDisplayText.AccountRoleText(RoleName);
 
     /// <summary>账号创建时间。</summary>
     public DateTime CreatedAt { get; set; }

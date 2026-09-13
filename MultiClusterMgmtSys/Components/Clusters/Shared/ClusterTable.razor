@@ -2,6 +2,7 @@
 @using MultiClusterMgmtSys.Requests
 @using MultiClusterMgmtSys.Services
 @using MultiClusterMgmtSys.ViewModels
+@using MultiClusterMgmtSys.ViewModels.Mappings
 
 @inject ClusterService ClusterService
 
@@ -41,9 +42,7 @@
             </MudText>
         </MudTd>
         <MudTd DataLabel="状态">
-            <span class="status-badge @GetStatusClass(context.Status)">
-                <span class="status-dot"></span>@context.StatusText
-            </span>
+            <StatusBadge Text="@context.StatusText" CssClass="@K8sDisplayText.ClusterStatusCssClass(context.Status)" />
         </MudTd>
         <MudTd DataLabel="版本"><span class="font-mono">@(context.Version ?? "未知")</span></MudTd>
         <MudTd DataLabel="节点数"><span class="font-mono">@context.NodeCount</span></MudTd>
@@ -84,13 +83,6 @@
 </MudTable>
 
 @code {
-    private static string GetStatusClass(ClusterStatus status) => status switch
-    {
-        ClusterStatus.Online => "online",
-        ClusterStatus.Offline => "offline",
-        _ => "unknown"
-    };
-
     [Parameter]
     public ClusterQueryRequest Query { get; set; } = new();
 

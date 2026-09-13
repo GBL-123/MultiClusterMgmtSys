@@ -12,9 +12,7 @@
         <MudText Typo="Typo.h4" Class="flex-auto ml-2">@Name</MudText>
         @if (Detail is not null)
         {
-            <span class="status-badge @Detail.StatusCssClass">
-                <span class="status-dot"></span>@Detail.StatusText
-            </span>
+            <StatusBadge Text="@Detail.StatusText" CssClass="@Detail.StatusCssClass" Raw="@Detail.Phase" />
         }
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"

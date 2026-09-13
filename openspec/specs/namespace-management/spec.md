@@ -37,15 +37,15 @@
 - **THEN** 页面显示「请从左侧选择一个集群」空态引导
 
 ### Requirement: 命名空间状态展示
-命名空间状态 SHALL 以 `ui-theme` 的淡彩状态徽章展示:阶段为 `Active` 的命名空间显示「在线」样式,阶段为 `Terminating` 的命名空间显示「未知」样式,其余未识别阶段显示「未知」样式。
+命名空间状态 SHALL 以 `ui-theme` 的淡彩状态徽章展示:阶段为 `Active` 的命名空间显示「在线」样式,阶段为 `Terminating` 的命名空间显示「未知」样式,其余未识别阶段显示「未知」样式。按 `display-conventions`,徽章主行显示中文,相邻次行以等宽字体展示英文原阶段(`Active` / `Terminating`)。
 
 #### Scenario: Active 命名空间
 - **WHEN** 列表中某命名空间的 `.status.phase` 为 `Active`
-- **THEN** 该行状态列显示在线徽章
+- **THEN** 该行状态列显示在线徽章,相邻次行显示等宽字体的 `Active`
 
 #### Scenario: Terminating 命名空间
 - **WHEN** 列表中某命名空间的 `.status.phase` 为 `Terminating`
-- **THEN** 该行状态列显示未知徽章,且该行仍可查看详情
+- **THEN** 该行状态列显示未知徽章,相邻次行显示等宽字体的 `Terminating`,且该行仍可查看详情
 
 ### Requirement: 命名空间详情页
 系统 SHALL 提供命名空间详情页(路由 `/namespaces/{ClusterId:int}/{Name}`),对所有登录用户可见。页面 SHALL 由工具栏与 `MudTabs` 组成:工具栏含「返回列表」、命名空间名称、状态徽章与「刷新」按钮;tab 顺序 SHALL 为 YAML → 标签与注解。YAML tab SHALL 展示只读 YAML 视图(复用 `yaml-textarea` 只读卡);标签与注解 tab SHALL 以带计数的只读键值表分别展示标签与注解,为空时显示空态占位。tab 选择 SHALL 为页面局部状态,不写入路由或持久化存储。命名空间不存在(K8s 404)时,页面 SHALL 显示「不存在或已被删除」空态并提供返回列表入口;K8s 读取失败时 SHALL 呈现失败态,不向用户弹错。

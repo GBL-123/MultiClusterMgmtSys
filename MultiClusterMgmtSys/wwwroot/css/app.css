@@ -187,6 +187,27 @@ html, body {
     color: #57534E;
 }
 
+/* Bilingual values: Chinese primary line + English mono secondary line */
+.stacked-text,
+.status-stack {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+    line-height: 1.4;
+}
+
+.stacked-text-primary {
+    color: #111111;
+}
+
+.stacked-text-secondary,
+.status-badge-raw {
+    font-size: 0.6875rem;
+    color: #6E675C;
+    white-space: nowrap;
+}
+
 /* ---------- 6. Tables: 2px ink header rule, warm hover, dense ---------- */
 
 .clusters-table,
@@ -269,7 +290,30 @@ html, body {
     }
 }
 
-/* ---------- 7. Interactivity: amber focus ring, press feedback ---------- */
+/* ---------- 7. Tooltips: ink block + paper text, no shadow ---------- */
+/* app.css 先于 MudBlazor.min.css 加载,html 前缀用于提高特异性 */
+
+html .mud-tooltip.mud-tooltip-default {
+    background-color: #111111;
+    color: #F4F4F0;
+    border-radius: 3px;
+    box-shadow: none;
+    padding: 6px 10px;
+    font-size: 0.6875rem;
+    font-weight: 400;
+    line-height: 1.5;
+    letter-spacing: 0.02em;
+    max-width: 280px;
+    white-space: normal;
+    word-break: break-word;
+    text-align: left;
+}
+
+html .mud-tooltip.mud-tooltip-default.mud-tooltip-arrow::after {
+    border-color: #111111 rgba(0, 0, 0, 0) rgba(0, 0, 0, 0) rgba(0, 0, 0, 0);
+}
+
+/* ---------- 8. Interactivity: amber focus ring, press feedback ---------- */
 
 .link-primary {
     color: #A34A00;
@@ -386,7 +430,7 @@ a:focus-visible {
     color: #111111;
 }
 
-/* ---------- 8. Empty states: dashed mono frame ---------- */
+/* ---------- 9. Empty states: dashed mono frame ---------- */
 
 .sync-hint {
     color: #6E675C;
@@ -406,7 +450,7 @@ a:focus-visible {
     color: #6E675C;
 }
 
-/* ---------- 9. Detail page tabs: amber slider, hairline bar, dense ---------- */
+/* ---------- 10. Detail page tabs: amber slider, hairline bar, dense ---------- */
 /* 注意:app.css 先于 MudBlazor.min.css 加载,选择器须比 MudBlazor 内部规则有更高特异性 */
 
 .detail-tabs {
@@ -478,7 +522,7 @@ a:focus-visible {
     word-break: break-all;
 }
 
-/* ---------- 10. Scrollbars: slim graphite ---------- */
+/* ---------- 11. Scrollbars: slim graphite ---------- */
 
 ::-webkit-scrollbar {
     width: 8px;
@@ -498,7 +542,7 @@ a:focus-visible {
     background: #A9A193;
 }
 
-/* ---------- 11. Legacy layout workarounds ---------- */
+/* ---------- 12. Legacy layout workarounds ---------- */
 
 .group-dialog {
     overflow: visible !important;

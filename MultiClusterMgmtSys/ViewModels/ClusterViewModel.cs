@@ -1,4 +1,5 @@
 using MultiClusterMgmtSys.Common.Enums;
+using MultiClusterMgmtSys.ViewModels.Mappings;
 
 namespace MultiClusterMgmtSys.ViewModels;
 
@@ -25,6 +26,9 @@ public class ClusterViewModel
     /// <summary>节点总数。</summary>
     public int NodeCount { get; set; }
 
+    /// <summary>节点数展示文本(带「台」单位)。</summary>
+    public string NodeCountText => K8sDisplayText.NodeCountText(NodeCount);
+
     /// <summary>所属分组主键;未分组为 null。</summary>
     public int? GroupId { get; set; }
 
@@ -42,4 +46,10 @@ public class ClusterViewModel
 
     /// <summary>连接方式(kubeconfig 或 Token);null 表示未记录。</summary>
     public ConnectionType? ConnectionType { get; set; }
+
+    /// <summary>连接方式中文展示名(配置文件/访问令牌);未记录时为空字符串。</summary>
+    public string ConnectionTypeText => ConnectionType is { } type ? K8sDisplayText.ConnectionTypeText(type) : "";
+
+    /// <summary>连接方式英文原文(Kubeconfig/Token);未记录时为空字符串。</summary>
+    public string ConnectionTypeRawText => ConnectionType is { } type ? K8sDisplayText.ConnectionTypeRaw(type) : "";
 }

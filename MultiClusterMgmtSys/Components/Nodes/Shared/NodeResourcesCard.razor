@@ -30,10 +30,28 @@
                         }
                     </MudTd>
                     <MudTd DataLabel="容量">
-                        <span class="font-mono" title="@context.CapacityRaw">@context.CapacityText</span>
+                        @if (string.IsNullOrEmpty(context.CapacityRaw))
+                        {
+                            <span class="font-mono">@context.CapacityText</span>
+                        }
+                        else
+                        {
+                            <TextTooltip Text="@context.CapacityRaw" Mono="true">
+                                <span class="font-mono">@context.CapacityText</span>
+                            </TextTooltip>
+                        }
                     </MudTd>
                     <MudTd DataLabel="可分配">
-                        <span class="font-mono" title="@context.AllocatableRaw">@context.AllocatableText</span>
+                        @if (string.IsNullOrEmpty(context.AllocatableRaw))
+                        {
+                            <span class="font-mono">@context.AllocatableText</span>
+                        }
+                        else
+                        {
+                            <TextTooltip Text="@context.AllocatableRaw" Mono="true">
+                                <span class="font-mono">@context.AllocatableText</span>
+                            </TextTooltip>
+                        }
                     </MudTd>
                     <MudTd DataLabel="可分配占比">
                         @if (context.AllocatablePercent is double percent)

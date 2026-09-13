@@ -9,9 +9,7 @@
             <MudText Typo="Typo.h6">基本信息</MudText>
         </CardHeaderContent>
         <CardHeaderActions>
-            <span class="status-badge @GetNodeStatusClass(Node.Status)">
-                <span class="status-dot"></span>@Node.Status
-            </span>
+            <StatusBadge Text="@Node.StatusText" CssClass="@Node.StatusCssClass" Raw="@Node.Status" />
         </CardHeaderActions>
     </MudCardHeader>
     <MudCardContent>
@@ -22,7 +20,14 @@
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">角色</MudText>
-                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.Roles) ? "—" : Node.Roles)</MudText>
+                @if (string.IsNullOrEmpty(Node.Roles))
+                {
+                    <MudText Typo="Typo.body1">—</MudText>
+                }
+                else
+                {
+                    <StackedText Primary="@Node.RolesText" Secondary="@Node.Roles" />
+                }
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">Kubelet 版本</MudText>
@@ -34,13 +39,19 @@
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">调度性</MudText>
-                <span class="status-badge @(Node.Unschedulable ? "unknown" : "online")">
-                    <span class="status-dot"></span>@(Node.Unschedulable ? "不可调度" : "可调度")
-                </span>
+                <StatusBadge Text="@(Node.Unschedulable ? "不可调度" : "可调度")"
+                             CssClass="@(Node.Unschedulable ? "unknown" : "online")" />
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
-                <MudText Typo="Typo.body2" Class="mud-text-secondary">Phase</MudText>
-                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(Node.Phase) ? "—" : Node.Phase)</MudText>
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">阶段 (Phase)</MudText>
+                @if (string.IsNullOrEmpty(Node.Phase))
+                {
+                    <MudText Typo="Typo.body1">—</MudText>
+                }
+                else
+                {
+                    <StackedText Primary="@Node.PhaseText" Secondary="@Node.Phase" />
+                }
             </MudItem>
             <MudItem xs="12" sm="6" md="4">
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">PodCIDR</MudText>
@@ -76,7 +87,9 @@
                     <MudTh>备注</MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd DataLabel="类型">@context.Type</MudTd>
+                    <MudTd DataLabel="类型">
+                        <StackedText Primary="@context.TypeText" Secondary="@context.Type" />
+                    </MudTd>
                     <MudTd DataLabel="IP 地址">
                         <MudText Class="font-mono">@context.Address</MudText>
                     </MudTd>
@@ -98,7 +111,9 @@
                 <RowTemplate>
                     <MudTd DataLabel="键">@context.Key</MudTd>
                     <MudTd DataLabel="值">@(context.Value ?? "—")</MudTd>
-                    <MudTd DataLabel="效果">@context.Effect</MudTd>
+                    <MudTd DataLabel="效果">
+                        <StackedText Primary="@context.EffectText" Secondary="@context.Effect" />
+                    </MudTd>
                 </RowTemplate>
             </MudTable>
         }
@@ -128,11 +143,4 @@
             await OnRemarksChanged.InvokeAsync();
         }
     }
-
-    private static string GetNodeStatusClass(string status) => status switch
-    {
-        "Ready" => "online",
-        "NotReady" => "offline",
-        _ => "unknown"
-    };
 }
