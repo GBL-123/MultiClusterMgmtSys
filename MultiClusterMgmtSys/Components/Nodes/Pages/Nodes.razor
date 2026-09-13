@@ -51,14 +51,6 @@
                 </MudCardContent>
             </MudCard>
         }
-        else if (!cluster.IsReachable)
-        {
-            <MudCard Elevation="1">
-                <MudCardContent>
-                    <MudText Align="Align.Center" Class="mud-text-secondary">集群不可达，无法获取节点列表</MudText>
-                </MudCardContent>
-            </MudCard>
-        }
         else
         {
             <MudPaper Class="pa-4">
@@ -67,16 +59,30 @@
                                      Processing="@loading"
                                      OnRefresh="@(() => LoadAsync(EffectiveClusterId!.Value))" />
 
-                    <NodeListFilterBar Filter="@filter"
-                                       OnFilterChanged="@(() => StateHasChanged())"
-                                       OnReset="ResetFilter" />
+                    @if (cluster.IsReachable)
+                    {
+                        <NodeListFilterBar Filter="@filter"
+                                           OnQuery="ApplyFilter"
+                                           OnReset="ResetFilter" />
+                    }
                 </MudStack>
             </MudPaper>
 
-            <NodeListTable Nodes="@filteredNodes"
-                           FilterActive="@filter.IsActive"
-                           Loading="@loading"
-                           OnNavigateNode="@(name => NavigationManager.NavigateTo($"/nodes/{EffectiveClusterId}/{name}"))" />
+            @if (!cluster.IsReachable)
+            {
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudText Align="Align.Center" Class="mud-text-secondary">集群不可达，无法获取节点列表</MudText>
+                    </MudCardContent>
+                </MudCard>
+            }
+            else
+            {
+                <NodeListTable Nodes="@filteredNodes"
+                               FilterActive="@appliedFilter.IsActive"
+                               Loading="@loading"
+                               OnNavigateNode="@(name => NavigationManager.NavigateTo($"/nodes/{EffectiveClusterId}/{name}"))" />
+            }
         }
     </MudStack>
 </MudStack>
@@ -100,6 +106,8 @@
 
     private NodeListFilter filter = new();
 
+    private NodeListFilter appliedFilter = new();
+
     /// <summary>
     /// 当前生效的集群上下文:URL 参数存在时用 URL 参数,
     /// 否则用会话级记忆的选择(回到 /nodes 时原位恢复)。
@@ -112,19 +120,19 @@
         {
             var q = nodes.AsEnumerable();
 
-            if (!string.IsNullOrWhiteSpace(filter.Name))
-                q = q.Where(n => n.Name.Contains(filter.Name, StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(appliedFilter.Name))
+                q = q.Where(n => n.Name.Contains(appliedFilter.Name, StringComparison.OrdinalIgnoreCase));
 
-            if (!string.IsNullOrEmpty(filter.Role))
+            if (!string.IsNullOrEmpty(appliedFilter.Role))
                 q = q.Where(n => (n.Roles ?? "")
                     .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                    .Contains(filter.Role, StringComparer.OrdinalIgnoreCase));
+                    .Contains(appliedFilter.Role, StringComparer.OrdinalIgnoreCase));
 
-            if (!string.IsNullOrEmpty(filter.Status))
-                q = q.Where(n => n.Status == filter.Status);
+            if (!string.IsNullOrEmpty(appliedFilter.Status))
+                q = q.Where(n => n.Status == appliedFilter.Status);
 
-            if (filter.Schedulable.HasValue)
-                q = q.Where(n => n.Unschedulable == filter.Schedulable.Value);
+            if (appliedFilter.Schedulable.HasValue)
+                q = q.Where(n => n.Unschedulable == appliedFilter.Schedulable.Value);
 
             return q.ToList();
         }
@@ -218,9 +226,19 @@
         NavigationManager.NavigateTo($"/nodes/{id}");
     }
 
+    private void ApplyFilter()
+    {
+        appliedFilter.Name = filter.Name;
+        appliedFilter.Role = filter.Role;
+        appliedFilter.Status = filter.Status;
+        appliedFilter.Schedulable = filter.Schedulable;
+        StateHasChanged();
+    }
+
     private void ResetFilter()
     {
         filter.Reset();
+        appliedFilter.Reset();
         StateHasChanged();
     }
 }

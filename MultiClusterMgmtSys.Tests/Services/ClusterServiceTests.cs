@@ -313,6 +313,31 @@ public class ClusterServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task RefreshClusterStatusAsync_applies_uniform_10s_timeout_for_both_connection_types()
+    {
+        var captured = new List<KubernetesClientConfiguration>();
+        var probeService = new ClusterService(
+            harness.ClusterRepo,
+            new ClusterNodeService(harness.ClusterRepo, harness.Audit, NullLogger<ClusterNodeService>.Instance,
+                config => { captured.Add(config); return k8s.Object; }),
+            harness.Audit,
+            NullLogger<ClusterService>.Instance,
+            config => { captured.Add(config); return k8s.Object; });
+
+        var tokenId = await SeedAsync("token-timeout");
+        var kubeConfigCluster = TestData.NewCluster("kubeconfig-timeout");
+        kubeConfigCluster.ConnectionType = ConnectionType.KubeConfig;
+        kubeConfigCluster.KubeConfig = MinimalKubeConfig;
+        var kubeConfigId = (await harness.ClusterRepo.AddAsync(kubeConfigCluster)).Id;
+
+        await probeService.RefreshClusterStatusAsync(tokenId);
+        await probeService.RefreshClusterStatusAsync(kubeConfigId);
+
+        Assert.Equal(2, captured.Count);
+        Assert.All(captured, c => Assert.Equal(TimeSpan.FromSeconds(10), c.HttpClientTimeout));
+    }
+
+    [Fact]
     public async Task RefreshAllClustersStatusAsync_counts_and_audits_status_changes()
     {
         await SeedAsync("was-online", status: ClusterStatus.Online);
@@ -350,4 +375,23 @@ public class ClusterServiceTests : IDisposable
             },
             Spec = new k8s.Models.V1NodeSpec { Unschedulable = false }
         };
+
+    private const string MinimalKubeConfig = """
+        apiVersion: v1
+        kind: Config
+        clusters:
+        - name: c
+          cluster:
+            server: https://kubeconfig-timeout:6443
+        contexts:
+        - name: ctx
+          context:
+            cluster: c
+            user: u
+        current-context: ctx
+        users:
+        - name: u
+          user:
+            token: abc
+        """;
 }

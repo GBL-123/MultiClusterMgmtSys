@@ -171,4 +171,9 @@ public class ClusterRepository(ApplicationDbContext db)
     /// <returns>全部集群 Id 列表。</returns>
     public async Task<List<int>> GetAllIdsAsync()
         => await db.Clusters.Select(c => c.Id).ToListAsync();
+
+    /// <summary>加载全部集群(跟踪查询,不加载导航集合),供全量状态刷新的探测与落库使用;无副作用。</summary>
+    /// <returns>全部集群实体(处于跟踪状态,可修改后经 <see cref="UpdateAsync"/> 保存)。</returns>
+    public async Task<List<ClusterInfo>> GetAllForSyncAsync()
+        => await db.Clusters.ToListAsync();
 }

@@ -8,7 +8,7 @@ Define the redesigned Kubernetes node management UI: a two-column node list page
 
 ### Requirement: Node list page route and layout
 
-The system SHALL serve the node list page from a single `Components/Nodes/Pages/Nodes.razor` component that declares two routes: a parameterless `/nodes` route and a parameterized `/nodes/{ClusterId:int}` route. The `ClusterId` route parameter MUST be `int?` so the same component handles both routes. The page SHALL use a two-column layout mirroring the cluster management page (`Clusters.razor`): a fixed-width cluster-selection sidebar on the left (`NodeClusterSidebar`, see the dedicated requirement below) and a flexible content pane on the right. The right pane, when a `ClusterId` is present, displays the live nodes of the selected cluster using the project's current list-page visual vocabulary: a top toolbar `MudPaper` (back to cluster detail + cluster name + cluster status chip + refresh), a filter bar `MudPaper`, and a single client-paged `MudTable` listing `ClusterNodeViewModel` rows. The page MUST gate node loading on the cluster being reachable (`IsReachable == true`). While a load is in flight the pane SHALL show an indeterminate `MudProgressLinear`; when `GetClusterDetailAsync` returns `null` for the effective cluster id, the pane SHALL render a "未找到该集群" card with a "返回集群列表" button navigating to `/clusters`. The parameterless `/nodes` route is what the Drawer's "节点管理" navigation (`Href="/nodes"`) targets; its right pane behavior is defined by the "Cluster-selection empty state" requirement and the cluster-selection memory behavior.
+The system SHALL serve the node list page from a single `Components/Nodes/Pages/Nodes.razor` component that declares two routes: a parameterless `/nodes` route and a parameterized `/nodes/{ClusterId:int}` route. The `ClusterId` route parameter MUST be `int?` so the same component handles both routes. The page SHALL use a two-column layout mirroring the cluster management page (`Clusters.razor`): a fixed-width cluster-selection sidebar on the left (`NodeClusterSidebar`, see the dedicated requirement below) and a flexible content pane on the right. The right pane, when a `ClusterId` is present, displays the live nodes of the selected cluster using the project's current list-page visual vocabulary, identical to the other cluster-scoped list pages (命名空间/服务/配置/工作负载): a top `MudPaper pa-4` containing the title row (page title + single cluster context chip + refresh) and — only when the cluster is reachable — the filter bar; followed by the node table when reachable, or by the "集群不可达，无法获取节点列表" card when not. The page MUST gate node loading on the cluster being reachable (`IsReachable == true`). While the cluster context is being loaded for the first time the pane SHALL show an indeterminate `MudProgressLinear` in place of the toolbar/filter/table region; a refresh MUST keep the toolbar visible and surface progress through the table's loading content (see the node-detail-layout toolbar requirement). When `GetClusterDetailAsync` returns `null` for the effective cluster id, the pane SHALL render a "未找到该集群" card with a "返回集群列表" button navigating to `/clusters`. The parameterless `/nodes` route is what the Drawer's "节点管理" navigation (`Href="/nodes"`) targets; its right pane behavior is defined by the "Cluster-selection empty state" requirement and the cluster-selection memory behavior.
 
 #### Scenario: Parameterized route resolves to the cluster node list
 - **WHEN** an authenticated user navigates to `/nodes/{ClusterId}`
@@ -24,20 +24,22 @@ The system SHALL serve the node list page from a single `Components/Nodes/Pages/
 
 #### Scenario: Cluster context banner
 - **WHEN** the cluster detail has loaded
-- **THEN** `NodeListToolbar` renders a "返回集群详情" button targeting `/clusters/{ClusterId}`, the cluster's `Name` as an `h4` heading, the cluster's `StatusText` as a colored `MudChip`, and a "刷新" button
-- **AND** clicking "返回集群详情" navigates to `/clusters/{ClusterId}`
+- **THEN** `NodeListToolbar` renders the page title "节点管理" as `Typo.h5`, a single status-colored `MudChip` showing `{cluster.Name} · {cluster.StatusText}`, and a "刷新" button
+- **AND** the title row renders no separate cluster-name chip, no inline progress spinner, and no back-to-cluster-detail button
 
 #### Scenario: Unreachable cluster shows a message instead of the table
 - **WHEN** `ClusterDetailViewModel.IsReachable == false`
-- **THEN** the page renders a "集群不可达，无法获取节点列表" message in place of the table
+- **THEN** the page still renders the toolbar `MudPaper` (title, cluster context chip, refresh) with the filter bar hidden
+- **AND** the page renders a "集群不可达，无法获取节点列表" message card below the toolbar in place of the table
 - **AND** the page does not invoke `ClusterNodeService.GetClusterNodesAsync`
 
 #### Scenario: Refresh re-fetches both cluster context and node list
 - **WHEN** the user clicks the toolbar "刷新" button
 - **THEN** the page calls `ClusterService.GetClusterDetailAsync(ClusterId)` and, if reachable, `ClusterNodeService.GetClusterNodesAsync(ClusterId)`, then re-renders
+- **AND** the toolbar and filter bar remain rendered while the reload is in flight
 
 #### Scenario: Loading state shows a progress bar
-- **WHEN** the right pane begins loading the cluster context and node list (initial load or refresh)
+- **WHEN** the right pane begins loading the cluster context for the first time (no cluster context loaded yet)
 - **THEN** it renders an indeterminate `MudProgressLinear` until the load completes, replacing the toolbar/filter/table region while in flight
 
 #### Scenario: Cluster not found
@@ -121,31 +123,42 @@ The selected cluster for the node list page SHALL be expressed by the URL path (
 - **AND** the right pane renders the empty-state hint (the user picks a cluster from the sidebar again)
 
 ### Requirement: Node list filter bar with four filters
+The list page SHALL render `NodeListFilterBar` containing exactly four filter controls bound to a single `NodeListFilter` draft held by the page: a free-text Name field (with a search adornment), a Role drop-down, a Status drop-down, and a Schedulability drop-down, followed by a "查询" filled primary button that invokes `OnQuery` and a "重置" outlined button that clears the filter state and invokes `OnReset`. The bar SHALL match the other cluster-scoped list pages' filter bars in structure (spacer pushed query/reset buttons) and SHALL NOT add extra top margin. Editing a control alone SHALL NOT change the table; filtering SHALL be applied only when the user clicks "查询". Filtering MUST be performed client-side against the loaded `List<ClusterNodeViewModel>` — no new server round-trip is introduced when a filter is applied.
 
-The list page SHALL render `NodeListFilterBar` containing exactly four filter controls bound to a single `NodeListFilter` state record held by the page: a free-text Name field, a Role drop-down, a Status drop-down, and a Schedulability drop-down, followed by a "重置" outlined button that clears the filter state and invokes `OnReset`. Filtering MUST be performed client-side against the loaded `List<ClusterNodeViewModel>` — no new server round-trip is introduced when a filter changes.
+#### Scenario: Query applies the drafted filters
+- **WHEN** the user edits the Name/Role/Status/Schedulability controls and clicks "查询"
+- **THEN** the table shows only nodes matching the drafted conditions
+
+#### Scenario: Editing without query leaves the table unchanged
+- **WHEN** the user edits one or more filter controls but does not click "查询"
+- **THEN** the table continues to show the previously applied result set
+
+#### Scenario: Reset clears the filter and restores the full list
+- **WHEN** the user clicks "重置"
+- **THEN** all four controls return to their default values and the table shows all loaded nodes
 
 #### Scenario: Name filter matches by substring (case-insensitive)
-- **WHEN** `NodeListFilter.Name` is a non-empty string
-- **THEN** the table shows only nodes whose `Name` contains the filter value (ordinalIgnoreCase)
+- **WHEN** the applied Name filter is a non-empty string
+- **THEN** the table shows only nodes whose `Name` contains that value (ordinalIgnoreCase)
 
 #### Scenario: Role filter narrows by label-derived role
-- **WHEN** `NodeListFilter.Role` is a non-null string (e.g. `"control-plane"`, `"worker"`)
+- **WHEN** the applied Role filter is a non-null string (e.g. `"control-plane"`, `"worker"`)
 - **THEN** the table shows only nodes whose `Roles` field (a comma-joined list of `node-role.kubernetes.io/<role>` labels) contains that value as one of its comma-separated segments
 
 #### Scenario: Status filter narrows by Ready condition
-- **WHEN** `NodeListFilter.Status` is `"Ready"` / `"NotReady"` / `"Unknown"`
+- **WHEN** the applied Status filter is `"Ready"` / `"NotReady"` / `"Unknown"`
 - **THEN** the table shows only nodes whose `ClusterNodeViewModel.Status` equals that exact string
 
 #### Scenario: Schedulability filter narrows by Unschedulable flag
-- **WHEN** `NodeListFilter.Schedulable` is `true`
+- **WHEN** the applied Schedulable filter is `true`
 - **THEN** the table shows only nodes whose `Unschedulable` is `true` (i.e. cordoned / not schedulable)
-- **WHEN** `NodeListFilter.Schedulable` is `false`
+- **WHEN** the applied Schedulable filter is `false`
 - **THEN** the table shows only nodes whose `Unschedulable` is `false` (i.e. schedulable)
-- **WHEN** `NodeListFilter.Schedulable` is `null`
+- **WHEN** the applied Schedulable filter is `null`
 - **THEN** the table applies no schedulability filter
 
 #### Scenario: All filters compose
-- **WHEN** multiple filters are set simultaneously
+- **WHEN** multiple filters are applied simultaneously
 - **THEN** the table shows the intersection of all active filters
 
 ### Requirement: Node list table columns and row interaction

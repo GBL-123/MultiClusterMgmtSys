@@ -7,12 +7,10 @@
             <AuthorizeView Roles="Admin">
                 <Authorized>
                     <MudSpacer />
-                    <MudTooltip Text="新建分组">
-                        <MudIconButton Icon="@Icons.Material.Filled.Add"
-                                       Size="Size.Small"
+                    <TooltipIconButton Text="新建分组"
+                                       Icon="@Icons.Material.Filled.Add"
                                        Color="Color.Primary"
                                        OnClick="OnCreateGroup" />
-                    </MudTooltip>
                 </Authorized>
             </AuthorizeView>
         </MudStack>
@@ -46,17 +44,13 @@
                             <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@group.ClusterCount</MudChip>
                             <AuthorizeView Roles="Admin">
                                 <Authorized>
-                                    <MudTooltip Text="编辑分组">
-                                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                                        Size="Size.Small"
-                                                        OnClick="@(() => OnRenameGroup.InvokeAsync(group))" />
-                                    </MudTooltip>
-                                    <MudTooltip Text="删除分组">
-                                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
-                                                        Size="Size.Small"
-                                                        Color="Color.Error"
-                                                        OnClick="@(() => OnDeleteGroup.InvokeAsync(group))" />
-                                    </MudTooltip>
+                                    <TooltipIconButton Text="编辑分组"
+                                                       Icon="@Icons.Material.Filled.Edit"
+                                                       OnClick="@(() => OnRenameGroup.InvokeAsync(group))" />
+                                    <TooltipIconButton Text="删除分组"
+                                                       Icon="@Icons.Material.Filled.DeleteOutline"
+                                                       Color="Color.Error"
+                                                       OnClick="@(() => OnDeleteGroup.InvokeAsync(group))" />
                                 </Authorized>
                             </AuthorizeView>
                         </MudStack>

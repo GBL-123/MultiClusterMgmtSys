@@ -65,4 +65,14 @@ public class ClusterSyncBackgroundServiceTests : IDisposable
             Assert.Equal(MultiClusterMgmtSys.Common.Enums.ClusterStatus.Offline, cluster!.Status);
         }
     }
+
+    [Fact]
+    public async Task RunOnceAsync_forwards_cancellation_token()
+    {
+        var service = BuildService();
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.RunOnceAsync(cts.Token));
+    }
 }

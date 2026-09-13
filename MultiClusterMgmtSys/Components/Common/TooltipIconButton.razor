@@ -1,0 +1,37 @@
+<MudTooltip Text="@Text" ShowOnFocus="false" @bind-Visible="_visible">
+    <MudIconButton Icon="@Icon"
+                   Size="Size.Small"
+                   Color="@Color"
+                   Class="@Class"
+                   Disabled="@Disabled"
+                   aria-label="@Text"
+                   OnClick="HandleClick" />
+</MudTooltip>
+
+@code {
+    private bool _visible;
+
+    [Parameter]
+    public string Icon { get; set; } = default!;
+
+    [Parameter]
+    public string Text { get; set; } = "";
+
+    [Parameter]
+    public Color Color { get; set; } = Color.Default;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    private async Task HandleClick()
+    {
+        _visible = false;
+        await OnClick.InvokeAsync();
+    }
+}

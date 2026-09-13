@@ -1,12 +1,12 @@
 using k8s;
 using k8s.Models;
+using System.Globalization;
 using MultiClusterMgmtSys.Common.Enums;
 using MultiClusterMgmtSys.Common.Exceptions;
 using MultiClusterMgmtSys.ViewModels;
 using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Data.Repositories;
 using MultiClusterMgmtSys.Requests;
-using System.Text;
 
 namespace MultiClusterMgmtSys.Services;
 
@@ -38,7 +38,7 @@ public class ClusterNodeService(ClusterRepository repo, AuditService auditServic
 
         var remarks = BuildRemarkLookup(entity);
 
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         IList<V1Node> nodeItems;
         try
@@ -74,7 +74,7 @@ public class ClusterNodeService(ClusterRepository repo, AuditService auditServic
 
         var remarks = BuildRemarkLookup(entity);
 
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         V1Node node;
         try
@@ -151,22 +151,6 @@ public class ClusterNodeService(ClusterRepository repo, AuditService auditServic
     }
 
     // ---- Private k8s helpers ----
-
-    private static KubernetesClientConfiguration BuildConfig(ClusterInfo cluster)
-    {
-        if (cluster.ConnectionType == ConnectionType.KubeConfig)
-        {
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes(cluster.KubeConfig ?? ""));
-            return KubernetesClientConfiguration.BuildConfigFromConfigFile(stream);
-        }
-
-        return new KubernetesClientConfiguration
-        {
-            Host = cluster.ApiServer ?? "",
-            AccessToken = cluster.Token ?? "",
-            SkipTlsVerify = cluster.SkipTlsVerify
-        };
-    }
 
     private static Dictionary<(string NodeName, string Address), string?> BuildRemarkLookup(ClusterInfo cluster)
     {
@@ -266,8 +250,7 @@ public class ClusterNodeService(ClusterRepository repo, AuditService auditServic
             }).ToList() ?? new(),
 
             // 容量 & 可分配
-            Capacity = node.Status?.Capacity?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value?.ToString() ?? "") ?? new(),
-            Allocatable = node.Status?.Allocatable?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value?.ToString() ?? "") ?? new(),
+            Resources = MapResources(node.Status?.Capacity, node.Status?.Allocatable),
 
             // 标签 & 注解
             Labels = node.Metadata?.Labels?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? new(),
@@ -301,5 +284,130 @@ public class ClusterNodeService(ClusterRepository repo, AuditService auditServic
             OsImage = systemInfo.OsImage ?? "",
             SystemUUID = systemInfo.SystemUUID ?? ""
         };
+    }
+
+    private static List<NodeResourceViewModel> MapResources(
+        IDictionary<string, ResourceQuantity>? capacity,
+        IDictionary<string, ResourceQuantity>? allocatable)
+    {
+        capacity ??= new Dictionary<string, ResourceQuantity>();
+        allocatable ??= new Dictionary<string, ResourceQuantity>();
+        return capacity.Keys
+            .Union(allocatable.Keys, StringComparer.Ordinal)
+            .OrderBy(ResourceSortOrder)
+            .ThenBy(key => key, StringComparer.Ordinal)
+            .Select(key =>
+            {
+                var capacityValue = capacity.TryGetValue(key, out var cap) ? cap : null;
+                var allocatableValue = allocatable.TryGetValue(key, out var alloc) ? alloc : null;
+                return new NodeResourceViewModel
+                {
+                    Key = key,
+                    Label = ResourceLabel(key),
+                    CapacityRaw = capacityValue?.ToString(),
+                    CapacityText = FormatResource(key, capacityValue),
+                    AllocatableRaw = allocatableValue?.ToString(),
+                    AllocatableText = FormatResource(key, allocatableValue),
+                    AllocatablePercent = ComputeAllocatablePercent(capacityValue, allocatableValue)
+                };
+            })
+            .ToList();
+    }
+
+    private static string ResourceLabel(string key) => key switch
+    {
+        "cpu" => "CPU",
+        "memory" => "内存",
+        "ephemeral-storage" => "临时存储",
+        "pods" => "Pod",
+        _ when IsHugePages(key) => "大页",
+        _ => key
+    };
+
+    private static int ResourceSortOrder(string key) => key switch
+    {
+        "cpu" => 0,
+        "memory" => 1,
+        "ephemeral-storage" => 2,
+        "pods" => 3,
+        _ when IsHugePages(key) => 4,
+        _ => 5
+    };
+
+    private static bool IsHugePages(string key) => key.StartsWith("hugepages-", StringComparison.Ordinal);
+
+    private static string FormatResource(string key, ResourceQuantity? quantity)
+    {
+        if (quantity is null)
+        {
+            return "—";
+        }
+
+        var raw = quantity.ToString();
+        if (!TryToDecimal(quantity, out var value))
+        {
+            return string.IsNullOrEmpty(raw) ? "—" : raw;
+        }
+
+        if (key == "cpu")
+        {
+            return $"{value.ToString("0.###", CultureInfo.InvariantCulture)} 核";
+        }
+
+        if (key == "memory" || key == "ephemeral-storage" || IsHugePages(key))
+        {
+            return FormatBytes(value);
+        }
+
+        if (key == "pods")
+        {
+            return $"{value.ToString("0", CultureInfo.InvariantCulture)} 个";
+        }
+
+        return string.IsNullOrEmpty(raw) ? "—" : raw;
+    }
+
+    private static string FormatBytes(decimal bytes)
+    {
+        string[] units = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"];
+        var unit = 0;
+        while (bytes >= 1024m && unit < units.Length - 1)
+        {
+            bytes /= 1024m;
+            unit++;
+        }
+
+        return $"{bytes.ToString("0.#", CultureInfo.InvariantCulture)} {units[unit]}";
+    }
+
+    private static double? ComputeAllocatablePercent(ResourceQuantity? capacity, ResourceQuantity? allocatable)
+    {
+        if (capacity is null || allocatable is null)
+        {
+            return null;
+        }
+
+        if (!TryToDecimal(capacity, out var capacityValue) ||
+            !TryToDecimal(allocatable, out var allocatableValue) ||
+            capacityValue <= 0)
+        {
+            return null;
+        }
+
+        return Math.Clamp(Math.Round((double)(allocatableValue / capacityValue * 100m), 1), 0, 100);
+    }
+
+    private static bool TryToDecimal(ResourceQuantity quantity, out decimal value)
+    {
+        try
+        {
+            value = quantity.ToDecimal();
+            return true;
+        }
+        catch (OverflowException)
+        {
+            value = 0;
+            return false;
+        }
     }
 }

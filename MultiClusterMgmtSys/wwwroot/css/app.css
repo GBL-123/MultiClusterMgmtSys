@@ -69,6 +69,13 @@ html, body {
     border-right: 1px solid #E2DED5;
 }
 
+.mud-drawer-mini .mud-nav-link-text {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 /* ---------- 3. AppBar brand ---------- */
 
 .brand-mark {
@@ -249,6 +256,19 @@ html, body {
     background: #EDE9E0;
 }
 
+/* Row action busy state: spin the icon in place (same box, same size — no row shift) */
+.icon-busy .mud-icon-root {
+    transform-box: view-box;
+    transform-origin: center;
+    animation: icon-busy-spin 1s linear infinite;
+}
+
+@keyframes icon-busy-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 /* ---------- 7. Interactivity: amber focus ring, press feedback ---------- */
 
 .link-primary {
@@ -281,6 +301,19 @@ html, body {
 a:focus-visible {
     outline: 2px solid #D97706;
     outline-offset: 2px;
+}
+
+/* Outlined fields: amber focus lives on the border notch + label, not an outer ring */
+.mud-input.mud-input-outlined:focus-within {
+    outline: none;
+}
+
+.mud-input-control .mud-input.mud-input-outlined:focus-within > .mud-input-outlined-border {
+    border-color: #D97706;
+}
+
+.mud-input-control .mud-input.mud-input-outlined:focus-within ~ label.mud-input-label.mud-input-label-inputcontrol {
+    color: #D97706;
 }
 
 /* Refresh-all progress uses the amber signal color */

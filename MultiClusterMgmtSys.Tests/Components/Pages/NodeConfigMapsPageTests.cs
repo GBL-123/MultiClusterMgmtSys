@@ -158,6 +158,26 @@ public class NodesPageTests
     }
 
     [Fact]
+    public async Task Nodes_page_offline_cluster_keeps_toolbar_visible()
+    {
+        await using var ctx = new BunitHost();
+        AuthorizeAdmin(ctx);
+        var harness = ctx.AddClusterStack();
+        ctx.AddGroupAndSyncStack(harness);
+        Setup(ctx, harness);
+        var cluster = await harness.ClusterRepo.AddAsync(
+            TestData.NewCluster("node-page-offline", status: ClusterStatus.Offline));
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Pages.Nodes>(
+            parameters => parameters.Add(p => p.ClusterId, cluster.Id));
+
+        cut.WaitForState(() => cut.Markup.Contains("集群不可达"));
+
+        Assert.Contains("节点管理", cut.Markup);
+        Assert.Contains("node-page-offline", cut.Markup);
+    }
+
+    [Fact]
     public async Task Node_detail_page_renders_full_view()
     {
         await using var ctx = new BunitHost();
@@ -169,7 +189,12 @@ public class NodesPageTests
 
         k8s.SetupReadNode("n1", new V1Node
         {
-            Metadata = new V1ObjectMeta { Name = "n1" },
+            Metadata = new V1ObjectMeta
+            {
+                Name = "n1",
+                Labels = new Dictionary<string, string> { ["env"] = "prod" },
+                Annotations = new Dictionary<string, string> { ["note"] = "x" }
+            },
             Status = new V1NodeStatus
             {
                 Conditions =
@@ -206,12 +231,20 @@ public class NodesPageTests
         Assert.Contains("NoSchedule", cut.Markup);
 
         cut.FindAll(".mud-tab")[1].Click();
-        cut.WaitForState(() => cut.Markup.Contains("3800m"));
+        cut.WaitForState(() => cut.Markup.Contains("3.8 核"));
+        Assert.Contains("3.8 核", cut.Markup);
         Assert.Contains("3800m", cut.Markup);
 
         cut.FindAll(".mud-tab")[2].Click();
         cut.WaitForState(() => cut.Markup.Contains("KubeletReady"));
         Assert.Contains("KubeletReady", cut.Markup);
+
+        cut.FindAll(".mud-tab")[3].Click();
+        cut.WaitForState(() => cut.Markup.Contains("prod"));
+        Assert.Contains("note", cut.Markup);
+        var labelsIndex = cut.Markup.IndexOf(">标签<", StringComparison.Ordinal);
+        var annotationsIndex = cut.Markup.IndexOf(">注解<", StringComparison.Ordinal);
+        Assert.True(labelsIndex >= 0 && annotationsIndex > labelsIndex);
 
         cut.FindAll(".mud-tab")[4].Click();
         cut.WaitForState(() => cut.Markup.Contains("amd64"));

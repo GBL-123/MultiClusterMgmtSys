@@ -44,12 +44,9 @@ public class ClusterNodeDetailViewModel
     /// <summary>污点(Taint)列表。</summary>
     public List<NodeTaintViewModel> Taints { get; set; } = new();
 
-    // 字典
-    /// <summary>资源容量键值对,如 cpu、memory。</summary>
-    public Dictionary<string, string> Capacity { get; set; } = new();
-
-    /// <summary>可分配资源键值对(容量扣除系统预留)。</summary>
-    public Dictionary<string, string> Allocatable { get; set; } = new();
+    // 资源
+    /// <summary>资源容量与可分配行(含人类可读文本与占比),按固定资源序排列。</summary>
+    public List<NodeResourceViewModel> Resources { get; set; } = new();
 
     /// <summary>节点标签键值对。</summary>
     public Dictionary<string, string> Labels { get; set; } = new();

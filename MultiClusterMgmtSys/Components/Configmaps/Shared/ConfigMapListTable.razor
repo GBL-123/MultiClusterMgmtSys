@@ -33,25 +33,19 @@
         <MudTd DataLabel="创建时间"><span class="font-mono">@(context.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</span></MudTd>
         <MudTd DataLabel="操作">
             <div class="d-flex" style="gap: 4px;">
-                <MudTooltip Text="详情">
-                    <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                                   Size="Size.Small"
+                <TooltipIconButton Text="详情"
+                                   Icon="@Icons.Material.Filled.Visibility"
                                    Color="Color.Primary"
                                    OnClick="@(() => OnNavigateDetail.InvokeAsync((context.Namespace, context.Name)))" />
-                </MudTooltip>
                 <AuthorizeView Roles="Admin">
                     <Authorized Context="authContext">
-                        <MudTooltip Text="编辑 YAML">
-                            <MudIconButton Icon="@Icons.Material.Filled.Code"
-                                           Size="Size.Small"
+                        <TooltipIconButton Text="编辑 YAML"
+                                           Icon="@Icons.Material.Filled.Code"
                                            OnClick="@(() => OnNavigateEditYaml.InvokeAsync((context.Namespace, context.Name)))" />
-                        </MudTooltip>
-                        <MudTooltip Text="删除">
-                            <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
-                                           Size="Size.Small"
+                        <TooltipIconButton Text="删除"
+                                           Icon="@Icons.Material.Filled.DeleteOutline"
                                            Color="Color.Error"
                                            OnClick="@(() => OnDelete.InvokeAsync((context.Namespace, context.Name)))" />
-                        </MudTooltip>
                     </Authorized>
                 </AuthorizeView>
             </div>

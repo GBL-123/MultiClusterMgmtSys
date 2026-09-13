@@ -7,7 +7,6 @@ using MultiClusterMgmtSys.Data.Repositories;
 using MultiClusterMgmtSys.Requests;
 using MultiClusterMgmtSys.ViewModels;
 using MultiClusterMgmtSys.ViewModels.Mappings;
-using System.Text;
 
 namespace MultiClusterMgmtSys.Services;
 
@@ -28,7 +27,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
     {
         var entity = await repo.GetByIdAsync(clusterId)
             ?? throw new NotFoundException($"集群 {clusterId} 不存在");
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -47,7 +46,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
     {
         var entity = await repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -68,7 +67,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
     {
         var entity = await repo.GetByIdAsync(request.ClusterId);
         if (entity is null) return null;
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -88,7 +87,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
     {
         var entity = await repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -108,7 +107,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
     {
         var entity = await repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         V1ConfigMap deserialized;
         try
@@ -142,7 +141,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
     {
         var entity = await repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         V1ConfigMap body;
         try
@@ -167,21 +166,5 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
             throw K8sExceptionMapper.Translate(ex, "创建配置");
         }
         await auditService.LogAsync(AuditCategory.Configmap, AuditAction.Create, $"配置: {ns}/{body.Metadata?.Name ?? "未知"} @ 集群 {entity.Name}");
-    }
-
-    private static KubernetesClientConfiguration BuildConfig(ClusterInfo cluster)
-    {
-        if (cluster.ConnectionType == ConnectionType.KubeConfig)
-        {
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes(cluster.KubeConfig ?? ""));
-            return KubernetesClientConfiguration.BuildConfigFromConfigFile(stream);
-        }
-
-        return new KubernetesClientConfiguration
-        {
-            Host = cluster.ApiServer ?? "",
-            AccessToken = cluster.Token ?? "",
-            SkipTlsVerify = cluster.SkipTlsVerify
-        };
     }
 }

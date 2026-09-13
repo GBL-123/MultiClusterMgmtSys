@@ -117,8 +117,29 @@ public class NodeCardsTests
                     Type = "Ready", Status = "True", Reason = "KubeletReady", Message = "ok"
                 }
             ],
-            Capacity = new Dictionary<string, string> { ["cpu"] = "4", ["memory"] = "8Gi" },
-            Allocatable = new Dictionary<string, string> { ["cpu"] = "3800m" },
+            Resources =
+            [
+                new MultiClusterMgmtSys.ViewModels.NodeResourceViewModel
+                {
+                    Key = "cpu",
+                    Label = "CPU",
+                    CapacityRaw = "4",
+                    CapacityText = "4 核",
+                    AllocatableRaw = "3800m",
+                    AllocatableText = "3.8 核",
+                    AllocatablePercent = 95
+                },
+                new MultiClusterMgmtSys.ViewModels.NodeResourceViewModel
+                {
+                    Key = "memory",
+                    Label = "内存",
+                    CapacityRaw = "16297496Ki",
+                    CapacityText = "15.5 GiB",
+                    AllocatableRaw = "15942336Ki",
+                    AllocatableText = "15.2 GiB",
+                    AllocatablePercent = 97.8
+                }
+            ],
             Labels = new Dictionary<string, string> { ["env"] = "prod" },
             Annotations = new Dictionary<string, string> { ["a"] = "b" },
             SystemInfo = new MultiClusterMgmtSys.ViewModels.NodeSystemInfoViewModel
@@ -147,15 +168,18 @@ public class NodeCardsTests
     }
 
     [Fact]
-    public async Task Resources_card_shows_capacity_and_allocatable()
+    public async Task Resources_card_shows_human_readable_values_and_ratio()
     {
         await using var ctx = new BunitHost();
 
         var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeResourcesCard>(
             parameters => parameters.Add(p => p.Node, Detail()));
 
-        Assert.Contains("cpu", cut.Markup);
-        Assert.Contains("8Gi", cut.Markup);
+        Assert.Contains("CPU", cut.Markup);
+        Assert.Contains("4 核", cut.Markup);
+        Assert.Contains("3.8 核", cut.Markup);
+        Assert.Contains("15.5 GiB", cut.Markup);
+        Assert.Contains("95%", cut.Markup);
         Assert.Contains("3800m", cut.Markup);
     }
 
@@ -164,13 +188,38 @@ public class NodeCardsTests
     {
         await using var ctx = new BunitHost();
         var node = Detail();
-        node.Capacity = new Dictionary<string, string>();
-        node.Allocatable = new Dictionary<string, string>();
+        node.Resources = new();
 
         var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeResourcesCard>(
             parameters => parameters.Add(p => p.Node, node));
 
         Assert.Contains("资源容量", cut.Markup);
+        Assert.Contains("—", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Resources_card_shows_dash_for_allocatable_only_resource()
+    {
+        await using var ctx = new BunitHost();
+        var node = Detail();
+        node.Resources =
+        [
+            new MultiClusterMgmtSys.ViewModels.NodeResourceViewModel
+            {
+                Key = "nvidia.com/gpu",
+                Label = "nvidia.com/gpu",
+                CapacityText = "—",
+                AllocatableRaw = "1",
+                AllocatableText = "1"
+            }
+        ];
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeResourcesCard>(
+            parameters => parameters.Add(p => p.Node, node));
+
+        Assert.Contains("nvidia.com/gpu", cut.Markup);
+        Assert.Contains("—", cut.Markup);
+        Assert.Contains("1", cut.Markup);
     }
 
     [Fact]
@@ -212,20 +261,19 @@ public class NodeListFilterBarTests
     }
 
     [Fact]
-    public async Task Reset_wires_both_callbacks()
+    public async Task Query_button_invokes_on_query()
     {
         await using var ctx = new BunitHost();
-        var reset = false;
+        var queried = false;
 
         var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeListFilterBar>(
             parameters => parameters
-                .Add(p => p.Filter, new NodeListFilter { Name = "x" })
-                .Add(p => p.OnReset, () => { reset = true; return Task.CompletedTask; })
-                .Add(p => p.OnFilterChanged, () => Task.CompletedTask));
+                .Add(p => p.Filter, new NodeListFilter())
+                .Add(p => p.OnQuery, () => { queried = true; return Task.CompletedTask; }));
 
-        var resetButton = cut.FindComponents<MudButton>().First(b => b.Markup.Contains("重置"));
-        await cut.InvokeAsync(() => resetButton.Instance.OnClick.InvokeAsync());
+        var queryButton = cut.FindComponents<MudButton>().First(b => b.Markup.Contains("查询"));
+        await cut.InvokeAsync(() => queryButton.Instance.OnClick.InvokeAsync());
 
-        Assert.True(reset);
+        Assert.True(queried);
     }
 }

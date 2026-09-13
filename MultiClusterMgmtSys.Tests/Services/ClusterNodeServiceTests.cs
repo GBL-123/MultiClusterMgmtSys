@@ -148,7 +148,12 @@ public class ClusterNodeServiceTests : IDisposable
         Assert.Equal("Ready", detail.Status);
         Assert.Equal("10.244.0.0/24", detail.PodCIDR);
         Assert.Equal("Running", detail.Phase);
-        Assert.Equal("4", detail.Capacity["cpu"]);
+        var cpu = Assert.Single(detail.Resources);
+        Assert.Equal("cpu", cpu.Key);
+        Assert.Equal("CPU", cpu.Label);
+        Assert.Equal("4 核", cpu.CapacityText);
+        Assert.Equal("3.8 核", cpu.AllocatableText);
+        Assert.Equal(95, cpu.AllocatablePercent);
         Assert.Equal("amd64", detail.SystemInfo.Architecture);
         Assert.Single(detail.Conditions);
         Assert.Equal("KubeletReady", detail.Conditions[0].Reason);
@@ -158,6 +163,105 @@ public class ClusterNodeServiceTests : IDisposable
         Assert.Equal("v", detail.Annotations["k"]);
         var addr = detail.Addresses.Single();
         Assert.Equal("10.0.0.5", addr.Address);
+    }
+
+    [Fact]
+    public async Task GetNodeDetailAsync_formats_resources_and_orders_rows()
+    {
+        var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("resource-src"));
+        k8s.SetupReadNode("n1", new V1Node
+        {
+            Metadata = new V1ObjectMeta { Name = "n1" },
+            Status = new V1NodeStatus
+            {
+                Capacity = new Dictionary<string, ResourceQuantity>
+                {
+                    ["pods"] = new("110"),
+                    ["zeta"] = new("1"),
+                    ["memory"] = new("16297496Ki"),
+                    ["cpu"] = new("4"),
+                    ["hugepages-2Mi"] = new("2Mi"),
+                    ["ephemeral-storage"] = new("8Gi"),
+                    ["example.com/fpga"] = new("2")
+                },
+                Allocatable = new Dictionary<string, ResourceQuantity>
+                {
+                    ["cpu"] = new("3800m"),
+                    ["memory"] = new("15942336Ki"),
+                    ["pods"] = new("110"),
+                    ["nvidia.com/gpu"] = new("1")
+                }
+            }
+        });
+
+        var detail = await service.GetNodeDetailAsync(new NodeDetailQueryRequest(cluster.Id, "n1"));
+
+        Assert.NotNull(detail);
+        Assert.Equal(
+            ["cpu", "memory", "ephemeral-storage", "pods", "hugepages-2Mi", "example.com/fpga", "nvidia.com/gpu", "zeta"],
+            detail!.Resources.Select(r => r.Key));
+
+        var cpu = detail.Resources[0];
+        Assert.Equal("CPU", cpu.Label);
+        Assert.Equal("4", cpu.CapacityRaw);
+        Assert.Equal("4 核", cpu.CapacityText);
+        Assert.Equal("3.8 核", cpu.AllocatableText);
+        Assert.Equal(95, cpu.AllocatablePercent);
+
+        var memory = detail.Resources[1];
+        Assert.Equal("内存", memory.Label);
+        Assert.Equal("16297496Ki", memory.CapacityRaw);
+        Assert.Equal("15.5 GiB", memory.CapacityText);
+        Assert.Equal("15.2 GiB", memory.AllocatableText);
+
+        var storage = detail.Resources[2];
+        Assert.Equal("临时存储", storage.Label);
+        Assert.Equal("8 GiB", storage.CapacityText);
+        Assert.Equal("—", storage.AllocatableText);
+        Assert.Null(storage.AllocatablePercent);
+
+        var pods = detail.Resources[3];
+        Assert.Equal("Pod", pods.Label);
+        Assert.Equal("110 个", pods.CapacityText);
+        Assert.Equal(100, pods.AllocatablePercent);
+
+        var hugePages = detail.Resources[4];
+        Assert.Equal("大页", hugePages.Label);
+        Assert.Equal("2 MiB", hugePages.CapacityText);
+
+        var unknown = detail.Resources[5];
+        Assert.Equal("example.com/fpga", unknown.Label);
+        Assert.Equal("2", unknown.CapacityText);
+
+        var allocatableOnly = detail.Resources[6];
+        Assert.Equal("—", allocatableOnly.CapacityText);
+        Assert.Equal("1", allocatableOnly.AllocatableText);
+
+        Assert.Equal("zeta", detail.Resources[7].Key);
+    }
+
+    [Fact]
+    public async Task GetNodeDetailAsync_falls_back_to_raw_quantity_when_not_convertible()
+    {
+        var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("overflow-src"));
+        k8s.SetupReadNode("n1", new V1Node
+        {
+            Metadata = new V1ObjectMeta { Name = "n1" },
+            Status = new V1NodeStatus
+            {
+                Capacity = new Dictionary<string, ResourceQuantity>
+                {
+                    ["memory"] = new("1000000000000000000000E")
+                }
+            }
+        });
+
+        var detail = await service.GetNodeDetailAsync(new NodeDetailQueryRequest(cluster.Id, "n1"));
+
+        var memory = Assert.Single(detail!.Resources);
+        Assert.NotNull(memory.CapacityRaw);
+        Assert.Equal(memory.CapacityRaw, memory.CapacityText);
+        Assert.Null(memory.AllocatablePercent);
     }
 
     [Fact]

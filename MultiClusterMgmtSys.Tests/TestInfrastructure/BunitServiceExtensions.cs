@@ -77,4 +77,15 @@ public static class BunitServiceExtensions
         ctx.Services.AddScoped<RedirectManager>();
         ctx.Services.AddScoped<ClusterSelectionState>();
     }
+
+    public static (ServiceHarness Harness, Mock<IKubernetes> K8s) AddNamespaceStack(this BunitContext ctx, string actor = "admin")
+    {
+        var harness = ctx.AddClusterStack(actor);
+        ctx.AddGroupAndSyncStack(harness, actor);
+        var k8s = new Mock<IKubernetes>();
+        ctx.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8s));
+        ctx.Services.AddScoped<NamespaceService>();
+        ctx.AddYamlTemplates();
+        return (harness, k8s);
+    }
 }

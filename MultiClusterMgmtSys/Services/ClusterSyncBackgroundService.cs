@@ -45,12 +45,14 @@ public class ClusterSyncBackgroundService(
         }
     }
 
-    /// <summary>立即执行一轮全部集群状态刷新(来源标记为定时同步),返回成功探测的集群数量;内部通过新作用域解析 <see cref="ClusterService"/>。</summary>
+    /// <summary>立即执行一轮全部集群状态刷新(来源标记为定时同步),返回成功探测的集群数量;内部通过新作用域解析 <see cref="ClusterService"/>,并把停机令牌透传给整轮刷新。</summary>
     public async Task<int> RunOnceAsync(CancellationToken cancellationToken = default)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var clusterService = scope.ServiceProvider.GetRequiredService<ClusterService>();
-        var succeeded = await clusterService.RefreshAllClustersStatusAsync(source: ClusterSyncSource.Scheduled);
+        var succeeded = await clusterService.RefreshAllClustersStatusAsync(
+            source: ClusterSyncSource.Scheduled,
+            cancellationToken: cancellationToken);
         logger.LogInformation("ClusterSync run once done succeeded={Succeeded}", succeeded);
         return succeeded;
     }

@@ -1,17 +1,16 @@
 @using MultiClusterMgmtSys.Models
 
-<MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center" Class="mt-2">
+<MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
     <MudTextField @bind-Value="Filter.Name"
-                  @bind-Value:after="NotifyFilterChanged"
-                  Immediate="true"
                   Label="节点名称"
                   Variant="Variant.Outlined"
                   Margin="Margin.Dense"
                   Placeholder="请输入节点名称"
-                  Style="min-width:200px;" />
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Style="min-width:200px; flex:1;" />
 
     <MudSelect @bind-Value="Filter.Role"
-               @bind-Value:after="NotifyFilterChanged"
                Label="角色"
                Variant="Variant.Outlined"
                Margin="Margin.Dense"
@@ -22,7 +21,6 @@
     </MudSelect>
 
     <MudSelect @bind-Value="Filter.Status"
-               @bind-Value:after="NotifyFilterChanged"
                Label="状态"
                Variant="Variant.Outlined"
                Margin="Margin.Dense"
@@ -34,7 +32,6 @@
     </MudSelect>
 
     <MudSelect @bind-Value="Filter.Schedulable"
-               @bind-Value:after="NotifyFilterChanged"
                Label="调度性"
                Variant="Variant.Outlined"
                Margin="Margin.Dense"
@@ -45,6 +42,13 @@
     </MudSelect>
 
     <MudSpacer />
+
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Search"
+               OnClick="Search">
+        查询
+    </MudButton>
     <MudButton Variant="Variant.Outlined"
                Color="Color.Secondary"
                StartIcon="@Icons.Material.Filled.Refresh"
@@ -58,12 +62,12 @@
     public NodeListFilter Filter { get; set; } = default!;
 
     [Parameter]
-    public EventCallback OnFilterChanged { get; set; }
+    public EventCallback OnQuery { get; set; }
 
     [Parameter]
     public EventCallback OnReset { get; set; }
 
-    private Task NotifyFilterChanged() => OnFilterChanged.InvokeAsync();
+    private Task Search() => OnQuery.InvokeAsync();
 
     private Task ResetFilter()
     {

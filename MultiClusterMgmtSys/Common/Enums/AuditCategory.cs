@@ -27,5 +27,8 @@ public enum AuditCategory
     Workload = 6,
 
     /// <summary>服务(Svc)。</summary>
-    Service = 7
+    Service = 7,
+
+    /// <summary>命名空间(Namespace)。</summary>
+    Namespace = 8
 }

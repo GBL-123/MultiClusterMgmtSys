@@ -78,6 +78,31 @@ public class ClusterTableTests
     }
 
     [Fact]
+    public async Task Processing_row_keeps_refresh_button_and_spins_icon()
+    {
+        await using var ctx = new BunitHost();
+        var auth = ctx.AddAuthorization();
+        auth.SetAuthorized("admin");
+        auth.SetRoles("Admin");
+        var harness = ctx.AddClusterStack();
+        var added = await harness.ClusterRepo.AddAsync(TestData.NewCluster("spinning"));
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterTable>(
+            parameters => parameters
+                .Add(p => p.Query, new MultiClusterMgmtSys.Requests.ClusterQueryRequest())
+                .Add(p => p.ProcessingIds, new HashSet<int> { added.Id })
+                .Add(p => p.OnRefreshCluster, id => Task.CompletedTask));
+
+        cut.WaitForState(() => cut.Markup.Contains("spinning"));
+
+        var refresh = cut.FindComponents<MudIconButton>()
+            .First(b => b.Instance.Icon == Icons.Material.Filled.Refresh);
+        Assert.True(refresh.Instance.Disabled);
+        Assert.Contains("icon-busy", refresh.Instance.Class);
+        Assert.Empty(cut.FindComponents<MudProgressCircular>());
+    }
+
+    [Fact]
     public async Task Row_name_click_invokes_navigate_with_cluster_id()
     {
         await using var ctx = new BunitHost();

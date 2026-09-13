@@ -209,6 +209,53 @@ public class PageFilterFlowTests
     }
 
     [Fact]
+    public async Task Nodes_page_query_filters_and_reset_restores()
+    {
+        await using var ctx = new BunitHost();
+        AuthorizeAdmin(ctx);
+        var harness = ctx.AddClusterStack();
+        ctx.AddGroupAndSyncStack(harness);
+        var k8s = new Mock<k8s.IKubernetes>();
+        ctx.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8s));
+        var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("node-filter"));
+
+        k8s.SetupListNodes(
+            new V1Node
+            {
+                Metadata = new V1ObjectMeta { Name = "alpha-node" },
+                Status = new V1NodeStatus
+                {
+                    Conditions = [new V1NodeCondition { Type = "Ready", Status = "True" }]
+                }
+            },
+            new V1Node
+            {
+                Metadata = new V1ObjectMeta { Name = "beta-node" },
+                Status = new V1NodeStatus
+                {
+                    Conditions = [new V1NodeCondition { Type = "Ready", Status = "True" }]
+                }
+            });
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Pages.Nodes>(
+            parameters => parameters.Add(p => p.ClusterId, cluster.Id));
+        cut.WaitForState(() => cut.Markup.Contains("alpha-node"));
+
+        var nameField = cut.FindComponents<MudTextField<string>>().First(f => f.Instance.Label == "节点名称");
+        await cut.InvokeAsync(async () => await nameField.Instance.ValueChanged!.InvokeAsync("alpha"));
+
+        Assert.Contains("beta-node", cut.Markup);
+
+        var query = cut.FindComponents<MudButton>().First(b => b.Markup.Contains("查询"));
+        await cut.InvokeAsync(async () => await query.Instance.OnClick.InvokeAsync());
+        cut.WaitForState(() => !cut.Markup.Contains("beta-node"), TimeSpan.FromSeconds(5));
+
+        var reset = cut.FindComponents<MudButton>().First(b => b.Markup.Contains("重置"));
+        await cut.InvokeAsync(async () => await reset.Instance.OnClick.InvokeAsync());
+        cut.WaitForState(() => cut.Markup.Contains("beta-node"), TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
     public async Task Yaml_edit_page_invalid_yaml_save_stays_and_no_audit()
     {
         await using var ctx = new BunitHost();

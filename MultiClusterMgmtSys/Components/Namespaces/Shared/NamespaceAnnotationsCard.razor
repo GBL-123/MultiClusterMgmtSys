@@ -1,0 +1,37 @@
+<MudCard Class="pa-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">注解 <span class="font-mono">@Annotations.Count</span></MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (Annotations.Count == 0)
+        {
+            <div class="empty-state">[ 暂无注解 ]</div>
+        }
+        else
+        {
+            <MudTable Items="@Annotations.Select(kvp => new { Key = kvp.Key, Value = kvp.Value }).ToList()"
+                      Dense="true" Hover="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>键</MudTh>
+                    <MudTh>值</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="键">@context.Key</MudTd>
+                    <MudTd DataLabel="值">
+                        <span style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;"
+                              title="@context.Value">
+                            @context.Value
+                        </span>
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public Dictionary<string, string> Annotations { get; set; } = new();
+}

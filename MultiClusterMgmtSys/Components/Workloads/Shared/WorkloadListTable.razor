@@ -38,20 +38,16 @@
                     <Authorized Context="authContext">
                         @if (Kind.SupportsScale())
                         {
-                            <MudTooltip Text="扩缩容">
-                                <MudIconButton Icon="@Icons.Material.Filled.OpenInFull"
-                                               Size="Size.Small"
+                            <TooltipIconButton Text="扩缩容"
+                                               Icon="@Icons.Material.Filled.OpenInFull"
                                                Color="Color.Primary"
                                                OnClick="@(() => OnScale.InvokeAsync((context.Namespace, context.Name)))" />
-                            </MudTooltip>
                         }
                         @if (Kind.SupportsRestart())
                         {
-                            <MudTooltip Text="重启">
-                                <MudIconButton Icon="@Icons.Material.Filled.Autorenew"
-                                               Size="Size.Small"
+                            <TooltipIconButton Text="重启"
+                                               Icon="@Icons.Material.Filled.Autorenew"
                                                OnClick="@(() => OnRestart.InvokeAsync((context.Namespace, context.Name)))" />
-                            </MudTooltip>
                         }
                         <MudMenu Icon="@Icons.Material.Filled.MoreVert"
                                  Color="Color.Inherit"

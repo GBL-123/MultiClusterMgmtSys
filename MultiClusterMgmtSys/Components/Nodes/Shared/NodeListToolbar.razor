@@ -5,25 +5,17 @@
     <MudText Typo="Typo.h5">节点管理</MudText>
     <MudChip T="string"
              Size="Size.Small"
-             Variant="Variant.Outlined">
-        @Cluster.Name
-    </MudChip>
-    <MudChip T="string"
-             Size="Size.Small"
              Color="GetClusterStatusColor(Cluster.Status)"
-             Variant="Variant.Filled">
-        @Cluster.StatusText
+             Variant="Variant.Filled"
+             Class="ml-2">
+        @Cluster.Name · @Cluster.StatusText
     </MudChip>
     <MudSpacer />
-    <MudButton Variant="Variant.Outlined"
-               Color="Color.Primary"
+    <MudButton Variant="Variant.Text"
+               Color="Color.Inherit"
                StartIcon="@Icons.Material.Filled.Refresh"
                OnClick="OnRefresh"
                Disabled="Processing">
-        @if (Processing)
-        {
-            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
-        }
         刷新
     </MudButton>
 </MudStack>

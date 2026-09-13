@@ -139,6 +139,86 @@ public static class K8sMocks
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(ex);
 
+    public static void SetupListNamespaceObjects(this Mock<IKubernetes> mock, params V1Namespace[] namespaces)
+        => mock.Setup(x => x.CoreV1.ListNamespaceWithHttpMessagesAsync(
+                It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<int?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<bool?>(),
+                It.IsAny<int?>(), It.IsAny<bool?>(), It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HttpOperationResponse<V1NamespaceList>
+            {
+                Body = new V1NamespaceList { Items = namespaces.ToList() }
+            });
+
+    public static void SetupReadNamespace(this Mock<IKubernetes> mock, string name, V1Namespace ns)
+        => mock.Setup(x => x.CoreV1.ReadNamespaceWithHttpMessagesAsync(
+                It.Is<string>(n => n == name),
+                It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HttpOperationResponse<V1Namespace> { Body = ns });
+
+    public static void SetupReadNamespaceThrows(this Mock<IKubernetes> mock, string name, Exception ex)
+        => mock.Setup(x => x.CoreV1.ReadNamespaceWithHttpMessagesAsync(
+                It.Is<string>(n => n == name),
+                It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(ex);
+
+    public static void SetupCreateNamespace(this Mock<IKubernetes> mock, V1Namespace? returnBody = null, Action<V1Namespace>? onCreated = null)
+        => mock.Setup(x => x.CoreV1.CreateNamespaceWithHttpMessagesAsync(
+                It.IsAny<V1Namespace>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<V1Namespace, string?, string?, string?, bool?, IReadOnlyDictionary<string, IReadOnlyList<string>>, CancellationToken>(
+                (body, _, _, _, _, _, _) => onCreated?.Invoke(body))
+            .ReturnsAsync(new HttpOperationResponse<V1Namespace> { Body = returnBody ?? new V1Namespace() });
+
+    public static void SetupCreateNamespaceThrows(this Mock<IKubernetes> mock, Exception ex)
+        => mock.Setup(x => x.CoreV1.CreateNamespaceWithHttpMessagesAsync(
+                It.IsAny<V1Namespace>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(ex);
+
+    public static void SetupDeleteNamespace(this Mock<IKubernetes> mock, string name)
+        => mock.Setup(x => x.CoreV1.DeleteNamespaceWithHttpMessagesAsync(
+                It.Is<string>(n => n == name),
+                It.IsAny<V1DeleteOptions?>(),
+                It.IsAny<string?>(),
+                It.IsAny<int?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<string?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HttpOperationResponse<V1Status> { Body = new V1Status() });
+
+    public static void SetupDeleteNamespaceThrows(this Mock<IKubernetes> mock, string name, Exception ex)
+        => mock.Setup(x => x.CoreV1.DeleteNamespaceWithHttpMessagesAsync(
+                It.Is<string>(n => n == name),
+                It.IsAny<V1DeleteOptions?>(),
+                It.IsAny<string?>(),
+                It.IsAny<int?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<string?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(ex);
+
     public static void SetupListConfigMapsThrows(this Mock<IKubernetes> mock, Exception ex)
         => mock.Setup(x => x.CoreV1.ListConfigMapForAllNamespacesWithHttpMessagesAsync(
                 It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),

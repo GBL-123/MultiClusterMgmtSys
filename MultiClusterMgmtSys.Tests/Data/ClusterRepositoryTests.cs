@@ -294,6 +294,24 @@ public class ClusterRepositoryTests : IDisposable
     }
 
     [Fact]
+    public async Task GetAllForSyncAsync_returns_all_clusters_and_stays_tracked()
+    {
+        await SeedClusterAsync("sync-a");
+        var secondId = await SeedClusterAsync("sync-b");
+
+        var clusters = await repo.GetAllForSyncAsync();
+
+        Assert.Equal(2, clusters.Count);
+        Assert.All(clusters, c => Assert.NotEqual(EntityState.Detached, db.Entry(c).State));
+
+        var second = clusters.Single(c => c.Id == secondId);
+        second.Status = ClusterStatus.Offline;
+        await repo.UpdateAsync(second);
+        var reloaded = await repo.GetByIdAsync(secondId);
+        Assert.Equal(ClusterStatus.Offline, reloaded!.Status);
+    }
+
+    [Fact]
     public async Task DeleteAsync_removes_cascade_children_and_nulls_group()
     {
         var group = db.ClusterGroups.Add(TestData.NewGroup()).Entity;

@@ -1,5 +1,5 @@
 using k8s;
-using System.Text;
+using System.Collections.Concurrent;
 using MultiClusterMgmtSys.Data.Repositories;
 using MultiClusterMgmtSys.Data.Entities;
 using MultiClusterMgmtSys.Common.Enums;
@@ -18,6 +18,8 @@ namespace MultiClusterMgmtSys.Services;
 public class ClusterService(ClusterRepository repo, ClusterNodeService nodeService, AuditService auditService, ILogger<ClusterService> logger, Func<KubernetesClientConfiguration, IKubernetes> clientFactory)
 {
     private static readonly SemaphoreSlim syncGate = new(1, 1);
+
+    private const int MaxProbeConcurrency = 4;
 
     private readonly ClusterRepository repo = repo;
 
@@ -193,46 +195,71 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         return entity.ToViewModel();
     }
 
-    /// <summary>串行探测全部集群并回写状态;以信号量防止并发重复执行,单个集群失败仅记警告、不中断整轮,状态发生变化时按来源写审计。</summary>
+    /// <summary>有界并发探测全部集群并回写状态;以信号量防止并发重复执行,单集群失败仅记警告、不中断整轮,状态发生变化时按来源写审计;取消时先持久化已完成结果再上抛。</summary>
     /// <param name="progress">可选进度回调,报告(当前完成数, 总数)。</param>
     /// <param name="source">触发来源,用于审计文案区分(见 <see cref="ClusterSyncSource"/>)。</param>
+    /// <param name="cancellationToken">停机取消令牌;取消不被视为探测失败。</param>
     /// <returns>本轮探测成功的集群数量。</returns>
-    public async Task<int> RefreshAllClustersStatusAsync(IProgress<(int current, int total)>? progress = null, string source = ClusterSyncSource.Manual)
+    public async Task<int> RefreshAllClustersStatusAsync(IProgress<(int current, int total)>? progress = null, string source = ClusterSyncSource.Manual, CancellationToken cancellationToken = default)
     {
         logger.LogInformation("RefreshAllClustersStatus start source={Source}", source);
-        await syncGate.WaitAsync();
+        await syncGate.WaitAsync(cancellationToken);
         try
         {
-            var ids = await repo.GetAllIdsAsync();
-            var total = ids.Count;
+            var entities = await repo.GetAllForSyncAsync();
+            var total = entities.Count;
+            var previousStatuses = entities.ToDictionary(e => e.Id, e => e.Status);
+            var probedIds = new ConcurrentDictionary<int, byte>();
             var succeeded = 0;
             var current = 0;
             progress?.Report((0, total));
-            foreach (var id in ids)
+
+            try
             {
-                try
-                {
-                    var (entity, previousStatus) = await RefreshClusterStatusCoreAsync(id);
-                    succeeded++;
-                    if (previousStatus != entity.Status)
+                await Parallel.ForEachAsync(
+                    entities,
+                    new ParallelOptions { MaxDegreeOfParallelism = MaxProbeConcurrency, CancellationToken = cancellationToken },
+                    async (entity, token) =>
                     {
-                        await auditService.LogAsync(AuditCategory.Cluster, AuditAction.Update,
-                            $"集群 {entity.Name} 状态由 {previousStatus.ToChineseText()} 变为 {entity.Status.ToChineseText()}({source})");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    logger.LogWarning(ex, "RefreshAllClustersStatus id={ClusterId} failed", id);
-                }
-                current++;
-                progress?.Report((current, total));
+                        await ProbeAsync(entity, token);
+                        probedIds.TryAdd(entity.Id, 0);
+                        Interlocked.Increment(ref succeeded);
+                        progress?.Report((Interlocked.Increment(ref current), total));
+                    });
             }
+            catch (OperationCanceledException)
+            {
+                await PersistProbedAsync([.. entities.Where(e => probedIds.ContainsKey(e.Id))], previousStatuses, source);
+                throw;
+            }
+
+            await PersistProbedAsync(entities, previousStatuses, source);
             logger.LogInformation("RefreshAllClustersStatus done succeeded={Succeeded} of {Total}", succeeded, total);
             return succeeded;
         }
         finally
         {
             syncGate.Release();
+        }
+    }
+
+    private async Task PersistProbedAsync(IEnumerable<ClusterInfo> entities, IReadOnlyDictionary<int, ClusterStatus> previousStatuses, string source)
+    {
+        foreach (var entity in entities)
+        {
+            try
+            {
+                await repo.UpdateAsync(entity);
+                if (previousStatuses[entity.Id] != entity.Status)
+                {
+                    await auditService.LogAsync(AuditCategory.Cluster, AuditAction.Update,
+                        $"集群 {entity.Name} 状态由 {previousStatuses[entity.Id].ToChineseText()} 变为 {entity.Status.ToChineseText()}({source})");
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "RefreshAllClustersStatus persist id={ClusterId} failed", entity.Id);
+            }
         }
     }
 
@@ -254,31 +281,15 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
 
     // ---- Private k8s helpers ----
 
-    private KubernetesClientConfiguration BuildConfig(ClusterInfo cluster)
-    {
-        if (cluster.ConnectionType == ConnectionType.KubeConfig)
-        {
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes(cluster.KubeConfig ?? ""));
-            return KubernetesClientConfiguration.BuildConfigFromConfigFile(stream);
-        }
-
-        return new KubernetesClientConfiguration
-        {
-            Host = cluster.ApiServer ?? "",
-            AccessToken = cluster.Token ?? "",
-            SkipTlsVerify = cluster.SkipTlsVerify
-        };
-    }
-
-    private async Task ProbeAsync(ClusterInfo cluster)
+    private async Task ProbeAsync(ClusterInfo cluster, CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Probe cluster {ClusterName} id={ClusterId}", cluster.Name, cluster.Id);
         try
         {
-            var config = BuildConfig(cluster);
+            var config = KubernetesClientConfig.Build(cluster);
             using var client = clientFactory(config);
-            var versionInfo = await client.Version.GetCodeAsync();
-            var nodeList = await client.CoreV1.ListNodeAsync();
+            var versionInfo = await client.Version.GetCodeAsync(cancellationToken);
+            var nodeList = await client.CoreV1.ListNodeAsync(cancellationToken: cancellationToken);
 
             cluster.Status = ClusterStatus.Online;
             cluster.Version = versionInfo.GitVersion;
@@ -290,6 +301,11 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
             cluster.LastCheckedAt = DateTime.UtcNow;
             logger.LogInformation("Probe succeeded id={ClusterId} status={Status} version={Version} nodes={NodeCount}",
                 cluster.Id, cluster.Status, cluster.Version, cluster.NodeCount);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogInformation("Probe canceled cluster {ClusterName} id={ClusterId}", cluster.Name, cluster.Id);
+            throw;
         }
         catch (Exception ex)
         {

@@ -55,31 +55,19 @@
         <MudTd DataLabel="操作">
             <AuthorizeView Roles="Admin">
                 <Authorized Context="authContext">
-                    @if (ProcessingIds.Contains(context.Id))
-                    {
-                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary" Class="mr-2" />
-                    }
-                    else
-                    {
-                        <MudTooltip Text="刷新">
-                            <MudIconButton Icon="@Icons.Material.Filled.Refresh"
-                                            Size="Size.Small"
-                                            OnClick="@(() => OnRefreshCluster.InvokeAsync(context.Id))"
-                                            Disabled="RefreshingAll" />
-                        </MudTooltip>
-                    }
-                    <MudTooltip Text="编辑">
-                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                        Size="Size.Small"
-                                        OnClick="@(() => OnEditCluster.InvokeAsync(context.Id))" />
-                    </MudTooltip>
-                    <MudTooltip Text="删除">
-                        <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
-                                        Size="Size.Small"
-                                        Color="Color.Error"
-                                        OnClick="@(() => OnDeleteCluster.InvokeAsync(context))"
-                                        Disabled="@(RefreshingAll || ProcessingIds.Contains(context.Id))" />
-                    </MudTooltip>
+                    <TooltipIconButton Text="@(ProcessingIds.Contains(context.Id) ? "刷新中" : "刷新")"
+                                       Icon="@Icons.Material.Filled.Refresh"
+                                       Class="@(ProcessingIds.Contains(context.Id) ? "icon-busy" : null)"
+                                       OnClick="@(() => OnRefreshCluster.InvokeAsync(context.Id))"
+                                       Disabled="@(RefreshingAll || ProcessingIds.Contains(context.Id))" />
+                    <TooltipIconButton Text="编辑"
+                                       Icon="@Icons.Material.Filled.Edit"
+                                       OnClick="@(() => OnEditCluster.InvokeAsync(context.Id))" />
+                    <TooltipIconButton Text="删除"
+                                       Icon="@Icons.Material.Filled.DeleteOutline"
+                                       Color="Color.Error"
+                                       OnClick="@(() => OnDeleteCluster.InvokeAsync(context))"
+                                       Disabled="@(RefreshingAll || ProcessingIds.Contains(context.Id))" />
                 </Authorized>
             </AuthorizeView>
         </MudTd>

@@ -7,7 +7,6 @@ using MultiClusterMgmtSys.Data.Repositories;
 using MultiClusterMgmtSys.Requests;
 using MultiClusterMgmtSys.ViewModels;
 using MultiClusterMgmtSys.ViewModels.Mappings;
-using System.Text;
 using System.Text.Json;
 
 namespace MultiClusterMgmtSys.Services;
@@ -31,7 +30,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     {
         var entity = await repo.GetByIdAsync(clusterId)
             ?? throw new NotFoundException($"集群 {clusterId} 不存在");
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -49,7 +48,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     public async Task<List<WorkloadListViewModel>> ListDeploymentsAsync(WorkloadQueryRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -69,7 +68,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     public async Task<List<WorkloadListViewModel>> ListStatefulSetsAsync(WorkloadQueryRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -89,7 +88,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     public async Task<List<WorkloadListViewModel>> ListDaemonSetsAsync(WorkloadQueryRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -109,7 +108,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     public async Task<List<WorkloadListViewModel>> ListReplicaSetsAsync(WorkloadQueryRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -130,7 +129,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     {
         var entity = await repo.GetByIdAsync(request.ClusterId);
         if (entity is null) return null;
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -150,7 +149,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     {
         var entity = await repo.GetByIdAsync(request.ClusterId);
         if (entity is null) return null;
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -170,7 +169,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     {
         var entity = await repo.GetByIdAsync(request.ClusterId);
         if (entity is null) return null;
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -190,7 +189,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     {
         var entity = await repo.GetByIdAsync(request.ClusterId);
         if (entity is null) return null;
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -209,7 +208,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     public async Task CreateDeploymentFromYamlAsync(WorkloadCreateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         var body = DeserializeOrThrow<V1Deployment>(request.Yaml, "创建部署", request.ClusterId);
         var ns = RequireNamespace(body.Metadata?.NamespaceProperty);
@@ -229,7 +228,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     public async Task CreateStatefulSetFromYamlAsync(WorkloadCreateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         var body = DeserializeOrThrow<V1StatefulSet>(request.Yaml, "创建有状态应用", request.ClusterId);
         var ns = RequireNamespace(body.Metadata?.NamespaceProperty);
@@ -249,7 +248,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     public async Task CreateDaemonSetFromYamlAsync(WorkloadCreateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         var body = DeserializeOrThrow<V1DaemonSet>(request.Yaml, "创建守护进程", request.ClusterId);
         var ns = RequireNamespace(body.Metadata?.NamespaceProperty);
@@ -269,7 +268,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     public async Task CreateReplicaSetFromYamlAsync(WorkloadCreateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         var body = DeserializeOrThrow<V1ReplicaSet>(request.Yaml, "创建副本集", request.ClusterId);
         var ns = RequireNamespace(body.Metadata?.NamespaceProperty);
@@ -289,7 +288,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     public async Task UpdateDeploymentFromYamlAsync(WorkloadUpdateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         var deserialized = DeserializeOrThrow<V1Deployment>(request.Yaml, "保存部署", request.ClusterId);
         try
@@ -312,7 +311,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     public async Task UpdateStatefulSetFromYamlAsync(WorkloadUpdateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         var deserialized = DeserializeOrThrow<V1StatefulSet>(request.Yaml, "保存有状态应用", request.ClusterId);
         try
@@ -334,7 +333,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     public async Task UpdateDaemonSetFromYamlAsync(WorkloadUpdateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         var deserialized = DeserializeOrThrow<V1DaemonSet>(request.Yaml, "保存守护进程", request.ClusterId);
         try
@@ -356,7 +355,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     public async Task UpdateReplicaSetFromYamlAsync(WorkloadUpdateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         var deserialized = DeserializeOrThrow<V1ReplicaSet>(request.Yaml, "保存副本集", request.ClusterId);
         try
@@ -378,7 +377,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     public async Task DeleteDeploymentAsync(WorkloadKeyRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -397,7 +396,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     public async Task DeleteStatefulSetAsync(WorkloadKeyRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -416,7 +415,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     public async Task DeleteDaemonSetAsync(WorkloadKeyRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -435,7 +434,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     public async Task DeleteReplicaSetAsync(WorkloadKeyRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -454,7 +453,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     public async Task ScaleDeploymentAsync(WorkloadScaleRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -476,7 +475,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     public async Task ScaleStatefulSetAsync(WorkloadScaleRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -498,7 +497,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     public async Task ScaleReplicaSetAsync(WorkloadScaleRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -520,7 +519,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     public async Task RestartDeploymentAsync(WorkloadKeyRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         var patch = new V1Patch(BuildRestartPatchJson(), V1Patch.PatchType.StrategicMergePatch);
         try
@@ -540,7 +539,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     public async Task RestartStatefulSetAsync(WorkloadKeyRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         var patch = new V1Patch(BuildRestartPatchJson(), V1Patch.PatchType.StrategicMergePatch);
         try
@@ -560,7 +559,7 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
     public async Task RestartDaemonSetAsync(WorkloadKeyRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         var patch = new V1Patch(BuildRestartPatchJson(), V1Patch.PatchType.StrategicMergePatch);
         try
@@ -628,21 +627,5 @@ public class WorkloadService(ClusterRepository repo, AuditService auditService, 
                 }
             }
         });
-    }
-
-    private static KubernetesClientConfiguration BuildConfig(ClusterInfo cluster)
-    {
-        if (cluster.ConnectionType == ConnectionType.KubeConfig)
-        {
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes(cluster.KubeConfig ?? ""));
-            return KubernetesClientConfiguration.BuildConfigFromConfigFile(stream);
-        }
-
-        return new KubernetesClientConfiguration
-        {
-            Host = cluster.ApiServer ?? "",
-            AccessToken = cluster.Token ?? "",
-            SkipTlsVerify = cluster.SkipTlsVerify
-        };
     }
 }

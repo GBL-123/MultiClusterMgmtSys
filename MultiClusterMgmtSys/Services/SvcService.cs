@@ -8,7 +8,7 @@ using MultiClusterMgmtSys.Data.Repositories;
 using MultiClusterMgmtSys.Requests;
 using MultiClusterMgmtSys.ViewModels;
 using MultiClusterMgmtSys.ViewModels.Mappings;
-using System.Text;
+
 namespace MultiClusterMgmtSys.Services;
 
 /// <summary>
@@ -28,7 +28,7 @@ public class SvcService(ClusterRepository repo, AuditService auditService, ILogg
     {
         var entity = await repo.GetByIdAsync(clusterId)
             ?? throw new NotFoundException($"集群 {clusterId} 不存在");
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -47,7 +47,7 @@ public class SvcService(ClusterRepository repo, AuditService auditService, ILogg
     {
         var entity = await repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -68,7 +68,7 @@ public class SvcService(ClusterRepository repo, AuditService auditService, ILogg
     {
         var entity = await repo.GetByIdAsync(request.ClusterId);
         if (entity is null) return null;
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -88,7 +88,7 @@ public class SvcService(ClusterRepository repo, AuditService auditService, ILogg
     {
         var entity = await repo.GetByIdAsync(request.ClusterId);
         if (entity is null) return new();
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         var labelSelector = $"{SvcMappingExtensions.EndpointSliceServiceLabel}={request.Name}";
         try
@@ -138,7 +138,7 @@ public class SvcService(ClusterRepository repo, AuditService auditService, ILogg
     {
         var entity = await repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         try
         {
@@ -158,7 +158,7 @@ public class SvcService(ClusterRepository repo, AuditService auditService, ILogg
     {
         var entity = await repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         V1Service deserialized;
         try
@@ -208,7 +208,7 @@ public class SvcService(ClusterRepository repo, AuditService auditService, ILogg
     {
         var entity = await repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
-        var config = BuildConfig(entity);
+        var config = KubernetesClientConfig.Build(entity);
         using var client = clientFactory(config);
         V1Service body;
         try
@@ -260,21 +260,5 @@ public class SvcService(ClusterRepository repo, AuditService auditService, ILogg
         if (left is null && right is null) return true;
         if (left is null || right is null) return false;
         return left.SequenceEqual(right);
-    }
-
-    private static KubernetesClientConfiguration BuildConfig(ClusterInfo cluster)
-    {
-        if (cluster.ConnectionType == ConnectionType.KubeConfig)
-        {
-            var stream = new MemoryStream(Encoding.UTF8.GetBytes(cluster.KubeConfig ?? ""));
-            return KubernetesClientConfiguration.BuildConfigFromConfigFile(stream);
-        }
-
-        return new KubernetesClientConfiguration
-        {
-            Host = cluster.ApiServer ?? "",
-            AccessToken = cluster.Token ?? "",
-            SkipTlsVerify = cluster.SkipTlsVerify
-        };
     }
 }

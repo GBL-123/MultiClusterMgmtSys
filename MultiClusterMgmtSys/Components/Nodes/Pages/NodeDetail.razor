@@ -74,10 +74,10 @@
                 <NodeConditionsCard Node="@node" />
             </MudTabPanel>
             <MudTabPanel Text="标签与注解">
-                <MudGrid Spacing="3">
-                    <MudItem xs="12" md="6"><NodeLabelsCard Node="@node" /></MudItem>
-                    <MudItem xs="12" md="6"><NodeAnnotationsCard Node="@node" /></MudItem>
-                </MudGrid>
+                <MudStack Spacing="3">
+                    <NodeLabelsCard Node="@node" />
+                    <NodeAnnotationsCard Node="@node" />
+                </MudStack>
             </MudTabPanel>
             <MudTabPanel Text="系统信息">
                 <NodeSystemInfoCard Node="@node" />

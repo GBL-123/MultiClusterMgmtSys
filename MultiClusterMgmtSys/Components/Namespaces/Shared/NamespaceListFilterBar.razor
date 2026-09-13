@@ -1,0 +1,43 @@
+<MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
+    <MudTextField T="string"
+                  Value="SearchName"
+                  ValueChanged="OnSearchNameChanged"
+                  Label="名称"
+                  Placeholder="请输入名称"
+                  Adornment="Adornment.Start"
+                  AdornmentIcon="@Icons.Material.Filled.Search"
+                  Variant="Variant.Outlined"
+                  Margin="Margin.Dense"
+                  Style="min-width:200px; flex:1;" />
+
+    <MudSpacer />
+
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Search"
+               OnClick="OnQuery">
+        查询
+    </MudButton>
+    <MudButton Variant="Variant.Outlined"
+               Color="Color.Secondary"
+               StartIcon="@Icons.Material.Filled.Refresh"
+               OnClick="OnReset">
+        重置
+    </MudButton>
+</MudStack>
+
+@code {
+    [Parameter]
+    public string SearchName { get; set; } = "";
+
+    [Parameter]
+    public EventCallback<string> SearchNameChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnQuery { get; set; }
+
+    [Parameter]
+    public EventCallback OnReset { get; set; }
+
+    private Task OnSearchNameChanged(string value) => SearchNameChanged.InvokeAsync(value);
+}
