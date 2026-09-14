@@ -115,12 +115,8 @@ public class WorkloadListTableTests
 
 public class WorkloadStatusCardTests
 {
-    [Fact]
-    public async Task Shows_replica_fields_and_conditions()
-    {
-        await using var ctx = new BunitHost();
-
-        var detail = new WorkloadDetailViewModel
+    private static WorkloadDetailViewModel Detail()
+        => new()
         {
             Name = "web",
             Namespace = "app",
@@ -129,20 +125,55 @@ public class WorkloadStatusCardTests
             ReadyCount = 2,
             UpdatedCount = 3,
             Selector = "app=web",
-            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-            Conditions =
-            [
-                new WorkloadConditionViewModel { Type = "Available", Status = "True", Reason = "ok", Message = "m" }
-            ]
+            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
         };
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadStatusCard>(
-            parameters => parameters.Add(p => p.Detail, detail));
+    [Fact]
+    public async Task Shows_replica_fields_without_simple_table()
+    {
+        await using var ctx = new BunitHost();
 
+        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadStatusCard>(
+            parameters => parameters.Add(p => p.Detail, Detail()));
+
+        Assert.Contains("副本数", cut.Markup);
         Assert.Contains("3", cut.Markup);
         Assert.Contains("app=web", cut.Markup);
         Assert.Contains("uid-1", cut.Markup);
+        Assert.Empty(cut.FindComponents<MudSimpleTable>());
+    }
+
+    [Fact]
+    public async Task Conditions_card_shows_bilingual_rows()
+    {
+        await using var ctx = new BunitHost();
+
+        var detail = Detail();
+        detail.Conditions =
+        [
+            new WorkloadConditionViewModel { Type = "Available", Status = "True", Reason = "ok", Message = "m" }
+        ];
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadConditionsCard>(
+            parameters => parameters.Add(p => p.Detail, detail));
+
+        Assert.Contains("可用", cut.Markup);
         Assert.Contains("Available", cut.Markup);
+        Assert.Contains("成立", cut.Markup);
+        Assert.Contains("True", cut.Markup);
+        Assert.Contains("ok", cut.Markup);
+        Assert.Contains("m", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Conditions_card_shows_empty_state()
+    {
+        await using var ctx = new BunitHost();
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadConditionsCard>(
+            parameters => parameters.Add(p => p.Detail, Detail()));
+
+        Assert.Contains("[ 暂无条件 ]", cut.Markup);
     }
 }
 

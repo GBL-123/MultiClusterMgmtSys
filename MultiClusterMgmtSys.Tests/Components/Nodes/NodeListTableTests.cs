@@ -171,8 +171,76 @@ public class NodeCardsTests
         Assert.Contains("Running", cut.Markup);
         Assert.Contains("阶段 (Phase)", cut.Markup);
         Assert.Contains("运行中", cut.Markup);
-        Assert.Contains("内网 IP", cut.Markup);
         Assert.Contains("控制平面", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Addresses_card_lists_rows_with_notes()
+    {
+        await using var ctx = new BunitHost();
+        var auth = ctx.AddAuthorization();
+        auth.SetAuthorized("admin");
+        auth.SetRoles("Admin");
+        var node = Detail();
+        node.Addresses =
+        [
+            new MultiClusterMgmtSys.ViewModels.NodeAddressViewModel { Type = "InternalIP", Address = "10.0.0.5", Note = "管理口" },
+            new MultiClusterMgmtSys.ViewModels.NodeAddressViewModel { Type = "InternalIP", Address = "172.16.8.2" },
+            new MultiClusterMgmtSys.ViewModels.NodeAddressViewModel { Type = "ExternalIP", Address = "203.0.113.10" }
+        ];
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeAddressesCard>(
+            parameters => parameters.Add(p => p.Node, node));
+
+        Assert.Contains("内网 IP", cut.Markup);
+        Assert.Contains("外网 IP", cut.Markup);
+        Assert.Contains("10.0.0.5", cut.Markup);
+        Assert.Contains("管理口", cut.Markup);
+        Assert.Contains("172.16.8.2", cut.Markup);
+        Assert.Contains("203.0.113.10", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Addresses_card_shows_empty_state()
+    {
+        await using var ctx = new BunitHost();
+        var node = Detail();
+        node.Addresses = new();
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeAddressesCard>(
+            parameters => parameters.Add(p => p.Node, node));
+
+        Assert.Contains("[ 暂无地址 ]", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Taints_card_lists_rows()
+    {
+        await using var ctx = new BunitHost();
+        var node = Detail();
+        node.Taints =
+        [
+            new MultiClusterMgmtSys.ViewModels.NodeTaintViewModel { Key = "dedicated", Value = "gpu", Effect = "NoSchedule" }
+        ];
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeTaintsCard>(
+            parameters => parameters.Add(p => p.Node, node));
+
+        Assert.Contains("dedicated", cut.Markup);
+        Assert.Contains("gpu", cut.Markup);
+        Assert.Contains("禁止调度", cut.Markup);
+        Assert.Contains("NoSchedule", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Taints_card_shows_empty_state()
+    {
+        await using var ctx = new BunitHost();
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeTaintsCard>(
+            parameters => parameters.Add(p => p.Node, Detail()));
+
+        Assert.Contains("[ 暂无污点 ]", cut.Markup);
     }
 
     [Fact]

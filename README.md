@@ -1,6 +1,6 @@
 ﻿# MultiClusterMgmtSys
 
-基于 .NET 10 + Blazor 的 Kubernetes 多集群管理平台，统一管理多个集群的节点、工作负载、Service、ConfigMap 与端点信息，内置账号权限体系、操作审计与集群状态定时同步。
+基于 .NET 10 + Blazor 的 Kubernetes 多集群管理平台，统一管理多个集群的节点、工作负载、Service、ConfigMap、命名空间与事件，内置账号权限体系、操作审计与集群状态定时同步。
 
 界面为中文，使用 MudBlazor 组件库（Swiss Industrial Print 工业印刷风格设计系统，浅色主题），数据存储采用 SQLite（零依赖，开箱即用）。
 
@@ -8,10 +8,12 @@
 
 - **集群管理**：接入多个 K8s 集群（kubeconfig / Token 两种连接方式），分组侧栏、分页筛选排序、状态探测与版本识别、批量操作；集群详情聚合节点、端点概览与管理员维护的 VIP / 域名端点
 - **集群状态定时同步**：后台定时服务周期性探测全部集群状态（间隔可配 1~1440 分钟），状态变更自动写入审计
-- **节点管理**：跨集群节点列表与详情（资源、条件、标签、注解、污点、地址），支持按 IP 登记备注（如管理口 / 数据口）
+- **节点管理**：跨集群节点列表与详情（资源、条件、标签、注解、污点、地址、YAML 原文），支持按 IP 登记备注（如管理口 / 数据口）
 - **工作负载管理**：Deployment / StatefulSet / DaemonSet / ReplicaSet 统一列表与详情（副本就绪、滚动三态、条件），YAML 在线编辑、新建、删除、扩缩容与滚动重启（能力矩阵按类型裁剪）
 - **Service 管理**：ClusterIP / NodePort / LoadBalancer / ExternalName 四类 Service 的列表与详情、端口表、后端 EndpointSlice（旧集群自动回退 legacy Endpoints），YAML 在线编辑、新建、删除
 - **ConfigMap 管理**：按集群浏览 ConfigMap，YAML 只读查看与在线编辑、新建、删除
+- **命名空间管理**：按集群浏览命名空间（状态、标签数、创建时间），YAML 新建、删除，详情含标签 / 注解 / YAML 只读查看
+- **事件管理**：按集群浏览 K8s 事件，命名空间 / 级别 / 关键词筛选与对象类型分类，时间以相对形式展示（如「5 分钟前」）
 - **审计日志**：登录 / 注册及所有增删改操作自动记录（操作人、类别、动作、目标），Admin 可查全量，普通用户仅见本人记录
 - **账号与权限**：`Admin` / `Member` 两级角色；管理员可批量删除、批量改角色、重置密码；用户可在个人资料页修改密码
 - **界面设计**：Swiss Industrial Print 工业印刷风格（浅色主题、无暗色模式），自托管 Space Grotesk / IBM Plex Mono 字体
@@ -24,7 +26,7 @@
 | MudBlazor 9 | UI 组件库（含 `Extensions.MudBlazor.StaticInput`） |
 | EF Core 10 + SQLite | `EnsureCreated()` 建库，无迁移文件 |
 | ASP.NET Identity | Cookie 认证（8 小时滑动过期），角色键 `int` |
-| KubernetesClient 19 | 官方 K8s API 客户端 |
+| KubernetesClient 19 | 官方 K8s API 客户端，按集群缓存复用连接（凭据变更自动重建，空闲自动驱逐） |
 | Serilog | 控制台 + 按天滚动文件日志（`logs/app-.log`，保留 30 天） |
 | xUnit.v3 + Moq + bUnit | 单元测试（MTP 运行器，SQLite 内存库、K8s mock） |
 
@@ -34,7 +36,7 @@
 
 ```pwsh
 dotnet build MultiClusterMgmtSys.slnx
-dotnet test MultiClusterMgmtSys.Tests           # 485 个单元测试（xunit.v3 + Moq + bUnit，MTP 运行器）
+dotnet test MultiClusterMgmtSys.Tests           # 667 个单元测试（xunit.v3 + Moq + bUnit，MTP 运行器）
 dotnet run --project MultiClusterMgmtSys          # http://localhost:5021
 dotnet run --project MultiClusterMgmtSys --launch-profile https   # https://localhost:7081
 ```
@@ -60,14 +62,12 @@ dotnet "$env:USERPROFILE\.nuget\packages\reportgenerator\5.5.11\tools\net10.0\Re
 生产编排为 **应用 + nginx**：nginx 对外暴露 80/443 终止 TLS 并反代应用（含 Blazor Server 的 WebSocket 升级），应用 8080 端口仅在 compose 内部网络可访问。
 
 ```bash
-# 首次部署前执行一次：授权数据目录给容器内非 root 用户(UID 1654)
-mkdir -p db logs nginx/certs && sudo chown 1654:1654 db logs
-
-# 构建并启动
+# 构建并启动（fs-init 容器自动创建 db/ logs/ 并修正目录属主，幂等，无需手工 mkdir/chown）
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-- TLS 证书：`nginx/certs/fullchain.pem` + `privkey.pem`（gitignored；无正式证书时可用 compose 文件注释中的命令生成自签名测试证书）
+- TLS 证书（唯一手工项）：`nginx/certs/fullchain.pem` + `privkey.pem`（gitignored；无正式证书时可用 compose 文件注释中的命令生成自签名测试证书）
+- 数据目录属主：默认 UID 1654（应用镜像内置 app 用户），服务器上可用 `MCMS_APP_UID` 环境变量覆盖
 - 数据持久化：SQLite 位于部署目录 `db/MultiClusterMgmtSys.db`，容器升级重建不丢数据
 - 日志：按天滚动写入 `logs/app-日期.log`，保留 30 天，可直接 tail / grep 排查
 - 备份：停服后直接复制 `db/MultiClusterMgmtSys.db`
@@ -99,10 +99,10 @@ Logging__File__Path="/data/logs/app-.log"
 │   ├── Program.cs                 # 入口：DI 注册、Identity、EnsureCreated 与管理员种子
 │   ├── appsettings.json           # 连接串、Serilog 日志路径等配置
 │   ├── Components/                # Razor 组件（Pages/Shared/Layout + 按功能分目录）
-│   │   ├── Clusters/  Nodes/  Workloads/  Svcs/  Configmaps/   # 各功能页与共享组件
+│   │   ├── Clusters/  Nodes/  Workloads/  Svcs/  Configmaps/  Namespaces/  Events/   # 各功能页与共享组件
 │   │   ├── AuditLogs/  Account/  Profile/  Auth/
 │   │   └── Common/                # 共享组件与服务（ThemeManager、ExceptionPresenter 等）
-│   ├── Services/                  # 业务服务（账号 / 集群 / 分组 / 节点 / 工作负载 / Service / ConfigMap / 审计 / 定时同步 / YAML 模板）
+│   ├── Services/                  # 业务服务（账号 / 集群 / 分组 / 节点 / 工作负载 / Service / ConfigMap / 命名空间 / 事件 / 审计 / 定时同步 / YAML 模板 / K8s 客户端缓存）
 │   ├── ViewModels/                # 页面绑定模型与映射扩展方法
 │   ├── Requests/  Models/         # 请求 / 查询对象
 │   ├── Common/  Data/             # 跨层枚举、异常体系；实体与仓库

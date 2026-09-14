@@ -21,6 +21,13 @@ public static class TestPaths
 
 public static class BunitServiceExtensions
 {
+    public static void AddClientCache(this BunitContext ctx)
+    {
+        ctx.Services.AddSingleton<IClusterClientCache>(sp => new ClusterClientCache(
+            sp.GetRequiredService<Func<KubernetesClientConfiguration, IKubernetes>>(),
+            NullLogger<ClusterClientCache>.Instance));
+    }
+
     public static ServiceHarness AddClusterStack(this BunitContext ctx, string actor = "admin")
     {
         var roles = actor == "admin" ? new[] { "Admin" } : Array.Empty<string>();
@@ -28,6 +35,7 @@ public static class BunitServiceExtensions
 
         var k8sMock = new Mock<IKubernetes>();
         ctx.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8sMock));
+        ctx.AddClientCache();
         ctx.Services.AddScoped(_ => harness.ClusterRepo);
         ctx.Services.AddScoped(_ => harness.Audit);
         ctx.Services.AddScoped<ClusterNodeService>();
@@ -71,6 +79,7 @@ public static class BunitServiceExtensions
     public static void AddWorkloadServices(this BunitContext ctx, Mock<IKubernetes> k8s, ServiceHarness harness, string actor = "admin")
     {
         ctx.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8s));
+        ctx.AddClientCache();
         ctx.Services.AddScoped<WorkloadService>();
         ctx.Services.AddScoped(_ => harness.Audit);
         ctx.Services.AddScoped(_ => TestHttpContext.For(actor).Object);
@@ -84,8 +93,31 @@ public static class BunitServiceExtensions
         ctx.AddGroupAndSyncStack(harness, actor);
         var k8s = new Mock<IKubernetes>();
         ctx.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8s));
+        ctx.AddClientCache();
         ctx.Services.AddScoped<NamespaceService>();
         ctx.AddYamlTemplates();
+        return (harness, k8s);
+    }
+
+    public static (ServiceHarness Harness, Mock<IKubernetes> K8s) AddEventStack(this BunitContext ctx, string actor = "admin")
+    {
+        var harness = ctx.AddClusterStack(actor);
+        ctx.AddGroupAndSyncStack(harness, actor);
+        var k8s = new Mock<IKubernetes>();
+        ctx.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8s));
+        ctx.AddClientCache();
+        ctx.Services.AddScoped<EventService>();
+        return (harness, k8s);
+    }
+
+    public static (ServiceHarness Harness, Mock<IKubernetes> K8s) AddPodStack(this BunitContext ctx, string actor = "admin")
+    {
+        var harness = ctx.AddClusterStack(actor);
+        ctx.AddGroupAndSyncStack(harness, actor);
+        var k8s = new Mock<IKubernetes>();
+        ctx.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8s));
+        ctx.AddClientCache();
+        ctx.Services.AddScoped<PodService>();
         return (harness, k8s);
     }
 }

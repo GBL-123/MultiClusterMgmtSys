@@ -51,6 +51,8 @@ builder.Services.AddScoped<AppSettingRepository>();
 builder.Services.AddScoped<ClusterNodeService>();
 builder.Services.AddScoped<ConfigMapService>();
 builder.Services.AddScoped<SvcService>();
+builder.Services.AddScoped<EventService>();
+builder.Services.AddScoped<PodService>();
 builder.Services.AddScoped<NamespaceService>();
 builder.Services.AddSingleton<IYamlTemplateService, YamlTemplateService>();
 builder.Services.AddScoped<WorkloadService>();
@@ -65,6 +67,7 @@ builder.Services.AddScoped<RedirectManager>();
 builder.Services.AddScoped<ExceptionPresenter>();
 builder.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(
     config => new Kubernetes(config));
+builder.Services.AddSingleton<IClusterClientCache, ClusterClientCache>();
 builder.Services.AddHostedService<ClusterSyncBackgroundService>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 

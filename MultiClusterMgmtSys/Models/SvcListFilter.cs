@@ -1,9 +1,11 @@
-namespace MultiClusterMgmtSys.ViewModels;
+using MultiClusterMgmtSys.ViewModels;
+
+namespace MultiClusterMgmtSys.Models;
 
 /// <summary>
-/// 服务列表的内存过滤扩展(服务数据已全量在内存,按已应用的过滤条件在客户端筛选)。
+/// 服务列表的前端内存过滤器(纯前端筛选,服务数据已全量在内存,不经过服务层)。
 /// </summary>
-public static class SvcListFilterExtensions
+public static class SvcListFilter
 {
     /// <summary>按已应用的过滤条件筛选服务列表。</summary>
     /// <param name="source">全量服务列表。</param>

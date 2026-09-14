@@ -165,6 +165,17 @@ html, body {
     color: #956400;
 }
 
+/* Event type badges: warning reuses the amber formula, normal stays neutral */
+.status-badge.warning {
+    background: #FBF3DB;
+    color: #956400;
+}
+
+.status-badge.normal {
+    background: #EDEAE3;
+    color: #57534E;
+}
+
 /* Role badges: same pale-fill formula, neutral for Member, amber tint for Admin */
 .role-badge {
     display: inline-flex;
@@ -216,7 +227,10 @@ html, body {
 .nodes-table,
 .configmaps-table,
 .services-table,
-.workloads-table {
+.events-table,
+.workloads-table,
+.namespaces-table,
+.pods-table {
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
@@ -229,7 +243,10 @@ html, body {
     .nodes-table .mud-table-container,
     .configmaps-table .mud-table-container,
     .services-table .mud-table-container,
-    .workloads-table .mud-table-container {
+    .events-table .mud-table-container,
+    .workloads-table .mud-table-container,
+    .namespaces-table .mud-table-container,
+    .pods-table .mud-table-container {
         flex: 1 1 auto;
     }
 
@@ -239,9 +256,71 @@ html, body {
     .nodes-table .mud-table-pagination,
     .configmaps-table .mud-table-pagination,
     .services-table .mud-table-pagination,
-    .workloads-table .mud-table-pagination {
+    .events-table .mud-table-pagination,
+    .workloads-table .mud-table-pagination,
+    .namespaces-table .mud-table-pagination,
+    .pods-table .mud-table-pagination {
         overflow: visible;
     }
+
+/* Events: truncated one-line message, quiet object namespace sub-line */
+.event-message-cell {
+    max-width: 480px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.event-object-ns {
+    font-size: 12px;
+    color: #6E675C;
+}
+
+.event-asof {
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+/* Pods: quiet as-of stamp + restart-count attention tint (>0) */
+.pods-asof {
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.pods-restart-warn {
+    color: #B3261E;
+    font-weight: 600;
+}
+
+/* Event detail dialog: mono message viewer + label/value grid */
+.event-message-viewer {
+    max-height: 40vh;
+    overflow: auto;
+    border: 1px solid #E2DED5;
+    border-radius: 3px;
+    padding: 12px;
+    background: #FCFBF7;
+    color: #111111;
+    font-size: 12.5px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.event-detail-grid {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    row-gap: 6px;
+    column-gap: 16px;
+    font-size: 12.5px;
+}
+
+.event-detail-label {
+    color: #6E675C;
+}
+
+.event-detail-reason {
+    overflow-wrap: anywhere;
+}
 
 /* Service list: one mono row per port, kubectl grammar */
 .svc-port-cell {
@@ -520,6 +599,72 @@ a:focus-visible {
     line-height: 1.55;
     white-space: pre-wrap;
     word-break: break-all;
+}
+
+/* 集群凭据分类条:概览卡内密文展示 */
+.credential-annex {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid #E2DED5;
+}
+
+.credential-annex-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.credential-redacted {
+    border: 1px dashed #C9C2B5;
+    border-radius: 3px;
+    padding: 12px;
+    color: #6E675C;
+    font-size: 12.5px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.credential-viewer {
+    overflow: auto;
+    border: 1px solid #E2DED5;
+    border-radius: 3px;
+    padding: 12px;
+    background: #FCFBF7;
+    color: #111111;
+    font-size: 12.5px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* 展开凭据时:概览卡接入全高 flex 链,内容块撑满剩余页面高度(与 .yaml-card 同思路) */
+.credential-fill {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.credential-fill .mud-card-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.credential-fill .credential-annex {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.credential-fill .credential-viewer {
+    flex: 1 1 auto;
+    min-height: 320px;
 }
 
 /* ---------- 11. Scrollbars: slim graphite ---------- */

@@ -17,7 +17,7 @@
         <MudNavLink Href="/configmaps" Icon="@Icons.Material.Filled.Settings" Match="NavLinkMatch.Prefix">
             配置管理
         </MudNavLink>
-        <MudNavGroup Title="工作负载"
+        <MudNavGroup Title="工作负载管理"
                      Icon="@Icons.Material.Filled.Widgets"
                      Expanded="@workloadsExpanded">
             <MudNavLink Href="/workloads/deployments" Icon="@Icons.Material.Filled.Dns" Match="NavLinkMatch.Prefix">
@@ -32,6 +32,9 @@
             <MudNavLink Href="/workloads/replicasets" Icon="@Icons.Material.Filled.Layers" Match="NavLinkMatch.Prefix">
                 副本集
             </MudNavLink>
+            <MudNavLink Href="/pods" Icon="@Icons.Material.Filled.Copyright" Match="NavLinkMatch.Prefix">
+                Pod 管理
+            </MudNavLink>
         </MudNavGroup>
         <MudNavGroup Title="网络管理"
                      Icon="@Icons.Material.Filled.Lan"
@@ -40,6 +43,9 @@
                 服务管理
             </MudNavLink>
         </MudNavGroup>
+        <MudNavLink Href="/events" Icon="@Icons.Material.Filled.EventNote" Match="NavLinkMatch.Prefix">
+            事件管理
+        </MudNavLink>
         <AuthorizeView Roles="Admin">
             <Authorized>
                 <MudNavLink Href="/accounts" Icon="@Icons.Material.Filled.ManageAccounts" Match="NavLinkMatch.Prefix">

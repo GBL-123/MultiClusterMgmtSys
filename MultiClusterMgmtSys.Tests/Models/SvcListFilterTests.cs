@@ -1,6 +1,7 @@
+using MultiClusterMgmtSys.Models;
 using MultiClusterMgmtSys.ViewModels;
 
-namespace MultiClusterMgmtSys.Tests.ViewModels;
+namespace MultiClusterMgmtSys.Tests.Models;
 
 public class SvcListFilterTests
 {

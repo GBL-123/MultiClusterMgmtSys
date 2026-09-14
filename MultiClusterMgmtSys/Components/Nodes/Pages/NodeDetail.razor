@@ -14,7 +14,7 @@
 
 <PageTitle>节点详情: @NodeName</PageTitle>
 
-<MudStack Class="flex-auto pb-4" Style="align-self: flex-start;">
+<MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
     @if (loading)
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
@@ -64,8 +64,15 @@
                  Elevation="0"
                  Rounded="false"
                  TabPanelsClass="detail-tabs-panels">
+            <MudTabPanel Text="YAML">
+                <NodeYamlViewCard Yaml="@node.Yaml" />
+            </MudTabPanel>
             <MudTabPanel Text="基本信息">
-                <NodeOverviewCard Node="@node" OnRemarksChanged="LoadAsync" />
+                <MudStack Spacing="3">
+                    <NodeOverviewCard Node="@node" />
+                    <NodeAddressesCard Node="@node" OnRemarksChanged="LoadAsync" />
+                    <NodeTaintsCard Node="@node" />
+                </MudStack>
             </MudTabPanel>
             <MudTabPanel Text="资源容量">
                 <NodeResourcesCard Node="@node" />

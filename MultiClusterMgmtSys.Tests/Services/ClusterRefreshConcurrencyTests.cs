@@ -19,10 +19,10 @@ public class ClusterRefreshConcurrencyTests : IDisposable
     public ClusterRefreshConcurrencyTests()
     {
         var nodeService = new ClusterNodeService(
-            harness.ClusterRepo, harness.Audit, NullLogger<ClusterNodeService>.Instance, K8sMocks.Factory(k8s));
+            harness.ClusterRepo, harness.Audit, NullLogger<ClusterNodeService>.Instance, K8sMocks.Cache(k8s));
         service = new ClusterService(
             harness.ClusterRepo, nodeService, harness.Audit,
-            NullLogger<ClusterService>.Instance, K8sMocks.Factory(k8s));
+            NullLogger<ClusterService>.Instance, K8sMocks.Cache(k8s));
     }
 
     public void Dispose() => harness.Dispose();

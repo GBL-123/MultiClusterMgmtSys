@@ -14,7 +14,7 @@ namespace MultiClusterMgmtSys.Services;
 /// Namespace(命名空间)管理服务:基于所选集群的凭据实时读写 k8s Namespace。
 /// 支持列表、详情、YAML 创建与删除,default 与 kube- 前缀系统命名空间受硬保护;变更成功后写审计。
 /// </summary>
-public class NamespaceService(ClusterRepository repo, AuditService auditService, ILogger<NamespaceService> logger, Func<KubernetesClientConfiguration, IKubernetes> clientFactory)
+public class NamespaceService(ClusterRepository repo, AuditService auditService, ILogger<NamespaceService> logger, IClusterClientCache clientCache)
 {
     private readonly ClusterRepository repo = repo;
 
@@ -27,8 +27,7 @@ public class NamespaceService(ClusterRepository repo, AuditService auditService,
     {
         var entity = await repo.GetByIdAsync(clusterId)
             ?? throw new NotFoundException($"集群 {clusterId} 不存在");
-        var config = KubernetesClientConfig.Build(entity);
-        using var client = clientFactory(config);
+        var client = clientCache.GetOrCreate(entity);
         try
         {
             var list = await client.CoreV1.ListNamespaceAsync();
@@ -46,8 +45,7 @@ public class NamespaceService(ClusterRepository repo, AuditService auditService,
     {
         var entity = await repo.GetByIdAsync(request.ClusterId);
         if (entity is null) return null;
-        var config = KubernetesClientConfig.Build(entity);
-        using var client = clientFactory(config);
+        var client = clientCache.GetOrCreate(entity);
         try
         {
             var ns = await client.CoreV1.ReadNamespaceAsync(request.Name);
@@ -65,8 +63,7 @@ public class NamespaceService(ClusterRepository repo, AuditService auditService,
     {
         var entity = await repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
-        var config = KubernetesClientConfig.Build(entity);
-        using var client = clientFactory(config);
+        var client = clientCache.GetOrCreate(entity);
         V1Namespace body;
         try
         {
@@ -99,8 +96,7 @@ public class NamespaceService(ClusterRepository repo, AuditService auditService,
             throw new ValidationException($"「{request.Name}」为系统命名空间,禁止删除");
         var entity = await repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
-        var config = KubernetesClientConfig.Build(entity);
-        using var client = clientFactory(config);
+        var client = clientCache.GetOrCreate(entity);
         try
         {
             await client.CoreV1.DeleteNamespaceAsync(request.Name);

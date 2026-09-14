@@ -38,4 +38,18 @@ internal static class KubernetesClientConfig
         config.HttpClientTimeout = RequestTimeout;
         return config;
     }
+
+    /// <summary>按集群连接方式解析 API Server 地址(kubeconfig 方式从文本解析 Host,Token 方式即登记的 ApiServer);供探测后回填使用。</summary>
+    /// <param name="cluster">集群实体。</param>
+    /// <returns>解析出的 API Server 地址。</returns>
+    public static string GetHost(ClusterInfo cluster)
+    {
+        if (cluster.ConnectionType == ConnectionType.KubeConfig)
+        {
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(cluster.KubeConfig ?? ""));
+            return KubernetesClientConfiguration.BuildConfigFromConfigFile(stream).Host;
+        }
+
+        return cluster.ApiServer ?? "";
+    }
 }

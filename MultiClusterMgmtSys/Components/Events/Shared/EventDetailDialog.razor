@@ -1,0 +1,65 @@
+@using MultiClusterMgmtSys.ViewModels
+
+<MudDialog>
+    <DialogContent>
+        <MudStack Spacing="4">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <StatusBadge Text="@Event.TypeText" CssClass="@Event.TypeCssClass" Raw="@Event.Type" />
+                <span class="font-mono event-detail-reason">@Event.Reason</span>
+            </MudStack>
+
+            <div class="event-message-viewer font-mono">@Event.Message</div>
+
+            <div class="event-detail-grid">
+                <span class="event-detail-label">关联对象</span>
+                <span class="font-mono">@InvolvedObjectText</span>
+
+                <span class="event-detail-label">来源组件</span>
+                <span class="font-mono">@SourceText</span>
+
+                @if (!string.IsNullOrEmpty(Event.InvolvedFieldPath))
+                {
+                    <span class="event-detail-label">字段路径</span>
+                    <span class="font-mono">@Event.InvolvedFieldPath</span>
+                }
+
+                <span class="event-detail-label">首次发生</span>
+                <span class="font-mono">@Event.FirstOccurredAtText</span>
+
+                <span class="event-detail-label">最近发生</span>
+                <span class="font-mono">@Event.OccurredAtAbsoluteText</span>
+
+                <span class="event-detail-label">次数</span>
+                <span class="font-mono">@Event.CountText</span>
+            </div>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="() => Dialog.Cancel()">
+            关闭
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter]
+    public EventListViewModel Event { get; set; } = new();
+
+    private string InvolvedObjectText
+    {
+        get
+        {
+            var target = $"{Event.InvolvedKind}/{Event.InvolvedName}";
+            return string.IsNullOrEmpty(Event.InvolvedNamespace) ? target : $"{target} @ {Event.InvolvedNamespace}";
+        }
+    }
+
+    private string SourceText => string.IsNullOrEmpty(Event.SourceHost)
+        ? (string.IsNullOrEmpty(Event.SourceComponent) ? "—" : Event.SourceComponent)
+        : $"{Event.SourceComponent} @ {Event.SourceHost}";
+}

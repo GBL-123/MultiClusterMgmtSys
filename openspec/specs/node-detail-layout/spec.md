@@ -2,21 +2,31 @@
 
 ## Purpose
 
-Define the redesigned node detail page composition (`/nodes/{ClusterId}/{NodeName}`): a focused five-tab layout (`NodeDetailToolbar` + `MudTabs`, tabs 基本信息 → 资源容量 → 条件 → 标签与注解 → 系统信息) that consolidates scheduling, metadata, addresses (with stored remarks), and taints into the 基本信息 tab's single overview card — replacing the previous 10-card page — plus the matching node list surfaces: a toolbar mirroring the cluster management page, a sortable client-side six-column table, and multi-IP rendering with remarks.
+Define the redesigned node detail page composition (`/nodes/{ClusterId}/{NodeName}`): a focused five-tab layout (`NodeDetailToolbar` + `MudTabs`, tabs 基本信息 → 资源容量 → 条件 → 标签与注解 → 系统信息) whose 基本信息 tab splits identity/scheduling fields, addresses (with stored remarks), and taints into the `NodeOverviewCard`, `NodeAddressesCard` and `NodeTaintsCard` cards, plus the matching node list surfaces: a toolbar mirroring the cluster management page, a sortable client-side six-column table, and multi-IP rendering with remarks.
 
 ## Requirements
 
-### Requirement: Node detail page five-tab composition
+### Requirement: Node detail page tab composition
 
-The system SHALL render the node detail page (`/nodes/{ClusterId}/{NodeName}`) as a `NodeDetailToolbar` `MudPaper` followed by a `MudTabs` area with exactly five tabs in this order: 基本信息 → 资源容量 → 条件 → 标签与注解 → 系统信息. The 基本信息 tab contains `NodeOverviewCard` (full width); the 资源容量 tab contains `NodeResourcesCard`; the 条件 tab contains `NodeConditionsCard`; the 标签与注解 tab contains `NodeLabelsCard` and `NodeAnnotationsCard` stacked vertically, each full width within the tab panel; the 系统信息 tab contains `NodeSystemInfoCard`. The former standalone `NodeSchedulingCard`, `NodeMetadataCard`, `NodeAddressesCard`, and `NodeTaintsCard` components SHALL remain deleted. Tab selection is page-local state per the `detail-page-tabs` capability; the 基本信息 tab SHALL be selected by default.
+The system SHALL render the node detail page (`/nodes/{ClusterId}/{NodeName}`) as a `NodeDetailToolbar` `MudPaper` followed by a `MudTabs` area with exactly six tabs in this order: YAML → 基本信息 → 资源容量 → 条件 → 标签与注解 → 系统信息. The YAML tab SHALL be selected by default and SHALL contain the read-only `NodeYamlViewCard` (`yaml-card` with a readonly `yaml-textarea`) rendering the node's serialized YAML, with no edit affordance; when the YAML text is empty the card SHALL show the `.empty-state` placeholder `[ 暂无 YAML ]`. The 基本信息 tab contains `NodeOverviewCard`, `NodeAddressesCard` and `NodeTaintsCard` stacked vertically, each full width within the tab panel; the 资源容量 tab contains `NodeResourcesCard`; the 条件 tab contains `NodeConditionsCard`; the 标签与注解 tab contains `NodeLabelsCard` and `NodeAnnotationsCard` stacked vertically, each full width within the tab panel; the 系统信息 tab contains `NodeSystemInfoCard`. The former standalone `NodeSchedulingCard` and `NodeMetadataCard` components SHALL remain deleted. Tab selection is page-local state per the `detail-page-tabs` capability.
 
 #### Scenario: Tab composition order
 - **WHEN** a reachable node is rendered
-- **THEN** the tabs appear in this order: 基本信息, 资源容量, 条件, 标签与注解, 系统信息, with 基本信息 selected by default
+- **THEN** the tabs appear in this order: YAML, 基本信息, 资源容量, 条件, 标签与注解, 系统信息, with YAML selected by default
+
+#### Scenario: YAML tab renders the serialized node read-only
+- **WHEN** the YAML tab renders for a loaded node
+- **THEN** it shows the node's serialized YAML in a readonly `yaml-textarea` inside the `yaml-card`
+- **AND** no edit or save affordance is rendered
 
 #### Scenario: Cards that lost their standalone component
 - **WHEN** the detail page renders
-- **THEN** no `NodeSchedulingCard`, `NodeMetadataCard`, `NodeAddressesCard`, or `NodeTaintsCard` component is instantiated anywhere
+- **THEN** no `NodeSchedulingCard` or `NodeMetadataCard` component is instantiated anywhere
+
+#### Scenario: 基本信息 tab card composition
+- **WHEN** the 基本信息 tab renders
+- **THEN** `NodeOverviewCard`, `NodeAddressesCard` and `NodeTaintsCard` appear stacked vertically in that order
+- **AND** each card occupies the full width of the tab panel
 
 #### Scenario: Labels and annotations share one tab
 - **WHEN** the 标签与注解 tab renders
@@ -25,7 +35,8 @@ The system SHALL render the node detail page (`/nodes/{ClusterId}/{NodeName}`) a
 
 #### Scenario: Overview card content unchanged inside its tab
 - **WHEN** the 基本信息 tab renders
-- **THEN** `NodeOverviewCard` keeps its existing contract: identity/scheduling fields, the 地址 section (with stored remarks), and the 污点 section rendered only when taints exist
+- **THEN** `NodeOverviewCard` keeps its identity/scheduling/metadata field contract (no `Uid`, `—` for empty fields)
+- **AND** the 地址 and 污点 sections move to `NodeAddressesCard` and `NodeTaintsCard`, rendered below it in the same tab
 
 ### Requirement: Node resources render human-readable capacity and allocatable values
 
@@ -59,38 +70,56 @@ The 资源容量 tab's `NodeResourcesCard` SHALL render a single unified table w
 - **THEN** the 资源 cell shows `example.com/fpga`
 - **AND** the 容量 cell shows the raw `2`
 
-### Requirement: Node overview card consolidates scheduling, metadata, addresses, and taints
+### Requirement: Node overview card renders identity, scheduling, and metadata fields
 
-`NodeOverviewCard` (基本信息) SHALL render: the node's `Name`, a `ui-theme` status badge (`.status-badge` with the standard node-status color helper), `Roles`, `KubeletVersion`, `OsImage`, the `Unschedulable` chip (Warning/"不可调度" when true, Success/"可调度" when false), `Phase`, `PodCIDR`, and `CreatedAt` formatted `yyyy-MM-dd HH:mm`, using `—` for any empty string field. Per `display-conventions`, the status, roles, phase, address types and taint effects SHALL be rendered Chinese-primary with the English raw value as a secondary mono line, and the `Phase` field label SHALL read 阶段 (Phase). It SHALL NOT render `Uid`. The card SHALL contain an 地址 section listing every address from `ClusterNodeDetailViewModel.Addresses` (type + address, plus the stored remark when present); the card SHALL contain a 污点 section rendered ONLY when the node has taints (键 / 值 / 效果), and SHALL be omitted entirely when taints are empty.
+`NodeOverviewCard` (基本信息) SHALL render the node's `Name`, a `ui-theme` status badge (`.status-badge` with the standard node-status color helper), `Roles`, `KubeletVersion`, `OsImage`, the `Unschedulable` chip (Warning/"不可调度" when true, Success/"可调度" when false), `Phase`, `PodCIDR`, and `CreatedAt` formatted `yyyy-MM-dd HH:mm`, using `—` for any empty string field. Per `display-conventions`, the status, roles and phase SHALL be rendered Chinese-primary with the English raw value as a secondary mono line, and the `Phase` field label SHALL read 阶段 (Phase). It SHALL NOT render `Uid`. It SHALL NOT contain an 地址 or 污点 section.
 
 #### Scenario: Uid no longer displayed
 - **WHEN** `NodeOverviewCard` renders
 - **THEN** it contains no `Uid` field
 
-#### Scenario: Empty taints hide the section
-- **WHEN** `node.Spec.Taints` is null or empty
-- **THEN** `NodeOverviewCard` renders no 污点 section at all
-
-#### Scenario: Taints present
-- **WHEN** the node has at least one taint
-- **THEN** the card renders a 污点 section listing 键 / 值 / 效果 for each taint
-
-#### Scenario: All addresses render in the address section
-- **WHEN** the node's `Status.Addresses` contains two `InternalIP` entries and one `ExternalIP` entry
-- **THEN** the card's 地址 section lists all three rows (type + address)
-- **AND** each row that has a stored remark displays the remark text
-
-#### Scenario: Scheduling and metadata fields merged into the card
+#### Scenario: Scheduling and metadata fields render
 - **WHEN** `NodeOverviewCard` renders
-- **THEN** it displays `Unschedulable`, `Phase`, `PodCIDR`, and `CreatedAt` alongside the pre-existing overview fields
+- **THEN** it displays `Unschedulable`, `Phase`, `PodCIDR`, and `CreatedAt` alongside the identity fields
 
 #### Scenario: Overview values render bilingual
-- **WHEN** a node reports status `Ready`, role `control-plane`, phase `Running`, address type `InternalIP`, and taint effect `NoSchedule`
+- **WHEN** a node reports status `Ready`, role `control-plane`, and phase `Running`
 - **THEN** the status badge shows 就绪 with `Ready` as a secondary mono line
 - **AND** the roles show 控制平面 with `control-plane` as a secondary mono line
 - **AND** the phase shows 运行中 with `Running` as a secondary mono line
-- **AND** the address type shows 内网 IP with `InternalIP` as a secondary mono line
-- **AND** the taint effect shows 禁止调度 with `NoSchedule` as a secondary mono line
+
+### Requirement: Node addresses card lists addresses with stored remarks
+
+The 基本信息 tab's `NodeAddressesCard` SHALL render every row from `ClusterNodeDetailViewModel.Addresses` in a table with columns 类型 / 地址 / 备注 (type + address, plus the stored remark when present). Per `display-conventions`, the address type SHALL be rendered Chinese-primary with the English raw value as a secondary mono line (`InternalIP` → 内网 IP). The card SHALL always render: when the address list is empty it SHALL show the `.empty-state` placeholder `[ 暂无地址 ]` instead of the table. The Admin-only remark manage affordance lives in this card per `node-ip-notes`.
+
+#### Scenario: All addresses render in the addresses card
+- **WHEN** the node's `Status.Addresses` contains two `InternalIP` entries and one `ExternalIP` entry
+- **THEN** the card lists all three rows (type + address)
+- **AND** each row that has a stored remark displays the remark text
+
+#### Scenario: Empty addresses show empty state
+- **WHEN** the node has no addresses
+- **THEN** the card still renders and shows the `[ 暂无地址 ]` empty state instead of a table
+
+#### Scenario: Address type renders bilingual
+- **WHEN** an address row has type `InternalIP`
+- **THEN** the 类型 cell shows 内网 IP with `InternalIP` as a secondary mono line
+
+### Requirement: Node taints card lists taints
+
+The 基本信息 tab's `NodeTaintsCard` SHALL render one row per taint with columns 键 / 值 / 效果. Per `display-conventions`, the taint effect SHALL be rendered Chinese-primary with the English raw value as a secondary mono line (`NoSchedule` → 禁止调度). The card SHALL always render: when the node has no taints it SHALL show the `.empty-state` placeholder `[ 暂无污点 ]` instead of the table (it SHALL NOT be omitted).
+
+#### Scenario: Taints present
+- **WHEN** the node has at least one taint
+- **THEN** the card renders one row per taint listing 键 / 值 / 效果
+
+#### Scenario: Empty taints show empty state
+- **WHEN** `node.Spec.Taints` is null or empty
+- **THEN** the card still renders and shows the `[ 暂无污点 ]` empty state instead of a table
+
+#### Scenario: Taint effect renders bilingual
+- **WHEN** a taint has effect `NoSchedule`
+- **THEN** the 效果 cell shows 禁止调度 with `NoSchedule` as a secondary mono line
 
 ### Requirement: Node conditions and system info render bilingual
 

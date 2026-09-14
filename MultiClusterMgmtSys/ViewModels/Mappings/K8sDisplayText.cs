@@ -213,4 +213,153 @@ public static class K8sDisplayText
     /// <summary>节点数展示文本(带「台」单位)。</summary>
     /// <param name="count">节点数量。</param>
     public static string NodeCountText(int count) => $"{count} 台";
+
+    /// <summary>事件类型中文展示名;未登记值回退原文。</summary>
+    /// <param name="type">事件类型原始值(Normal/Warning)。</param>
+    public static string EventTypeText(string type) => type switch
+    {
+        "Normal" => "正常",
+        "Warning" => "警告",
+        _ => type
+    };
+
+    /// <summary>事件类型对应的状态徽章 CSS 类。</summary>
+    /// <param name="type">事件类型原始值(Normal/Warning)。</param>
+    public static string EventTypeCssClass(string type) => type switch
+    {
+        "Normal" => "normal",
+        "Warning" => "warning",
+        _ => "unknown"
+    };
+
+    /// <summary>Pod phase 中文展示名;未登记值回退原文。</summary>
+    /// <param name="phase">Pod phase 原始值(Running/Pending/Succeeded/Failed/Unknown)。</param>
+    public static string PodPhaseText(string? phase) => phase switch
+    {
+        "Running" => "运行中",
+        "Pending" => "等待中",
+        "Succeeded" => "已完成",
+        "Failed" => "失败",
+        "Unknown" => "未知",
+        _ => phase ?? ""
+    };
+
+    /// <summary>容器 waiting/terminated 原因中文展示名;未登记值回退原文(契约:未登记回退原文)。</summary>
+    /// <param name="reason">容器状态原因原始值(CrashLoopBackOff/OOMKilled 等)。</param>
+    public static string PodContainerReasonText(string reason) => reason switch
+    {
+        "CrashLoopBackOff" => "崩溃循环",
+        "ImagePullBackOff" => "镜像拉取失败",
+        "ErrImagePull" => "镜像拉取异常",
+        "CreateContainerConfigError" => "容器配置错误",
+        "CreateContainerError" => "容器创建失败",
+        "RunContainerError" => "容器启动失败",
+        "ContainerCannotRun" => "容器无法运行",
+        "OOMKilled" => "内存不足被杀",
+        "Evicted" => "已驱逐",
+        "Error" => "运行错误",
+        "DeadlineExceeded" => "超出时限",
+        "Completed" => "已完成",
+        "PodInitializing" => "初始化中",
+        "ContainerCreating" => "创建中",
+        _ => reason
+    };
+
+    /// <summary>Pod 列表状态徽章中文主行:容器异常信号优先于 phase(契约 pod-management:容器信号优先)。</summary>
+    /// <param name="phase">Pod phase 原始值,可空。</param>
+    /// <param name="containerReason">已过滤的容器异常信号(waiting/terminated 原因,正常等待原因不应传入);无信号传 null。</param>
+    public static string PodStatusText(string? phase, string? containerReason)
+        => string.IsNullOrWhiteSpace(containerReason) ? PodPhaseText(phase) : PodContainerReasonText(containerReason);
+
+    /// <summary>Pod 列表状态徽章英文次行(raw):容器异常信号优先,否则 phase 原文。</summary>
+    /// <param name="phase">Pod phase 原始值,可空。</param>
+    /// <param name="containerReason">已过滤的容器异常信号;无信号传 null。</param>
+    public static string PodStatusRaw(string? phase, string? containerReason)
+        => string.IsNullOrWhiteSpace(containerReason) ? (phase ?? "") : containerReason;
+
+    /// <summary>Pod 列表状态徽章 CSS 类:容器异常信号 offline;否则 Running online、Failed offline、其余 unknown。</summary>
+    /// <param name="phase">Pod phase 原始值,可空。</param>
+    /// <param name="containerReason">已过滤的容器异常信号;无信号传 null。</param>
+    public static string PodStatusCssClass(string? phase, string? containerReason)
+        => string.IsNullOrWhiteSpace(containerReason)
+            ? phase switch
+            {
+                "Running" => "online",
+                "Failed" => "offline",
+                _ => "unknown"
+            }
+            : "offline";
+
+    /// <summary>Pod QoS 类中文展示名;未登记值回退原文。</summary>
+    /// <param name="qos">QoS 类原始值(Guaranteed/Burstable/BestEffort)。</param>
+    public static string PodQosClassText(string qos) => qos switch
+    {
+        "Guaranteed" => "保证级",
+        "Burstable" => "突发级",
+        "BestEffort" => "尽力级",
+        _ => qos
+    };
+
+    /// <summary>Pod 条件类型中文展示名;未登记值回退原文。</summary>
+    /// <param name="type">条件类型原始值(Ready/Initialized/PodsScheduled/ContainersReady)。</param>
+    public static string PodConditionTypeText(string type) => type switch
+    {
+        "Ready" => "就绪",
+        "Initialized" => "已初始化",
+        "PodScheduled" => "已调度",
+        "ContainersReady" => "容器就绪",
+        "DisruptionTarget" => "中断目标",
+        _ => type
+    };
+
+    /// <summary>容器状态徽章英文次行(raw):异常原因优先,否则容器状态原文。</summary>
+    /// <param name="state">容器状态原始值(Running/Waiting/Terminated)。</param>
+    /// <param name="waitingReason">waiting 原始原因,可空。</param>
+    /// <param name="terminatedReason">terminated 原始原因,可空。</param>
+    public static string PodContainerStateRaw(string state, string? waitingReason, string? terminatedReason)
+        => state switch
+        {
+            "Waiting" => string.IsNullOrWhiteSpace(waitingReason) ? "Waiting" : waitingReason,
+            "Terminated" => string.IsNullOrWhiteSpace(terminatedReason) ? "Terminated" : terminatedReason,
+            _ => state
+        };
+
+    /// <summary>容器状态徽章中文主行:waiting/terminated 时以原因中文为主文案;未登记值回退原文。</summary>
+    /// <param name="state">容器状态原始值(Running/Waiting/Terminated)。</param>
+    /// <param name="waitingReason">waiting 原始原因,可空。</param>
+    /// <param name="terminatedReason">terminated 原始原因,可空。</param>
+    public static string PodContainerStateText(string state, string? waitingReason, string? terminatedReason)
+        => state switch
+        {
+            "Running" => "运行中",
+            "Waiting" => string.IsNullOrWhiteSpace(waitingReason) ? "等待中" : PodContainerReasonText(waitingReason),
+            "Terminated" => string.IsNullOrWhiteSpace(terminatedReason) ? "已终止" : PodContainerReasonText(terminatedReason),
+            _ => state
+        };
+
+    /// <summary>容器状态徽章 CSS 类:Running online;中性原因(初始化/创建/已完成)unknown;其余异常原因 offline;无原因 unknown。</summary>
+    /// <param name="state">容器状态原始值(Running/Waiting/Terminated)。</param>
+    /// <param name="waitingReason">waiting 原始原因,可空。</param>
+    /// <param name="terminatedReason">terminated 原始原因,可空。</param>
+    public static string PodContainerStateCssClass(string state, string? waitingReason, string? terminatedReason)
+    {
+        if (state == "Running")
+        {
+            return "online";
+        }
+
+        var reason = state switch
+        {
+            "Waiting" => waitingReason,
+            "Terminated" => terminatedReason,
+            _ => null
+        };
+
+        return reason switch
+        {
+            null or "" => "unknown",
+            "Completed" or "PodInitializing" or "ContainerCreating" => "unknown",
+            _ => "offline"
+        };
+    }
 }

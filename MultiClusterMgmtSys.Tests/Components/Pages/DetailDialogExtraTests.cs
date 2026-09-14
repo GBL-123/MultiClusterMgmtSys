@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using k8s;
 using k8s.Models;
 using Moq;
@@ -211,6 +212,8 @@ public class DetailDialogExtraTests
         services.AddLogging();
         services.AddSingleton(harness.Db);
         services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8s));
+        services.AddSingleton<IClusterClientCache>(new ClusterClientCache(
+            K8sMocks.Factory(k8s), NullLogger<ClusterClientCache>.Instance));
         services.AddSingleton<Microsoft.Extensions.Configuration.IConfiguration>(
             new Microsoft.Extensions.Configuration.ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>())

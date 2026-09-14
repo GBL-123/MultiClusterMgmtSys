@@ -48,7 +48,7 @@
 - **THEN** 该行状态列显示未知徽章,相邻次行显示等宽字体的 `Terminating`,且该行仍可查看详情
 
 ### Requirement: 命名空间详情页
-系统 SHALL 提供命名空间详情页(路由 `/namespaces/{ClusterId:int}/{Name}`),对所有登录用户可见。页面 SHALL 由工具栏与 `MudTabs` 组成:工具栏含「返回列表」、命名空间名称、状态徽章与「刷新」按钮;tab 顺序 SHALL 为 YAML → 标签与注解。YAML tab SHALL 展示只读 YAML 视图(复用 `yaml-textarea` 只读卡);标签与注解 tab SHALL 以带计数的只读键值表分别展示标签与注解,为空时显示空态占位。tab 选择 SHALL 为页面局部状态,不写入路由或持久化存储。命名空间不存在(K8s 404)时,页面 SHALL 显示「不存在或已被删除」空态并提供返回列表入口;K8s 读取失败时 SHALL 呈现失败态,不向用户弹错。
+系统 SHALL 提供命名空间详情页(路由 `/namespaces/{ClusterId:int}/{Name}`),对所有登录用户可见。页面 SHALL 由工具栏与 `MudTabs` 组成:工具栏含「返回列表」、命名空间名称、状态徽章与「刷新」按钮;tab 顺序 SHALL 为 YAML → 标签与注解。YAML tab SHALL 展示只读 YAML 视图(复用 `yaml-textarea` 只读卡);标签与注解 tab SHALL 以只读键值表分别展示标签与注解,为空时显示空态占位。tab 选择 SHALL 为页面局部状态,不写入路由或持久化存储。命名空间不存在(K8s 404)时,页面 SHALL 显示「不存在或已被删除」空态并提供返回列表入口;K8s 读取失败时 SHALL 呈现失败态,不向用户弹错。
 
 #### Scenario: 详情页加载
 - **WHEN** 用户从列表进入某命名空间详情页
@@ -61,6 +61,10 @@
 #### Scenario: 标签与注解为空
 - **WHEN** 命名空间没有任何标签或注解
 - **THEN** 对应键值表显示空态占位
+
+#### Scenario: 标签与注解卡标题无计数
+- **WHEN** 标签与注解 tab 渲染标签卡与注解卡
+- **THEN** 卡片标题仅显示「标签」「注解」文字,不显示条目数量
 
 ### Requirement: 命名空间 YAML 新建
 系统 SHALL 允许 Admin 从列表页通过「新建命名空间」按钮打开 YAML 对话框;对话框 SHALL 在打开时预置 `wwwroot/templates/namespace/default.yaml` 模板,模板缺失或读取失败时 SHALL 回退最小骨架并记录警告日志,不阻塞对话框打开。提交时系统 SHALL 反序列化为 `V1Namespace` 并校验 `metadata.name` 非空;解析失败或缺少名称 SHALL 抛出中文校验异常且不调用 K8s API。创建成功 SHALL 提示成功、关闭对话框、刷新列表并写入审计;K8s 返回 409 冲突时 SHALL 提示「同名命名空间已存在」并保持对话框打开。

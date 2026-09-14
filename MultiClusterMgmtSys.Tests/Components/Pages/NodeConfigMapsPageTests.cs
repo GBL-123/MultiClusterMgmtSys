@@ -189,6 +189,8 @@ public class NodesPageTests
 
         k8s.SetupReadNode("n1", new V1Node
         {
+            ApiVersion = "v1",
+            Kind = "Node",
             Metadata = new V1ObjectMeta
             {
                 Name = "n1",
@@ -225,29 +227,45 @@ public class NodesPageTests
                 .Add(p => p.ClusterId, cluster.Id)
                 .Add(p => p.NodeName, "n1"));
 
-        cut.WaitForState(() => cut.Markup.Contains("n1"));
+        cut.WaitForState(() => cut.Markup.Contains("kind: Node"));
+
+        var yamlIndex = cut.Markup.IndexOf(">YAML<", StringComparison.Ordinal);
+        var firstOverviewIndex = cut.Markup.IndexOf(">基本信息<", StringComparison.Ordinal);
+        Assert.True(yamlIndex >= 0 && firstOverviewIndex > yamlIndex);
+        var yamlTextarea = cut.Find(".yaml-textarea");
+        Assert.Contains("name: n1", yamlTextarea.TextContent);
+        Assert.Contains("kind: Node", yamlTextarea.TextContent);
+
+        cut.FindAll(".mud-tab")[1].Click();
+        cut.WaitForState(() => cut.Markup.Contains("10.244.1.0/24"));
 
         Assert.Contains("10.244.1.0/24", cut.Markup);
         Assert.Contains("NoSchedule", cut.Markup);
+        Assert.Contains("内网 IP", cut.Markup);
 
-        cut.FindAll(".mud-tab")[1].Click();
+        var overviewIndex = cut.Markup.IndexOf(">基本信息<", StringComparison.Ordinal);
+        var addressesIndex = cut.Markup.IndexOf(">地址<", StringComparison.Ordinal);
+        var taintsIndex = cut.Markup.IndexOf(">污点<", StringComparison.Ordinal);
+        Assert.True(overviewIndex >= 0 && addressesIndex > overviewIndex && taintsIndex > addressesIndex);
+
+        cut.FindAll(".mud-tab")[2].Click();
         cut.WaitForState(() => cut.Markup.Contains("3.8 核"));
         Assert.Contains("3.8 核", cut.Markup);
         var tooltips = cut.FindComponents<MultiClusterMgmtSys.Components.Common.TextTooltip>();
         Assert.Contains(tooltips, t => t.Instance.Text == "3800m" && t.Instance.Mono);
 
-        cut.FindAll(".mud-tab")[2].Click();
+        cut.FindAll(".mud-tab")[3].Click();
         cut.WaitForState(() => cut.Markup.Contains("KubeletReady"));
         Assert.Contains("KubeletReady", cut.Markup);
 
-        cut.FindAll(".mud-tab")[3].Click();
+        cut.FindAll(".mud-tab")[4].Click();
         cut.WaitForState(() => cut.Markup.Contains("prod"));
         Assert.Contains("note", cut.Markup);
         var labelsIndex = cut.Markup.IndexOf(">标签<", StringComparison.Ordinal);
         var annotationsIndex = cut.Markup.IndexOf(">注解<", StringComparison.Ordinal);
         Assert.True(labelsIndex >= 0 && annotationsIndex > labelsIndex);
 
-        cut.FindAll(".mud-tab")[4].Click();
+        cut.FindAll(".mud-tab")[5].Click();
         cut.WaitForState(() => cut.Markup.Contains("amd64"));
         Assert.Contains("amd64", cut.Markup);
     }

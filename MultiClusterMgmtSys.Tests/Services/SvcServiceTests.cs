@@ -21,7 +21,7 @@ public class SvcServiceTests : IDisposable
     public SvcServiceTests()
     {
         service = new SvcService(
-            harness.ClusterRepo, harness.Audit, NullLogger<SvcService>.Instance, K8sMocks.Factory(k8s));
+            harness.ClusterRepo, harness.Audit, NullLogger<SvcService>.Instance, K8sMocks.Cache(k8s));
     }
 
     public void Dispose() => harness.Dispose();

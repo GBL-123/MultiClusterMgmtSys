@@ -14,7 +14,7 @@
 
 <PageTitle>集群详情</PageTitle>
 
-<MudStack Class="d-flex flex-auto pb-4" Style="align-self: flex-start;">
+<MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
     @if (loading)
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
@@ -52,22 +52,12 @@
             <MudTabPanel Text="概览">
                 <ClusterOverviewCard Cluster="@cluster" />
             </MudTabPanel>
-            <MudTabPanel>
-                <TabContent>
-                    <span>集群端点&nbsp;<span class="font-mono">@cluster.Endpoints.Count</span></span>
-                </TabContent>
-                <ChildContent>
-                    <ClusterEndpointsCard Cluster="@cluster"
-                                          OnEndpointsChanged="LoadAsync" />
-                </ChildContent>
+            <MudTabPanel Text="集群端点">
+                <ClusterEndpointsCard Cluster="@cluster"
+                                      OnEndpointsChanged="LoadAsync" />
             </MudTabPanel>
-            <MudTabPanel>
-                <TabContent>
-                    <span>节点&nbsp;<span class="font-mono">@cluster.Nodes.Count</span></span>
-                </TabContent>
-                <ChildContent>
-                    <ClusterNodesCard Cluster="@cluster" />
-                </ChildContent>
+            <MudTabPanel Text="节点">
+                <ClusterNodesCard Cluster="@cluster" />
             </MudTabPanel>
         </MudTabs>
     }

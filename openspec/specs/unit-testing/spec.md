@@ -107,7 +107,11 @@ AGENTS.md SHALL 记录:`dotnet test MultiClusterMgmtSys.Tests` 命令(MTP)、覆
 - **THEN** 被排除的 4 个文件不计入分母,且这些文件带有 `[ExcludeFromCodeCoverage]` 标记
 
 ### Requirement: 覆盖率工具链
-系统 SHALL 提供:① `dotnet test MultiClusterMgmtSys.Tests --coverage --coverage-output-format cobertura` 在解决方案根 `TestResults/` 生成 cobertura 报告;② 经测试项目 PackageReference 形态的 ReportGenerator 将 cobertura 转换为 `coveragereport/index.html`(行级下钻明细)。`TestResults/` 与 `coveragereport/` SHALL 加入 `.gitignore` 不入库。
+系统 SHALL 提供:① 仓库根一键脚本 `coverage.ps1`:构建 → 带覆盖跑测试(cobertura 固定输出至 `coverage/coverage.cobertura.xml`)→ ReportGenerator 生成 `coverage/report/index.html`(行级下钻明细)→ 主程序集 75% 行覆盖率门禁(低于阈值非零退出,详见 capability `coverage-report-script`);② 手动调试路径:`dotnet test MultiClusterMgmtSys.Tests --coverage --coverage-output-format cobertura` 在解决方案根 `TestResults/` 生成 cobertura 报告,经测试项目 PackageReference 形态的 ReportGenerator 将其转换为 `coveragereport/index.html`(手动路径须只喂最新一份 cobertura,避免多份报告重复计覆盖)。`TestResults/`、`coveragereport/` 与 `coverage/` SHALL 加入 `.gitignore` 不入库。
+
+#### Scenario: 一键脚本出报告
+- **WHEN** 在仓库根执行 `./coverage.ps1`
+- **THEN** `coverage/coverage.cobertura.xml` 与 `coverage/report/index.html` 生成,且门禁按主程序集行覆盖率 ≥75% 判定退出码
 
 #### Scenario: 生成 cobertura
 - **WHEN** 执行 `dotnet test MultiClusterMgmtSys.Tests --coverage --coverage-output-format cobertura`
@@ -119,7 +123,7 @@ AGENTS.md SHALL 记录:`dotnet test MultiClusterMgmtSys.Tests` 命令(MTP)、覆
 
 #### Scenario: 覆盖率产物不入库
 - **WHEN** 执行 `git status`
-- **THEN** `TestResults/` 与 `coveragereport/` 不出现在未跟踪列表
+- **THEN** `TestResults/`、`coveragereport/` 与 `coverage/` 均不出现在未跟踪列表
 
 ### Requirement: Workload 与同步服务测试
 服务测试 SHALL 覆盖 `WorkloadService`(`WorkloadKind` 四类工作负载的列表分页/过滤、详情、创建、scale、YAML 读写、rollout 状态计算)、`ClusterSyncSettingService`(设置读取与更新 + 审计)、`ClusterSyncBackgroundService.RunOnceAsync`(经 scope 调用 `ClusterService.RefreshAllClustersStatusAsync` 一次)。

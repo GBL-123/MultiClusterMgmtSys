@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define admin-entered remarks for Kubernetes node IPs: a `NodeIpRemark` store persisted per (cluster, node, address) with cascade delete, merging of stored remarks into every node read path (detail page and list surfaces), and an Admin-only manage dialog on the node detail page's 地址 section for upserting/clearing remarks.
+Define admin-entered remarks for Kubernetes node IPs: a `NodeIpRemark` store persisted per (cluster, node, address) with cascade delete, merging of stored remarks into every node read path (detail page and list surfaces), and an Admin-only manage dialog on the node detail page's 地址 card (`NodeAddressesCard`) for upserting/clearing remarks.
 
 ## Requirements
 
@@ -28,7 +28,7 @@ The system SHALL persist admin-entered remarks for node IPs in a `NodeIpRemark` 
 
 #### Scenario: Detail page shows stored remarks
 - **WHEN** `GetNodeDetailAsync` returns addresses `10.0.0.5` (remark "管理口") and `172.16.8.2` (no remark)
-- **THEN** the 基本信息 card shows "管理口" beside `10.0.0.5`
+- **THEN** the 地址 card shows "管理口" beside `10.0.0.5`
 - **AND** `172.16.8.2` renders without note text
 
 #### Scenario: List surfaces carry merged notes
@@ -38,7 +38,7 @@ The system SHALL persist admin-entered remarks for node IPs in a `NodeIpRemark` 
 
 #### Scenario: Hostname and DNS rows are not remark-eligible
 - **WHEN** a node's `Status.Addresses` contains a `Hostname` row
-- **THEN** it renders in the detail page's 地址 section without a note
+- **THEN** it renders in the detail page's 地址 card without a note
 - **AND** it never appears in the remark edit surface
 
 #### Scenario: Stale remarks never render
@@ -47,7 +47,7 @@ The system SHALL persist admin-entered remarks for node IPs in a `NodeIpRemark` 
 
 ### Requirement: Admin manages node IP remarks via dialog
 
-The 基本信息 card's 地址 section SHALL expose an Admin-only "管理" button (gated by `<AuthorizeView Roles="Admin">`). Clicking it SHALL open a `NodeIpNotesDialog` listing every live IP-class address of the current node (IP in monospace + type + note text field). The dialog SHALL have "保存" and "取消"; saving SHALL upsert remarks by `(ClusterId, NodeName, Address)` — inserting new keys, updating changed notes, and deleting keys whose note was cleared — via `ClusterNodeService.UpdateNodeIpNotesAsync(clusterId, nodeName, items)`, after which the detail page reloads. Members (non-admin) SHALL see remarks as plain text without the manage affordance.
+The 地址 card (`NodeAddressesCard`) SHALL expose an Admin-only "管理" button (gated by `<AuthorizeView Roles="Admin">`). Clicking it SHALL open a `NodeIpNotesDialog` listing every live IP-class address of the current node (IP in monospace + type + note text field). The dialog SHALL have "保存" and "取消"; saving SHALL upsert remarks by `(ClusterId, NodeName, Address)` — inserting new keys, updating changed notes, and deleting keys whose note was cleared — via `ClusterNodeService.UpdateNodeIpNotesAsync(clusterId, nodeName, items)`, after which the detail page reloads. Members (non-admin) SHALL see remarks as plain text without the manage affordance.
 
 #### Scenario: Save upserts remarks for the current node
 - **WHEN** the admin opens the dialog for node `worker-1`, sets note "数据口" on `172.16.8.2`, clears a previously-set note on `10.0.0.5`, and saves

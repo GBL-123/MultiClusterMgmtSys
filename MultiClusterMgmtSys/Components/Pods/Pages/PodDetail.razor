@@ -1,0 +1,251 @@
+@attribute [Authorize]
+@page "/pods/{ClusterId:int}/{Namespace}/{Name}"
+
+@using MultiClusterMgmtSys.Common.Exceptions
+@using MultiClusterMgmtSys.Requests
+@using MultiClusterMgmtSys.Services
+@using MultiClusterMgmtSys.ViewModels
+@using MultiClusterMgmtSys.Components.Pods.Shared
+
+@inject PodService PodService
+@inject ClusterSelectionState ClusterSelection
+@inject NavigationManager NavigationManager
+@inject ExceptionPresenter ExHandler
+
+<PageTitle>Pod 详情: @Name</PageTitle>
+
+<MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else if (notFound)
+    {
+        <MudCard Class="pa-4">
+            <MudCardContent>
+                <MudText Align="Align.Center" Class="mud-text-secondary">Pod 不存在或已被删除</MudText>
+                <div class="d-flex justify-center mt-4">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.ArrowBack"
+                               OnClick="@(() => NavigationManager.NavigateTo($"/pods/{ClusterId}"))">
+                        返回列表
+                    </MudButton>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    }
+    else if (unreachable)
+    {
+        <MudCard Class="pa-4">
+            <MudCardContent>
+                <MudText Align="Align.Center" Class="mud-text-secondary">集群不可达,无法获取 Pod 详情</MudText>
+                <div class="d-flex justify-center mt-4">
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Secondary"
+                               StartIcon="@Icons.Material.Filled.Refresh"
+                               OnClick="LoadAsync">
+                        重试
+                    </MudButton>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    }
+    else if (detail is not null)
+    {
+        <PodDetailToolbar ClusterId="@ClusterId"
+                          Name="@detail.Name"
+                          Detail="@detail"
+                          Processing="@loading"
+                          OnRefresh="LoadAsync" />
+        <MudTabs @bind-ActivePanelIndex="activeTabIndex"
+                 Class="detail-tabs"
+                 Elevation="0"
+                 Rounded="false"
+                 TabPanelsClass="detail-tabs-panels">
+            <MudTabPanel Text="概览">
+                <MudCard Class="pa-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">基本信息</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudGrid Spacing="3">
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">命名空间</MudText>
+                                <MudText Typo="Typo.body1" Class="font-mono">@detail.Namespace</MudText>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">所在节点</MudText>
+                                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(detail.NodeName) ? "—" : detail.NodeName)</MudText>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">Pod IP</MudText>
+                                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(detail.PodIp) ? "—" : detail.PodIp)</MudText>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">服务质量</MudText>
+                                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(detail.QosClass) ? "—" : detail.QosClassText)</MudText>
+                            </MudItem>
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudText Typo="Typo.body2" Class="mud-text-secondary">启动时间</MudText>
+                                <MudText Typo="Typo.body1" Class="font-mono">@detail.StartedAtAbsoluteText</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudCardContent>
+                </MudCard>
+                <MudCard Class="pa-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">条件</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (detail.Conditions.Count == 0)
+                        {
+                            <div class="empty-state">[ 暂无条件 ]</div>
+                        }
+                        else
+                        {
+                            <MudTable T="PodConditionViewModel"
+                                      Items="@detail.Conditions"
+                                      Hover="true"
+                                      Dense="true"
+                                      Elevation="0">
+                                <HeaderContent>
+                                    <MudTh>类型</MudTh>
+                                    <MudTh>状态</MudTh>
+                                    <MudTh>最近迁移</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd DataLabel="类型">
+                                        <StackedText Primary="@context.TypeText" Secondary="@context.Type" />
+                                    </MudTd>
+                                    <MudTd DataLabel="状态">
+                                        <StackedText Primary="@context.StatusText" Secondary="@context.Status" />
+                                    </MudTd>
+                                    <MudTd DataLabel="最近迁移">
+                                        <span class="font-mono">@context.LastTransitionAtText</span>
+                                    </MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudTabPanel>
+            <MudTabPanel Text="容器状态">
+                <MudCard Class="pa-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">容器状态</MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (detail.Containers.Count == 0)
+                        {
+                            <div class="empty-state">[ 暂无容器 ]</div>
+                        }
+                        else
+                        {
+                            <MudTable T="PodContainerViewModel"
+                                      Items="@detail.Containers"
+                                      Hover="true"
+                                      Dense="true"
+                                      Elevation="0">
+                                <HeaderContent>
+                                    <MudTh>容器</MudTh>
+                                    <MudTh>就绪</MudTh>
+                                    <MudTh>状态</MudTh>
+                                    <MudTh>重启</MudTh>
+                                    <MudTh>镜像</MudTh>
+                                    <MudTh>最近终止</MudTh>
+                                </HeaderContent>
+                                <RowTemplate>
+                                    <MudTd DataLabel="容器">
+                                        <span class="font-mono">@context.Name</span>
+                                    </MudTd>
+                                    <MudTd DataLabel="就绪">
+                                        <StatusBadge Text="@((context.Ready ? "就绪" : "未就绪"))" CssClass="@context.ReadyCssClass" Raw="@((context.Ready ? "Ready" : "NotReady"))" />
+                                    </MudTd>
+                                    <MudTd DataLabel="状态">
+                                        <StatusBadge Text="@context.StateText" CssClass="@context.StateCssClass" Raw="@context.StateRaw" />
+                                    </MudTd>
+                                    <MudTd DataLabel="重启"><span class="font-mono">@context.RestartCount</span></MudTd>
+                                    <MudTd DataLabel="镜像"><span class="font-mono">@context.Image</span></MudTd>
+                                    <MudTd DataLabel="最近终止">
+                                        @if (string.IsNullOrEmpty(context.LastTerminatedReason))
+                                        {
+                                            <span class="font-mono mud-text-secondary">—</span>
+                                        }
+                                        else
+                                        {
+                                            <TextTooltip Text="@context.LastTerminatedAtText" Mono="true">
+                                                <span class="font-mono">@context.LastTerminatedReasonText</span>
+                                            </TextTooltip>
+                                        }
+                                    </MudTd>
+                                </RowTemplate>
+                            </MudTable>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            </MudTabPanel>
+        </MudTabs>
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    [Parameter]
+    public string Namespace { get; set; } = "";
+
+    [Parameter]
+    public string Name { get; set; } = "";
+
+    private PodDetailViewModel? detail;
+
+    private bool loading = true;
+
+    private bool notFound;
+
+    private bool unreachable;
+
+    private int activeTabIndex;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ClusterSelection.Set(ClusterId);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        try
+        {
+            detail = await PodService.GetPodAsync(new PodKeyRequest(ClusterId, Namespace, Name));
+            notFound = detail is null;
+            unreachable = false;
+        }
+        catch (NotFoundException)
+        {
+            detail = null;
+            notFound = true;
+            unreachable = false;
+        }
+        catch (Exception ex)
+        {
+            detail = null;
+            notFound = false;
+            unreachable = true;
+            await ExHandler.HandleAsync(ex, "加载 Pod 详情");
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+}

@@ -1,5 +1,7 @@
 using Bunit;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using MudBlazor;
 using MultiClusterMgmtSys.Common.Enums;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
@@ -62,13 +64,109 @@ public class ClusterOverviewCardTests
         var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterOverviewCard>(
             parameters => parameters.Add(p => p.Cluster, detail));
 
-        var revealButton = cut.FindComponents<MudButton>()
-            .First(b => b.Markup.Contains("显示密文"));
+        Assert.Contains("credential-redacted", cut.Markup);
+        Assert.DoesNotContain("token-secret-cluster", cut.Markup);
+
+        await RevealCredentialAsync(cut);
+
+        Assert.Contains("token-secret-cluster", cut.Markup);
+        Assert.Contains("隐藏", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Second_reveal_reuses_cached_credential()
+    {
+        await using var ctx = new BunitHost();
+        var auth = ctx.AddAuthorization();
+        auth.SetAuthorized("admin");
+        auth.SetRoles("Admin");
+        var harness = ctx.AddClusterStack();
+        var added = await harness.ClusterRepo.AddAsync(TestData.NewCluster("cached-cluster"));
+        var detail = Detail();
+        detail.Id = added.Id;
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterOverviewCard>(
+            parameters => parameters.Add(p => p.Cluster, detail));
+
+        await RevealCredentialAsync(cut);
+
+        var hideButton = cut.FindComponents<MudButton>().First(b => b.Markup.Contains("隐藏"));
+        await cut.InvokeAsync(() => hideButton.Instance.OnClick.InvokeAsync());
+        cut.WaitForState(() => cut.FindAll(".credential-redacted").Count == 1);
+
+        await harness.ClusterRepo.DeleteAsync(added.Id);
+
+        await RevealCredentialAsync(cut);
+
+        Assert.Contains("token-cached-cluster", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Copy_button_writes_raw_credential_to_clipboard()
+    {
+        await using var ctx = new BunitHost();
+        var auth = ctx.AddAuthorization();
+        auth.SetAuthorized("admin");
+        auth.SetRoles("Admin");
+        var harness = ctx.AddClusterStack();
+        var added = await harness.ClusterRepo.AddAsync(TestData.NewCluster("copy-cluster"));
+        var detail = Detail();
+        detail.Id = added.Id;
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterOverviewCard>(
+            parameters => parameters.Add(p => p.Cluster, detail));
+
+        await RevealCredentialAsync(cut);
+
+        var copyButton = cut.FindComponents<MudButton>().First(b => b.Markup.Contains("复制"));
+        await cut.InvokeAsync(() => copyButton.Instance.OnClick.InvokeAsync());
+
+        ctx.JSInterop.VerifyInvoke("navigator.clipboard.writeText");
+        var snackbar = Mock.Get(ctx.Services.GetRequiredService<ISnackbar>());
+        snackbar.Verify(s => s.Add("已复制到剪贴板", Severity.Success, null, null), Times.Once);
+    }
+
+    [Fact]
+    public async Task Reveal_failure_returns_to_redacted_state()
+    {
+        await using var ctx = new BunitHost();
+        var auth = ctx.AddAuthorization();
+        auth.SetAuthorized("admin");
+        auth.SetRoles("Admin");
+        var harness = ctx.AddClusterStack();
+        var added = await harness.ClusterRepo.AddAsync(TestData.NewCluster("broken-cluster"));
+        var detail = Detail();
+        detail.Id = added.Id;
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterOverviewCard>(
+            parameters => parameters.Add(p => p.Cluster, detail));
+
+        harness.Db.Dispose();
+
+        var revealButton = cut.FindComponents<MudButton>().First(b => b.Markup.Contains("查看凭据"));
         await cut.InvokeAsync(() => revealButton.Instance.OnClick.InvokeAsync());
 
-        cut.WaitForState(() => cut.Markup.Contains("隐藏密文"));
-        Assert.Contains("Token", cut.Markup);
-        Assert.Contains("token-secret-cluster", cut.Markup);
+        Assert.Contains("credential-redacted", cut.Markup);
+        Assert.DoesNotContain("token-broken-cluster", cut.Markup);
+    }
+
+    [Fact]
+    public async Task No_credential_annex_without_connection_type()
+    {
+        await using var ctx = new BunitHost();
+        var auth = ctx.AddAuthorization();
+        auth.SetAuthorized("admin");
+        auth.SetRoles("Admin");
+        ctx.AddClusterStack();
+
+        var detail = Detail();
+        detail.ConnectionType = null;
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterOverviewCard>(
+            parameters => parameters.Add(p => p.Cluster, detail));
+
+        Assert.DoesNotContain("credential-annex", cut.Markup);
+        Assert.DoesNotContain("查看凭据", cut.Markup);
     }
 
     [Fact]
@@ -83,7 +181,15 @@ public class ClusterOverviewCardTests
         var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterOverviewCard>(
             parameters => parameters.Add(p => p.Cluster, Detail()));
 
-        Assert.DoesNotContain("显示密文", cut.Markup);
+        Assert.DoesNotContain("查看凭据", cut.Markup);
+        Assert.DoesNotContain("credential-annex", cut.Markup);
+    }
+
+    private static async Task RevealCredentialAsync(IRenderedComponent<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterOverviewCard> cut)
+    {
+        var revealButton = cut.FindComponents<MudButton>().First(b => b.Markup.Contains("查看凭据"));
+        await cut.InvokeAsync(() => revealButton.Instance.OnClick.InvokeAsync());
+        cut.WaitForState(() => cut.FindAll(".credential-viewer").Count == 1);
     }
 }
 

@@ -19,7 +19,7 @@ public class ConfigMapServiceTests : IDisposable
     public ConfigMapServiceTests()
     {
         service = new ConfigMapService(
-            harness.ClusterRepo, harness.Audit, NullLogger<ConfigMapService>.Instance, K8sMocks.Factory(k8s));
+            harness.ClusterRepo, harness.Audit, NullLogger<ConfigMapService>.Instance, K8sMocks.Cache(k8s));
     }
 
     public void Dispose() => harness.Dispose();

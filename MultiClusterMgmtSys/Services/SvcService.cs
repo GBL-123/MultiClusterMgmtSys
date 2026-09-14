@@ -15,7 +15,7 @@ namespace MultiClusterMgmtSys.Services;
 /// Service(服务)管理服务:基于所选集群的凭据实时读写 k8s Service。
 /// 支持按命名空间查询、详情、后端地址(EndpointSlice,老集群回退传统 Endpoints)、YAML 创建/更新与删除,成功后写审计。
 /// </summary>
-public class SvcService(ClusterRepository repo, AuditService auditService, ILogger<SvcService> logger, Func<KubernetesClientConfiguration, IKubernetes> clientFactory)
+public class SvcService(ClusterRepository repo, AuditService auditService, ILogger<SvcService> logger, IClusterClientCache clientCache)
 {
     private readonly ClusterRepository repo = repo;
 
@@ -28,8 +28,7 @@ public class SvcService(ClusterRepository repo, AuditService auditService, ILogg
     {
         var entity = await repo.GetByIdAsync(clusterId)
             ?? throw new NotFoundException($"集群 {clusterId} 不存在");
-        var config = KubernetesClientConfig.Build(entity);
-        using var client = clientFactory(config);
+        var client = clientCache.GetOrCreate(entity);
         try
         {
             var nsList = await client.CoreV1.ListNamespaceAsync();
@@ -47,8 +46,7 @@ public class SvcService(ClusterRepository repo, AuditService auditService, ILogg
     {
         var entity = await repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
-        var config = KubernetesClientConfig.Build(entity);
-        using var client = clientFactory(config);
+        var client = clientCache.GetOrCreate(entity);
         try
         {
             var list = request.Namespace is null
@@ -68,8 +66,7 @@ public class SvcService(ClusterRepository repo, AuditService auditService, ILogg
     {
         var entity = await repo.GetByIdAsync(request.ClusterId);
         if (entity is null) return null;
-        var config = KubernetesClientConfig.Build(entity);
-        using var client = clientFactory(config);
+        var client = clientCache.GetOrCreate(entity);
         try
         {
             var svc = await client.CoreV1.ReadNamespacedServiceAsync(request.Name, request.Namespace);
@@ -88,8 +85,7 @@ public class SvcService(ClusterRepository repo, AuditService auditService, ILogg
     {
         var entity = await repo.GetByIdAsync(request.ClusterId);
         if (entity is null) return new();
-        var config = KubernetesClientConfig.Build(entity);
-        using var client = clientFactory(config);
+        var client = clientCache.GetOrCreate(entity);
         var labelSelector = $"{SvcMappingExtensions.EndpointSliceServiceLabel}={request.Name}";
         try
         {
@@ -138,8 +134,7 @@ public class SvcService(ClusterRepository repo, AuditService auditService, ILogg
     {
         var entity = await repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
-        var config = KubernetesClientConfig.Build(entity);
-        using var client = clientFactory(config);
+        var client = clientCache.GetOrCreate(entity);
         try
         {
             await client.CoreV1.DeleteNamespacedServiceAsync(request.Name, request.Namespace);
@@ -158,8 +153,7 @@ public class SvcService(ClusterRepository repo, AuditService auditService, ILogg
     {
         var entity = await repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
-        var config = KubernetesClientConfig.Build(entity);
-        using var client = clientFactory(config);
+        var client = clientCache.GetOrCreate(entity);
         V1Service deserialized;
         try
         {
@@ -208,8 +202,7 @@ public class SvcService(ClusterRepository repo, AuditService auditService, ILogg
     {
         var entity = await repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
-        var config = KubernetesClientConfig.Build(entity);
-        using var client = clientFactory(config);
+        var client = clientCache.GetOrCreate(entity);
         V1Service body;
         try
         {

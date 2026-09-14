@@ -73,6 +73,10 @@ public class ClusterNodeDetailViewModel
     /// <summary>节点系统信息(架构/内核/运行时等)。</summary>
     public NodeSystemInfoViewModel SystemInfo { get; set; } = new();
 
+    // YAML
+    /// <summary>节点原始 YAML 文本(KubernetesYaml 序列化),用于详情页 YAML 视图。</summary>
+    public string Yaml { get; set; } = "";
+
     // 上下文
     /// <summary>所属集群主键(页面导航上下文)。</summary>
     public int ClusterId { get; set; }

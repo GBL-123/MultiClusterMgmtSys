@@ -19,7 +19,7 @@ public class WorkloadServiceTests : IDisposable
     public WorkloadServiceTests()
     {
         service = new WorkloadService(
-            harness.ClusterRepo, harness.Audit, NullLogger<WorkloadService>.Instance, K8sMocks.Factory(k8s));
+            harness.ClusterRepo, harness.Audit, NullLogger<WorkloadService>.Instance, K8sMocks.Cache(k8s));
     }
 
     public void Dispose() => harness.Dispose();

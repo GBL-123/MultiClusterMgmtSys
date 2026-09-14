@@ -29,6 +29,8 @@ public class ClusterSyncBackgroundServiceTests : IDisposable
         services.AddLogging();
         services.AddSingleton(harness.Db);
         services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8s));
+        services.AddSingleton<IClusterClientCache>(new ClusterClientCache(
+            K8sMocks.Factory(k8s), NullLogger<ClusterClientCache>.Instance));
         services.AddScoped(_ => harness.ClusterRepo);
         services.AddScoped(_ => harness.Audit);
         services.AddScoped<ClusterNodeService>();

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using k8s.Models;
 using Moq;
+using MudBlazor;
 using MultiClusterMgmtSys.Common.Enums;
 using MultiClusterMgmtSys.Requests;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
@@ -39,7 +40,7 @@ public class WorkloadDetailPageTests
         };
 
     [Fact]
-    public async Task Deployment_detail_page_shows_status_and_yaml_tabs()
+    public async Task Deployment_detail_page_shows_yaml_default_and_status_cards()
     {
         await using var ctx = new BunitHost();
         AuthorizeAdmin(ctx);
@@ -53,7 +54,13 @@ public class WorkloadDetailPageTests
         {
             Metadata = new V1ObjectMeta { Name = "web", NamespaceProperty = "app", Uid = "uid-detail" },
             Spec = new V1DeploymentSpec { Replicas = 2 },
-            Status = new V1DeploymentStatus { ReadyReplicas = 2, UpdatedReplicas = 2, ObservedGeneration = 1 }
+            Status = new V1DeploymentStatus
+            {
+                ReadyReplicas = 2,
+                UpdatedReplicas = 2,
+                ObservedGeneration = 1,
+                Conditions = [new V1DeploymentCondition { Type = "Available", Status = "True" }]
+            }
         });
 
         var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Pages.DeploymentDetail>(
@@ -62,10 +69,26 @@ public class WorkloadDetailPageTests
                 .Add(p => p.Namespace, "app")
                 .Add(p => p.Name, "web"));
 
-        cut.WaitForState(() => cut.Markup.Contains("uid-detail"));
+        cut.WaitForState(() => cut.FindComponents<MudTabPanel>().Count == 2);
 
+        var tabs = cut.FindComponents<MudTabPanel>();
+        Assert.Equal("YAML", tabs[0].Instance.Text);
+        Assert.Equal("运行状态", tabs[1].Instance.Text);
+        Assert.Equal(0, cut.FindComponent<MudTabs>().Instance.ActivePanelIndex);
+        Assert.Single(cut.FindComponents<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadYamlViewCard>());
+
+        cut.FindAll(".mud-tab")[1].Click();
+        cut.WaitForState(() =>
+            cut.FindComponents<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadConditionsCard>().Count == 1);
+
+        Assert.Single(cut.FindComponents<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadStatusCard>());
+        Assert.Single(cut.FindComponents<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadConditionsCard>());
+        var statusIndex = cut.Markup.IndexOf(">运行状态<", StringComparison.Ordinal);
+        var conditionsIndex = cut.Markup.IndexOf(">条件<", StringComparison.Ordinal);
+        Assert.True(statusIndex >= 0 && conditionsIndex > statusIndex);
+        Assert.Contains("uid-detail", cut.Markup);
         Assert.Contains("副本数", cut.Markup);
-        Assert.Contains("YAML", cut.Markup);
+        Assert.Contains("Available", cut.Markup);
     }
 
     [Fact]

@@ -14,7 +14,7 @@ namespace MultiClusterMgmtSys.Services;
 /// ConfigMap(配置)管理服务:基于所选集群的凭据实时读写 k8s ConfigMap。
 /// 支持按命名空间查询、YAML 创建/更新(仅覆盖 data/binaryData)、删除,成功后写审计。
 /// </summary>
-public class ConfigMapService(ClusterRepository repo, AuditService auditService, ILogger<ConfigMapService> logger, Func<KubernetesClientConfiguration, IKubernetes> clientFactory)
+public class ConfigMapService(ClusterRepository repo, AuditService auditService, ILogger<ConfigMapService> logger, IClusterClientCache clientCache)
 {
     private readonly ClusterRepository repo = repo;
 
@@ -27,8 +27,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
     {
         var entity = await repo.GetByIdAsync(clusterId)
             ?? throw new NotFoundException($"集群 {clusterId} 不存在");
-        var config = KubernetesClientConfig.Build(entity);
-        using var client = clientFactory(config);
+        var client = clientCache.GetOrCreate(entity);
         try
         {
             var nsList = await client.CoreV1.ListNamespaceAsync();
@@ -46,8 +45,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
     {
         var entity = await repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
-        var config = KubernetesClientConfig.Build(entity);
-        using var client = clientFactory(config);
+        var client = clientCache.GetOrCreate(entity);
         try
         {
             var list = request.Namespace is null
@@ -67,8 +65,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
     {
         var entity = await repo.GetByIdAsync(request.ClusterId);
         if (entity is null) return null;
-        var config = KubernetesClientConfig.Build(entity);
-        using var client = clientFactory(config);
+        var client = clientCache.GetOrCreate(entity);
         try
         {
             var cm = await client.CoreV1.ReadNamespacedConfigMapAsync(request.Name, request.Namespace);
@@ -87,8 +84,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
     {
         var entity = await repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
-        var config = KubernetesClientConfig.Build(entity);
-        using var client = clientFactory(config);
+        var client = clientCache.GetOrCreate(entity);
         try
         {
             await client.CoreV1.DeleteNamespacedConfigMapAsync(request.Name, request.Namespace);
@@ -107,8 +103,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
     {
         var entity = await repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
-        var config = KubernetesClientConfig.Build(entity);
-        using var client = clientFactory(config);
+        var client = clientCache.GetOrCreate(entity);
         V1ConfigMap deserialized;
         try
         {
@@ -141,8 +136,7 @@ public class ConfigMapService(ClusterRepository repo, AuditService auditService,
     {
         var entity = await repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
-        var config = KubernetesClientConfig.Build(entity);
-        using var client = clientFactory(config);
+        var client = clientCache.GetOrCreate(entity);
         V1ConfigMap body;
         try
         {

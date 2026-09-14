@@ -162,4 +162,75 @@ public class K8sDisplayTextTests
     [Fact]
     public void NodeCountText_appends_unit()
         => Assert.Equal("3 台", K8sDisplayText.NodeCountText(3));
+
+    [Theory]
+    [InlineData("Running", "运行中", "online")]
+    [InlineData("Pending", "等待中", "unknown")]
+    [InlineData("Succeeded", "已完成", "unknown")]
+    [InlineData("Failed", "失败", "offline")]
+    [InlineData("Unknown", "未知", "unknown")]
+    [InlineData("Weird", "Weird", "unknown")]
+    [InlineData(null, "", "unknown")]
+    public void Pod_phase_helpers_map_known_values_and_fallback(string? phase, string expectedText, string expectedClass)
+    {
+        Assert.Equal(expectedText, K8sDisplayText.PodStatusText(phase, null));
+        Assert.Equal(phase ?? "", K8sDisplayText.PodStatusRaw(phase, null));
+        Assert.Equal(expectedClass, K8sDisplayText.PodStatusCssClass(phase, null));
+    }
+
+    [Fact]
+    public void Pod_running_with_crash_loop_backoff_shows_reason_and_offline()
+    {
+        Assert.Equal("崩溃循环", K8sDisplayText.PodStatusText("Running", "CrashLoopBackOff"));
+        Assert.Equal("CrashLoopBackOff", K8sDisplayText.PodStatusRaw("Running", "CrashLoopBackOff"));
+        Assert.Equal("offline", K8sDisplayText.PodStatusCssClass("Running", "CrashLoopBackOff"));
+    }
+
+    [Theory]
+    [InlineData("OOMKilled", "内存不足被杀")]
+    [InlineData("ImagePullBackOff", "镜像拉取失败")]
+    [InlineData("Evicted", "已驱逐")]
+    public void Pod_container_reason_maps_known_values(string reason, string expected)
+        => Assert.Equal(expected, K8sDisplayText.PodContainerReasonText(reason));
+
+    [Fact]
+    public void Pod_container_reason_unregistered_falls_back_to_raw()
+        => Assert.Equal("SomeNewReason", K8sDisplayText.PodStatusText("Running", "SomeNewReason"));
+
+    [Theory]
+    [InlineData("Running", null, null, "Running", "运行中", "online")]
+    [InlineData("Waiting", "CrashLoopBackOff", null, "CrashLoopBackOff", "崩溃循环", "offline")]
+    [InlineData("Waiting", "PodInitializing", null, "PodInitializing", "初始化中", "unknown")]
+    [InlineData("Terminated", null, "Completed", "Completed", "已完成", "unknown")]
+    [InlineData("Terminated", null, "OOMKilled", "OOMKilled", "内存不足被杀", "offline")]
+    [InlineData("Mystery", null, null, "Mystery", "Mystery", "unknown")]
+    public void Pod_container_state_helpers_resolve_reason_priority(
+        string state,
+        string? waitingReason,
+        string? terminatedReason,
+        string expectedRaw,
+        string expectedText,
+        string expectedClass)
+    {
+        Assert.Equal(expectedRaw, K8sDisplayText.PodContainerStateRaw(state, waitingReason, terminatedReason));
+        Assert.Equal(expectedText, K8sDisplayText.PodContainerStateText(state, waitingReason, terminatedReason));
+        Assert.Equal(expectedClass, K8sDisplayText.PodContainerStateCssClass(state, waitingReason, terminatedReason));
+    }
+
+    [Theory]
+    [InlineData("Guaranteed", "保证级")]
+    [InlineData("Burstable", "突发级")]
+    [InlineData("BestEffort", "尽力级")]
+    [InlineData("Custom", "Custom")]
+    public void Pod_qos_class_maps_known_values(string qos, string expected)
+        => Assert.Equal(expected, K8sDisplayText.PodQosClassText(qos));
+
+    [Theory]
+    [InlineData("Ready", "就绪")]
+    [InlineData("Initialized", "已初始化")]
+    [InlineData("PodScheduled", "已调度")]
+    [InlineData("ContainersReady", "容器就绪")]
+    [InlineData("New", "New")]
+    public void Pod_condition_type_maps_known_values(string type, string expected)
+        => Assert.Equal(expected, K8sDisplayText.PodConditionTypeText(type));
 }

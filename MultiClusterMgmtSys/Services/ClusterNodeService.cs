@@ -15,7 +15,7 @@ namespace MultiClusterMgmtSys.Services;
 /// 与 <see cref="ClusterService"/> 解耦，后者负责集群 CRUD 与连通性探测。
 /// 节点 IP 备注（<see cref="NodeIpRemark"/>）在读取时合并进地址数据。
 /// </summary>
-public class ClusterNodeService(ClusterRepository repo, AuditService auditService, ILogger<ClusterNodeService> logger, Func<KubernetesClientConfiguration, IKubernetes> clientFactory)
+public class ClusterNodeService(ClusterRepository repo, AuditService auditService, ILogger<ClusterNodeService> logger, IClusterClientCache clientCache)
 {
     private readonly ClusterRepository repo = repo;
 
@@ -38,8 +38,7 @@ public class ClusterNodeService(ClusterRepository repo, AuditService auditServic
 
         var remarks = BuildRemarkLookup(entity);
 
-        var config = KubernetesClientConfig.Build(entity);
-        using var client = clientFactory(config);
+        var client = clientCache.GetOrCreate(entity);
         IList<V1Node> nodeItems;
         try
         {
@@ -74,8 +73,7 @@ public class ClusterNodeService(ClusterRepository repo, AuditService auditServic
 
         var remarks = BuildRemarkLookup(entity);
 
-        var config = KubernetesClientConfig.Build(entity);
-        using var client = clientFactory(config);
+        var client = clientCache.GetOrCreate(entity);
         V1Node node;
         try
         {
@@ -257,7 +255,10 @@ public class ClusterNodeService(ClusterRepository repo, AuditService auditServic
             Annotations = node.Metadata?.Annotations?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? new(),
 
             // 系统信息
-            SystemInfo = MapSystemInfo(node.Status?.NodeInfo)
+            SystemInfo = MapSystemInfo(node.Status?.NodeInfo),
+
+            // YAML
+            Yaml = KubernetesYaml.Serialize(node)
         };
 
         // 上下文

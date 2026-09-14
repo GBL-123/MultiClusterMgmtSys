@@ -1,7 +1,9 @@
 ﻿using k8s;
 using k8s.Autorest;
 using k8s.Models;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
+using MultiClusterMgmtSys.Services;
 
 namespace MultiClusterMgmtSys.Tests.TestInfrastructure;
 
@@ -12,6 +14,9 @@ public static class K8sMocks
 
     public static Func<KubernetesClientConfiguration, IKubernetes> Factory(Mock<IKubernetes> mock)
         => _ => mock.Object;
+
+    public static IClusterClientCache Cache(Mock<IKubernetes> mock)
+        => new ClusterClientCache(Factory(mock), NullLogger<ClusterClientCache>.Instance);
 
     public static (Mock<IKubernetes> Client, Func<KubernetesClientConfiguration, IKubernetes> Factory) LazyFailing()
     {
@@ -524,6 +529,29 @@ public static class K8sMocks
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(ex);
 
+    // ---- core/v1: Event ----
+
+    public static void SetupListEvents(this Mock<IKubernetes> mock, params Corev1Event[] items)
+        => mock.Setup(x => x.CoreV1.ListEventForAllNamespacesWithHttpMessagesAsync(
+                It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<int?>(), It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<bool?>(), It.IsAny<int?>(), It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HttpOperationResponse<Corev1EventList>
+            {
+                Body = new Corev1EventList { Items = items.ToList() }
+            });
+
+    public static void SetupListEventsThrows(this Mock<IKubernetes> mock, Exception ex)
+        => mock.Setup(x => x.CoreV1.ListEventForAllNamespacesWithHttpMessagesAsync(
+                It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<int?>(), It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<bool?>(), It.IsAny<int?>(), It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(ex);
+
     // ---- apps/v1: Deployment ----
 
     public static void SetupListDeployments(this Mock<IKubernetes> mock, params V1Deployment[] items)
@@ -992,6 +1020,116 @@ public static class K8sMocks
                 It.Is<string>(n => n == name), It.Is<string>(n => n == ns),
                 It.IsAny<V1DeleteOptions?>(), It.IsAny<string?>(), It.IsAny<int?>(),
                 It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(ex);
+
+    public static V1ContainerState PodStateRunning()
+        => new() { Running = new V1ContainerStateRunning { StartedAt = DateTime.UtcNow.AddHours(-2) } };
+
+    public static V1ContainerState PodStateWaiting(string reason)
+        => new() { Waiting = new V1ContainerStateWaiting { Reason = reason } };
+
+    public static V1ContainerState PodStateTerminated(string reason, int exitCode = 0, DateTime? finishedAt = null)
+        => new() { Terminated = new V1ContainerStateTerminated { Reason = reason, ExitCode = exitCode, FinishedAt = finishedAt ?? DateTime.UtcNow.AddMinutes(-1) } };
+
+    public static V1Pod NewPod(
+        string name,
+        string ns,
+        string phase = "Running",
+        string nodeName = "node-1",
+        string podIp = "10.1.2.3",
+        Action<V1Pod>? customize = null)
+    {
+        var pod = new V1Pod
+        {
+            Metadata = new V1ObjectMeta { Name = name, NamespaceProperty = ns },
+            Spec = new V1PodSpec { NodeName = nodeName },
+            Status = new V1PodStatus
+            {
+                Phase = phase,
+                PodIP = podIp,
+                StartTime = DateTime.UtcNow.AddHours(-2),
+                ContainerStatuses =
+                [
+                    new V1ContainerStatus
+                    {
+                        Name = "app",
+                        Ready = true,
+                        RestartCount = 0,
+                        Image = "nginx:1.0",
+                        State = PodStateRunning()
+                    }
+                ]
+            }
+        };
+        customize?.Invoke(pod);
+        return pod;
+    }
+
+    public static void SetupListPods(this Mock<IKubernetes> mock, params V1Pod[] pods)
+        => mock.Setup(x => x.CoreV1.ListPodForAllNamespacesWithHttpMessagesAsync(
+                It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<int?>(), It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<bool?>(), It.IsAny<int?>(), It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HttpOperationResponse<V1PodList> { Body = new V1PodList { Items = pods.ToList() } });
+
+    public static void SetupListPodsThrows(this Mock<IKubernetes> mock, Exception ex)
+        => mock.Setup(x => x.CoreV1.ListPodForAllNamespacesWithHttpMessagesAsync(
+                It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<int?>(), It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<bool?>(), It.IsAny<int?>(), It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(ex);
+
+    public static void SetupListNamespacedPods(this Mock<IKubernetes> mock, string ns, params V1Pod[] pods)
+        => mock.Setup(x => x.CoreV1.ListNamespacedPodWithHttpMessagesAsync(
+                It.Is<string>(n => n == ns),
+                It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<int?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<bool?>(),
+                It.IsAny<int?>(), It.IsAny<bool?>(), It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HttpOperationResponse<V1PodList> { Body = new V1PodList { Items = pods.ToList() } });
+
+    public static void SetupListNamespacedPodsThrows(this Mock<IKubernetes> mock, string ns, Exception ex)
+        => mock.Setup(x => x.CoreV1.ListNamespacedPodWithHttpMessagesAsync(
+                It.IsAny<string?>(),
+                It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<int?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<bool?>(),
+                It.IsAny<int?>(), It.IsAny<bool?>(), It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(ex);
+
+    public static void SetupListNamespacedPodsBySelector(this Mock<IKubernetes> mock, string ns, string labelSelector, params V1Pod[] pods)
+        => mock.Setup(x => x.CoreV1.ListNamespacedPodWithHttpMessagesAsync(
+                It.Is<string>(n => n == ns),
+                It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.Is<string?>(s => s == labelSelector), It.IsAny<int?>(),
+                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<bool?>(),
+                It.IsAny<int?>(), It.IsAny<bool?>(), It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HttpOperationResponse<V1PodList> { Body = new V1PodList { Items = pods.ToList() } });
+
+    public static void SetupReadPod(this Mock<IKubernetes> mock, string name, string ns, V1Pod pod)
+        => mock.Setup(x => x.CoreV1.ReadNamespacedPodWithHttpMessagesAsync(
+                It.Is<string>(n => n == name),
+                It.Is<string>(n => n == ns),
+                It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HttpOperationResponse<V1Pod> { Body = pod });
+
+    public static void SetupReadPodThrows(this Mock<IKubernetes> mock, string name, string ns, Exception ex)
+        => mock.Setup(x => x.CoreV1.ReadNamespacedPodWithHttpMessagesAsync(
+                It.Is<string>(n => n == name),
+                It.Is<string>(n => n == ns),
+                It.IsAny<bool?>(),
                 It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(ex);

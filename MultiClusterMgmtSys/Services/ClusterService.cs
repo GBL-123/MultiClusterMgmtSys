@@ -15,7 +15,7 @@ namespace MultiClusterMgmtSys.Services;
 /// 集群信息服务:集群 CRUD、端点维护、连通性探测与状态刷新,以及带过滤/排序/分页的集群查询。
 /// 探测失败按优雅降级处理(状态置 Offline),不向调用方抛 K8s 异常。
 /// </summary>
-public class ClusterService(ClusterRepository repo, ClusterNodeService nodeService, AuditService auditService, ILogger<ClusterService> logger, Func<KubernetesClientConfiguration, IKubernetes> clientFactory)
+public class ClusterService(ClusterRepository repo, ClusterNodeService nodeService, AuditService auditService, ILogger<ClusterService> logger, IClusterClientCache clientCache)
 {
     private static readonly SemaphoreSlim syncGate = new(1, 1);
 
@@ -286,8 +286,7 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
         logger.LogInformation("Probe cluster {ClusterName} id={ClusterId}", cluster.Name, cluster.Id);
         try
         {
-            var config = KubernetesClientConfig.Build(cluster);
-            using var client = clientFactory(config);
+            var client = clientCache.GetOrCreate(cluster);
             var versionInfo = await client.Version.GetCodeAsync(cancellationToken);
             var nodeList = await client.CoreV1.ListNodeAsync(cancellationToken: cancellationToken);
 
@@ -296,7 +295,7 @@ public class ClusterService(ClusterRepository repo, ClusterNodeService nodeServi
             cluster.NodeCount = nodeList.Items.Count;
 
             if (string.IsNullOrEmpty(cluster.ApiServer))
-                cluster.ApiServer = config.Host;
+                cluster.ApiServer = KubernetesClientConfig.GetHost(cluster);
 
             cluster.LastCheckedAt = DateTime.UtcNow;
             logger.LogInformation("Probe succeeded id={ClusterId} status={Status} version={Version} nodes={NodeCount}",

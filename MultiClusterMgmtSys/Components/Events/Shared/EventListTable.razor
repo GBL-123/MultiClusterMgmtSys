@@ -1,0 +1,79 @@
+@using MultiClusterMgmtSys.ViewModels
+
+<MudTable T="EventListViewModel"
+          Items="@Items"
+          Hover="true"
+          FixedHeader="true"
+          Loading="Loading"
+          Class="events-table"
+          OnRowClick="OnRowClicked">
+    <HeaderContent>
+        <MudTh><MudTableSortLabel T="EventListViewModel" SortBy="@(x => x.Type)" SortLabel="Type">级别</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="EventListViewModel" SortBy="@(x => x.Reason)" SortLabel="Reason">原因</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="EventListViewModel" SortBy="@(x => x.InvolvedName)" SortLabel="InvolvedName">关联对象</MudTableSortLabel></MudTh>
+        <MudTh>消息</MudTh>
+        <MudTh><MudTableSortLabel T="EventListViewModel" SortBy="@(x => x.Count)" SortLabel="Count">次数</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="EventListViewModel" SortBy="@(x => x.OccurredAt)" SortLabel="OccurredAt">最近发生</MudTableSortLabel></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="级别">
+            <StatusBadge Text="@context.TypeText" CssClass="@context.TypeCssClass" Raw="@context.Type" />
+        </MudTd>
+        <MudTd DataLabel="原因"><span class="font-mono">@context.Reason</span></MudTd>
+        <MudTd DataLabel="关联对象">
+            <div class="event-object-cell">
+                @if (context.DetailRoute is not null)
+                {
+                    <span class="font-mono link-primary"
+                          @onclick:stopPropagation="true"
+                          @onclick="() => OnNavigateDetail.InvokeAsync(context.DetailRoute)">@context.InvolvedKind/@context.InvolvedName</span>
+                }
+                else
+                {
+                    <span class="font-mono">@context.InvolvedKind/@context.InvolvedName</span>
+                }
+                @if (!string.IsNullOrEmpty(context.InvolvedNamespace))
+                {
+                    <div class="event-object-ns font-mono">@context.InvolvedNamespace</div>
+                }
+            </div>
+        </MudTd>
+        <MudTd DataLabel="消息">
+            <TextTooltip Text="@context.Message">
+                <div class="event-message-cell font-mono">@context.Message</div>
+            </TextTooltip>
+        </MudTd>
+        <MudTd DataLabel="次数"><span class="font-mono">@context.CountText</span></MudTd>
+        <MudTd DataLabel="最近发生">
+            <TextTooltip Text="@context.OccurredAtAbsoluteText" Mono="true">
+                <span class="font-mono">@context.OccurredAtText</span>
+            </TextTooltip>
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager RowsPerPageString="每页条数：" InfoFormat="共 {all_items} 条" />
+    </PagerContent>
+    <LoadingContent>
+        <MudText Class="pa-4 font-mono mud-text-secondary">// 正在加载...</MudText>
+    </LoadingContent>
+    <NoRecordsContent>
+        <div class="empty-state">[ 暂无事件 ]</div>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<EventListViewModel> Items { get; set; } = new List<EventListViewModel>();
+
+    [Parameter]
+    public bool Loading { get; set; }
+
+    [Parameter]
+    public EventCallback<EventListViewModel> OnOpenDetail { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnNavigateDetail { get; set; }
+
+    private Task OnRowClicked(TableRowClickEventArgs<EventListViewModel> args)
+        => OnOpenDetail.InvokeAsync(args.Item);
+}

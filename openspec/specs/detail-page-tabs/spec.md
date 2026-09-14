@@ -2,7 +2,7 @@
 
 ## Purpose
 
-为集群、节点、工作负载与 ConfigMap 详情页提供统一的 tab 分页布局契约:工具栏、加载态与空态保持在 tab 区之外,tab 选择为页面局部状态(不进 URL),集合类 tab 标签携带等宽计数,以及键值表格长文本截断加点击展开查看的交互约定。
+为集群、节点、工作负载与 ConfigMap 详情页提供统一的 tab 分页布局契约:工具栏、加载态与空态保持在 tab 区之外,tab 选择为页面局部状态(不进 URL),tab 标签仅显示标题文字(不带计数),以及键值表格长文本截断加点击展开查看的交互约定。
 
 ## Requirements
 
@@ -49,24 +49,19 @@ Tab 选择 SHALL 为页面内局部状态(绑定 MudBlazor 的 `ActivePanelIndex
 - **WHEN** 用户点击另一个 tab
 - **THEN** 浏览器 URL 不变化,不产生导航记录,页面不重新发起数据加载
 
-### Requirement: Tab 标签携带计数
+### Requirement: Tab 标签不带计数
 
-当 tab 对应集合类数据时,tab 标签 SHALL 在标题旁以等宽字体(`.font-mono`)展示该项计数,如「集群端点 3」「节点 12」;计数为 0 时 SHALL 显示 `0` 而非隐藏。非集合类 tab(概览、条件、系统信息、YAML 等)SHALL NOT 带计数。
+详情页 tab 标签 SHALL 仅显示标题文字,SHALL NOT 在标签内展示集合项计数(如「集群端点 3」「节点 12」「键值 1」);集合条目数量 SHALL NOT 成为 tab 标签的一部分。
 
-#### Scenario: 集合类 tab 计数
+#### Scenario: 集合类 tab 无计数
 
 - **WHEN** 集群详情页渲染「集群端点」tab 标签
-- **THEN** 标签显示「集群端点」标题与等宽字体的端点数量
+- **THEN** 标签仅显示「集群端点」标题文字,不显示端点数量
 
-#### Scenario: 计数为零仍显示
+#### Scenario: 键值 tab 无计数
 
-- **WHEN** 集群未登记任何端点
-- **THEN** 「集群端点」tab 标签计数显示为 `0`
-
-#### Scenario: 非集合类 tab 无计数
-
-- **WHEN** 节点详情页渲染「条件」tab 标签
-- **THEN** 标签仅显示标题文字,无计数后缀
+- **WHEN** ConfigMap 详情页渲染「键值」tab 标签
+- **THEN** 标签仅显示「键值」标题文字,不显示键值对数量
 
 ### Requirement: 键值视图长文本截断与展开查看
 

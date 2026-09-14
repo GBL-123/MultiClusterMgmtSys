@@ -51,13 +51,8 @@
             <MudTabPanel Text="YAML">
                 <ConfigMapYamlViewCard Yaml="@detail.Yaml" />
             </MudTabPanel>
-            <MudTabPanel>
-                <TabContent>
-                    <span>键值&nbsp;<span class="font-mono">@detail.Data.Count</span></span>
-                </TabContent>
-                <ChildContent>
-                    <ConfigMapDataViewCard Data="@detail.Data" />
-                </ChildContent>
+            <MudTabPanel Text="键值">
+                <ConfigMapDataViewCard Data="@detail.Data" />
             </MudTabPanel>
         </MudTabs>
     }

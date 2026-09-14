@@ -20,7 +20,7 @@ public class ClusterNodeServiceTests : IDisposable
     public ClusterNodeServiceTests()
     {
         service = new ClusterNodeService(
-            harness.ClusterRepo, harness.Audit, NullLogger<ClusterNodeService>.Instance, K8sMocks.Factory(k8s));
+            harness.ClusterRepo, harness.Audit, NullLogger<ClusterNodeService>.Instance, K8sMocks.Cache(k8s));
     }
 
     public void Dispose() => harness.Dispose();
@@ -119,6 +119,8 @@ public class ClusterNodeServiceTests : IDisposable
         var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("detail-src"));
         k8s.SetupReadNode("n1", new V1Node
         {
+            ApiVersion = "v1",
+            Kind = "Node",
             Metadata = new V1ObjectMeta
             {
                 Name = "n1",
@@ -171,6 +173,8 @@ public class ClusterNodeServiceTests : IDisposable
         Assert.Equal("禁止调度", detail.Taints[0].EffectText);
         Assert.Equal("prod", detail.Labels["env"]);
         Assert.Equal("v", detail.Annotations["k"]);
+        Assert.Contains("name: n1", detail.Yaml);
+        Assert.Contains("kind: Node", detail.Yaml);
         var addr = detail.Addresses.Single();
         Assert.Equal("10.0.0.5", addr.Address);
         Assert.Equal("内网 IP", addr.TypeText);

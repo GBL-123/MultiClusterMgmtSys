@@ -16,6 +16,7 @@ public class CreateWorkloadDialogTests
     private static void RegisterWorkloads(BunitHost ctx, Mock<k8s.IKubernetes> k8s, ServiceHarness harness)
     {
         ctx.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8s));
+        ctx.AddClientCache();
         ctx.Services.AddScoped(_ => harness.ClusterRepo);
         ctx.Services.AddScoped<WorkloadService>();
         ctx.Services.AddScoped(_ => harness.Audit);

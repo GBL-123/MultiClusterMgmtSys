@@ -39,6 +39,7 @@
         <WorkloadDetailToolbar ClusterId="@ClusterId"
                                Kind="@Kind"
                                Name="@Name"
+                               Namespace="@Namespace"
                                Detail="@detail"
                                Processing="@processing"
                                OnRefresh="LoadAsync"
@@ -51,11 +52,14 @@
                  Elevation="0"
                  Rounded="false"
                  TabPanelsClass="detail-tabs-panels">
-            <MudTabPanel Text="运行状态">
-                <WorkloadStatusCard Detail="@detail" />
-            </MudTabPanel>
             <MudTabPanel Text="YAML">
                 <WorkloadYamlViewCard Yaml="@detail.Yaml" />
+            </MudTabPanel>
+            <MudTabPanel Text="运行状态">
+                <MudStack Spacing="3">
+                    <WorkloadStatusCard Detail="@detail" />
+                    <WorkloadConditionsCard Detail="@detail" />
+                </MudStack>
             </MudTabPanel>
         </MudTabs>
     }

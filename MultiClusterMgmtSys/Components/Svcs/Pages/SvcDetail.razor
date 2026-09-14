@@ -54,32 +54,22 @@
             <MudTabPanel Text="YAML">
                 <SvcYamlViewCard Yaml="@detail.Yaml" />
             </MudTabPanel>
-            <MudTabPanel>
-                <TabContent>
-                    <span>端口&nbsp;<span class="font-mono">@detail.Ports.Count</span></span>
-                </TabContent>
-                <ChildContent>
-                    <SvcPortTable Ports="@detail.Ports" />
-                </ChildContent>
+            <MudTabPanel Text="端口">
+                <SvcPortTable Ports="@detail.Ports" />
             </MudTabPanel>
-            <MudTabPanel>
-                <TabContent>
-                    <span>后端端点 (Endpoints)&nbsp;<span class="font-mono">@detail.Endpoints.Count</span></span>
-                </TabContent>
-                <ChildContent>
-                    @if (detail.EndpointsLoadFailed)
-                    {
-                        <div class="empty-state">[ 加载 Endpoints 失败 ]</div>
-                    }
-                    else if (detail.Endpoints.Count == 0)
-                    {
-                        <div class="empty-state">[ 暂无后端 ]</div>
-                    }
-                    else
-                    {
-                        <SvcEndpointTable Endpoints="@detail.Endpoints" />
-                    }
-                </ChildContent>
+            <MudTabPanel Text="后端端点 (Endpoints)">
+                @if (detail.EndpointsLoadFailed)
+                {
+                    <div class="empty-state">[ 加载 Endpoints 失败 ]</div>
+                }
+                else if (detail.Endpoints.Count == 0)
+                {
+                    <div class="empty-state">[ 暂无后端 ]</div>
+                }
+                else
+                {
+                    <SvcEndpointTable Endpoints="@detail.Endpoints" />
+                }
             </MudTabPanel>
         </MudTabs>
     }

@@ -4,25 +4,14 @@
 
 @inject ClusterService ClusterService
 @inject ISnackbar Snackbar
+@inject IJSRuntime JS
 @inject ExceptionPresenter ExHandler
 
-<MudCard Class="pa-4">
+<MudCard Class="@(state == CredentialState.Revealed ? "pa-4 credential-fill" : "pa-4")">
     <MudCardHeader>
         <CardHeaderContent>
             <MudText Typo="Typo.h6">概览</MudText>
         </CardHeaderContent>
-        <CardHeaderActions>
-            <AuthorizeView Roles="Admin">
-                <Authorized>
-                    <MudButton Variant="Variant.Text"
-                               Color="Color.Primary"
-                               Size="Size.Small"
-                               OnClick="ToggleSecret">
-                        @(showSecret ? "隐藏密文" : "显示密文")
-                    </MudButton>
-                </Authorized>
-            </AuthorizeView>
-        </CardHeaderActions>
     </MudCardHeader>
     <MudCardContent>
         <MudGrid Spacing="3">
@@ -68,35 +57,52 @@
         </MudGrid>
         <AuthorizeView Roles="Admin">
             <Authorized>
-                @if (showSecret && editForSecret is not null)
+                @if (Cluster.ConnectionType is not null)
                 {
-                    <MudDivider Class="my-3" />
-                    @if (editForSecret.ConnectionType == ConnectionType.KubeConfig)
-                    {
-                        <MudTextField @bind-Value="editForSecret.KubeConfig"
-                                      Label="KubeConfig"
-                                      ReadOnly="true"
-                                      Lines="6"
-                                      InputType="@(showSecretContent ? InputType.Text : InputType.Password)"
-                                      Adornment="Adornment.End"
-                                      AdornmentIcon="@(showSecretContent ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
-                                      OnAdornmentClick="@(() => showSecretContent = !showSecretContent)"
-                                      Variant="Variant.Outlined"
-                                      Margin="Margin.Dense" />
-                    }
-                    else
-                    {
-                        <MudTextField @bind-Value="editForSecret.Token"
-                                      Label="Token"
-                                      ReadOnly="true"
-                                      Lines="2"
-                                      InputType="@(showSecretContent ? InputType.Text : InputType.Password)"
-                                      Adornment="Adornment.End"
-                                      AdornmentIcon="@(showSecretContent ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
-                                      OnAdornmentClick="@(() => showSecretContent = !showSecretContent)"
-                                      Variant="Variant.Outlined"
-                                      Margin="Margin.Dense" />
-                    }
+                    <div class="credential-annex">
+                        <div class="credential-annex-head">
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                                连接凭据 · @Cluster.ConnectionTypeText (@Cluster.ConnectionTypeRawText)
+                            </MudText>
+                            <div class="d-flex align-center">
+                                @if (state == CredentialState.Revealed)
+                                {
+                                    <MudButton Variant="Variant.Text"
+                                               Color="Color.Primary"
+                                               Size="Size.Small"
+                                               StartIcon="@Icons.Material.Filled.ContentCopy"
+                                               OnClick="CopyCredential">
+                                        复制
+                                    </MudButton>
+                                    <MudButton Variant="Variant.Text"
+                                               Size="Size.Small"
+                                               StartIcon="@Icons.Material.Filled.VisibilityOff"
+                                               OnClick="HideCredential">
+                                        隐藏
+                                    </MudButton>
+                                }
+                                else
+                                {
+                                    <MudButton Variant="Variant.Text"
+                                               Color="Color.Primary"
+                                               Size="Size.Small"
+                                               StartIcon="@Icons.Material.Filled.Visibility"
+                                               Disabled="state == CredentialState.Loading"
+                                               OnClick="RevealCredential">
+                                        查看凭据
+                                    </MudButton>
+                                }
+                            </div>
+                        </div>
+                        @if (state == CredentialState.Revealed)
+                        {
+                            <div class="credential-viewer font-mono">@CredentialValue</div>
+                        }
+                        else
+                        {
+                            <div class="credential-redacted font-mono">@(state == CredentialState.Loading ? "// 正在加载..." : "// 密文已隐藏 · 仅管理员可见")</div>
+                        }
+                    </div>
                 }
             </Authorized>
         </AuthorizeView>
@@ -107,17 +113,24 @@
     [Parameter]
     public ClusterDetailViewModel Cluster { get; set; } = default!;
 
-    private bool showSecret;
-
-    private bool showSecretContent;
+    private CredentialState state = CredentialState.Redacted;
 
     private ClusterEditViewModel? editForSecret;
 
-    private async Task ToggleSecret()
+    private string CredentialValue => editForSecret?.ConnectionType == ConnectionType.KubeConfig
+        ? editForSecret.KubeConfig ?? ""
+        : editForSecret?.Token ?? "";
+
+    private async Task RevealCredential()
     {
-        showSecret = !showSecret;
-        if (showSecret && editForSecret is null)
+        if (state == CredentialState.Loading)
         {
+            return;
+        }
+
+        if (editForSecret is null)
+        {
+            state = CredentialState.Loading;
             try
             {
                 editForSecret = await ClusterService.GetClusterForEditAsync(Cluster.Id);
@@ -125,12 +138,42 @@
             catch (Exception ex)
             {
                 await ExHandler.HandleAsync(ex, "加载密文");
-                showSecret = false;
+            }
+
+            if (editForSecret is null)
+            {
+                state = CredentialState.Redacted;
+                return;
             }
         }
-        if (!showSecret)
+
+        state = CredentialState.Revealed;
+    }
+
+    private void HideCredential()
+    {
+        state = CredentialState.Redacted;
+    }
+
+    private async Task CopyCredential()
+    {
+        try
         {
-            showSecretContent = false;
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", CredentialValue);
+            Snackbar.Add("已复制到剪贴板", Severity.Success);
         }
+        catch (JSException ex)
+        {
+            await ExHandler.HandleAsync(ex, "复制");
+        }
+    }
+
+    private enum CredentialState
+    {
+        Redacted,
+
+        Loading,
+
+        Revealed
     }
 }

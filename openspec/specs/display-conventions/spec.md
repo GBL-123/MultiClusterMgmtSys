@@ -24,6 +24,7 @@
 - 账号角色:`Admin` → 管理员、`Member` → 成员
 - 命名空间阶段:`Active` → 在线、`Terminating` → 未知
 - 集群连接方式:`Kubeconfig` → 配置文件、`Token` → 访问令牌
+- 事件类型:`Normal` → 正常、`Warning` → 警告
 
 #### Scenario: 节点状态双语展示
 - **WHEN** 节点状态为 `Ready`
@@ -33,6 +34,10 @@
 #### Scenario: Service 类型双语展示
 - **WHEN** Service 类型为 `NodePort`
 - **THEN** 类型单元格主行显示「节点端口」,次行显示等宽字体的 `NodePort`
+
+#### Scenario: 事件类型双语展示
+- **WHEN** 事件类型为 `Warning`
+- **THEN** 徽章主行显示「警告」,次行显示等宽字体的 `Warning`
 
 #### Scenario: 未知枚举回退
 - **WHEN** 节点角色为未登记的 `custom-role`

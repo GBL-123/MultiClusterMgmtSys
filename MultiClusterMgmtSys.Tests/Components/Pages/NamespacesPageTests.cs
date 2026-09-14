@@ -266,4 +266,18 @@ public class NamespacesPageTests
 
         await Task.CompletedTask;
     }
+
+    [Fact]
+    public async Task Drawer_workload_group_is_titled_workload_management()
+    {
+        await using var ctx = new BunitHost();
+        AuthorizeAdmin(ctx);
+
+        var cut = ctx.Render<Drawer>(parameters => parameters.Add(p => p.IsOpen, true));
+
+        var group = cut.FindComponents<MudNavGroup>().Single(g => g.Instance.Title!.StartsWith("工作负载"));
+        Assert.Equal("工作负载管理", group.Instance.Title);
+
+        await Task.CompletedTask;
+    }
 }

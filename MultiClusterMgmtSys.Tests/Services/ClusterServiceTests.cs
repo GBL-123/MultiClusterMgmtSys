@@ -22,10 +22,10 @@ public class ClusterServiceTests : IDisposable
     public ClusterServiceTests()
     {
         var nodeService = new ClusterNodeService(
-            harness.ClusterRepo, harness.Audit, NullLogger<ClusterNodeService>.Instance, K8sMocks.Factory(k8s));
+            harness.ClusterRepo, harness.Audit, NullLogger<ClusterNodeService>.Instance, K8sMocks.Cache(k8s));
         service = new ClusterService(
             harness.ClusterRepo, nodeService, harness.Audit,
-            NullLogger<ClusterService>.Instance, K8sMocks.Factory(k8s));
+            NullLogger<ClusterService>.Instance, K8sMocks.Cache(k8s));
     }
 
     public void Dispose() => harness.Dispose();
@@ -319,10 +319,10 @@ public class ClusterServiceTests : IDisposable
         var probeService = new ClusterService(
             harness.ClusterRepo,
             new ClusterNodeService(harness.ClusterRepo, harness.Audit, NullLogger<ClusterNodeService>.Instance,
-                config => { captured.Add(config); return k8s.Object; }),
+                new ClusterClientCache(config => { captured.Add(config); return k8s.Object; }, NullLogger<ClusterClientCache>.Instance)),
             harness.Audit,
             NullLogger<ClusterService>.Instance,
-            config => { captured.Add(config); return k8s.Object; });
+            new ClusterClientCache(config => { captured.Add(config); return k8s.Object; }, NullLogger<ClusterClientCache>.Instance));
 
         var tokenId = await SeedAsync("token-timeout");
         var kubeConfigCluster = TestData.NewCluster("kubeconfig-timeout");

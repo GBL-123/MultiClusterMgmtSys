@@ -27,6 +27,15 @@
             }
             刷新
         </MudButton>
+        @if (!string.IsNullOrWhiteSpace(Detail?.Selector))
+        {
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Copyright"
+                       OnClick="@(() => NavigationManager.NavigateTo($"/pods/{ClusterId}?labelSelector={Uri.EscapeDataString(Detail.Selector)}"))">
+                查看 Pod
+            </MudButton>
+        }
         <AuthorizeView Roles="Admin">
             <Authorized>
                 <MudButton Variant="Variant.Outlined"
@@ -76,6 +85,9 @@
 
     [Parameter]
     public string Name { get; set; } = "";
+
+    [Parameter]
+    public string Namespace { get; set; } = "";
 
     [Parameter]
     public WorkloadDetailViewModel? Detail { get; set; }

@@ -2,15 +2,15 @@
 
 Repo-specific guidance for OpenCode agents working in `MultiClusterMgmtSys`.
 
-## Current state (2026-09-13)
+## Current state (2026-09-15)
 
-`dotnet build MultiClusterMgmtSys.slnx` 0 错误;`dotnet test MultiClusterMgmtSys.Tests` 526/526 green(xunit.v3 4.0.0 + MTP,see Testing conventions);最新单份 cobertura 行覆盖率 **76.8%**。最近归档的 change:`node-detail-readability`(节点资源容量人类可读化、标签/注解纵向堆叠)、`namespace-management`、`optimize-cluster-refresh`、`align-node-list-page`、`align-node-filter-bar`(specs 已同步;`openspec/changes/` 当前无待实现 change)。
+`dotnet build MultiClusterMgmtSys.slnx` 0 错误;`dotnet test MultiClusterMgmtSys.Tests` 716/716 green(xunit.v3 4.0.0 + MTP,see Testing conventions);最新单份 cobertura 行覆盖率 **77.6%**(分支 68.3%)。最近归档的 change:`event-management`(事件管理页 `/events` + `EventService` + `RelativeTimeFormatter`)、`k8s-client-cache`(singleton `IClusterClientCache`,所有 K8s 服务改走缓存取客户端)、`node-detail-yaml-tab`、`cluster-credential-display`、`detail-ui-consistency`、`display-humanization`(全站 K8s 枚举「中文主行 + 英文次行」、计量人类可读化、统一 tooltip;新增 `openspec/specs/display-conventions`)、`node-detail-readability`、`namespace-management`、`optimize-cluster-refresh`、`align-node-list-page`、`align-node-filter-bar`(specs 已同步;`openspec/changes/` 当前无待实现 change)。
 
 ## Coverage 工具链 (覆盖率口径见 `openspec/specs/unit-testing`)
 
-- 收集:`dotnet test MultiClusterMgmtSys.Tests --coverage --coverage-output-format cobertura` → `TestResults/<guid>.cobertura.xml`(落**解决方案根**的 TestResults/);空报告 ≠ 工具故障(dotnet-coverage 动态仪器化,主程序集未被加载时为空)。
-- HTML 报告:`dotnet "<NuGet缓存>\reportgenerator\5.5.11\tools\net10.0\ReportGenerator.dll" -reports:"TestResults/<最新单份>.cobertura.xml" -targetdir:"coveragereport" -reporttypes:Html`(ReportGenerator 以 PackageReference 形态钉在测试 csproj)。`TestResults/`、`coveragereport/` 已 gitignore。
-- **口径以最新单份 cobertura 为准**:用 `TestResults/*.cobertura.xml` 通配符会把历史构建的报告合并成 MultiReport,重复计覆盖导致虚高——查数字时永远只喂最新一份。
+- **一键入口(首选)**:仓库根 `./coverage.ps1` = build → 直接执行测试 exe(`--coverage --coverage-output-format cobertura --coverage-output`,cobertura 固定落 `coverage/coverage.cobertura.xml`,无 GUID 名)→ ReportGenerator 5.5.11(硬编码 NuGet 缓存路径,csproj 升级版本时须同步脚本)生成 `coverage/report/`(Html;TextSummary)→ 解析 `Summary.txt` 主程序集行覆盖率做 ≥75% 门禁(`-Threshold` 可调;程序集行找不到/解析失败即 throw)。build/测试/报告任一失败即中止、不出报告;每轮整删重建 `coverage/`(已 gitignore)。**直接跑 exe 必须显式传 `--coverage-output-format cobertura`**——MTP 覆盖扩展不按文件名推断格式,缺省落二进制。
+- 手动调试路径(脚本不适用时才用):收集 `dotnet test MultiClusterMgmtSys.Tests --coverage --coverage-output-format cobertura` → `TestResults/<guid>.cobertura.xml`(落**解决方案根**的 TestResults/);报告 `dotnet "<NuGet缓存>\reportgenerator\5.5.11\tools\net10.0\ReportGenerator.dll" -reports:"TestResults/<最新单份>.cobertura.xml" -targetdir:"coveragereport" -reporttypes:Html`。空报告 ≠ 工具故障(dotnet-coverage 动态仪器化,主程序集未被加载时为空)。
+- **口径以最新单份 cobertura 为准**(仅手动路径适用):用 `TestResults/*.cobertura.xml` 通配符会把历史构建的报告合并成 MultiReport,重复计覆盖导致虚高——查数字时永远只喂最新一份;`coverage.ps1` 每轮单份固定文件名,天然无此问题。
 - 排除口径:`[ExcludeFromCodeCoverage]` 已打在 Program(partial class,顶层语句同文件)、IdentityComponentsEndpointRouteBuilderExtensions、App.razor、Routes.razor;`ChineseIdentityErrorDescriber` 不排除(有测试)。
 
 ## Stack
@@ -28,7 +28,8 @@ Repo-specific guidance for OpenCode agents working in `MultiClusterMgmtSys`.
 
 ```pwsh
 dotnet build MultiClusterMgmtSys.slnx       # 0 errors
-dotnet test MultiClusterMgmtSys.Tests       # 526 tests, all green (MTP)
+dotnet test MultiClusterMgmtSys.Tests       # 716 tests, all green (MTP)
+./coverage.ps1                              # 一键 UT + 覆盖率报告:716 tests 全绿 + 行覆盖门禁 75% → coverage/coverage.cobertura.xml + coverage/report/index.html(-Threshold 可调阈值,低于阈值 exit 1)
 dotnet run  --project MultiClusterMgmtSys                                    # http://localhost:5021
 dotnet run  --project MultiClusterMgmtSys --launch-profile https             # https://localhost:7081
 ```
@@ -42,12 +43,12 @@ Build gotcha: if `dotnet build` fails with MSB3021/MSB3026/MSB3027 (exe locked),
 - 测试项目 `MultiClusterMgmtSys.Tests/`,目录镜像主项目(`Services/`、`Common/`、`Data/`、`ViewModels/`、`Components/`)+ `TestInfrastructure/`(SqliteDbFactory、TestData、SeedUser、TestIdentity、TestHttpContext、K8sMocks、ServiceHarness、BunitHost、BunitServiceExtensions)。
 - **后端测试以服务为边界**:直接调 Service 公开方法,仓库经真实 SQLite 内存库(`SqliteDbFactory.CreateContext()`)覆盖;断言语义 = 业务异常类型 + 中文 UserMessage + 查询结果。
 - **K8s 服务可测**:`Func<KubernetesClientConfiguration, IKubernetes>` 工厂注入(Program.cs 注册真实工厂);测试用 Moq mock 接口的 `*WithHttpMessagesAsync` 方法(扩展方法的底层,签名用 `sigtool` 反查——k8s 19 的参数顺序与直觉不同),抛 `KubernetesException(new V1Status{Code=…})` 验证翻译链路。`K8sMocks.LazyFailing()` 返回惰性失败 mock(工厂调用不抛,真正走到 K8s 才失败);常用 setup 见 K8sMocks 的 `SetupListNodes/SetupGetVersion/SetupListDeployments/SetupListNamespaceObjects/…` 扩展。
-- **统一 10s 超时**:`ClusterServiceTests` 用捕获 `KubernetesClientConfiguration` 的工厂断言两种连接方式的 `HttpClientTimeout` 均为 10s——改超时值必须同步该测试(见 Architecture notes)。
+- **统一 10s 超时**:`ClusterServiceTests` 与 `ClusterClientCacheTests` 用捕获 `KubernetesClientConfiguration` 的工厂断言两种连接方式的 `HttpClientTimeout` 均为 10s——改超时值必须同步这两个测试(见 Architecture notes)。
 - **bUnit 只测"接线契约"**:`FindComponent<T>()` 取 MudBlazor 组件实例、触发公开事件/参数,断言自己组件的状态/渲染分支/自有 CSS 类(`.status-badge`/`.empty-state` 等);**禁止断言 `.mud-*` 内部 DOM**。bUnit 测试需要 `TimeProvider.System` + `JSRuntimeMode.Loose` + MudServices(BunitHost 已配);事件回调必须经 `cut.InvokeAsync(...)` 调度到 Dispatcher;异步数据(MudTable ServerData)用 `cut.WaitForState(...)` 等待。
 - **bUnit 2.x API(补充:此轮实测)**:`BunitContext`(不是 `TestContext`,也与 xunit.v3 的 `Xunit.TestContext` 撞名)、`Render<T>()`(不是 `RenderComponent`)、`AddAuthorization()`(不是 `AddTestAuthorization`)+ `SetAuthorized(name)`/`SetRoles("Admin")`;创建过 MudBlazor 组件的 ctx 用 `await using var ctx = ...` 释放 —— MudBlazor 的 KeyInterceptor/PointerEventsNone 服务仅实现 `IAsyncDisposable`,同步 `Dispose()` 会在测试逻辑已通过后抛异常;此类测试方法签名用 `async Task`。`BunitContext` 的 Services 在**首次 GetService 后冻结**,所有服务必须在首渲染前注册;对话框测试用 `ctx.Render<MudDialogProvider>()` + `ShowAsync<T>()` 流程;登录页级联 `HttpContext` 用 `AddCascadingValue(new DefaultHttpContext())`(按类型);需要 RendererInfo 的组件在**注册完服务后**调 `ctx.Renderer.SetRendererInfo(new RendererInfo("bunit", true))`。
 - **bUnit 交互硬坑(实测)**:① MudMenu 弹层由 JS 渲染,bUnit 中点击后菜单项不出现——菜单驱动的删除/批量改角色无法端到端驱动,改测直接按钮或退到服务层;② DOM `.Click()` 触发含 `await DialogService.ShowAsync(...).Result` 的处理器后,页面续体在调度队列里,需 `await provider.InvokeAsync(() => { })` 冲刷再轮询服务/审计落库,直接 `await dialogReference.Result` 可能死锁;③ 依赖 `MudForm.ValidateAsync()` 的对话框提交流(EditGroupDialog/AccountEditDialog 等)在 bUnit 下不稳定,项目实践改为渲染断言 + 服务层覆盖提交逻辑。
-- **页面测试依赖栈**:`BunitServiceExtensions` 提供 `AddClusterStack`、`AddGroupAndSyncStack`、`AddWorkloadServices`、`AddNamespaceStack`,一次性注册页面所需服务(仍受"首次 GetService 后冻结"约束,必须在首渲染前调用)。
-- **MTP runner gotchas**(xunit.v3 4.0.0 + MTP v2,由根 `global.json` `test.runner` 启用):不要传 VSTest 时代参数 —— `--nologo` 会被测试应用拒绝(exit 5,且误导性报告为 "Zero tests ran",见 dotnet/sdk#55309);零执行测试 = exit 8;过滤用 MTP/xunit 语法(`--filter-class`/`--filter-trait`),不是 VSTest 的 `--filter` 表达式。测试数量基线:526。
+- **页面测试依赖栈**:`BunitServiceExtensions` 提供 `AddClusterStack`、`AddGroupAndSyncStack`、`AddWorkloadServices`、`AddNamespaceStack`、`AddEventStack`(K8s 服务统一经 `IClusterClientCache`,各栈内部已配 `AddClientCache`;YAML 模板用 `AddYamlTemplates`),一次性注册页面所需服务(仍受"首次 GetService 后冻结"约束,必须在首渲染前调用)。
+- **MTP runner gotchas**(xunit.v3 4.0.0 + MTP v2,由根 `global.json` `test.runner` 启用):不要传 VSTest 时代参数 —— `--nologo` 会被测试应用拒绝(exit 5,且误导性报告为 "Zero tests ran",见 dotnet/sdk#55309);零执行测试 = exit 8;过滤用 MTP/xunit 语法(`--filter-class`/`--filter-trait`),不是 VSTest 的 `--filter` 表达式。测试数量基线:667。
 - 主项目 `WarningsAsErrors` 含 `MUD0002`(MudBlazor 分析器)——组件 API 误用(如给无 `Value` 参数的组件 `@bind-Value`)会直接编译失败,不要用 `NoWarn` 绕过。
 - 验证:`dotnet build` 0 错误 + `dotnet test` 全绿。
 
@@ -74,8 +75,10 @@ Build gotcha: if `dotnet build` fails with MSB3021/MSB3026/MSB3027 (exe locked),
 
 ## Architecture notes
 
-- `Program.cs`: MudBlazor, Razor components (interactive server), Identity (cookie `MultiClusterMgmtSys.Auth`, 8h sliding, login `/login`, access-denied `/access-denied`, default redirect `/clusters`), `ApplicationDbContext` (SQLite), scoped services/repos (`ClusterRepository`, `GroupRepository`, `AuditLogRepository`, `AppSettingRepository`, `ClusterNodeService`, `ConfigMapService`, `SvcService`, `NamespaceService`, `WorkloadService`, `ClusterService`, `GroupService`, `AuditService`, `ClusterSelectionState`, `AuthService`, `AccountService`, `ClusterSyncSettingService`, `RedirectManager`, `ExceptionPresenter`, singleton `Func<KubernetesClientConfiguration, IKubernetes>` 工厂 + hosted `ClusterSyncBackgroundService`)。`ThemeManager` is **static** (see UI section) — not registered, never injected.
-- **K8s 调用统一超时**:所有服务经 `Services/KubernetesClientConfig.cs`(`internal static`,`InternalsVisibleTo` 对测试可见)构建 `KubernetesClientConfiguration` 并设 `HttpClientTimeout = 10s`,覆盖 kubeconfig 与 Token 两种连接方式(契约 `openspec/specs/kubernetes-call-timeout`)。新增 K8s 服务复用 `KubernetesClientConfig.Build(cluster)`,**不要**再复制私有 `BuildConfig`。
+- `Program.cs`: MudBlazor, Razor components (interactive server), Identity (cookie `MultiClusterMgmtSys.Auth`, 8h sliding, login `/login`, access-denied `/access-denied`, default redirect `/clusters`), `ApplicationDbContext` (SQLite), scoped services/repos (`ClusterRepository`, `GroupRepository`, `AuditLogRepository`, `AppSettingRepository`, `ClusterNodeService`, `ConfigMapService`, `SvcService`, `NamespaceService`, `EventService`, `WorkloadService`, `ClusterService`, `GroupService`, `AuditService`, `ClusterSelectionState`, `AuthService`, `AccountService`, `ClusterSyncSettingService`, `RedirectManager`, `ExceptionPresenter`, singleton `Func<KubernetesClientConfiguration, IKubernetes>` 工厂 + singleton `IClusterClientCache` + hosted `ClusterSyncBackgroundService`)。`ThemeManager` is **static** (see UI section) — not registered, never injected.
+- **K8s 调用统一超时**:所有服务经 `Services/KubernetesClientConfig.cs`(`internal static`,`InternalsVisibleTo` 对测试可见)构建 `KubernetesClientConfiguration` 并设 `HttpClientTimeout = 10s`,覆盖 kubeconfig 与 Token 两种连接方式(契约 `openspec/specs/kubernetes-call-timeout`)。新增 K8s 服务复用 `KubernetesClientConfig.Build(cluster)`,**不要**再复制私有 `BuildConfig`;按连接方式解析 API Server 地址用 `KubernetesClientConfig.GetHost(cluster)`(探测后回填用)。
+- **K8s 客户端缓存**:所有 K8s 服务(Cluster/Nodes/ConfigMaps/Svc/Workload/Namespace/Event)经 singleton `IClusterClientCache.GetOrCreate(cluster)` 取客户端(契约 `openspec/specs/k8s-client-cache`)——按集群 Id 缓存,凭据五项(连接方式/kubeconfig/ApiServer/Token/SkipTlsVerify)哈希指纹变化即重建,空闲 10 分钟驱逐并释放客户端。**不要**在服务里直接调工厂新建客户端或 `using var client` 释放(客户端跨调用共享,提前释放会破坏其他调用);缓存是唯一创建路径,`KubernetesClientConfig.Build` 只被缓存调用。测试 mock 注入仍走工厂(bUnit 栈的 `AddClientCache` 已配好)。
+- **事件管理**:`Components/Events/`(命名空间 `.Components.Events`,路由 `/events`、`/events/{ClusterId:int}`)+ `EventService`(只读、无审计);相对时间展示统一 `Common/Time/RelativeTimeFormatter.Format`(null→「—」,刚刚/N 分钟前/N 小时前/N 天前)。
 - **全量刷新有界并发 + 停机取消**:`ClusterService.RefreshAllClustersStatusAsync` 三段式(取数 → `Parallel.ForEachAsync` 最多 4 个并发探测 → 串行 `UpdateAsync` + 状态翻转审计),进度用 `Interlocked`,`CancellationToken` 由 `ClusterSyncBackgroundService` 透传;`ProbeAsync` 用 `catch (OperationCanceledException) when (token.IsCancellationRequested)` 区分停机取消与探测失败——取消不置 `Offline`、不写审计(契约 `cluster-scheduled-sync`)。
 - **YAML 模板**:`IYamlTemplateService`(singleton,`Services/YamlTemplateService.cs`)从 `wwwroot/templates/{category}/{name}.yaml` 读取新建对话框的初始 YAML(workload/configmap/service/namespace 四类);文件缺失或读取失败时回退内置最小骨架且只记日志、不抛异常。新增/调整模板直接放文件即可,无代码分支。
 - **Exception handling**: services throw `BusinessException` subclasses (中文 `UserMessage`); K8s 调用点 catch → `K8sExceptionMapper.Translate(ex, "操作")` 再抛;UI catch → `await ExHandler.HandleAsync(ex, "操作")`,不直出 `ex.Message`。详见下方 "Exception handling" 节。
@@ -89,10 +92,12 @@ Build gotcha: if `dotnet build` fails with MSB3021/MSB3026/MSB3027 (exe locked),
 - **`ThemeManager` is a static class** (`MultiClusterMgmtSys.Components.Common`): use `ThemeManager.Theme`, never `@inject` it or register it in DI. Light-only — **no dark mode**: no `PaletteDark`, no `IsDarkMode`, no toggle button, no `mcm-theme-dark-mode` localStorage. Do not reintroduce.
 - Tokens: paper `#F4F4F0`, surface `#FCFBF7`, ink `#111111`, hairline `#E2DED5`, secondary `#6E675C`, amber `#D97706` (brand/focus/progress only), radius 3px, elevation via hairlines + inset, not shadows.
 - Fonts self-hosted in `wwwroot/fonts/` (Space Grotesk variable + IBM Plex Mono 400/500/600, OFL): `.font-mono` for data columns (version/API/address/count/timestamp), `.font-grotesk` for display; body = system CJK stack. `tabular-nums` is global on `html`.
-- Status display = `<span class="status-badge online|offline|unknown"><span class="status-dot"></span>…</span>` (pale fill + deep text). Do **not** use filled `MudChip` for status. Mapping: Ready/Active→online, Offline/NotReady→offline, else unknown.
+- Status display = `Components/Common/StatusBadge.razor`(`Text` 中文 / `CssClass` online|offline|unknown / 可选 `Raw` 英文次行),内部渲染 `.status-badge` + `.status-dot` (pale fill + deep text)。Do **not** use filled `MudChip` for status. Mapping: Ready/Active→online, Offline/NotReady→offline, else unknown.
+- **双语展示约定**(契约 `display-conventions`):枚举值用 `Components/Common/StackedText.razor`(中文主行 + 等宽英文次行),映射统一走 `ViewModels/Mappings/K8sDisplayText.cs`(纯静态,未登记值回退原文;raw 字段保留供排序/过滤/提交),字段标签用「中文 (English)」;筛选下拉改双语标签时提交值必须保持 raw。Tooltip 统一 `TextTooltip.razor`(支持 `Mono`)或图标用 `TooltipIconButton.razor`,**禁止原生 `title=`**。
 - 行内图标操作统一用 `Components/Common/TooltipIconButton.razor`(`Icon`/`Text`/`Color`/`Class`/`Disabled`/`OnClick`;`Text` 同时作为 tooltip 与 `aria-label`,点击自动收起 tooltip)。按钮忙碌态加 `Class="icon-busy"`(原地旋转图标,不撑动行高),别在按钮里塞 `MudProgressCircular`。
 - Name links use `.link-primary` (amber, hover underline) — not `Color="Color.Primary"` + permanent underline.
 - Full-height pages (YAML view/edit): page `MudStack` needs `Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;"`, then `flex: 1 1 auto; min-height: 0` down the chain (same pattern as `.clusters-table` / `.mud-table-container`). Do **not** use `calc(100vh)` offsets.
+- 列表页表格类命名 `{feature}-table`(`.clusters-table`/`.namespaces-table`/…)且**必须登记进 app.css 的 flex-fill 规则组**(本体、`.mud-table-container`、`.mud-table-pagination` 三处选择器)——漏登记的表格不会拉伸到与浏览器适配的高度(namespaces-table 曾漏,实测)。
 - **YAML view/edit cards use a plain `<textarea class="yaml-textarea">` inside `MudCard Class="pa-4 yaml-card"`**, NOT `MudTextField` with `Lines` — MudTextField multiline renders `.mud-input-control > .mud-input > textarea.mud-input-root` (specificity fights CSS, and removing `Lines` silently downgrades it to a single-line input). Bind via `value` + `@oninput`.
 - Empty states: `.empty-state` (mono dashed box `[ 暂无… ]`); table loading text `// 正在加载...` in `.font-mono`. Auth cards: `Elevation="0"` + `.auth-panel` hairline. Brand: `.brand-mark` amber square (28px; `.large` 40px on login/register) + `.appbar-subtitle` `MCM // CONTROL`.
 - **`MudDateRangePicker` 不能用 `@bind-Value`**——MudBlazor 9.9 该组件继承链上无 `Value` 参数,属性会被静默吞进 `UserAttributes`,选完日期不回写。必须 `DateRange="..."` + `DateRangeChanged="OnDateRangeChanged"` 显式绑定(ClusterFilterBar 是范本)。
@@ -111,9 +116,10 @@ Build gotcha: if `dotnet build` fails with MSB3021/MSB3026/MSB3027 (exe locked),
 - OpenSpec skills under `.opencode/skills/openspec-*`, commands under `.opencode/commands/opsx-*`; the repo uses an `openspec/` workflow (`changes/`, `changes/archive/`, `specs/`, `config.yaml`). Use the skills instead of hand-editing those folders.
 - `openspec/config.yaml` has only `schema: spec-driven`; the tech-stack `context:` block is commented-out placeholder.
 - `openspec/specs/cluster-query-layering/spec.md` is the contract for `ClusterPageQuery.GroupId` (null=no filter, `0`=ungrouped sentinel → repo translates to `WHERE GroupId IS NULL`, positive=equality) and the version filter sentinels (`VersionFilterSentinel.All` = `""`, `OnlyNull` = `"__null__"`). Must not drift from `Models/ClusterPageQuery.cs` + `Data/Repositories/ClusterRepository.cs`.
-- `openspec/specs/ui-theme/spec.md` is the design-system contract (tokens, fonts, status badges, AppBar/nav/table rules, dark-mode removal) — keep code consistent with it when touching UI.
+- `openspec/specs/ui-theme/spec.md` is the design-system contract (tokens, fonts, status badges, tooltip 视觉/触发统一, AppBar/nav/table rules, dark-mode removal) — keep code consistent with it when touching UI.
+- `openspec/specs/display-conventions/spec.md` 是全站展示契约(K8s 枚举中英双语、字段标签「中文 (English)」、单位人类可读化与原始值 tooltip、不翻译例外清单)——改展示前先读。
 - `openspec/specs/exception-handling/spec.md` 是异常契约(业务异常类型、K8s 翻译、服务日志、UI 提示规则、审计静默)——改异常逻辑前先看它。
-- `openspec/specs/kubernetes-call-timeout/spec.md`(统一 10s 超时与降级)与 `openspec/specs/namespace-management/spec.md` 是近期新增契约;其余 feature 契约在 `openspec/specs/` 下同名目录(`workload-management`、`service-management`、`accounts-page`、`audit-log`、`cluster-scheduled-sync`、`detail-page-tabs`、`node-detail-layout`、`nodes-page`、`node-ip-notes`、`configmaps-page`、`cluster-endpoints`、`cluster-detail`、`cluster-edit`、`clusters-group-navigation`、`service-contracts`、`code-style`、`unit-testing` 等);动对应 feature 前先读其 spec,行为以 spec 为准。`service-contracts` 是服务输入/输出/操作者上下文的契约范本。
+- `openspec/specs/kubernetes-call-timeout/spec.md`(统一 10s 超时与降级)、`openspec/specs/k8s-client-cache/spec.md`、`openspec/specs/event-management/spec.md`、`openspec/specs/namespace-management/spec.md` 与 `openspec/specs/display-conventions/spec.md` 是近期新增契约;其余 feature 契约在 `openspec/specs/` 下同名目录(`workload-management`、`service-management`、`accounts-page`、`audit-log`、`cluster-scheduled-sync`、`detail-page-tabs`、`node-detail-layout`、`nodes-page`、`node-ip-notes`、`configmaps-page`、`cluster-endpoints`、`cluster-detail`、`cluster-edit`、`clusters-group-navigation`、`service-contracts`、`code-style`、`unit-testing` 等);动对应 feature 前先读其 spec,行为以 spec 为准。`service-contracts` 是服务输入/输出/操作者上下文的契约范本。
 - OpenSpec `tasks.md` files use `- [ ]`/`- [x]` checkboxes that the apply skill parses — preserve this exact format.
 
 ## Conventions to preserve
@@ -132,7 +138,7 @@ Build gotcha: if `dotnet build` fails with MSB3021/MSB3026/MSB3027 (exe locked),
 - **豁免**:框架类型返回值(`IdentityResult`/`SignInResult`)、裸 `List<string>` 下拉数据(`GetAvailableVersionsAsync`/`GetNamespacesAsync`)、`AuditService.LogAsync`(内部审计)、`IProgress` 进度回调。
 - **操作者上下文**:服务需要当前用户(用户名/ID/角色)时,注入 `IHttpContextAccessor` 从 `HttpContext.User` 获取(如 `AccountService`、`AuthService`),**前端不得传 `currentUserId`/`currentUserName` 参数**;取不到身份且为安全判断前提时抛 `PermissionException`。
 - **服务层禁前端框架类型**:`Services/` 与 `Data/Repositories/` 签名不得出现 MudBlazor 类型(`TableState`/`DateRange` 等);分页/排序/过滤并入 `*QueryRequest`(对齐 `ClusterQueryRequest` 范本)。`MudTable` 的 `TableState` 在组件边界翻译成 Request 字段(见 `AccountTable`/`AuditLogs` 的 `LoadData`)。
-- **目录归属**:`Requests/` = 输入类(含输入编辑行 `NodeIpNoteEditItem`/`ClusterEndpointEditItem`);`ViewModels/` = 展示输出类;`Models/` = 其余(纯前端状态 `NodeListFilter`、哨兵 `VersionFilterSentinel`)。
+- **目录归属**:`Requests/` = 输入类(含输入编辑行 `NodeIpNoteEditItem`/`ClusterEndpointEditItem`);`ViewModels/` = 展示输出类;`Models/` = 其余(纯前端状态 `NodeListFilter`/`SvcListFilter`/`EventListFilter`、下拉选项 `EventKindOption`、哨兵 `VersionFilterSentinel`)。
 
 ## Code style
 

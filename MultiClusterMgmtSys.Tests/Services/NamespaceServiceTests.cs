@@ -19,7 +19,7 @@ public class NamespaceServiceTests : IDisposable
     public NamespaceServiceTests()
     {
         service = new NamespaceService(
-            harness.ClusterRepo, harness.Audit, NullLogger<NamespaceService>.Instance, K8sMocks.Factory(k8s));
+            harness.ClusterRepo, harness.Audit, NullLogger<NamespaceService>.Instance, K8sMocks.Cache(k8s));
     }
 
     public void Dispose() => harness.Dispose();
