@@ -87,4 +87,31 @@ public class PodService(ClusterRepository repo, ILogger<PodService> logger, IClu
             throw K8sExceptionMapper.Translate(ex, "加载 Pod 详情");
         }
     }
+
+    /// <summary>读取单个容器的日志文本(行数上限与重启前语义透传 K8s);集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常,不写审计。</summary>
+    /// <param name="request">读取入参(集群 Id、命名空间、Pod 名、容器、行数、是否重启前)。</param>
+    public async Task<PodLogViewModel> GetPodLogAsync(PodLogRequest request)
+    {
+        var entity = await repo.GetByIdAsync(request.ClusterId)
+            ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
+        var client = clientCache.GetOrCreate(entity);
+        try
+        {
+            await using var stream = await client.CoreV1.ReadNamespacedPodLogAsync(
+                request.Name,
+                request.Namespace,
+                container: request.Container,
+                previous: request.Previous,
+                tailLines: request.TailLines);
+            using var reader = new StreamReader(stream);
+            var content = await reader.ReadToEndAsync();
+            return new PodLogViewModel { Content = content };
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "ReadPodLog failed clusterId={ClusterId} ns={Namespace} name={Name} container={Container} previous={Previous}",
+                request.ClusterId, request.Namespace, request.Name, request.Container, request.Previous);
+            throw K8sExceptionMapper.Translate(ex, "加载 Pod 日志");
+        }
+    }
 }

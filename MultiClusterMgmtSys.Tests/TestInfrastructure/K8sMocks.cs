@@ -4,6 +4,7 @@ using k8s.Models;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using MultiClusterMgmtSys.Services;
+using System.Text;
 
 namespace MultiClusterMgmtSys.Tests.TestInfrastructure;
 
@@ -1130,6 +1131,50 @@ public static class K8sMocks
                 It.Is<string>(n => n == name),
                 It.Is<string>(n => n == ns),
                 It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(ex);
+
+    public static void SetupReadPodLog(this Mock<IKubernetes> mock, string name, string ns, string content)
+        => mock.Setup(x => x.CoreV1.ReadNamespacedPodLogWithHttpMessagesAsync(
+                It.Is<string>(n => n == name),
+                It.Is<string>(n => n == ns),
+                It.IsAny<string?>(), It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<int?>(),
+                It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<int?>(), It.IsAny<string?>(),
+                It.IsAny<int?>(), It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HttpOperationResponse<Stream> { Body = new MemoryStream(Encoding.UTF8.GetBytes(content)), Request = new HttpRequestMessage() });
+
+    public static void SetupReadPodLogExact(
+        this Mock<IKubernetes> mock,
+        string name,
+        string ns,
+        string? container,
+        int tailLines,
+        bool previous,
+        string content)
+        => mock.Setup(x => x.CoreV1.ReadNamespacedPodLogWithHttpMessagesAsync(
+                It.Is<string>(n => n == name),
+                It.Is<string>(n => n == ns),
+                It.Is<string?>(c => c == container),
+                It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<int?>(),
+                It.IsAny<bool?>(),
+                It.Is<bool?>(p => p == previous),
+                It.IsAny<int?>(), It.IsAny<string?>(),
+                It.Is<int?>(t => t == tailLines),
+                It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HttpOperationResponse<Stream> { Body = new MemoryStream(Encoding.UTF8.GetBytes(content)), Request = new HttpRequestMessage() });
+
+    public static void SetupReadPodLogThrows(this Mock<IKubernetes> mock, string name, string ns, Exception ex)
+        => mock.Setup(x => x.CoreV1.ReadNamespacedPodLogWithHttpMessagesAsync(
+                It.Is<string>(n => n == name),
+                It.Is<string>(n => n == ns),
+                It.IsAny<string?>(), It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<int?>(),
+                It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<int?>(), It.IsAny<string?>(),
+                It.IsAny<int?>(), It.IsAny<bool?>(),
                 It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(ex);

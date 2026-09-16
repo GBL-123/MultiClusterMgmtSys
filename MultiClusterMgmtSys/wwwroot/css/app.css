@@ -292,6 +292,27 @@ html, body {
     font-weight: 600;
 }
 
+/* Pod logs: mono scroll viewer + quiet stamps (aligned with yaml/message viewer language) */
+.log-viewer {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    border: 1px solid #E2DED5;
+    border-radius: 3px;
+    padding: 12px;
+    margin: 0;
+    background: #FCFBF7;
+    color: #111111;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.log-asof,
+.log-line-count {
+    font-size: 12px;
+    white-space: nowrap;
+}
+
 /* Event detail dialog: mono message viewer + label/value grid */
 .event-message-viewer {
     max-height: 40vh;
@@ -462,14 +483,16 @@ a:focus-visible {
 
 /* YAML editors: flex-fill to available height (same pattern as .clusters-table) */
 /* YAML view/edit: plain textarea fills card height (MudTextField nesting fights specificity) */
-.yaml-card {
+.yaml-card,
+.log-card {
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
     min-height: 0;
 }
 
-    .yaml-card .mud-card-content {
+    .yaml-card .mud-card-content,
+    .log-card .mud-card-content {
         display: flex;
         flex-direction: column;
         flex: 1 1 auto;
@@ -481,6 +504,11 @@ a:focus-visible {
         flex: 1 1 auto;
         min-height: 0;
         display: flex;
+    }
+
+    .log-card .log-body {
+        flex: 1 1 auto;
+        min-height: 0;
     }
 
 .yaml-textarea {

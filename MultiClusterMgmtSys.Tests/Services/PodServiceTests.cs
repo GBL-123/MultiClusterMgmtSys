@@ -185,4 +185,90 @@ public class PodServiceTests : IDisposable
 
         Assert.Equal(new[] { "alpha", "zeta" }, namespaces);
     }
+
+    [Fact]
+    public async Task GetPodLogAsync_default_read_returns_content_and_line_count()
+    {
+        var clusterId = await SeedAsync();
+        k8s.SetupReadPodLog("web-1", "app", "line-1\nline-2\n");
+
+        var log = await service.GetPodLogAsync(new PodLogRequest(clusterId, "app", "web-1", null, 500, false));
+
+        Assert.Equal("line-1\nline-2\n", log.Content);
+        Assert.Equal(2, log.LineCount);
+        Assert.Empty(harness.Db.AuditLogs);
+    }
+
+    [Fact]
+    public async Task GetPodLogAsync_passes_container_tail_lines_and_previous()
+    {
+        var clusterId = await SeedAsync();
+        k8s.SetupReadPodLogExact("web-1", "app", "main", 1000, true, "previous log");
+
+        var log = await service.GetPodLogAsync(new PodLogRequest(clusterId, "app", "web-1", "main", 1000, true));
+
+        Assert.Equal("previous log", log.Content);
+        k8s.Verify(x => x.CoreV1.ReadNamespacedPodLogWithHttpMessagesAsync(
+            It.Is<string>(n => n == "web-1"),
+            It.Is<string>(n => n == "app"),
+            It.Is<string?>(c => c == "main"),
+            It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<int?>(),
+            It.IsAny<bool?>(),
+            It.Is<bool?>(p => p == true),
+            It.IsAny<int?>(), It.IsAny<string?>(),
+            It.Is<int?>(t => t == 1000),
+            It.IsAny<bool?>(),
+            It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetPodLogAsync_empty_log_has_zero_lines()
+    {
+        var clusterId = await SeedAsync();
+        k8s.SetupReadPodLog("web-1", "app", "");
+
+        var log = await service.GetPodLogAsync(new PodLogRequest(clusterId, "app", "web-1", null, 500, false));
+
+        Assert.Equal("", log.Content);
+        Assert.Equal(0, log.LineCount);
+    }
+
+    [Fact]
+    public async Task GetPodLogAsync_missing_cluster_throws_not_found()
+    {
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => service.GetPodLogAsync(new PodLogRequest(999, "app", "web-1", null, 500, false)));
+
+        k8s.Verify(x => x.CoreV1.ReadNamespacedPodLogWithHttpMessagesAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string?>(),
+            It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<int?>(),
+            It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<int?>(), It.IsAny<string?>(),
+            It.IsAny<int?>(), It.IsAny<bool?>(),
+            It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetPodLogAsync_not_found_translated()
+    {
+        var clusterId = await SeedAsync();
+        k8s.SetupReadPodLogThrows("ghost", "app", K8sMocks.K8sError(404));
+
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => service.GetPodLogAsync(new PodLogRequest(clusterId, "app", "ghost", null, 500, false)));
+    }
+
+    [Fact]
+    public async Task GetPodLogAsync_container_waiting_400_translated_with_api_message()
+    {
+        var clusterId = await SeedAsync();
+        k8s.SetupReadPodLogThrows("web-1", "app",
+            K8sMocks.K8sError(400, "container \"app\" in pod \"web-1\" is waiting to start: ContainerCreating"));
+
+        var ex = await Assert.ThrowsAsync<ValidationException>(
+            () => service.GetPodLogAsync(new PodLogRequest(clusterId, "app", "web-1", "app", 500, false)));
+
+        Assert.Contains("waiting to start", ex.UserMessage);
+    }
 }
