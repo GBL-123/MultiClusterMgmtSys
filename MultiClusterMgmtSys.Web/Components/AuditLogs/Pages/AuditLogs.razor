@@ -1,0 +1,96 @@
+@attribute [Authorize]
+@page "/audit-logs"
+
+@using MultiClusterMgmtSys.Application.Requests
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Web.Components.AuditLogs.Shared
+@using MultiClusterMgmtSys.Application.ViewModels
+
+@inject AuditService AuditSvc
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>审计日志</PageTitle>
+
+<MudStack Class="flex-auto">
+    <MudPaper Class="pa-4">
+        <MudStack>
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.h5">审计日志</MudText>
+                <MudSpacer />
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Inherit"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="RefreshTable">
+                    刷新
+                </MudButton>
+            </MudStack>
+
+            <AuditLogFilterBar Query="@query"
+                               ShowUserFilter="@isAdmin"
+                               OnFilterChanged="RefreshTable"
+                               OnReset="ResetTable" />
+        </MudStack>
+    </MudPaper>
+
+    <MudTable ServerData="LoadData"
+              Hover="true"
+              FixedHeader="true"
+              Class="audit-logs-table"
+              @ref="table">
+        <HeaderContent>
+            <MudTh><MudTableSortLabel T="AuditLogViewModel" SortBy="@(x => x.CreatedAt)" SortLabel="CreatedAt">时间</MudTableSortLabel></MudTh>
+            <MudTh>操作人</MudTh>
+            <MudTh>类别</MudTh>
+            <MudTh>操作</MudTh>
+            <MudTh>目标</MudTh>
+        </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="时间"><span class="font-mono">@context.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</span></MudTd>
+                <MudTd DataLabel="操作人"><span class="font-mono">@(string.IsNullOrEmpty(context.UserName) ? "—" : context.UserName)</span></MudTd>
+                <MudTd DataLabel="类别">@context.CategoryName</MudTd>
+                <MudTd DataLabel="操作">@context.ActionName</MudTd>
+                <MudTd DataLabel="目标">@context.Target</MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager RowsPerPageString="每页条数：" InfoFormat="共 {all_items} 条" />
+            </PagerContent>
+            <LoadingContent>
+                <MudText Class="pa-4 font-mono mud-text-secondary">// 正在加载...</MudText>
+            </LoadingContent>
+            <NoRecordsContent>
+                <div class="empty-state">[ 暂无审计日志 ]</div>
+            </NoRecordsContent>
+        </MudTable>
+</MudStack>
+
+@code {
+    private AuditLogQueryRequest query = new();
+
+    private bool isAdmin;
+
+    private MudTable<AuditLogViewModel> table = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        isAdmin = authState.User.IsInRole("Admin");
+    }
+
+    private Task RefreshTable() => table.ReloadServerData();
+
+    private Task ResetTable() => table.ReloadServerData();
+
+    private async Task<TableData<AuditLogViewModel>> LoadData(TableState state, CancellationToken _)
+    {
+        query.Page = state.Page > 0 ? state.Page + 1 : Math.Max(query.Page, 1);
+        query.PageSize = Math.Max(state.PageSize > 0 ? state.PageSize : query.PageSize, 1);
+        query.SortBy = string.IsNullOrEmpty(state.SortLabel) ? "CreatedAt" : state.SortLabel;
+        query.SortDescending = state.SortDirection != SortDirection.Ascending;
+        var result = await AuditSvc.GetPagedAsync(query);
+        return new TableData<AuditLogViewModel>
+        {
+            Items = result.Items,
+            TotalItems = result.Total
+        };
+    }
+}

@@ -36,14 +36,28 @@ Write-Host "== generate report =="
 & dotnet $rgDll "-reports:$coverageFile" "-targetdir:$(Join-Path $outDir 'report')" "-reporttypes:Html;TextSummary"
 if ($LASTEXITCODE -ne 0) { throw "report generation failed" }
 
-$summary = Join-Path $outDir "report\Summary.txt"
-$summaryText = Get-Content $summary -Raw
-$productLine = ($summaryText -split "`r?`n") | Where-Object { $_ -match "^\s*MultiClusterMgmtSys\s+[\d.,]+%" } | Select-Object -First 1
-if (-not $productLine) { throw "MultiClusterMgmtSys assembly row not found in Summary.txt" }
-$percentText = [regex]::Match($productLine, "(\d+[\.,]?\d*)%").Groups[1].Value
-$percent = [double]($percentText -replace ",", ".")
+Write-Host "== evaluate merged line coverage =="
+$assemblies = @('MultiClusterMgmtSys.Domain', 'MultiClusterMgmtSys.Application', 'MultiClusterMgmtSys.Infrastructure', 'MultiClusterMgmtSys.Web')
+[xml]$coverage = Get-Content $coverageFile -Raw
+$coveredLines = 0
+$coverableLines = 0
+$foundAssemblies = @()
+foreach ($package in $coverage.coverage.packages.package) {
+    if ($assemblies -notcontains [string]$package.name) { continue }
+    $foundAssemblies += [string]$package.name
+    foreach ($class in $package.classes.class) {
+        foreach ($line in $class.lines.line) {
+            $coverableLines++
+            if ([int]$line.hits -gt 0) { $coveredLines++ }
+        }
+    }
+}
+$missing = @($assemblies | Where-Object { $foundAssemblies -notcontains $_ })
+if ($missing.Count -gt 0) { throw ("assembly packages not found in cobertura report: " + ($missing -join ', ')) }
+if ($coverableLines -le 0) { throw "coverable lines not found in cobertura report" }
+$percent = [Math]::Round(100.0 * $coveredLines / $coverableLines, 1)
 
-Write-Host ("== MultiClusterMgmtSys line coverage: {0} % (threshold {1} %) ==" -f $percent, $Threshold)
+Write-Host ("== merged line coverage [Domain+Application+Infrastructure+Web]: {0} % ({1}/{2}), threshold {3} % ==" -f $percent, $coveredLines, $coverableLines, $Threshold)
 
 if ($percent -lt $Threshold) {
     Write-Host ("FAIL: coverage below threshold. Report: {0}" -f (Join-Path $outDir "report\index.html"))

@@ -36,12 +36,13 @@
 
 ```pwsh
 dotnet build MultiClusterMgmtSys.slnx
-dotnet test MultiClusterMgmtSys.Tests           # 667 个单元测试（xunit.v3 + Moq + bUnit，MTP 运行器）
-dotnet run --project MultiClusterMgmtSys          # http://localhost:5021
-dotnet run --project MultiClusterMgmtSys --launch-profile https   # https://localhost:7081
+dotnet test MultiClusterMgmtSys.Tests           # 727 个单元测试（xunit.v3 + Moq + bUnit，MTP 运行器）
+./coverage.ps1                                  # 一键 UT + 覆盖率报告（四程序集合并行覆盖门禁 75%）
+dotnet run --project MultiClusterMgmtSys.Web          # http://localhost:5021
+dotnet run --project MultiClusterMgmtSys.Web --launch-profile https   # https://localhost:7081
 ```
 
-覆盖率（HTML 报告输出到 `coveragereport/index.html`；**口径以最新单份 cobertura 为准**，通配符合并历史报告会重复计覆盖导致虚高）：
+覆盖率（推荐仓库根 `./coverage.ps1`：构建 → 带覆盖跑测试 → `coverage/report/index.html`，按 Domain+Application+Infrastructure+Web 四程序集合并行覆盖率做 75% 门禁；手动路径**口径以最新单份 cobertura 为准**，通配符合并历史报告会重复计覆盖导致虚高）：
 
 ```pwsh
 dotnet test MultiClusterMgmtSys.Tests --coverage --coverage-output-format cobertura
@@ -52,7 +53,7 @@ dotnet "$env:USERPROFILE\.nuget\packages\reportgenerator\5.5.11\tools\net10.0\Re
 
 首次启动自动完成：
 
-1. 在 `MultiClusterMgmtSys/db/` 下创建 SQLite 数据库（模型变更时需手动删除该目录重新生成，项目不使用 EF 迁移）
+1. 在 `MultiClusterMgmtSys.Web/db/` 下创建 SQLite 数据库（模型变更时需手动删除该目录重新生成，项目不使用 EF 迁移）
 2. 创建 `Admin` / `Member` 角色，并种子内置管理员
 
 **默认账号：`admin / Changeme_123`（首次登录后请立即修改）**
@@ -75,7 +76,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 ## 配置说明
 
-连接串与日志路径定义在 `MultiClusterMgmtSys/appsettings.json`，可按 ASP.NET Core 配置优先级用环境变量覆盖（Docker 部署即采用此方式）：
+连接串与日志路径定义在 `MultiClusterMgmtSys.Web/appsettings.json`，可按 ASP.NET Core 配置优先级用环境变量覆盖（Docker 部署即采用此方式）：
 
 ```json
 "ConnectionStrings": {
@@ -95,23 +96,25 @@ Logging__File__Path="/data/logs/app-.log"
 ## 目录结构
 
 ```
-├── MultiClusterMgmtSys/
-│   ├── Program.cs                 # 入口：DI 注册、Identity、EnsureCreated 与管理员种子
-│   ├── appsettings.json           # 连接串、Serilog 日志路径等配置
-│   ├── Components/                # Razor 组件（Pages/Shared/Layout + 按功能分目录）
+├── MultiClusterMgmtSys.Domain/        # 实体 / 枚举 / 业务异常（零依赖）
+├── MultiClusterMgmtSys.Application/   # 用例服务 + Requests / ViewModels / Models / Abstractions（端口）
+├── MultiClusterMgmtSys.Infrastructure/# EF/SQLite、Identity 持久化、K8s 客户端缓存、YAML 模板、定时同步
+├── MultiClusterMgmtSys.Web/           # 宿主 + Blazor UI
+│   ├── Program.cs                     # 组合根：AddApplicationServices / AddInfrastructure、认证、EnsureCreated 与管理员种子
+│   ├── appsettings.json               # 连接串、Serilog 日志路径等配置
+│   ├── Components/                    # Razor 组件（Pages/Shared/Layout + 按功能分目录）
 │   │   ├── Clusters/  Nodes/  Workloads/  Svcs/  Configmaps/  Namespaces/  Events/   # 各功能页与共享组件
 │   │   ├── AuditLogs/  Account/  Profile/  Auth/
-│   │   └── Common/                # 共享组件与服务（ThemeManager、ExceptionPresenter 等）
-│   ├── Services/                  # 业务服务（账号 / 集群 / 分组 / 节点 / 工作负载 / Service / ConfigMap / 命名空间 / 事件 / 审计 / 定时同步 / YAML 模板 / K8s 客户端缓存）
-│   ├── ViewModels/                # 页面绑定模型与映射扩展方法
-│   ├── Requests/  Models/         # 请求 / 查询对象
-│   ├── Common/  Data/             # 跨层枚举、异常体系；实体与仓库
-│   └── wwwroot/                   # 静态资源、自托管字体与新建对话框的 YAML 模板（templates/）
-├── MultiClusterMgmtSys.Tests/     # xUnit.v3 + Moq + bUnit 单元测试（镜像主项目目录 + TestInfrastructure）
-├── nginx/                         # nginx 配置与 TLS 证书（gitignored）
-├── docker-compose.prod.yml        # 生产部署编排（应用 + nginx）
-└── MultiClusterMgmtSys.slnx       # 解决方案（XML 格式）
+│   │   └── Common/                    # 共享组件与服务（ThemeManager、ExceptionPresenter 等）
+│   ├── Endpoints/                     # 额外 endpoint（Identity 退出等）
+│   └── wwwroot/                       # 静态资源、自托管字体与新建对话框的 YAML 模板（templates/）
+├── MultiClusterMgmtSys.Tests/         # xUnit.v3 + Moq + bUnit 单元测试（镜像四层目录 + TestInfrastructure + Architecture）
+├── nginx/                             # nginx 配置与 TLS 证书（gitignored）
+├── docker-compose.prod.yml            # 生产部署编排（应用 + nginx）
+└── MultiClusterMgmtSys.slnx           # 解决方案（XML 格式）
 ```
+
+依赖方向 `Domain <- Application <- Infrastructure <- Web`：Application 不引用 EF/Infrastructure/Web,Web 组件（`Components/` 命名空间）由架构测试保证不接触 Infrastructure/EF/实体/k8s 类型（契约 `openspec/specs/architecture-layering`）。
 
 ## 安全提示
 

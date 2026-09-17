@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using MudBlazor;
 using MudBlazor.Services;
-using MultiClusterMgmtSys.Components.Common;
+using MultiClusterMgmtSys.Web.Components.Common;
 
 namespace MultiClusterMgmtSys.Tests.TestInfrastructure;
 

@@ -3,4 +3,4 @@ services:
     image: ${DOCKER_REGISTRY-}multiclustermgmtsys:v1.0.0
     build:
       context: .
-      dockerfile: MultiClusterMgmtSys/Dockerfile
+      dockerfile: MultiClusterMgmtSys.Web/Dockerfile

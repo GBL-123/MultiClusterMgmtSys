@@ -8,13 +8,13 @@ Define the contract between the cluster UI/service layer and the clusters reposi
 
 ### Requirement: Repository consumes a sentinel-free query specification
 
-The clusters repository's paged query method SHALL accept a pure query-specification record whose fields are typed primitives or enums — not UI-layer request types and not string sentinels. The repository MUST NOT import any namespace under `MultiClusterMgmtSys.Components.*`.
+The clusters repository's paged query method SHALL accept a pure query-specification record whose fields are typed primitives or enums — not UI-layer request types and not string sentinels. The repository SHALL live in the `MultiClusterMgmtSys.Infrastructure` project (`Persistence` folder), which does not reference `MultiClusterMgmtSys.Web`; the reverse dependency from data layer to UI layer is therefore prevented by project references, not only by convention.
 
 The previous requirement is preserved except for the `GroupId` field: it gains a third state (`0` = ungrouped sentinel) that the repository MUST translate to a `WHERE GroupId IS NULL` predicate. All other clauses (NameContains, Status, Version, DateRange, SortBy, Page, PageSize) remain unchanged.
 
 #### Scenario: No reverse dependency from data layer to UI layer
-- **WHEN** the repository assembly is compiled
-- **THEN** `Data/Repositories/ClusterRepository.cs` has no `using MultiClusterMgmtSys.Components.Clusters.Requests;` and no reference to any `ClusterQueryRequest` type
+- **WHEN** the solution is compiled
+- **THEN** `Infrastructure/Persistence/ClusterRepository.cs` contains no `using MultiClusterMgmtSys.Web.*;` and no reference to any `ClusterQueryRequest` type, and `MultiClusterMgmtSys.Infrastructure` has no project reference to `MultiClusterMgmtSys.Web`
 
 #### Scenario: GroupId null means no filter
 - **WHEN** `ClusterPageQuery.GroupId` is `null`
@@ -46,7 +46,6 @@ The previous requirement is preserved except for the `GroupId` field: it gains a
 #### Scenario: Sort and paging assembly stays in repository
 - **WHEN** `ClusterPageQuery.SortBy` and `SortDescending` are provided
 - **THEN** the repository maps them to an `IOrderedQueryable` via the same switch over `ClusterSortField`, applies `ThenByDescending(c => c.Id)` as a stable tiebreaker, and clamps `Page`/`PageSize` to `Math.Max(value, 1)` before `Skip`/`Take`
-
 ### Requirement: Service translates UI request and table state into the repository query specification
 
 `ClusterService` SHALL own the translation from `ClusterQueryRequest` (UI DTO) and MudBlazor `TableState` into `ClusterPageQuery` (repository DTO). The translation MUST be the only site that knows about string sentinels, MudBlazor sort labels, and 0-based page indexing from the table component.

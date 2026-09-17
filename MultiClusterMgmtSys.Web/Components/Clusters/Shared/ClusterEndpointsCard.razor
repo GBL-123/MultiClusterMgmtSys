@@ -1,0 +1,111 @@
+@using MultiClusterMgmtSys.Application.ViewModels
+@using MultiClusterMgmtSys.Application.Services
+
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject IDialogService DialogService
+@inject ExceptionPresenter ExHandler
+
+<MudCard Class="pa-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">集群端点</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <AuthorizeView Roles="Admin">
+                <Authorized>
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Settings"
+                               OnClick="OpenManageDialog">
+                        管理
+                    </MudButton>
+                </Authorized>
+            </AuthorizeView>
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (Cluster.Endpoints.Count == 0)
+        {
+            <MudText Class="mud-text-secondary">未登记任何端点</MudText>
+            <AuthorizeView Roles="Admin">
+                <Authorized>
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Primary"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="OpenManageDialog"
+                               Class="mt-2">
+                        管理
+                    </MudButton>
+                </Authorized>
+            </AuthorizeView>
+        }
+        else
+        {
+            <MudTable T="ClusterEndpointViewModel"
+                      Items="@Cluster.Endpoints"
+                      Hover="true"
+                      Elevation="0">
+                <HeaderContent>
+                    <MudTh Style="width:100px;">类型</MudTh>
+                    <MudTh Style="width:42%;">地址</MudTh>
+                    <MudTh Style="width:42%;">备注</MudTh>
+                    <MudTh Style="width:48px;"></MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="类型">
+                        <MudChip T="string" Size="Size.Small">@context.KindText</MudChip>
+                    </MudTd>
+                    <MudTd DataLabel="地址">
+                        <MudText Style="font-family: monospace;">@context.Value</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="备注">@(context.Note ?? "—")</MudTd>
+                    <MudTd>
+                        <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                       Size="Size.Small"
+                                       aria-label="复制到剪贴板"
+                                       OnClick="@(() => CopyToClipboard(context.Value))" />
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public ClusterDetailViewModel Cluster { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnEndpointsChanged { get; set; }
+
+    private async Task OpenManageDialog()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large, FullWidth = true };
+        var parameters = new DialogParameters<ClusterEndpointsDialog>
+        {
+            { d => d.ClusterId, Cluster.Id }
+        };
+        var dialog = await DialogService.ShowAsync<ClusterEndpointsDialog>("管理端点", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await OnEndpointsChanged.InvokeAsync();
+        }
+    }
+
+    private async Task CopyToClipboard(string value)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", value);
+            Snackbar.Add("已复制到剪贴板", Severity.Success);
+        }
+        catch (JSException ex)
+        {
+            await ExHandler.HandleAsync(ex, "复制");
+        }
+    }
+}

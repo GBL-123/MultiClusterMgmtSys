@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using MudBlazor;
-using MultiClusterMgmtSys.Common.Enums;
+using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Dialogs;
@@ -30,7 +30,7 @@ public class EditClusterDialogTests
 
         var provider = ctx.Render<MudDialogProvider>();
         var reference = await ctx.Services.GetRequiredService<IDialogService>()
-            .ShowAsync<MultiClusterMgmtSys.Components.Clusters.Shared.EditClusterDialog>(
+            .ShowAsync<MultiClusterMgmtSys.Web.Components.Clusters.Shared.EditClusterDialog>(
                 "编辑集群",
                 new MudBlazor.DialogParameters { { "ClusterId", added.Id } });
 
@@ -52,7 +52,7 @@ public class EditClusterDialogTests
 
         var provider = ctx.Render<MudDialogProvider>();
         var reference = await ctx.Services.GetRequiredService<IDialogService>()
-            .ShowAsync<MultiClusterMgmtSys.Components.Clusters.Shared.EditClusterDialog>(
+            .ShowAsync<MultiClusterMgmtSys.Web.Components.Clusters.Shared.EditClusterDialog>(
                 "编辑集群",
                 new MudBlazor.DialogParameters { { "ClusterId", added.Id } });
 

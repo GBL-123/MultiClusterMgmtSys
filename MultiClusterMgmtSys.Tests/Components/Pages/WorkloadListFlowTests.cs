@@ -5,10 +5,10 @@ using k8s;
 using k8s.Models;
 using Moq;
 using MudBlazor;
-using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Components.Common;
-using MultiClusterMgmtSys.Requests;
-using MultiClusterMgmtSys.Services;
+using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Web.Components.Common;
+using MultiClusterMgmtSys.Application.Requests;
+using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Pages;
@@ -41,7 +41,7 @@ public class WorkloadListFlowTests
             Status = new V1DeploymentStatus { ReadyReplicas = 2, UpdatedReplicas = 2, ObservedGeneration = 1 }
         };
 
-    private static async Task<(BunitHost Ctx, ServiceHarness Harness, Mock<k8s.IKubernetes> K8s, int ClusterId, IRenderedComponent<MultiClusterMgmtSys.Components.Workloads.Pages.Deployments> Cut)> RenderListAsync()
+    private static async Task<(BunitHost Ctx, ServiceHarness Harness, Mock<k8s.IKubernetes> K8s, int ClusterId, IRenderedComponent<MultiClusterMgmtSys.Web.Components.Workloads.Pages.Deployments> Cut)> RenderListAsync()
     {
         var ctx = new BunitHost();
         AuthorizeAdmin(ctx);
@@ -53,7 +53,7 @@ public class WorkloadListFlowTests
         k8s.SetupListNamespaces("app");
         k8s.SetupListDeployments(HealthyDeployment("web"));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Pages.Deployments>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Pages.Deployments>(
             parameters => parameters.Add(p => p.ClusterId, cluster.Id));
         cut.WaitForState(() => cut.Markup.Contains("web"));
         return (ctx, harness, k8s, cluster.Id, cut);

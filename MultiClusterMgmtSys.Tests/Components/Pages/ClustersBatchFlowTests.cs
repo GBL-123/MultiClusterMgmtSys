@@ -6,10 +6,10 @@ using k8s;
 using k8s.Models;
 using Moq;
 using MudBlazor;
-using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Components.Common;
-using MultiClusterMgmtSys.Requests;
-using MultiClusterMgmtSys.Services;
+using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Web.Components.Common;
+using MultiClusterMgmtSys.Application.Requests;
+using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Pages;
@@ -23,7 +23,7 @@ public class ClustersBatchFlowTests
         auth.SetRoles("Admin");
     }
 
-    private static async Task<(BunitHost Ctx, ServiceHarness Harness, int GroupId, IRenderedComponent<MultiClusterMgmtSys.Components.Clusters.Pages.Clusters> Cut)> RenderAsync()
+    private static async Task<(BunitHost Ctx, ServiceHarness Harness, int GroupId, IRenderedComponent<MultiClusterMgmtSys.Web.Components.Clusters.Pages.Clusters> Cut)> RenderAsync()
     {
         var ctx = new BunitHost();
         AuthorizeAdmin(ctx);
@@ -36,7 +36,7 @@ public class ClustersBatchFlowTests
         await harness.ClusterRepo.AddAsync(TestData.NewCluster("batch-cluster"));
         await harness.ClusterRepo.AddAsync(TestData.NewCluster("second-cluster"));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Pages.Clusters>();
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Pages.Clusters>();
         cut.WaitForState(() => cut.Markup.Contains("batch-cluster"));
         return (ctx, harness, group.Entity.Id, cut);
     }

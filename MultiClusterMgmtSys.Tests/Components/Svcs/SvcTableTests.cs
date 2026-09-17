@@ -1,7 +1,7 @@
 using Bunit;
 using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
-using MultiClusterMgmtSys.ViewModels;
+using MultiClusterMgmtSys.Application.ViewModels;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Svcs;
@@ -37,7 +37,7 @@ public class SvcListTableTests
         auth.SetAuthorized("admin");
         auth.SetRoles("Admin");
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Svcs.Shared.SvcListTable>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Svcs.Shared.SvcListTable>(
             parameters => parameters
                 .Add(p => p.Items, [Item("ingress-gw", type: "NodePort", ports: [Port(80, "8080", nodePort: 30080)], externalEntry: "*:30080")]));
 
@@ -60,7 +60,7 @@ public class SvcListTableTests
         {
             Port(80), Port(443), Port(8080), Port(9090), Port(9100)
         };
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Svcs.Shared.SvcListTable>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Svcs.Shared.SvcListTable>(
             parameters => parameters.Add(p => p.Items, [Item("many", ports: ports)]));
 
         Assert.Contains("+2", cut.Markup);
@@ -75,7 +75,7 @@ public class SvcListTableTests
         auth.SetAuthorized("admin");
         auth.SetRoles("Admin");
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Svcs.Shared.SvcListTable>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Svcs.Shared.SvcListTable>(
             parameters => parameters
                 .Add(p => p.Items, [Item("ext-dns", type: "ExternalName", clusterIP: "", externalEntry: "ext.db.io")]));
 
@@ -91,7 +91,7 @@ public class SvcListTableTests
         auth.SetAuthorized("admin");
         auth.SetRoles("Admin");
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Svcs.Shared.SvcListTable>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Svcs.Shared.SvcListTable>(
             parameters => parameters
                 .Add(p => p.Items, [Item("etcd-headless", clusterIP: "None")]));
 
@@ -106,7 +106,7 @@ public class SvcListTableTests
         auth.SetAuthorized("admin");
         auth.SetRoles("Admin");
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Svcs.Shared.SvcListTable>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Svcs.Shared.SvcListTable>(
             parameters => parameters.Add(p => p.Items, Array.Empty<SvcListViewModel>()));
 
         Assert.Contains("暂无服务", cut.Markup);
@@ -120,7 +120,7 @@ public class SvcListTableTests
         auth.SetAuthorized("admin");
         auth.SetRoles("Admin");
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Svcs.Shared.SvcListTable>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Svcs.Shared.SvcListTable>(
             parameters => parameters
                 .Add(p => p.Items, [Item("web")]));
 
@@ -143,7 +143,7 @@ public class SvcListTableTests
         auth.SetRoles("Admin");
 
         (string ns, string name)? navigated = null;
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Svcs.Shared.SvcListTable>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Svcs.Shared.SvcListTable>(
             parameters => parameters
                 .Add(p => p.Items, [Item("web")])
                 .Add(p => p.OnNavigateDetail, args => { navigated = args; return Task.CompletedTask; }));

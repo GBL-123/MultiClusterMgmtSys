@@ -2,6 +2,9 @@
   <Project Path="docker-compose.dcproj">
     <Build />
   </Project>
+  <Project Path="MultiClusterMgmtSys.Application/MultiClusterMgmtSys.Application.csproj" />
+  <Project Path="MultiClusterMgmtSys.Domain/MultiClusterMgmtSys.Domain.csproj" />
+  <Project Path="MultiClusterMgmtSys.Infrastructure/MultiClusterMgmtSys.Infrastructure.csproj" />
   <Project Path="MultiClusterMgmtSys.Tests/MultiClusterMgmtSys.Tests.csproj" Id="555d0ba6-5b23-4b1b-9385-3e4b1bfafb2a" />
-  <Project Path="MultiClusterMgmtSys/MultiClusterMgmtSys.csproj" />
+  <Project Path="MultiClusterMgmtSys.Web/MultiClusterMgmtSys.Web.csproj" />
 </Solution>

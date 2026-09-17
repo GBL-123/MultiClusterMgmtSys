@@ -1,0 +1,72 @@
+@using MultiClusterMgmtSys.Application.ViewModels
+
+<MudTable T="PodListViewModel"
+          Items="@Items"
+          Hover="true"
+          FixedHeader="true"
+          Loading="Loading"
+          Class="pods-table"
+          OnRowClick="OnRowClicked">
+    <HeaderContent>
+        <MudTh>状态</MudTh>
+        <MudTh><MudTableSortLabel T="PodListViewModel" SortBy="@(x => x.Name)" SortLabel="Name">Pod 名称</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="PodListViewModel" SortBy="@(x => x.Namespace)" SortLabel="Namespace">命名空间</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="PodListViewModel" SortBy="@(x => x.Restarts)" SortLabel="Restarts">重启</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="PodListViewModel" SortBy="@(x => x.NodeName)" SortLabel="NodeName">所在节点</MudTableSortLabel></MudTh>
+        <MudTh>IP</MudTh>
+        <MudTh><MudTableSortLabel T="PodListViewModel" SortBy="@(x => x.StartedAt)" SortLabel="StartedAt">启动时间</MudTableSortLabel></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="状态">
+            <StatusBadge Text="@context.StatusText" CssClass="@context.StatusCssClass" Raw="@context.StatusRaw" />
+        </MudTd>
+        <MudTd DataLabel="Pod 名称">
+            <span class="font-mono link-primary"
+                  @onclick:stopPropagation="true"
+                  @onclick="() => OnOpenDetail.InvokeAsync(context)">@context.Name</span>
+        </MudTd>
+        <MudTd DataLabel="命名空间"><span class="font-mono">@context.Namespace</span></MudTd>
+        <MudTd DataLabel="重启">
+            <span class="font-mono @(context.Restarts > 0 ? "pods-restart-warn" : "")">@context.Restarts</span>
+        </MudTd>
+        <MudTd DataLabel="所在节点"><span class="font-mono">@context.NodeName</span></MudTd>
+        <MudTd DataLabel="IP">
+            @if (string.IsNullOrEmpty(context.PodIp))
+            {
+                <span class="font-mono mud-text-secondary">—</span>
+            }
+            else
+            {
+                <span class="font-mono">@context.PodIp</span>
+            }
+        </MudTd>
+        <MudTd DataLabel="启动时间">
+            <TextTooltip Text="@context.StartedAtAbsoluteTooltip" Mono="true">
+                <span class="font-mono">@context.StartedAtText</span>
+            </TextTooltip>
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager RowsPerPageString="每页条数：" InfoFormat="共 {all_items} 条" />
+    </PagerContent>
+    <LoadingContent>
+        <MudText Class="pa-4 font-mono mud-text-secondary">// 正在加载...</MudText>
+    </LoadingContent>
+    <NoRecordsContent>
+        <div class="empty-state">[ 暂无 Pod ]</div>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<PodListViewModel> Items { get; set; } = new List<PodListViewModel>();
+
+    [Parameter]
+    public bool Loading { get; set; }
+
+    [Parameter]
+    public EventCallback<PodListViewModel> OnOpenDetail { get; set; }
+
+    private Task OnRowClicked(TableRowClickEventArgs<PodListViewModel> args)
+        => OnOpenDetail.InvokeAsync(args.Item);
+}

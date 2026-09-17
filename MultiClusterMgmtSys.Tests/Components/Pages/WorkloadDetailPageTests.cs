@@ -4,8 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using k8s.Models;
 using Moq;
 using MudBlazor;
-using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Requests;
+using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Application.Requests;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Pages;
@@ -63,7 +63,7 @@ public class WorkloadDetailPageTests
             }
         });
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Pages.DeploymentDetail>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Pages.DeploymentDetail>(
             parameters => parameters
                 .Add(p => p.ClusterId, cluster.Id)
                 .Add(p => p.Namespace, "app")
@@ -75,14 +75,14 @@ public class WorkloadDetailPageTests
         Assert.Equal("YAML", tabs[0].Instance.Text);
         Assert.Equal("运行状态", tabs[1].Instance.Text);
         Assert.Equal(0, cut.FindComponent<MudTabs>().Instance.ActivePanelIndex);
-        Assert.Single(cut.FindComponents<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadYamlViewCard>());
+        Assert.Single(cut.FindComponents<MultiClusterMgmtSys.Web.Components.Workloads.Shared.WorkloadYamlViewCard>());
 
         cut.FindAll(".mud-tab")[1].Click();
         cut.WaitForState(() =>
-            cut.FindComponents<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadConditionsCard>().Count == 1);
+            cut.FindComponents<MultiClusterMgmtSys.Web.Components.Workloads.Shared.WorkloadConditionsCard>().Count == 1);
 
-        Assert.Single(cut.FindComponents<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadStatusCard>());
-        Assert.Single(cut.FindComponents<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadConditionsCard>());
+        Assert.Single(cut.FindComponents<MultiClusterMgmtSys.Web.Components.Workloads.Shared.WorkloadStatusCard>());
+        Assert.Single(cut.FindComponents<MultiClusterMgmtSys.Web.Components.Workloads.Shared.WorkloadConditionsCard>());
         var statusIndex = cut.Markup.IndexOf(">运行状态<", StringComparison.Ordinal);
         var conditionsIndex = cut.Markup.IndexOf(">条件<", StringComparison.Ordinal);
         Assert.True(statusIndex >= 0 && conditionsIndex > statusIndex);
@@ -108,7 +108,7 @@ public class WorkloadDetailPageTests
             Spec = new V1DeploymentSpec { Replicas = 2 }
         });
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Pages.DeploymentYamlEdit>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Pages.DeploymentYamlEdit>(
             parameters => parameters
                 .Add(p => p.ClusterId, cluster.Id)
                 .Add(p => p.Namespace, "app")
@@ -131,7 +131,7 @@ public class WorkloadDetailPageTests
         ctx.AddWorkloadServices(k8s, harness);
         var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("yaml-missing"));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Pages.DeploymentYamlEdit>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Pages.DeploymentYamlEdit>(
             parameters => parameters
                 .Add(p => p.ClusterId, cluster.Id)
                 .Add(p => p.Namespace, "app")
@@ -146,7 +146,7 @@ public class WorkloadDetailPageTests
         await using var ctx = new BunitHost();
 
         string? changed = null;
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadYamlEditCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Shared.WorkloadYamlEditCard>(
             parameters => parameters
                 .Add(p => p.Yaml, "a: 1")
                 .Add(p => p.YamlChanged, v => { changed = v; return Task.CompletedTask; }));

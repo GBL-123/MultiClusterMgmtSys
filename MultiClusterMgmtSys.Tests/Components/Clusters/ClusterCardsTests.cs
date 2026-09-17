@@ -3,14 +3,14 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using MudBlazor;
-using MultiClusterMgmtSys.Common.Enums;
+using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Clusters;
 
 public class ClusterOverviewCardTests
 {
-    private static MultiClusterMgmtSys.ViewModels.ClusterDetailViewModel Detail() => new()
+    private static MultiClusterMgmtSys.Application.ViewModels.ClusterDetailViewModel Detail() => new()
     {
         Id = 5,
         Name = "prod-5",
@@ -39,7 +39,7 @@ public class ClusterOverviewCardTests
         detail.GroupName = null;
         detail.ApiServer = null;
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterOverviewCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Shared.ClusterOverviewCard>(
             parameters => parameters.Add(p => p.Cluster, detail));
 
         Assert.Contains("prod-5", cut.Markup);
@@ -61,7 +61,7 @@ public class ClusterOverviewCardTests
         var detail = Detail();
         detail.Id = added.Id;
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterOverviewCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Shared.ClusterOverviewCard>(
             parameters => parameters.Add(p => p.Cluster, detail));
 
         Assert.Contains("credential-redacted", cut.Markup);
@@ -85,7 +85,7 @@ public class ClusterOverviewCardTests
         var detail = Detail();
         detail.Id = added.Id;
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterOverviewCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Shared.ClusterOverviewCard>(
             parameters => parameters.Add(p => p.Cluster, detail));
 
         await RevealCredentialAsync(cut);
@@ -113,7 +113,7 @@ public class ClusterOverviewCardTests
         var detail = Detail();
         detail.Id = added.Id;
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterOverviewCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Shared.ClusterOverviewCard>(
             parameters => parameters.Add(p => p.Cluster, detail));
 
         await RevealCredentialAsync(cut);
@@ -138,7 +138,7 @@ public class ClusterOverviewCardTests
         var detail = Detail();
         detail.Id = added.Id;
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterOverviewCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Shared.ClusterOverviewCard>(
             parameters => parameters.Add(p => p.Cluster, detail));
 
         harness.Db.Dispose();
@@ -162,7 +162,7 @@ public class ClusterOverviewCardTests
         var detail = Detail();
         detail.ConnectionType = null;
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterOverviewCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Shared.ClusterOverviewCard>(
             parameters => parameters.Add(p => p.Cluster, detail));
 
         Assert.DoesNotContain("credential-annex", cut.Markup);
@@ -178,14 +178,14 @@ public class ClusterOverviewCardTests
         auth.SetRoles("Member");
         ctx.AddClusterStack();
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterOverviewCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Shared.ClusterOverviewCard>(
             parameters => parameters.Add(p => p.Cluster, Detail()));
 
         Assert.DoesNotContain("查看凭据", cut.Markup);
         Assert.DoesNotContain("credential-annex", cut.Markup);
     }
 
-    private static async Task RevealCredentialAsync(IRenderedComponent<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterOverviewCard> cut)
+    private static async Task RevealCredentialAsync(IRenderedComponent<MultiClusterMgmtSys.Web.Components.Clusters.Shared.ClusterOverviewCard> cut)
     {
         var revealButton = cut.FindComponents<MudButton>().First(b => b.Markup.Contains("查看凭据"));
         await cut.InvokeAsync(() => revealButton.Instance.OnClick.InvokeAsync());
@@ -203,9 +203,9 @@ public class ClusterDetailToolbarTests
         auth.SetAuthorized("admin");
         auth.SetRoles("Admin");
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterDetailToolbar>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Shared.ClusterDetailToolbar>(
             parameters => parameters
-                .Add(p => p.Cluster, new MultiClusterMgmtSys.ViewModels.ClusterDetailViewModel
+                .Add(p => p.Cluster, new MultiClusterMgmtSys.Application.ViewModels.ClusterDetailViewModel
                 {
                     Id = 1,
                     Name = "prod-9",
@@ -226,9 +226,9 @@ public class ClusterDetailToolbarTests
         auth.SetAuthorized("admin");
         auth.SetRoles("Admin");
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterDetailToolbar>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Shared.ClusterDetailToolbar>(
             parameters => parameters
-                .Add(p => p.Cluster, new MultiClusterMgmtSys.ViewModels.ClusterDetailViewModel
+                .Add(p => p.Cluster, new MultiClusterMgmtSys.Application.ViewModels.ClusterDetailViewModel
                 {
                     Id = 1,
                     Name = "busy",
@@ -255,9 +255,9 @@ public class ClusterDetailToolbarTests
         auth.SetRoles("Admin");
 
         var fired = new List<string>();
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterDetailToolbar>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Shared.ClusterDetailToolbar>(
             parameters => parameters
-                .Add(p => p.Cluster, new MultiClusterMgmtSys.ViewModels.ClusterDetailViewModel
+                .Add(p => p.Cluster, new MultiClusterMgmtSys.Application.ViewModels.ClusterDetailViewModel
                 {
                     Id = 1,
                     Name = "prod",
@@ -289,12 +289,12 @@ public class GroupSidebarTests
         auth.SetAuthorized("admin");
         auth.SetRoles("Admin");
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.GroupSidebar>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Shared.GroupSidebar>(
             parameters => parameters
                 .Add(p => p.Groups, new[]
                 {
-                    new MultiClusterMgmtSys.ViewModels.ClusterGroupViewModel { Id = 1, Name = "prod", ClusterCount = 3 },
-                    new MultiClusterMgmtSys.ViewModels.ClusterGroupViewModel { Id = 2, Name = "dev", ClusterCount = 1 }
+                    new MultiClusterMgmtSys.Application.ViewModels.ClusterGroupViewModel { Id = 1, Name = "prod", ClusterCount = 3 },
+                    new MultiClusterMgmtSys.Application.ViewModels.ClusterGroupViewModel { Id = 2, Name = "dev", ClusterCount = 1 }
                 })
                 .Add(p => p.UngroupedCount, 4));
 
@@ -314,11 +314,11 @@ public class GroupSidebarTests
         auth.SetRoles("Admin");
 
         int? selected = null;
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.GroupSidebar>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Shared.GroupSidebar>(
             parameters => parameters
                 .Add(p => p.Groups, new[]
                 {
-                    new MultiClusterMgmtSys.ViewModels.ClusterGroupViewModel { Id = 7, Name = "prod" }
+                    new MultiClusterMgmtSys.Application.ViewModels.ClusterGroupViewModel { Id = 7, Name = "prod" }
                 })
                 .Add(p => p.OnGroupSelected, id => { selected = id; return Task.CompletedTask; }));
 

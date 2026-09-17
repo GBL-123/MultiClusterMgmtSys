@@ -1,0 +1,68 @@
+@using MultiClusterMgmtSys.Application.ViewModels
+
+<MudCard Class="pa-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">基本信息</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <StatusBadge Text="@Node.StatusText" CssClass="@Node.StatusCssClass" Raw="@Node.Status" />
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudGrid Spacing="3">
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">名称</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono font-weight-medium">@Node.Name</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">角色</MudText>
+                @if (string.IsNullOrEmpty(Node.Roles))
+                {
+                    <MudText Typo="Typo.body1">—</MudText>
+                }
+                else
+                {
+                    <StackedText Primary="@Node.RolesText" Secondary="@Node.Roles" />
+                }
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">Kubelet 版本</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(Node.KubeletVersion) ? "—" : Node.KubeletVersion)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">操作系统</MudText>
+                <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(Node.OsImage) ? "—" : Node.OsImage)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">调度性</MudText>
+                <StatusBadge Text="@(Node.Unschedulable ? "不可调度" : "可调度")"
+                             CssClass="@(Node.Unschedulable ? "unknown" : "online")" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">阶段 (Phase)</MudText>
+                @if (string.IsNullOrEmpty(Node.Phase))
+                {
+                    <MudText Typo="Typo.body1">—</MudText>
+                }
+                else
+                {
+                    <StackedText Primary="@Node.PhaseText" Secondary="@Node.Phase" />
+                }
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">PodCIDR</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(Node.PodCIDR) ? "—" : Node.PodCIDR)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">创建时间</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(Node.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public ClusterNodeDetailViewModel Node { get; set; } = default!;
+}

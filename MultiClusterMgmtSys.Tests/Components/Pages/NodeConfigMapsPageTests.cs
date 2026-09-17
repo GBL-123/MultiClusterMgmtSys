@@ -5,9 +5,9 @@ using k8s;
 using k8s.Models;
 using Moq;
 using MudBlazor;
-using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Components.Common;
-using MultiClusterMgmtSys.Services;
+using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Web.Components.Common;
+using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Pages;
@@ -63,7 +63,7 @@ public class ConfigMapsPageTests
             Data = new Dictionary<string, string> { ["k1"] = "v1" }
         });
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Configmaps.Pages.ConfigMaps>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Configmaps.Pages.ConfigMaps>(
             parameters => parameters.Add(p => p.ClusterId, cluster.Id));
 
         cut.WaitForState(() => cut.Markup.Contains("page-cm"));
@@ -83,7 +83,7 @@ public class ConfigMapsPageTests
         var cluster = await harness.ClusterRepo.AddAsync(
             TestData.NewCluster("cm-offline", status: ClusterStatus.Offline));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Configmaps.Pages.ConfigMaps>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Configmaps.Pages.ConfigMaps>(
             parameters => parameters.Add(p => p.ClusterId, cluster.Id));
 
         cut.WaitForState(() => cut.Markup.Contains("集群不可达"));
@@ -98,7 +98,7 @@ public class ConfigMapsPageTests
         ctx.AddGroupAndSyncStack(harness);
         Setup(ctx, harness);
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Configmaps.Pages.ConfigMaps>();
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Configmaps.Pages.ConfigMaps>();
 
         cut.WaitForState(() => cut.Markup.Contains("请从左侧选择一个集群"));
     }
@@ -148,7 +148,7 @@ public class NodesPageTests
 
         k8s.SetupListNodes(RichNode("n1", true), RichNode("n2", false));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Pages.Nodes>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Pages.Nodes>(
             parameters => parameters.Add(p => p.ClusterId, cluster.Id));
 
         cut.WaitForState(() => cut.Markup.Contains("n1"));
@@ -168,7 +168,7 @@ public class NodesPageTests
         var cluster = await harness.ClusterRepo.AddAsync(
             TestData.NewCluster("node-page-offline", status: ClusterStatus.Offline));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Pages.Nodes>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Pages.Nodes>(
             parameters => parameters.Add(p => p.ClusterId, cluster.Id));
 
         cut.WaitForState(() => cut.Markup.Contains("集群不可达"));
@@ -222,7 +222,7 @@ public class NodesPageTests
             }
         });
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Pages.NodeDetail>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Pages.NodeDetail>(
             parameters => parameters
                 .Add(p => p.ClusterId, cluster.Id)
                 .Add(p => p.NodeName, "n1"));
@@ -251,7 +251,7 @@ public class NodesPageTests
         cut.FindAll(".mud-tab")[2].Click();
         cut.WaitForState(() => cut.Markup.Contains("3.8 核"));
         Assert.Contains("3.8 核", cut.Markup);
-        var tooltips = cut.FindComponents<MultiClusterMgmtSys.Components.Common.TextTooltip>();
+        var tooltips = cut.FindComponents<MultiClusterMgmtSys.Web.Components.Common.TextTooltip>();
         Assert.Contains(tooltips, t => t.Instance.Text == "3800m" && t.Instance.Mono);
 
         cut.FindAll(".mud-tab")[3].Click();
@@ -281,7 +281,7 @@ public class NodesPageTests
         var cluster = await harness.ClusterRepo.AddAsync(
             TestData.NewCluster("node-detail-off", status: ClusterStatus.Offline));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Pages.NodeDetail>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Pages.NodeDetail>(
             parameters => parameters
                 .Add(p => p.ClusterId, cluster.Id)
                 .Add(p => p.NodeName, "n1"));

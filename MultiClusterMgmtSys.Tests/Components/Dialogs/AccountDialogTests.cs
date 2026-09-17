@@ -7,12 +7,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using MudBlazor;
-using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Data;
-using MultiClusterMgmtSys.Data.Entities;
-using MultiClusterMgmtSys.Data.Repositories;
-using MultiClusterMgmtSys.Requests;
-using MultiClusterMgmtSys.Services;
+using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Infrastructure.Persistence;
+using MultiClusterMgmtSys.Application.Identity;
+using MultiClusterMgmtSys.Infrastructure.Persistence;
+using MultiClusterMgmtSys.Application.Requests;
+using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Dialogs;
@@ -39,11 +39,11 @@ public class ProfilePageTests
         {
             await identity.Users.CreateAsync(new ApplicationUser { UserName = "admin", CreatedAt = DateTime.UtcNow }, "Passw0rd1");
             ctx.Services.AddSingleton(new AccountService(
-                identity.Users, identity.Roles, identity.Db, harness.Audit,
+                identity.Users, identity.Roles, new AccountQueryRepository(identity.Db), harness.Audit,
                 TestHttpContext.ForIdentity("admin", userId: 1, "Admin").Object,
                 NullLogger<AccountService>.Instance));
 
-            var cut = ctx.Render<MultiClusterMgmtSys.Components.Profile.Pages.Profile>();
+            var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Profile.Pages.Profile>();
 
             cut.WaitForState(() => cut.Markup.Contains("账号信息"));
 
@@ -77,11 +77,11 @@ public class ProfilePageTests
                 TestHttpContext.For("member", "Member").Object,
                 NullLogger<AuditService>.Instance);
             ctx.Services.AddSingleton(new AccountService(
-                identity.Users, identity.Roles, identity.Db, audit,
+                identity.Users, identity.Roles, new AccountQueryRepository(identity.Db), audit,
                 TestHttpContext.ForIdentity("member", userId: 2).Object,
                 NullLogger<AccountService>.Instance));
 
-            var cut = ctx.Render<MultiClusterMgmtSys.Components.Profile.Pages.Profile>(
+            var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Profile.Pages.Profile>(
                 parameters => parameters.AddCascadingValue(
                     new Microsoft.AspNetCore.Http.DefaultHttpContext { RequestServices = ctx.Services }));
 
@@ -111,11 +111,11 @@ public class ProfilePageTests
         {
             await identity.Users.CreateAsync(new ApplicationUser { UserName = "admin", CreatedAt = DateTime.UtcNow }, "Passw0rd1");
             ctx.Services.AddSingleton(new AccountService(
-                identity.Users, identity.Roles, identity.Db, harness.Audit,
+                identity.Users, identity.Roles, new AccountQueryRepository(identity.Db), harness.Audit,
                 TestHttpContext.ForIdentity("admin", userId: 1, "Admin").Object,
                 NullLogger<AccountService>.Instance));
 
-            var cut = ctx.Render<MultiClusterMgmtSys.Components.Profile.Pages.Profile>(
+            var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Profile.Pages.Profile>(
                 parameters => parameters.AddCascadingValue(
                     new Microsoft.AspNetCore.Http.DefaultHttpContext { RequestServices = ctx.Services }));
 
@@ -142,7 +142,7 @@ public class ChangePasswordDialogTests
         var provider = ctx.Render<MudDialogProvider>();
 
         var dialogReference = await ctx.Services.GetRequiredService<IDialogService>()
-            .ShowAsync<MultiClusterMgmtSys.Components.Profile.Shared.ChangePasswordDialog>("修改密码");
+            .ShowAsync<MultiClusterMgmtSys.Web.Components.Profile.Shared.ChangePasswordDialog>("修改密码");
         provider.WaitForState(() => provider.Markup.Contains("修改密码"));
         return (ctx, provider, dialogReference);
     }
@@ -165,7 +165,7 @@ public class ChangePasswordDialogTests
             await identity.Users.CreateAsync(new ApplicationUser { UserName = "admin" }, "Passw0rd1");
             var snackbarMock = new Mock<ISnackbar>();
             var accountService = new AccountService(
-                identity.Users, identity.Roles, db, new AuditService(
+                identity.Users, identity.Roles, new AccountQueryRepository(db), new AuditService(
                     new AuditLogRepository(db), TestHttpContext.Anonymous().Object, NullLogger<AuditService>.Instance),
                 TestHttpContext.For("admin", "Admin").Object, NullLogger<AccountService>.Instance);
 
@@ -203,7 +203,7 @@ public class ChangePasswordDialogTests
             await identity.Users.CreateAsync(new ApplicationUser { UserName = "admin" }, "Passw0rd1");
             var snackbarMock = new Mock<ISnackbar>();
             var accountService = new AccountService(
-                identity.Users, identity.Roles, db, new AuditService(
+                identity.Users, identity.Roles, new AccountQueryRepository(db), new AuditService(
                     new AuditLogRepository(db), TestHttpContext.Anonymous().Object, NullLogger<AuditService>.Instance),
                 TestHttpContext.For("admin", "Admin").Object, NullLogger<AccountService>.Instance);
 
@@ -243,15 +243,15 @@ public class AccountEditDialogTests
             await using var ctx = new BunitHost();
             var audit = new AuditService(new AuditLogRepository(identity.Db), TestHttpContext.Anonymous().Object, NullLogger<AuditService>.Instance);
             ctx.Services.AddSingleton(new AccountService(
-                identity.Users, identity.Roles, identity.Db, audit,
+                identity.Users, identity.Roles, new AccountQueryRepository(identity.Db), audit,
                 TestHttpContext.ForIdentity("admin", userId: 9, "Admin").Object,
                 NullLogger<AccountService>.Instance));
             ctx.Renderer.SetRendererInfo(new Microsoft.AspNetCore.Components.RendererInfo("bunit", true));
             var provider = ctx.Render<MudDialogProvider>();
 
-            await ctx.Services.GetRequiredService<IDialogService>().ShowAsync<MultiClusterMgmtSys.Components.Account.Shared.AccountEditDialog>(
+            await ctx.Services.GetRequiredService<IDialogService>().ShowAsync<MultiClusterMgmtSys.Web.Components.Account.Shared.AccountEditDialog>(
                 "创建账号",
-                new DialogParameters { { "EditingAccount", (MultiClusterMgmtSys.ViewModels.AccountViewModel?)null } });
+                new DialogParameters { { "EditingAccount", (MultiClusterMgmtSys.Application.ViewModels.AccountViewModel?)null } });
 
             provider.WaitForState(() => provider.Markup.Contains("创建"));
 
@@ -274,17 +274,17 @@ public class AccountEditDialogTests
             await using var ctx = new BunitHost();
             var audit = new AuditService(new AuditLogRepository(identity.Db), TestHttpContext.Anonymous().Object, NullLogger<AuditService>.Instance);
             ctx.Services.AddSingleton(new AccountService(
-                identity.Users, identity.Roles, identity.Db, audit,
+                identity.Users, identity.Roles, new AccountQueryRepository(identity.Db), audit,
                 TestHttpContext.ForIdentity("admin", userId: 9, "Admin").Object,
                 NullLogger<AccountService>.Instance));
             ctx.Renderer.SetRendererInfo(new Microsoft.AspNetCore.Components.RendererInfo("bunit", true));
             var provider = ctx.Render<MudDialogProvider>();
 
-            await ctx.Services.GetRequiredService<IDialogService>().ShowAsync<MultiClusterMgmtSys.Components.Account.Shared.AccountEditDialog>(
+            await ctx.Services.GetRequiredService<IDialogService>().ShowAsync<MultiClusterMgmtSys.Web.Components.Account.Shared.AccountEditDialog>(
                 "编辑账号",
                 new DialogParameters
                 {
-                    { "EditingAccount", new MultiClusterMgmtSys.ViewModels.AccountViewModel { Id = 5, UserName = "edit-me", RoleName = "Admin" } }
+                    { "EditingAccount", new MultiClusterMgmtSys.Application.ViewModels.AccountViewModel { Id = 5, UserName = "edit-me", RoleName = "Admin" } }
                 });
 
             provider.WaitForState(() => provider.Markup.Contains("edit-me"));
@@ -313,7 +313,7 @@ public class ResetPasswordDialogTests
             await identity.Users.CreateAsync(new ApplicationUser { UserName = "target", CreatedAt = DateTime.UtcNow }, "Passw0rd1");
             var audit = new AuditService(new AuditLogRepository(db), TestHttpContext.Anonymous().Object, NullLogger<AuditService>.Instance);
             var accountService = new AccountService(
-                identity.Users, identity.Roles, db, audit,
+                identity.Users, identity.Roles, new AccountQueryRepository(db), audit,
                 TestHttpContext.ForIdentity("admin", userId: 8, "Admin").Object,
                 NullLogger<AccountService>.Instance);
 
@@ -325,7 +325,7 @@ public class ResetPasswordDialogTests
             var provider = ctx.Render<MudDialogProvider>();
 
             var dialogReference = await ctx.Services.GetRequiredService<IDialogService>()
-                .ShowAsync<MultiClusterMgmtSys.Components.Account.Shared.ResetPasswordDialog>(
+                .ShowAsync<MultiClusterMgmtSys.Web.Components.Account.Shared.ResetPasswordDialog>(
                     "重置密码",
                     new DialogParameters { { "AccountId", 2 } });
 

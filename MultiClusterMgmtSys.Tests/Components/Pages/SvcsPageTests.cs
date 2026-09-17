@@ -4,10 +4,10 @@ using Microsoft.Extensions.DependencyInjection;
 using k8s;
 using k8s.Models;
 using Moq;
-using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Components.Common;
-using MultiClusterMgmtSys.Services;
-using MultiClusterMgmtSys.ViewModels.Mappings;
+using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Web.Components.Common;
+using MultiClusterMgmtSys.Application.Services;
+using MultiClusterMgmtSys.Application.ViewModels.Mappings;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Pages;
@@ -66,7 +66,7 @@ public class SvcsPageTests
         ctx.AddGroupAndSyncStack(harness);
         Setup(ctx, harness);
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Svcs.Pages.Svcs>();
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Svcs.Pages.Svcs>();
 
         cut.WaitForState(() => cut.Markup.Contains("请从左侧选择一个集群"));
         Assert.Contains("请从左侧选择一个集群", cut.Markup);
@@ -83,7 +83,7 @@ public class SvcsPageTests
         var cluster = await harness.ClusterRepo.AddAsync(
             TestData.NewCluster("svc-offline", status: ClusterStatus.Offline));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Svcs.Pages.Svcs>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Svcs.Pages.Svcs>(
             parameters => parameters.Add(p => p.ClusterId, cluster.Id));
 
         cut.WaitForState(() => cut.Markup.Contains("集群不可达"));
@@ -102,7 +102,7 @@ public class SvcsPageTests
         k8s.SetupListNamespaces("app");
         k8s.SetupListServices(NewService("page-svc", "app"));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Svcs.Pages.Svcs>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Svcs.Pages.Svcs>(
             parameters => parameters.Add(p => p.ClusterId, cluster.Id));
 
         cut.WaitForState(() => cut.Markup.Contains("page-svc"));
@@ -123,7 +123,7 @@ public class SvcsPageTests
         k8s.SetupReadService("web", "app", NewService("web", "app"));
         k8s.SetupListEndpointSlices("app", SvcMappingExtensions.EndpointSliceServiceLabel + "=web");
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Svcs.Pages.SvcDetail>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Svcs.Pages.SvcDetail>(
             parameters => parameters
                 .Add(p => p.ClusterId, cluster.Id)
                 .Add(p => p.Namespace, "app")
@@ -150,7 +150,7 @@ public class SvcsPageTests
 
         k8s.SetupReadService("web", "app", NewService("web", "app"));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Svcs.Pages.EditSvcYaml>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Svcs.Pages.EditSvcYaml>(
             parameters => parameters
                 .Add(p => p.ClusterId, cluster.Id)
                 .Add(p => p.Namespace, "app")
@@ -172,7 +172,7 @@ public class SvcsPageTests
         var cluster = await harness.ClusterRepo.AddAsync(
             TestData.NewCluster("svc-detail-off", status: ClusterStatus.Offline));
 
-        var detail = ctx.Render<MultiClusterMgmtSys.Components.Svcs.Pages.SvcDetail>(
+        var detail = ctx.Render<MultiClusterMgmtSys.Web.Components.Svcs.Pages.SvcDetail>(
             parameters => parameters
                 .Add(p => p.ClusterId, cluster.Id)
                 .Add(p => p.Namespace, "app")
@@ -180,7 +180,7 @@ public class SvcsPageTests
 
         detail.WaitForState(() => detail.Markup.Contains("不存在或已被删除") || detail.Markup.Contains("不可达"));
 
-        var yamlEdit = ctx.Render<MultiClusterMgmtSys.Components.Svcs.Pages.EditSvcYaml>(
+        var yamlEdit = ctx.Render<MultiClusterMgmtSys.Web.Components.Svcs.Pages.EditSvcYaml>(
             parameters => parameters
                 .Add(p => p.ClusterId, cluster.Id)
                 .Add(p => p.Namespace, "app")

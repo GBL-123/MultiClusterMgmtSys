@@ -1,0 +1,142 @@
+@using MultiClusterMgmtSys.Application.Models
+@using MultiClusterMgmtSys.Application.ViewModels.Mappings
+
+<MudStack Spacing="2">
+    <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
+        <MudSelect T="string?"
+                   Value="SelectedNamespace"
+                   ValueChanged="OnNamespaceChanged"
+                   Label="命名空间"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   Style="min-width:170px;">
+            <MudSelectItem Value="@((string?)null)">全部命名空间</MudSelectItem>
+            @foreach (var ns in Namespaces)
+            {
+                <MudSelectItem Value="@ns">@ns</MudSelectItem>
+            }
+        </MudSelect>
+
+        <MudSelect T="string?"
+                   Value="SelectedType"
+                   ValueChanged="OnTypeChanged"
+                   Label="级别"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   Style="min-width:160px;">
+            <MudSelectItem Value="@((string?)null)">全部级别</MudSelectItem>
+            <MudSelectItem Value="@LevelTypes.Normal">@($"{K8sDisplayText.EventTypeText(LevelTypes.Normal)} ({LevelTypes.Normal})")</MudSelectItem>
+            <MudSelectItem Value="@LevelTypes.Warning">@($"{K8sDisplayText.EventTypeText(LevelTypes.Warning)} ({LevelTypes.Warning})")</MudSelectItem>
+        </MudSelect>
+
+        <MudTextField T="string"
+                      Value="Keyword"
+                      ValueChanged="OnKeywordChanged"
+                      Label="关键词"
+                      Placeholder="对象名 / 原因 / 消息"
+                      Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Style="min-width:220px; flex:1;" />
+
+        <MudSpacer />
+
+        @if (LastLoadedAt is not null)
+        {
+            <span class="font-mono mud-text-secondary event-asof">数据截至 @LastLoadedAt.Value.ToString("HH:mm:ss")</span>
+        }
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Secondary"
+                   StartIcon="@Icons.Material.Filled.FilterAltOff"
+                   OnClick="OnReset">
+            重置
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="OnRefresh"
+                   Disabled="@Refreshing">
+            刷新
+        </MudButton>
+    </MudStack>
+
+    <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.caption" Class="mud-text-secondary event-kind-label">对象类型</MudText>
+        <MudChipSet T="string"
+                    SelectionMode="SelectionMode.SingleSelection"
+                    SelectedValue="SelectedKind"
+                    SelectedValueChanged="OnKindChanged"
+                    Size="Size.Small"
+                    CheckMark="true"
+                    Class="event-kind-chips">
+            <MudChip T="string" Value="@string.Empty">@($"全部 {TotalCount}")</MudChip>
+            @foreach (var option in KindOptions)
+            {
+                <MudChip T="string" Value="@option.Kind">@($"{option.Kind} {option.Count}")</MudChip>
+            }
+        </MudChipSet>
+    </MudStack>
+</MudStack>
+
+@code {
+    private static class LevelTypes
+    {
+        public const string Normal = "Normal";
+
+        public const string Warning = "Warning";
+    }
+
+    [Parameter]
+    public List<string> Namespaces { get; set; } = new();
+
+    [Parameter]
+    public string? SelectedNamespace { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> SelectedNamespaceChanged { get; set; }
+
+    [Parameter]
+    public string? SelectedType { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> SelectedTypeChanged { get; set; }
+
+    [Parameter]
+    public List<EventKindOption> KindOptions { get; set; } = new();
+
+    [Parameter]
+    public int TotalCount { get; set; }
+
+    [Parameter]
+    public string SelectedKind { get; set; } = "";
+
+    [Parameter]
+    public EventCallback<string> SelectedKindChanged { get; set; }
+
+    [Parameter]
+    public string Keyword { get; set; } = "";
+
+    [Parameter]
+    public EventCallback<string> KeywordChanged { get; set; }
+
+    [Parameter]
+    public DateTime? LastLoadedAt { get; set; }
+
+    [Parameter]
+    public bool Refreshing { get; set; }
+
+    [Parameter]
+    public EventCallback OnReset { get; set; }
+
+    [Parameter]
+    public EventCallback OnRefresh { get; set; }
+
+    private Task OnNamespaceChanged(string? ns) => SelectedNamespaceChanged.InvokeAsync(ns);
+
+    private Task OnTypeChanged(string? type) => SelectedTypeChanged.InvokeAsync(type);
+
+    private Task OnKindChanged(string? kind) => SelectedKindChanged.InvokeAsync(kind ?? "");
+
+    private Task OnKeywordChanged(string value) => KeywordChanged.InvokeAsync(value);
+}

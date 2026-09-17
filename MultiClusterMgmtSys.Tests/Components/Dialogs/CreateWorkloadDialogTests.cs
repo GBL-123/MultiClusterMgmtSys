@@ -5,8 +5,8 @@ using k8s;
 using k8s.Models;
 using Moq;
 using MudBlazor;
-using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Services;
+using MultiClusterMgmtSys.Application.Enums;
+using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Dialogs;
@@ -17,7 +17,7 @@ public class CreateWorkloadDialogTests
     {
         ctx.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8s));
         ctx.AddClientCache();
-        ctx.Services.AddScoped(_ => harness.ClusterRepo);
+        ctx.Services.AddScoped<IClusterRepository>(_ => harness.ClusterRepo);
         ctx.Services.AddScoped<WorkloadService>();
         ctx.Services.AddScoped(_ => harness.Audit);
         ctx.AddYamlTemplates();
@@ -35,7 +35,7 @@ public class CreateWorkloadDialogTests
             var provider = ctx.Render<MudDialogProvider>();
 
             var reference = await ctx.Services.GetRequiredService<IDialogService>()
-                .ShowAsync<MultiClusterMgmtSys.Components.Workloads.Shared.CreateWorkloadDialog>(
+                .ShowAsync<MultiClusterMgmtSys.Web.Components.Workloads.Shared.CreateWorkloadDialog>(
                     "新建",
                     new DialogParameters { { "ClusterId", 1 }, { "Kind", WorkloadKind.StatefulSet } });
 
@@ -61,7 +61,7 @@ public class CreateWorkloadDialogTests
             var provider = ctx.Render<MudDialogProvider>();
 
             var reference = await ctx.Services.GetRequiredService<IDialogService>()
-                .ShowAsync<MultiClusterMgmtSys.Components.Workloads.Shared.CreateWorkloadDialog>(
+                .ShowAsync<MultiClusterMgmtSys.Web.Components.Workloads.Shared.CreateWorkloadDialog>(
                     "新建",
                     new DialogParameters { { "ClusterId", cluster.Id }, { "Kind", WorkloadKind.Deployment } });
 
@@ -117,7 +117,7 @@ public class CreateWorkloadDialogTests
             var provider = ctx.Render<MudDialogProvider>();
 
             var reference = await ctx.Services.GetRequiredService<IDialogService>()
-                .ShowAsync<MultiClusterMgmtSys.Components.Workloads.Shared.CreateWorkloadDialog>(
+                .ShowAsync<MultiClusterMgmtSys.Web.Components.Workloads.Shared.CreateWorkloadDialog>(
                     "新建",
                     new DialogParameters { { "ClusterId", cluster.Id }, { "Kind", WorkloadKind.Deployment } });
 

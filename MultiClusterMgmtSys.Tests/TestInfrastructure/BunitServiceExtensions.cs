@@ -1,14 +1,54 @@
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Templates;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using Bunit;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Templates;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using Microsoft.AspNetCore.Components.Authorization;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Templates;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using Microsoft.AspNetCore.Hosting;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Templates;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using Microsoft.Extensions.Configuration;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Templates;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using Microsoft.Extensions.DependencyInjection;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Templates;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using Microsoft.Extensions.Logging.Abstractions;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Templates;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using Moq;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Templates;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using MudBlazor;
-using MultiClusterMgmtSys.Components.Common;
-using MultiClusterMgmtSys.Data.Repositories;
-using MultiClusterMgmtSys.Services;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Templates;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Web.Components.Common;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Templates;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Persistence;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Templates;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Application.Abstractions;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Templates;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Application.Services;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Templates;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using k8s;
 
 namespace MultiClusterMgmtSys.Tests.TestInfrastructure;
@@ -16,7 +56,7 @@ namespace MultiClusterMgmtSys.Tests.TestInfrastructure;
 public static class TestPaths
 {
     public static string RepoWwwRoot => Path.GetFullPath(
-        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "MultiClusterMgmtSys", "wwwroot"));
+        Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "MultiClusterMgmtSys.Web", "wwwroot"));
 }
 
 public static class BunitServiceExtensions
@@ -36,8 +76,9 @@ public static class BunitServiceExtensions
         var k8sMock = new Mock<IKubernetes>();
         ctx.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8sMock));
         ctx.AddClientCache();
-        ctx.Services.AddScoped(_ => harness.ClusterRepo);
+        ctx.Services.AddScoped<IClusterRepository>(_ => harness.ClusterRepo);
         ctx.Services.AddScoped(_ => harness.Audit);
+        ctx.Services.AddSingleton<IYamlValidator, YamlValidator>();
         ctx.Services.AddScoped<ClusterNodeService>();
         ctx.Services.AddScoped<ClusterService>();
         ctx.Services.AddScoped<ExceptionPresenter>();
@@ -50,6 +91,7 @@ public static class BunitServiceExtensions
         var wwwroot = TestPaths.RepoWwwRoot;
         ctx.Services.AddSingleton<IWebHostEnvironment>(_ => Mock.Of<IWebHostEnvironment>(e => e.WebRootPath == wwwroot));
         ctx.Services.AddSingleton<IYamlTemplateService, YamlTemplateService>();
+        ctx.Services.AddSingleton<IYamlValidator, YamlValidator>();
     }
 
     public static (ServiceHarness Harness, Mock<IKubernetes> K8s) AddWorkloadStack(this BunitContext ctx, string actor = "admin")
@@ -66,9 +108,9 @@ public static class BunitServiceExtensions
             .AddInMemoryCollection(new Dictionary<string, string?>())
             .Build();
         ctx.Services.AddSingleton<IConfiguration>(configuration);
-        ctx.Services.AddSingleton(_ => new AppSettingRepository(harness.Db));
+        ctx.Services.AddSingleton<IAppSettingRepository>(_ => new AppSettingRepository(harness.Db));
         ctx.Services.AddScoped(_ => harness.Audit);
-        ctx.Services.AddScoped<GroupRepository>(_ => new GroupRepository(harness.Db));
+        ctx.Services.AddScoped<IGroupRepository>(_ => new GroupRepository(harness.Db));
         ctx.Services.AddScoped<GroupService>();
         ctx.Services.AddScoped<ClusterSyncSettingService>();
         ctx.Services.AddScoped<ClusterSelectionState>();

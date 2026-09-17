@@ -16,7 +16,7 @@ $ErrorActionPreference = "Stop"
 
 # 脚本所在目录（仓库根），保证在任何位置执行都从正确上下文构建
 $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$Dockerfile = Join-Path $RepoRoot "MultiClusterMgmtSys\Dockerfile"
+$Dockerfile = Join-Path $RepoRoot "MultiClusterMgmtSys.Web\Dockerfile"
 
 if (-not (Test-Path -LiteralPath $Dockerfile)) {
     Write-Host "[错误] 未找到 Dockerfile: $Dockerfile" -ForegroundColor Red

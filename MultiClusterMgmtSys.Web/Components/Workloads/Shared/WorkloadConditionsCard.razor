@@ -1,0 +1,45 @@
+@using MultiClusterMgmtSys.Application.ViewModels
+
+<MudCard Class="pa-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">条件</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (Detail.Conditions.Count == 0)
+        {
+            <div class="empty-state">[ 暂无条件 ]</div>
+        }
+        else
+        {
+            <MudTable T="WorkloadConditionViewModel"
+                      Items="@Detail.Conditions"
+                      Hover="true"
+                      Dense="true"
+                      Elevation="0">
+                <HeaderContent>
+                    <MudTh>类型</MudTh>
+                    <MudTh>状态</MudTh>
+                    <MudTh>原因</MudTh>
+                    <MudTh>信息</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="类型">
+                        <StackedText Primary="@context.TypeText" Secondary="@context.Type" />
+                    </MudTd>
+                    <MudTd DataLabel="状态">
+                        <StackedText Primary="@context.StatusText" Secondary="@context.Status" />
+                    </MudTd>
+                    <MudTd DataLabel="原因">@context.Reason</MudTd>
+                    <MudTd DataLabel="信息">@context.Message</MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public WorkloadDetailViewModel Detail { get; set; } = default!;
+}

@@ -5,10 +5,10 @@ using k8s;
 using k8s.Models;
 using Moq;
 using MudBlazor;
-using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Components.Common;
-using MultiClusterMgmtSys.Requests;
-using MultiClusterMgmtSys.Services;
+using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Web.Components.Common;
+using MultiClusterMgmtSys.Application.Requests;
+using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Pages;
@@ -47,7 +47,7 @@ public class ConfigMapsPageFlowTests
         k8s.SetupGetVersion("v1.30.2");
     }
 
-    private static async Task<(BunitHost Ctx, ServiceHarness Harness, Mock<k8s.IKubernetes> K8s, IRenderedComponent<MultiClusterMgmtSys.Components.Configmaps.Pages.ConfigMaps> Cut)> RenderListAsync()
+    private static async Task<(BunitHost Ctx, ServiceHarness Harness, Mock<k8s.IKubernetes> K8s, IRenderedComponent<MultiClusterMgmtSys.Web.Components.Configmaps.Pages.ConfigMaps> Cut)> RenderListAsync()
     {
         var ctx = new BunitHost();
         AuthorizeAdmin(ctx);
@@ -63,7 +63,7 @@ public class ConfigMapsPageFlowTests
             Data = new Dictionary<string, string> { ["k"] = "v" }
         });
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Configmaps.Pages.ConfigMaps>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Configmaps.Pages.ConfigMaps>(
             parameters => parameters.Add(p => p.ClusterId, cluster.Id));
         cut.WaitForState(() => cut.Markup.Contains("target-cm"));
         return (ctx, harness, k8s, cut);

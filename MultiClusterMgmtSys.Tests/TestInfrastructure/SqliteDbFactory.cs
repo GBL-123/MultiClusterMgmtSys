@@ -1,6 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using MultiClusterMgmtSys.Data;
+using MultiClusterMgmtSys.Infrastructure.Persistence;
 
 namespace MultiClusterMgmtSys.Tests.TestInfrastructure;
 

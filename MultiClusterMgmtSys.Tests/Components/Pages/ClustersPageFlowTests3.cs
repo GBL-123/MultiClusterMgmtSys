@@ -6,10 +6,10 @@ using k8s;
 using k8s.Models;
 using Moq;
 using MudBlazor;
-using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Components.Common;
-using MultiClusterMgmtSys.Requests;
-using MultiClusterMgmtSys.Services;
+using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Web.Components.Common;
+using MultiClusterMgmtSys.Application.Requests;
+using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Pages;
@@ -34,7 +34,7 @@ public class ClustersPageFlowTests3
         ctx.Services.AddSingleton<Func<k8s.KubernetesClientConfiguration, k8s.IKubernetes>>(K8sMocks.Factory(k8s));
         var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("row-refresh", status: ClusterStatus.Online));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Pages.Clusters>();
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Pages.Clusters>();
         cut.WaitForState(() => cut.Markup.Contains("row-refresh"));
 
         var refreshTooltip = cut.FindComponents<MudTooltip>().First(t => t.Instance.Text == "刷新");
@@ -65,7 +65,7 @@ public class ClustersPageFlowTests3
         ctx.Services.AddSingleton<Func<k8s.KubernetesClientConfiguration, k8s.IKubernetes>>(K8sMocks.Factory(k8s));
         await harness.ClusterRepo.AddAsync(TestData.NewCluster("opener"));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Pages.Clusters>();
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Pages.Clusters>();
         cut.WaitForState(() => cut.Markup.Contains("opener"));
 
         var provider = ctx.Render<MudDialogProvider>();
@@ -87,7 +87,7 @@ public class ClustersPageFlowTests3
         var group = await harness.Db.ClusterGroups.AddAsync(TestData.NewGroup("rename-src"));
         await harness.Db.SaveChangesAsync(CancellationToken.None);
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Pages.Clusters>();
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Pages.Clusters>();
         cut.WaitForState(() => cut.Markup.Contains("rename-src"));
 
         var provider = ctx.Render<MudDialogProvider>();
@@ -108,7 +108,7 @@ public class ClustersPageFlowTests3
         ctx.Services.AddSingleton<Func<k8s.KubernetesClientConfiguration, k8s.IKubernetes>>(K8sMocks.Factory(k8s));
         var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("detail-tabs", status: ClusterStatus.Online));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Pages.ClusterDetail>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Pages.ClusterDetail>(
             parameters => parameters.Add(p => p.Id, cluster.Id));
         cut.WaitForState(() => cut.Markup.Contains("detail-tabs"));
 
@@ -142,7 +142,7 @@ public class ClustersPageFlowTests3
         ctx.Services.AddSingleton<Func<k8s.KubernetesClientConfiguration, k8s.IKubernetes>>(K8sMocks.Factory(k8s));
         var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("detail-delete"));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Pages.ClusterDetail>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Pages.ClusterDetail>(
             parameters => parameters.Add(p => p.Id, cluster.Id));
         cut.WaitForState(() => cut.Markup.Contains("detail-delete"));
 

@@ -1,0 +1,135 @@
+@page "/register"
+@layout EmptyLayout
+@attribute [ExcludeFromInteractiveRouting]
+
+@using System.ComponentModel.DataAnnotations
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Web.Components.Auth.Shared
+@using MultiClusterMgmtSys.Application.Requests
+
+@inject RedirectManager RedirectManager
+@inject AuthService AuthService
+
+<PageTitle>注册账号</PageTitle>
+
+<MudPaper Elevation="0" Width="400px" Class="pa-8 auth-panel">
+    <MudStack >
+        <MudStack AlignItems="AlignItems.Center">
+            <span class="brand-mark large">▮</span>
+            <MudText Typo="Typo.h5">注册新账号</MudText>
+            <span class="appbar-subtitle">MCM // CONTROL</span>
+            <StatusMessage IsSuccess="@isSuccess" Message="@errorMessage" />
+        </MudStack>
+
+        <EditForm Model="Input" method="post" OnValidSubmit="RegisterUser" FormName="register">
+            <DataAnnotationsValidator />
+            <MudStaticTextField For="@(() => Input.UserName)"
+                                @bind-Value="Input.UserName"
+                                Label="用户名"
+                                Required="true"
+                                Variant="Variant.Outlined"
+                                Margin="Margin.Dense"
+                                Class="pb-2"
+                                UserAttributes="@userNameTextFieldAttr" />
+            <MudStaticTextField For="@(() => Input.Password)"
+                                @bind-Value="Input.Password"
+                                Label="密码"
+                                Required="true"
+                                InputType="InputType.Password"
+                                Variant="Variant.Outlined"
+                                Margin="Margin.Dense"
+                                Adornment="Adornment.End"
+                                AdornmentIcon="@Icons.Material.Outlined.Visibility"
+                                AdornmentToggledIcon="@Icons.Material.Outlined.VisibilityOff"
+                                AdornmentClickFunction="showPassword"
+                                Class="pb-2"
+                                UserAttributes="@passwordTextFieldAttr" />
+            <MudStaticTextField For="@(() => Input.ConfirmPassword)"
+                                @bind-Value="Input.ConfirmPassword"
+                                Label="确认密码"
+                                Required="true"
+                                InputType="InputType.Password"
+                                Variant="Variant.Outlined"
+                                Margin="Margin.Dense"
+                                Adornment="Adornment.End"
+                                AdornmentIcon="@Icons.Material.Outlined.Visibility"
+                                AdornmentToggledIcon="@Icons.Material.Outlined.VisibilityOff"
+                                AdornmentClickFunction="showPassword"
+                                Class="pb-4"
+                                UserAttributes="@confirmPasswordTextFieldAttr" />
+
+            <MudStaticButton Variant="Variant.Filled"
+                             Color="Color.Primary"
+                             FullWidth="true"
+                             FormAction="FormAction.Submit"
+                             Size="Size.Large">
+                注 册
+            </MudStaticButton>
+        </EditForm>
+
+        <MudDivider Class="my-4" />
+
+        <MudText Align="Align.Center">
+            已有账号？<MudLink Href="/login" Underline="Underline.Always">返回登录</MudLink>
+        </MudText>
+    </MudStack>
+</MudPaper>
+
+@code {
+    private bool isSuccess = false;
+
+    private string? errorMessage;
+
+    private Dictionary<string, object> userNameTextFieldAttr = new()
+    {
+        { "autocomplete", "username"},
+        { "aria-required", "true" }
+    };
+    private Dictionary<string, object> passwordTextFieldAttr = new()
+    {
+        { "autocomplete", "new-password" },
+        { "aria-required", "true" }
+    };
+    private Dictionary<string, object> confirmPasswordTextFieldAttr = new()
+    {
+        { "autocomplete", "new-password" },
+        { "aria-required", "true" }
+    };
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        Input ??= new();
+    }
+
+    private async Task RegisterUser(EditContext editContext)
+    {
+        var request = new RegisterRequest(Input.UserName, Input.Password, Input.ConfirmPassword);
+        var result = await AuthService.RegisterAsync(request);
+        if (!result.Succeeded)
+        {
+            isSuccess = false;
+            errorMessage = string.Join("\n", result.Errors.Select(e => e.Description));
+            return;
+        }
+        isSuccess = true;
+        RedirectManager.RedirectTo("/register/confirmation");
+    }
+
+    private sealed class InputModel
+    {
+        [Required(ErrorMessage = "请输入用户名")]
+        public string UserName { get; set; } = "";
+
+        [Required(ErrorMessage = "请输入密码")]
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = "";
+
+        [Required(ErrorMessage = "请确认密码")]
+        [DataType(DataType.Password)]
+        [Compare("Password", ErrorMessage = "两次密码不一致")]
+        public string ConfirmPassword { get; set; } = "";
+    }
+}

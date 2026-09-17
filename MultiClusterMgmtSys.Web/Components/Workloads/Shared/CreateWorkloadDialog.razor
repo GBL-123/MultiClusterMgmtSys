@@ -1,0 +1,99 @@
+@using k8s
+@using MultiClusterMgmtSys.Application.Abstractions
+@using MultiClusterMgmtSys.Application.Enums
+@using MultiClusterMgmtSys.Application.Abstractions
+@using MultiClusterMgmtSys.Domain.Exceptions
+@using MultiClusterMgmtSys.Application.Abstractions
+@using MultiClusterMgmtSys.Application.Requests
+@using MultiClusterMgmtSys.Application.Abstractions
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Application.Abstractions
+
+@inject WorkloadService WorkloadService
+@inject IYamlTemplateService YamlTemplateService
+@inject ISnackbar Snackbar
+@inject ExceptionPresenter ExHandler
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField T="string"
+                      @bind-Value="yamlContent"
+                      Label="YAML"
+                      Lines="25"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Style="font-family: monospace;" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Text" Disabled="saving">取消</MudButton>
+        <MudButton OnClick="Submit" Color="Color.Primary" Variant="Variant.Filled" Disabled="saving"
+                   StartIcon="@(saving ? null : Icons.Material.Filled.Save)">
+            @if (saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            创建
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    [Parameter]
+    public WorkloadKind Kind { get; set; }
+
+    private string yamlContent = "";
+
+    private bool saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        yamlContent = await YamlTemplateService.GetTemplateAsync("workload", Kind.ToString().ToLowerInvariant());
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task Submit()
+    {
+        saving = true;
+        try
+        {
+            var request = new WorkloadCreateRequest(ClusterId, yamlContent);
+            switch (Kind)
+            {
+                case WorkloadKind.Deployment:
+                    await WorkloadService.CreateDeploymentFromYamlAsync(request);
+                    break;
+                case WorkloadKind.StatefulSet:
+                    await WorkloadService.CreateStatefulSetFromYamlAsync(request);
+                    break;
+                case WorkloadKind.DaemonSet:
+                    await WorkloadService.CreateDaemonSetFromYamlAsync(request);
+                    break;
+                case WorkloadKind.ReplicaSet:
+                    await WorkloadService.CreateReplicaSetFromYamlAsync(request);
+                    break;
+            }
+
+            Snackbar.Add("创建成功", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (ConflictException)
+        {
+            Snackbar.Add("同名对象已存在", Severity.Warning);
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, $"创建{Kind.ToDisplayText()}");
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

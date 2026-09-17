@@ -1,0 +1,165 @@
+@attribute [Authorize]
+@page "/clusters/{Id:int}"
+
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Web.Components.Clusters.Shared
+@using MultiClusterMgmtSys.Application.ViewModels
+
+@inject ClusterService ClusterService
+@inject ClusterSelectionState ClusterSelection
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+@inject ExceptionPresenter ExHandler
+
+<PageTitle>集群详情</PageTitle>
+
+<MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
+    @if (loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else if (cluster is null)
+    {
+        <MudCard Class="pa-4">
+            <MudCardContent>
+                <MudText Align="Align.Center" Class="mud-text-secondary">未找到该集群</MudText>
+                <div class="d-flex justify-center mt-4">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.ArrowBack"
+                               OnClick='@(() => NavigationManager.NavigateTo("/clusters"))'>
+                        返回集群列表
+                    </MudButton>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    }
+    else
+    {
+        <ClusterDetailToolbar Cluster="@cluster"
+                             Processing="processing"
+                             OnBack="@(() => NavigationManager.NavigateTo("/clusters"))"
+                             OnRefresh="RefreshStatus"
+                             OnEdit="OpenEditDialog"
+                             OnDelete="DeleteCluster" />
+
+        <MudTabs @bind-ActivePanelIndex="activeTabIndex"
+                 Class="detail-tabs"
+                 Elevation="0"
+                 Rounded="false"
+                 TabPanelsClass="detail-tabs-panels">
+            <MudTabPanel Text="概览">
+                <ClusterOverviewCard Cluster="@cluster" />
+            </MudTabPanel>
+            <MudTabPanel Text="集群端点">
+                <ClusterEndpointsCard Cluster="@cluster"
+                                      OnEndpointsChanged="LoadAsync" />
+            </MudTabPanel>
+            <MudTabPanel Text="节点">
+                <ClusterNodesCard Cluster="@cluster" />
+            </MudTabPanel>
+        </MudTabs>
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+
+    private ClusterDetailViewModel? cluster;
+
+    private bool loading;
+
+    private bool processing;
+
+    private int activeTabIndex;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        try
+        {
+            cluster = await ClusterService.GetClusterDetailAsync(Id);
+            if (cluster is not null)
+            {
+                ClusterSelection.Set(Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载集群详情");
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task RefreshStatus()
+    {
+        processing = true;
+        try
+        {
+            await ClusterService.RefreshClusterStatusAsync(Id);
+            await LoadAsync();
+            Snackbar.Add("集群状态已刷新", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "刷新状态");
+        }
+        finally
+        {
+            processing = false;
+        }
+    }
+
+    private async Task OpenEditDialog()
+    {
+        var parameters = new DialogParameters { { "ClusterId", Id } };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<EditClusterDialog>("编辑集群", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task DeleteCluster()
+    {
+        var parameters = new DialogParameters
+        {
+            { "Message", $"确认删除集群「{cluster?.Name ?? Id.ToString()}」？此操作不可撤销。" }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("确认删除", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            processing = true;
+            try
+            {
+                await ClusterService.DeleteClusterAsync(Id);
+                Snackbar.Add("集群已删除", Severity.Success);
+                NavigationManager.NavigateTo("/clusters");
+            }
+            catch (Exception ex)
+            {
+                await ExHandler.HandleAsync(ex, "删除集群");
+            }
+            finally
+            {
+                processing = false;
+            }
+        }
+    }
+}

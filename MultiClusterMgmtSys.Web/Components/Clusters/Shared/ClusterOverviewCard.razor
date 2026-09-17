@@ -1,0 +1,179 @@
+@using MultiClusterMgmtSys.Domain.Enums
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Application.ViewModels
+
+@inject ClusterService ClusterService
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@inject ExceptionPresenter ExHandler
+
+<MudCard Class="@(state == CredentialState.Revealed ? "pa-4 credential-fill" : "pa-4")">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">概览</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudGrid Spacing="3">
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">名称</MudText>
+                <MudText Typo="Typo.body1" Class="font-weight-medium">@Cluster.Name</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">版本</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(Cluster.Version ?? "—")</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">节点数</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@Cluster.NodeCountText</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">所属分组</MudText>
+                <MudText Typo="Typo.body1">@(Cluster.GroupName ?? "未分组")</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">连接方式</MudText>
+                @if (Cluster.ConnectionType is null)
+                {
+                    <MudText Typo="Typo.body1">—</MudText>
+                }
+                else
+                {
+                    <StackedText Primary="@Cluster.ConnectionTypeText" Secondary="@Cluster.ConnectionTypeRawText" />
+                }
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">API Server</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(Cluster.ApiServer ?? "—")</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">创建时间</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@Cluster.CreatedAt.ToString("yyyy-MM-dd HH:mm")</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">最后检测时间</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(Cluster.LastCheckedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
+            </MudItem>
+        </MudGrid>
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                @if (Cluster.ConnectionType is not null)
+                {
+                    <div class="credential-annex">
+                        <div class="credential-annex-head">
+                            <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                                连接凭据 · @Cluster.ConnectionTypeText (@Cluster.ConnectionTypeRawText)
+                            </MudText>
+                            <div class="d-flex align-center">
+                                @if (state == CredentialState.Revealed)
+                                {
+                                    <MudButton Variant="Variant.Text"
+                                               Color="Color.Primary"
+                                               Size="Size.Small"
+                                               StartIcon="@Icons.Material.Filled.ContentCopy"
+                                               OnClick="CopyCredential">
+                                        复制
+                                    </MudButton>
+                                    <MudButton Variant="Variant.Text"
+                                               Size="Size.Small"
+                                               StartIcon="@Icons.Material.Filled.VisibilityOff"
+                                               OnClick="HideCredential">
+                                        隐藏
+                                    </MudButton>
+                                }
+                                else
+                                {
+                                    <MudButton Variant="Variant.Text"
+                                               Color="Color.Primary"
+                                               Size="Size.Small"
+                                               StartIcon="@Icons.Material.Filled.Visibility"
+                                               Disabled="state == CredentialState.Loading"
+                                               OnClick="RevealCredential">
+                                        查看凭据
+                                    </MudButton>
+                                }
+                            </div>
+                        </div>
+                        @if (state == CredentialState.Revealed)
+                        {
+                            <div class="credential-viewer font-mono">@CredentialValue</div>
+                        }
+                        else
+                        {
+                            <div class="credential-redacted font-mono">@(state == CredentialState.Loading ? "// 正在加载..." : "// 密文已隐藏 · 仅管理员可见")</div>
+                        }
+                    </div>
+                }
+            </Authorized>
+        </AuthorizeView>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public ClusterDetailViewModel Cluster { get; set; } = default!;
+
+    private CredentialState state = CredentialState.Redacted;
+
+    private ClusterEditViewModel? editForSecret;
+
+    private string CredentialValue => editForSecret?.ConnectionType == ConnectionType.KubeConfig
+        ? editForSecret.KubeConfig ?? ""
+        : editForSecret?.Token ?? "";
+
+    private async Task RevealCredential()
+    {
+        if (state == CredentialState.Loading)
+        {
+            return;
+        }
+
+        if (editForSecret is null)
+        {
+            state = CredentialState.Loading;
+            try
+            {
+                editForSecret = await ClusterService.GetClusterForEditAsync(Cluster.Id);
+            }
+            catch (Exception ex)
+            {
+                await ExHandler.HandleAsync(ex, "加载密文");
+            }
+
+            if (editForSecret is null)
+            {
+                state = CredentialState.Redacted;
+                return;
+            }
+        }
+
+        state = CredentialState.Revealed;
+    }
+
+    private void HideCredential()
+    {
+        state = CredentialState.Redacted;
+    }
+
+    private async Task CopyCredential()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", CredentialValue);
+            Snackbar.Add("已复制到剪贴板", Severity.Success);
+        }
+        catch (JSException ex)
+        {
+            await ExHandler.HandleAsync(ex, "复制");
+        }
+    }
+
+    private enum CredentialState
+    {
+        Redacted,
+
+        Loading,
+
+        Revealed
+    }
+}

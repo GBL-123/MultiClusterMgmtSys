@@ -5,10 +5,10 @@ using k8s;
 using k8s.Models;
 using Moq;
 using MudBlazor;
-using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Components.Common;
-using MultiClusterMgmtSys.Requests;
-using MultiClusterMgmtSys.Services;
+using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Web.Components.Common;
+using MultiClusterMgmtSys.Application.Requests;
+using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Pages;
@@ -71,7 +71,7 @@ public class PageFilterFlowTests
                 Spec = new V1ServiceSpec { Type = "ClusterIP", ClusterIP = "10.96.0.2" }
             });
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Svcs.Pages.Svcs>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Svcs.Pages.Svcs>(
             parameters => parameters.Add(p => p.ClusterId, cluster.Id));
         cut.WaitForState(() => cut.Markup.Contains("web-alpha"));
 
@@ -104,7 +104,7 @@ public class PageFilterFlowTests
             Spec = new V1ServiceSpec { Type = "ClusterIP", ClusterIP = "10.96.0.3" }
         });
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Svcs.Pages.Svcs>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Svcs.Pages.Svcs>(
             parameters => parameters.Add(p => p.ClusterId, cluster.Id));
         cut.WaitForState(() => cut.Markup.Contains("doomed-svc"));
 
@@ -151,7 +151,7 @@ public class PageFilterFlowTests
                 Data = new Dictionary<string, string> { ["k"] = "v" }
             });
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Configmaps.Pages.ConfigMaps>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Configmaps.Pages.ConfigMaps>(
             parameters => parameters.Add(p => p.ClusterId, cluster.Id));
         cut.WaitForState(() => cut.Markup.Contains("alpha-cm"));
 
@@ -192,7 +192,7 @@ public class PageFilterFlowTests
                 Status = new V1DeploymentStatus { ReadyReplicas = 1, UpdatedReplicas = 1, ObservedGeneration = 1 }
             });
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Pages.Deployments>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Pages.Deployments>(
             parameters => parameters.Add(p => p.ClusterId, cluster.Id));
         cut.WaitForState(() => cut.Markup.Contains("dep-alpha"));
 
@@ -237,7 +237,7 @@ public class PageFilterFlowTests
                 }
             });
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Pages.Nodes>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Pages.Nodes>(
             parameters => parameters.Add(p => p.ClusterId, cluster.Id));
         cut.WaitForState(() => cut.Markup.Contains("alpha-node"));
 
@@ -271,7 +271,7 @@ public class PageFilterFlowTests
             Spec = new V1DeploymentSpec { Replicas = 1 }
         });
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Pages.DeploymentYamlEdit>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Pages.DeploymentYamlEdit>(
             parameters => parameters
                 .Add(p => p.ClusterId, cluster.Id)
                 .Add(p => p.Namespace, "app")
@@ -306,7 +306,7 @@ public class PageFilterFlowTests
 
         var provider = ctx.Render<MudDialogProvider>();
         var reference = await ctx.Services.GetRequiredService<IDialogService>()
-            .ShowAsync<MultiClusterMgmtSys.Components.Nodes.Shared.NodeIpNotesDialog>(
+            .ShowAsync<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeIpNotesDialog>(
                 "节点 IP 备注",
                 new DialogParameters
                 {
@@ -314,7 +314,7 @@ public class PageFilterFlowTests
                     { "NodeName", "n1" },
                     {
                         "Addresses",
-                        new List<MultiClusterMgmtSys.ViewModels.NodeAddressViewModel>
+                        new List<MultiClusterMgmtSys.Application.ViewModels.NodeAddressViewModel>
                         {
                             new() { Type = "InternalIP", Address = "10.0.0.1" }
                         }

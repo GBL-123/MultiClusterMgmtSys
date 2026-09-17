@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using MudBlazor;
-using MultiClusterMgmtSys.Common.Enums;
+using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Pages;
@@ -17,7 +17,7 @@ public class ClustersPageFlowTests
         auth.SetRoles("Admin");
     }
 
-    private static async Task<(BunitHost Ctx, IRenderedComponent<MultiClusterMgmtSys.Components.Clusters.Pages.Clusters> Cut, ServiceHarness Harness)> RenderClustersAsync()
+    private static async Task<(BunitHost Ctx, IRenderedComponent<MultiClusterMgmtSys.Web.Components.Clusters.Pages.Clusters> Cut, ServiceHarness Harness)> RenderClustersAsync()
     {
         var ctx = new BunitHost();
         AuthorizeAdmin(ctx);
@@ -26,7 +26,7 @@ public class ClustersPageFlowTests
         var added = await harness.ClusterRepo.AddAsync(TestData.NewCluster("flow-cluster"));
         await harness.ClusterRepo.AddAsync(TestData.NewCluster("keep-cluster"));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Pages.Clusters>();
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Pages.Clusters>();
         cut.WaitForState(() => cut.Markup.Contains("flow-cluster"));
         return (ctx, cut, harness);
     }

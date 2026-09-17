@@ -3,8 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Components.Authorization;
 using Moq;
 using MudBlazor;
-using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.ViewModels;
+using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Application.ViewModels;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Common;
@@ -18,7 +18,7 @@ public class ConfirmDialogTests
         var provider = ctx.Render<MudDialogProvider>();
 
         var dialogReference = await ctx.Services.GetRequiredService<IDialogService>()
-            .ShowAsync<MultiClusterMgmtSys.Components.Common.ConfirmDialog>(
+            .ShowAsync<MultiClusterMgmtSys.Web.Components.Common.ConfirmDialog>(
                 "确认",
                 new DialogParameters
                 {
@@ -43,7 +43,7 @@ public class ConfirmDialogTests
         var provider = ctx.Render<MudDialogProvider>();
 
         var dialogReference = await ctx.Services.GetRequiredService<IDialogService>()
-            .ShowAsync<MultiClusterMgmtSys.Components.Common.ConfirmDialog>(
+            .ShowAsync<MultiClusterMgmtSys.Web.Components.Common.ConfirmDialog>(
                 "确认",
                 new DialogParameters { { "Message", "确认？" } });
 
@@ -62,7 +62,7 @@ public class ClusterSelectionStateTests
     [Fact]
     public void Set_and_clear_update_state()
     {
-        var state = new MultiClusterMgmtSys.Components.Common.ClusterSelectionState();
+        var state = new MultiClusterMgmtSys.Web.Components.Common.ClusterSelectionState();
 
         state.Set(42);
         Assert.Equal(42, state.SelectedClusterId);
@@ -79,7 +79,7 @@ public class ClusterSelectSidebarTests
     {
         await using var ctx = new BunitHost();
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Common.ClusterSelectSidebar>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Common.ClusterSelectSidebar>(
             parameters => parameters
                 .Add(p => p.Clusters, new[]
                 {
@@ -100,7 +100,7 @@ public class ClusterSelectSidebarTests
         await using var ctx = new BunitHost();
 
         int? selected = null;
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Common.ClusterSelectSidebar>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Common.ClusterSelectSidebar>(
             parameters => parameters
                 .Add(p => p.Clusters, new[]
                 {
@@ -120,7 +120,7 @@ public class ClusterSelectSidebarTests
     {
         await using var ctx = new BunitHost();
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Common.ClusterSelectSidebar>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Common.ClusterSelectSidebar>(
             parameters => parameters.Add(p => p.Clusters, Array.Empty<ClusterViewModel>()));
 
         Assert.Contains("暂无集群", cut.Markup);

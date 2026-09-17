@@ -1,5 +1,5 @@
-using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Data.Entities;
+using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Domain.Entities;
 
 namespace MultiClusterMgmtSys.Tests.TestInfrastructure;
 

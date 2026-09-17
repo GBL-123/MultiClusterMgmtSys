@@ -6,12 +6,12 @@ using k8s.Models;
 using Moq;
 using MudBlazor;
 using MudBlazor.Extensions;
-using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Components.Common;
-using MultiClusterMgmtSys.Components.Layout;
-using MultiClusterMgmtSys.Components.Namespaces.Pages;
-using MultiClusterMgmtSys.Components.Namespaces.Shared;
-using MultiClusterMgmtSys.Services;
+using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Web.Components.Common;
+using MultiClusterMgmtSys.Web.Components.Layout;
+using MultiClusterMgmtSys.Web.Components.Namespaces.Pages;
+using MultiClusterMgmtSys.Web.Components.Namespaces.Shared;
+using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Pages;

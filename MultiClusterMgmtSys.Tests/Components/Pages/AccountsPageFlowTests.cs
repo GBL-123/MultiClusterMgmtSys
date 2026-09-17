@@ -4,11 +4,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.AspNetCore.Identity;
 using MudBlazor;
-using MultiClusterMgmtSys.Data;
-using MultiClusterMgmtSys.Data.Entities;
-using MultiClusterMgmtSys.Data.Repositories;
-using MultiClusterMgmtSys.Requests;
-using MultiClusterMgmtSys.Services;
+using MultiClusterMgmtSys.Infrastructure.Persistence;
+using MultiClusterMgmtSys.Domain.Entities;
+using MultiClusterMgmtSys.Infrastructure.Persistence;
+using MultiClusterMgmtSys.Application.Requests;
+using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Pages;
@@ -32,7 +32,7 @@ public class AccountsPageFlowTests
             TestHttpContext.ForIdentity("admin", userId: 99, "Admin").Object,
             NullLogger<AuditService>.Instance);
         var accountService = new AccountService(
-            identity.Users, identity.Roles, identity.Db, audit,
+            identity.Users, identity.Roles, new AccountQueryRepository(identity.Db), audit,
             TestHttpContext.ForIdentity("admin", userId: 99, "Admin").Object,
             NullLogger<AccountService>.Instance);
         ctx.Services.AddSingleton(accountService);
@@ -52,7 +52,7 @@ public class AccountsPageFlowTests
             var svc = ctx.Services.GetRequiredService<AccountService>();
             await svc.CreateAccountAsync(new AccountCreateRequest("reset-me", "Passw0rd1", "Admin"));
 
-            var cut = ctx.Render<MultiClusterMgmtSys.Components.Account.Pages.Accounts>();
+            var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Account.Pages.Accounts>();
             cut.WaitForState(() => cut.Markup.Contains("reset-me"));
 
             var provider = ctx.Render<MudDialogProvider>();

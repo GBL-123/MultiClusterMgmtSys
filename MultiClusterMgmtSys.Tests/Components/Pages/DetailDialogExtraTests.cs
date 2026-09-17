@@ -1,18 +1,63 @@
-﻿using Bunit;
+﻿using MultiClusterMgmtSys.Infrastructure.Sync;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Sync;
+using Bunit;
+using MultiClusterMgmtSys.Infrastructure.Sync;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Sync;
 using Microsoft.AspNetCore.Components.Authorization;
+using MultiClusterMgmtSys.Infrastructure.Sync;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Sync;
 using Microsoft.Extensions.Configuration;
+using MultiClusterMgmtSys.Infrastructure.Sync;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Sync;
 using Microsoft.Extensions.DependencyInjection;
+using MultiClusterMgmtSys.Infrastructure.Sync;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Sync;
 using Microsoft.Extensions.Logging.Abstractions;
+using MultiClusterMgmtSys.Infrastructure.Sync;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Sync;
 using k8s;
+using MultiClusterMgmtSys.Infrastructure.Sync;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Sync;
 using k8s.Models;
+using MultiClusterMgmtSys.Infrastructure.Sync;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Sync;
 using Moq;
+using MultiClusterMgmtSys.Infrastructure.Sync;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Sync;
 using MudBlazor;
-using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Components.Common;
-using MultiClusterMgmtSys.Requests;
-using MultiClusterMgmtSys.Services;
+using MultiClusterMgmtSys.Infrastructure.Sync;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Sync;
+using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Infrastructure.Sync;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Sync;
+using MultiClusterMgmtSys.Web.Components.Common;
+using MultiClusterMgmtSys.Infrastructure.Sync;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Sync;
+using MultiClusterMgmtSys.Application.Requests;
+using MultiClusterMgmtSys.Infrastructure.Sync;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Sync;
+using MultiClusterMgmtSys.Application.Services;
+using MultiClusterMgmtSys.Infrastructure.Sync;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Sync;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
-using MultiClusterMgmtSys.ViewModels.Mappings;
+using MultiClusterMgmtSys.Infrastructure.Sync;
+using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Infrastructure.Sync;
+using MultiClusterMgmtSys.Application.ViewModels.Mappings;
 
 namespace MultiClusterMgmtSys.Tests.Components.Pages;
 
@@ -66,7 +111,7 @@ public class DetailDialogExtraTests
             Data = new Dictionary<string, string> { ["db.host"] = "postgres" }
         });
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Configmaps.Pages.ConfigMapDetail>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Configmaps.Pages.ConfigMapDetail>(
             parameters => parameters
                 .Add(p => p.ClusterId, cluster.Id)
                 .Add(p => p.Namespace, "app")
@@ -99,7 +144,7 @@ public class DetailDialogExtraTests
         });
         k8s.SetupListEndpointSlices("app", SvcMappingExtensions.EndpointSliceServiceLabel + "=detail-svc");
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Svcs.Pages.SvcDetail>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Svcs.Pages.SvcDetail>(
             parameters => parameters
                 .Add(p => p.ClusterId, cluster.Id)
                 .Add(p => p.Namespace, "app")
@@ -130,7 +175,7 @@ public class DetailDialogExtraTests
 
         var provider = ctx.Render<MudDialogProvider>();
         var reference = await ctx.Services.GetRequiredService<IDialogService>()
-            .ShowAsync<MultiClusterMgmtSys.Components.Svcs.Shared.CreateSvcDialog>(
+            .ShowAsync<MultiClusterMgmtSys.Web.Components.Svcs.Shared.CreateSvcDialog>(
                 "新建 Service",
                 new DialogParameters { { "ClusterId", cluster.Id } });
 
@@ -181,7 +226,7 @@ public class DetailDialogExtraTests
             Status = new V1DeploymentStatus { ReadyReplicas = 1, UpdatedReplicas = 1, ObservedGeneration = 1 }
         });
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Pages.Deployments>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Pages.Deployments>(
             parameters => parameters.Add(p => p.ClusterId, cluster.Id));
         cut.WaitForState(() => cut.Markup.Contains("nav-target"));
 
@@ -218,8 +263,8 @@ public class DetailDialogExtraTests
             new Microsoft.Extensions.Configuration.ConfigurationBuilder()
                 .AddInMemoryCollection(new Dictionary<string, string?>())
                 .Build());
-        services.AddScoped(_ => new MultiClusterMgmtSys.Data.Repositories.AppSettingRepository(harness.Db));
-        services.AddScoped(_ => harness.ClusterRepo);
+        services.AddScoped<IAppSettingRepository>(_ => new MultiClusterMgmtSys.Infrastructure.Persistence.AppSettingRepository(harness.Db));
+        services.AddScoped<IClusterRepository>(_ => harness.ClusterRepo);
         services.AddScoped(_ => harness.Audit);
         services.AddScoped(_ => TestHttpContext.For("admin", "Admin").Object);
         services.AddScoped<ClusterNodeService>();

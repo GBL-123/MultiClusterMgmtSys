@@ -2,9 +2,9 @@ using Bunit;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
-using MultiClusterMgmtSys.Data.Repositories;
-using MultiClusterMgmtSys.Requests;
-using MultiClusterMgmtSys.Services;
+using MultiClusterMgmtSys.Infrastructure.Persistence;
+using MultiClusterMgmtSys.Application.Requests;
+using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Dialogs;
@@ -18,7 +18,7 @@ public class WorkloadScaleDialogTests
         var provider = ctx.Render<MudDialogProvider>();
 
         var dialogReference = await ctx.Services.GetRequiredService<IDialogService>()
-            .ShowAsync<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadScaleDialog>(
+            .ShowAsync<MultiClusterMgmtSys.Web.Components.Workloads.Shared.WorkloadScaleDialog>(
                 "扩缩容",
                 new DialogParameters
                 {
@@ -38,7 +38,7 @@ public class WorkloadScaleDialogTests
         var provider = ctx.Render<MudDialogProvider>();
 
         var dialogReference = await ctx.Services.GetRequiredService<IDialogService>()
-            .ShowAsync<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadScaleDialog>(
+            .ShowAsync<MultiClusterMgmtSys.Web.Components.Workloads.Shared.WorkloadScaleDialog>(
                 "扩缩容",
                 new DialogParameters
                 {
@@ -66,7 +66,7 @@ public class WorkloadScaleDialogTests
         var provider = ctx.Render<MudDialogProvider>();
 
         var dialogReference = await ctx.Services.GetRequiredService<IDialogService>()
-            .ShowAsync<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadScaleDialog>(
+            .ShowAsync<MultiClusterMgmtSys.Web.Components.Workloads.Shared.WorkloadScaleDialog>(
                 "扩缩容",
                 new DialogParameters
                 {
@@ -93,7 +93,7 @@ public class WorkloadScaleDialogTests
         var provider = ctx.Render<MudDialogProvider>();
 
         var dialogReference = await ctx.Services.GetRequiredService<IDialogService>()
-            .ShowAsync<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadScaleDialog>(
+            .ShowAsync<MultiClusterMgmtSys.Web.Components.Workloads.Shared.WorkloadScaleDialog>(
                 "扩缩容",
                 new DialogParameters { { "Name", "web" }, { "CurrentReplicas", 1 } });
 

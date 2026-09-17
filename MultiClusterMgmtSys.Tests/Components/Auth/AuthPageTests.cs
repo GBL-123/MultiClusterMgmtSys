@@ -4,12 +4,12 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using MudBlazor;
-using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Components.Common;
-using MultiClusterMgmtSys.Data.Entities;
-using MultiClusterMgmtSys.Data.Repositories;
-using MultiClusterMgmtSys.Requests;
-using MultiClusterMgmtSys.Services;
+using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Web.Components.Common;
+using MultiClusterMgmtSys.Domain.Entities;
+using MultiClusterMgmtSys.Infrastructure.Persistence;
+using MultiClusterMgmtSys.Application.Requests;
+using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Auth;
@@ -44,7 +44,7 @@ public class AuthPageTests
             ctx.Services.AddScoped<RedirectManager>();
             ctx.Renderer.SetRendererInfo(new Microsoft.AspNetCore.Components.RendererInfo("bunit", true));
 
-            var cut = ctx.Render<MultiClusterMgmtSys.Components.Auth.Pages.Login>(
+            var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Auth.Pages.Login>(
                 parameters => parameters.AddCascadingValue(new Microsoft.AspNetCore.Http.DefaultHttpContext { RequestServices = ctx.Services }));
             cut.WaitForState(() => cut.Markup.Contains("登录"));
         }
@@ -75,7 +75,7 @@ public class AuthPageTests
                 NullLogger<AuthService>.Instance));
             ctx.Renderer.SetRendererInfo(new Microsoft.AspNetCore.Components.RendererInfo("bunit", true));
 
-            var cut = ctx.Render<MultiClusterMgmtSys.Components.Auth.Pages.Register>();
+            var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Auth.Pages.Register>();
 
             Assert.Contains("注册", cut.Markup);
         }

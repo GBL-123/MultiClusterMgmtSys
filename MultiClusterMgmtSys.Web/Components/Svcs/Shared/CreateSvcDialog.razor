@@ -1,0 +1,113 @@
+@using MultiClusterMgmtSys.Application.Abstractions
+@using MultiClusterMgmtSys.Domain.Exceptions
+@using MultiClusterMgmtSys.Application.Requests
+@using MultiClusterMgmtSys.Application.Services
+
+@inject SvcService SvcService
+@inject IYamlValidator YamlValidator
+@inject IYamlTemplateService YamlTemplateService
+@inject ISnackbar Snackbar
+@inject ExceptionPresenter ExHandler
+
+<MudDialog>
+    <DialogContent>
+        <MudSelect T="string"
+                   Value="svcType"
+                   ValueChanged="OnTypeChanged"
+                   Label="Service 类型"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   Class="mb-4">
+            <MudSelectItem Value="@ClusterIPType">ClusterIP(集群内部访问)</MudSelectItem>
+            <MudSelectItem Value="@NodePortType">NodePort(节点端口对外暴露)</MudSelectItem>
+            <MudSelectItem Value="@LoadBalancerType">LoadBalancer(负载均衡器)</MudSelectItem>
+            <MudSelectItem Value="@ExternalNameType">ExternalName(外部 DNS 别名)</MudSelectItem>
+        </MudSelect>
+        <MudTextField T="string"
+                      @bind-Value="yamlContent"
+                      Label="YAML"
+                      Lines="25"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Style="font-family: monospace;" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Text" Disabled="saving">取消</MudButton>
+        <MudButton OnClick="Submit" Color="Color.Primary" Variant="Variant.Filled" Disabled="saving"
+                   StartIcon="@(saving ? null : Icons.Material.Filled.Save)">
+            @if (saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            创建
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private const string ClusterIPType = "ClusterIP";
+
+    private const string NodePortType = "NodePort";
+
+    private const string LoadBalancerType = "LoadBalancer";
+
+    private const string ExternalNameType = "ExternalName";
+
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    private string svcType = ClusterIPType;
+
+    private string yamlContent = "";
+
+    private bool saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        yamlContent = await YamlTemplateService.GetTemplateAsync("service", ClusterIPType.ToLowerInvariant());
+    }
+
+    private async Task OnTypeChanged(string type)
+    {
+        svcType = type;
+        yamlContent = await YamlTemplateService.GetTemplateAsync("service", type.ToLowerInvariant());
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task Submit()
+    {
+        try
+        {
+            YamlValidator.ValidateService(yamlContent);
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(new ValidationException($"YAML 格式错误:{ex.Message}"), "创建服务");
+            return;
+        }
+
+        saving = true;
+        try
+        {
+            await SvcService.CreateSvcFromYamlAsync(new SvcCreateRequest(ClusterId, yamlContent));
+            Snackbar.Add("创建成功", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (ConflictException)
+        {
+            Snackbar.Add("同名 Service 已存在", Severity.Warning);
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "创建服务");
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

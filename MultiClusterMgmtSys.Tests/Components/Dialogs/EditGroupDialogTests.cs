@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using System.Threading;
-using MultiClusterMgmtSys.Common.Enums;
+using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Dialogs;
@@ -21,7 +21,7 @@ public class EditGroupDialogTests
         var provider = ctx.Render<MudDialogProvider>();
 
         await ctx.Services.GetRequiredService<IDialogService>()
-            .ShowAsync<MultiClusterMgmtSys.Components.Clusters.Shared.EditGroupDialog>("新建分组");
+            .ShowAsync<MultiClusterMgmtSys.Web.Components.Clusters.Shared.EditGroupDialog>("新建分组");
 
         await provider.InvokeAsync(() => { });
         provider.WaitForState(() => provider.Markup.Contains("mud-dialog-content"), TimeSpan.FromSeconds(5));
@@ -41,7 +41,7 @@ public class EditGroupDialogTests
         var provider = ctx.Render<MudDialogProvider>();
 
         await ctx.Services.GetRequiredService<IDialogService>()
-            .ShowAsync<MultiClusterMgmtSys.Components.Clusters.Shared.EditGroupDialog>(
+            .ShowAsync<MultiClusterMgmtSys.Web.Components.Clusters.Shared.EditGroupDialog>(
                 "重命名分组",
                 new DialogParameters { { "GroupId", added.Entity.Id }, { "InitialName", "old-name" } });
 

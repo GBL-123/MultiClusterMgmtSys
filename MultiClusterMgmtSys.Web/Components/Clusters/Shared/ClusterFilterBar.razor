@@ -1,0 +1,101 @@
+@using MultiClusterMgmtSys.Domain.Enums
+@using MultiClusterMgmtSys.Application.Models
+@using MultiClusterMgmtSys.Application.Requests
+
+<MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
+    <MudStack Row="true" Class="flex-auto">
+        <MudTextField @bind-Value="@Query.Name"
+                      Label="集群名称"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Placeholder="请输入集群名称"
+                      Style="min-width:200px;" />
+        <MudSelect @bind-Value="Query.Status"
+                   Label="状态"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   Style="min-width:100px;">
+            <MudSelectItem Value="@((ClusterStatus?)null)">全部</MudSelectItem>
+            <MudSelectItem Value="@((ClusterStatus?)ClusterStatus.Online)">在线</MudSelectItem>
+            <MudSelectItem Value="@((ClusterStatus?)ClusterStatus.Offline)">离线</MudSelectItem>
+            <MudSelectItem Value="@((ClusterStatus?)ClusterStatus.Unknown)">未知</MudSelectItem>
+        </MudSelect>
+        <MudSelect @bind-Value="Query.VersionSelection"
+                   Label="版本"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense"
+                   Style="min-width:150px;">
+            <MudSelectItem Value="@VersionFilterSentinel.All">全部</MudSelectItem>
+            @foreach (var version in AvailableVersions)
+            {
+                <MudSelectItem Value="@version">@version</MudSelectItem>
+            }
+            <MudSelectItem Value="@VersionFilterSentinel.OnlyNull">未知</MudSelectItem>
+        </MudSelect>
+    </MudStack>
+
+    <MudStack Row="true" Class="flex-auto">
+        <MudDateRangePicker DateRange="@dateRange"
+                            DateRangeChanged="OnDateRangeChanged"
+                            Label="创建日期"
+                            PlaceholderStart="开始日期"
+                            PlaceholderEnd="结束日期"
+                            Variant="Variant.Outlined"
+                            Margin="Margin.Dense"
+                            Style="min-width:400px;" />
+    </MudStack>
+    <MudSpacer />
+    <MudStack Row="true">
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Search"
+               OnClick="Search">
+        查询
+    </MudButton>
+    <MudButton Variant="Variant.Outlined"
+               Color="Color.Secondary"
+               StartIcon="@Icons.Material.Filled.Refresh"
+               OnClick="ResetFilter">
+        重置
+    </MudButton>
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter]
+    public ClusterQueryRequest Query { get; set; } = new();
+
+    [Parameter]
+    public IReadOnlyList<string> AvailableVersions { get; set; } = [];
+
+    [Parameter]
+    public EventCallback OnFilterChanged { get; set; }
+
+    [Parameter]
+    public EventCallback OnReset { get; set; }
+
+    private DateRange dateRange = new(null, null);
+
+    private Task Search()
+    {
+        return OnFilterChanged.InvokeAsync();
+    }
+
+    private void OnDateRangeChanged(DateRange range)
+    {
+        dateRange = range;
+        Query.CreatedFrom = range.Start;
+        Query.CreatedTo = range.End;
+    }
+
+    private Task ResetFilter()
+    {
+        Query.Name = null;
+        Query.Status = null;
+        Query.VersionSelection = VersionFilterSentinel.All;
+        Query.CreatedFrom = null;
+        Query.CreatedTo = null;
+        dateRange = new DateRange(null, null);
+        return OnReset.InvokeAsync();
+    }
+}

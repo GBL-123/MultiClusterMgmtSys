@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using k8s.Models;
 using Moq;
-using MultiClusterMgmtSys.Common.Enums;
+using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Pages;
@@ -27,7 +27,7 @@ public class WorkloadPageShellTests
         ctx.AddGroupAndSyncStack(harness);
         ctx.AddWorkloadServices(new Mock<k8s.IKubernetes>(), harness);
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Pages.Deployments>();
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Pages.Deployments>();
 
         cut.WaitForState(() => cut.Markup.Contains("请从左侧选择一个集群"));
         Assert.Contains("请从左侧选择一个集群", cut.Markup);
@@ -44,7 +44,7 @@ public class WorkloadPageShellTests
         ctx.AddWorkloadServices(k8s, harness);
         var added = await harness.ClusterRepo.AddAsync(TestData.NewCluster("offline-src", status: ClusterStatus.Offline));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Pages.Deployments>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Pages.Deployments>(
             parameters => parameters.Add(p => p.ClusterId, added.Id));
 
         cut.WaitForState(() => cut.Markup.Contains("集群不可达"));
@@ -79,7 +79,7 @@ public class WorkloadPageShellTests
         });
         k8s.SetupGetVersion("v1.30.2");
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Pages.Deployments>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Pages.Deployments>(
             parameters => parameters.Add(p => p.ClusterId, cluster.Id));
 
         cut.WaitForState(() => cut.Markup.Contains("web"));
@@ -89,9 +89,9 @@ public class WorkloadPageShellTests
     }
 
     [Theory]
-    [InlineData(typeof(MultiClusterMgmtSys.Components.Workloads.Pages.StatefulSets), "有状态应用")]
-    [InlineData(typeof(MultiClusterMgmtSys.Components.Workloads.Pages.DaemonSets), "守护进程")]
-    [InlineData(typeof(MultiClusterMgmtSys.Components.Workloads.Pages.ReplicaSets), "副本集")]
+    [InlineData(typeof(MultiClusterMgmtSys.Web.Components.Workloads.Pages.StatefulSets), "有状态应用")]
+    [InlineData(typeof(MultiClusterMgmtSys.Web.Components.Workloads.Pages.DaemonSets), "守护进程")]
+    [InlineData(typeof(MultiClusterMgmtSys.Web.Components.Workloads.Pages.ReplicaSets), "副本集")]
     public async Task Thin_workload_list_pages_render_with_kind_title(Type pageType, string expectedTitle)
     {
         await using var ctx = new BunitHost();
@@ -121,7 +121,7 @@ public class WorkloadPageShellTests
         ctx.AddWorkloadServices(k8s, harness);
         var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("detail-src", status: ClusterStatus.Offline));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Pages.DeploymentDetail>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Pages.DeploymentDetail>(
             parameters => parameters
                 .Add(p => p.ClusterId, cluster.Id)
                 .Add(p => p.Namespace, "app")

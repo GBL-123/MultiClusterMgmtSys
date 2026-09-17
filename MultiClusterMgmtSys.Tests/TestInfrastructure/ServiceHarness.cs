@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
-using MultiClusterMgmtSys.Data;
-using MultiClusterMgmtSys.Data.Repositories;
-using MultiClusterMgmtSys.Services;
+using MultiClusterMgmtSys.Infrastructure.Persistence;
+using MultiClusterMgmtSys.Infrastructure.Persistence;
+using MultiClusterMgmtSys.Application.Services;
 
 namespace MultiClusterMgmtSys.Tests.TestInfrastructure;
 

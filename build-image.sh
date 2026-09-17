@@ -15,7 +15,7 @@ OUT="${2:-}"
 
 # 脚本所在目录（仓库根），保证在任何位置执行都从正确上下文构建
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DOCKERFILE="$REPO_ROOT/MultiClusterMgmtSys/Dockerfile"
+DOCKERFILE="$REPO_ROOT/MultiClusterMgmtSys.Web/Dockerfile"
 
 if [ ! -f "$DOCKERFILE" ]; then
     echo "[错误] 未找到 Dockerfile: $DOCKERFILE" >&2

@@ -4,12 +4,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.AspNetCore.Identity;
 using MudBlazor;
-using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Data;
-using MultiClusterMgmtSys.Data.Entities;
-using MultiClusterMgmtSys.Data.Repositories;
-using MultiClusterMgmtSys.Requests;
-using MultiClusterMgmtSys.Services;
+using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Infrastructure.Persistence;
+using MultiClusterMgmtSys.Application.Identity;
+using MultiClusterMgmtSys.Infrastructure.Persistence;
+using MultiClusterMgmtSys.Application.Requests;
+using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Pages;
@@ -33,7 +33,7 @@ public class AccountsBatchFlowTests
             TestHttpContext.ForIdentity("admin", userId: 99, "Admin").Object,
             NullLogger<AuditService>.Instance);
         var accountService = new AccountService(
-            identity.Users, identity.Roles, identity.Db, audit,
+            identity.Users, identity.Roles, new AccountQueryRepository(identity.Db), audit,
             TestHttpContext.ForIdentity("admin", userId: 99, "Admin").Object,
             NullLogger<AccountService>.Instance);
         ctx.Services.AddSingleton(accountService);
@@ -52,7 +52,7 @@ public class AccountsBatchFlowTests
         {
             await identity.Users.CreateAsync(new ApplicationUser { UserName = "row-user", CreatedAt = DateTime.UtcNow }, "Passw0rd1");
 
-            var cut = ctx.Render<MultiClusterMgmtSys.Components.Account.Pages.Accounts>();
+            var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Account.Pages.Accounts>();
             cut.WaitForState(() => cut.Markup.Contains("row-user"));
 
             Assert.Empty(cut.FindComponents<MudCheckBox<bool>>());
@@ -88,7 +88,7 @@ public class AccountsBatchFlowTests
             await identity.Users.CreateAsync(new ApplicationUser { UserName = "victim-user", CreatedAt = DateTime.UtcNow }, "Passw0rd1");
             var victim = await identity.Users.FindByNameAsync("victim-user");
 
-            var cut = ctx.Render<MultiClusterMgmtSys.Components.Account.Pages.Accounts>();
+            var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Account.Pages.Accounts>();
             cut.WaitForState(() => cut.Markup.Contains("victim-user"));
 
             var batchButton = cut.FindComponents<MudButton>().First(b => b.Markup.Contains("批量操作"));

@@ -1,8 +1,8 @@
 using Bunit;
 using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
-using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.ViewModels;
+using MultiClusterMgmtSys.Application.Enums;
+using MultiClusterMgmtSys.Application.ViewModels;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Workloads;
@@ -29,7 +29,7 @@ public class WorkloadListTableTests
         auth.SetAuthorized("admin");
         auth.SetRoles("Admin");
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadListTable>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Shared.WorkloadListTable>(
             parameters => parameters
                 .Add(p => p.Kind, WorkloadKind.Deployment)
                 .Add(p => p.Items, new[]
@@ -57,7 +57,7 @@ public class WorkloadListTableTests
         auth.SetAuthorized("admin");
         auth.SetRoles("Admin");
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadListTable>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Shared.WorkloadListTable>(
             parameters => parameters
                 .Add(p => p.Kind, WorkloadKind.StatefulSet)
                 .Add(p => p.Items, Array.Empty<WorkloadListViewModel>()));
@@ -73,12 +73,12 @@ public class WorkloadListTableTests
         auth.SetAuthorized("admin");
         auth.SetRoles("Admin");
 
-        var deployment = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadListTable>(
+        var deployment = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Shared.WorkloadListTable>(
             parameters => parameters
                 .Add(p => p.Kind, WorkloadKind.Deployment)
                 .Add(p => p.Items, [Item("web", WorkloadRolloutState.Ready)]));
 
-        var daemonSet = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadListTable>(
+        var daemonSet = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Shared.WorkloadListTable>(
             parameters => parameters
                 .Add(p => p.Kind, WorkloadKind.DaemonSet)
                 .Add(p => p.Items, [Item("ds-1", WorkloadRolloutState.Ready)]));
@@ -101,7 +101,7 @@ public class WorkloadListTableTests
         auth.SetRoles("Admin");
 
         (string ns, string name)? navigated = null;
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadListTable>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Shared.WorkloadListTable>(
             parameters => parameters
                 .Add(p => p.Kind, WorkloadKind.Deployment)
                 .Add(p => p.Items, [Item("web", WorkloadRolloutState.Ready)])
@@ -133,7 +133,7 @@ public class WorkloadStatusCardTests
     {
         await using var ctx = new BunitHost();
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadStatusCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Shared.WorkloadStatusCard>(
             parameters => parameters.Add(p => p.Detail, Detail()));
 
         Assert.Contains("副本数", cut.Markup);
@@ -154,7 +154,7 @@ public class WorkloadStatusCardTests
             new WorkloadConditionViewModel { Type = "Available", Status = "True", Reason = "ok", Message = "m" }
         ];
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadConditionsCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Shared.WorkloadConditionsCard>(
             parameters => parameters.Add(p => p.Detail, detail));
 
         Assert.Contains("可用", cut.Markup);
@@ -170,7 +170,7 @@ public class WorkloadStatusCardTests
     {
         await using var ctx = new BunitHost();
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadConditionsCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Shared.WorkloadConditionsCard>(
             parameters => parameters.Add(p => p.Detail, Detail()));
 
         Assert.Contains("[ 暂无条件 ]", cut.Markup);
@@ -185,7 +185,7 @@ public class WorkloadListFilterBarTests
         await using var ctx = new BunitHost();
         var fired = new List<string>();
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadListFilterBar>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Shared.WorkloadListFilterBar>(
             parameters => parameters
                 .Add(p => p.Namespaces, new List<string> { "app", "default" })
                 .Add(p => p.OnQuery, () => { fired.Add("query"); return Task.CompletedTask; })
@@ -206,7 +206,7 @@ public class WorkloadListFilterBarTests
         await using var ctx = new BunitHost();
 
         string? selected = null;
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadListFilterBar>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Shared.WorkloadListFilterBar>(
             parameters => parameters
                 .Add(p => p.Namespaces, new List<string> { "app" })
                 .Add(p => p.SelectedNamespaceChanged, ns => { selected = ns; return Task.CompletedTask; }));
@@ -224,7 +224,7 @@ public class WorkloadListFilterBarTests
         await using var ctx = new BunitHost();
 
         string? typed = null;
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Shared.WorkloadListFilterBar>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Shared.WorkloadListFilterBar>(
             parameters => parameters
                 .Add(p => p.SearchNameChanged, v => { typed = v; return Task.CompletedTask; }));
 

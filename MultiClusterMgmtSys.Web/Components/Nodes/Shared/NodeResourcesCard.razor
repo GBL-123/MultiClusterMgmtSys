@@ -1,0 +1,78 @@
+@using System.Globalization
+@using MultiClusterMgmtSys.Application.ViewModels
+
+<MudCard Class="pa-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">资源容量</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (Node.Resources.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">—</MudText>
+        }
+        else
+        {
+            <MudTable Items="Node.Resources" Dense="true" Hover="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>资源</MudTh>
+                    <MudTh>容量</MudTh>
+                    <MudTh>可分配</MudTh>
+                    <MudTh>可分配占比</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="资源">
+                        <MudText Typo="Typo.body2" Class="font-weight-medium">@context.Label</MudText>
+                        @if (context.Label != context.Key)
+                        {
+                            <MudText Typo="Typo.caption" Class="font-mono mud-text-secondary">@context.Key</MudText>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="容量">
+                        @if (string.IsNullOrEmpty(context.CapacityRaw))
+                        {
+                            <span class="font-mono">@context.CapacityText</span>
+                        }
+                        else
+                        {
+                            <TextTooltip Text="@context.CapacityRaw" Mono="true">
+                                <span class="font-mono">@context.CapacityText</span>
+                            </TextTooltip>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="可分配">
+                        @if (string.IsNullOrEmpty(context.AllocatableRaw))
+                        {
+                            <span class="font-mono">@context.AllocatableText</span>
+                        }
+                        else
+                        {
+                            <TextTooltip Text="@context.AllocatableRaw" Mono="true">
+                                <span class="font-mono">@context.AllocatableText</span>
+                            </TextTooltip>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="可分配占比">
+                        @if (context.AllocatablePercent is double percent)
+                        {
+                            <div style="display:flex; align-items:center; gap:10px; min-width:140px;">
+                                <MudProgressLinear Value="@percent" Color="Color.Primary" Style="height:6px; flex:1 1 auto;" />
+                                <span class="font-mono">@percent.ToString("0.#", CultureInfo.InvariantCulture)%</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="mud-text-secondary">—</span>
+                        }
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public ClusterNodeDetailViewModel Node { get; set; } = default!;
+}

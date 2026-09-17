@@ -1,0 +1,46 @@
+@using MultiClusterMgmtSys.Application.ViewModels
+
+@inject NavigationManager NavigationManager
+
+<MudPaper Class="pa-4">
+    <MudStack Row="true" AlignItems="AlignItems.Center">
+        <MudButton Variant="Variant.Text"
+                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                   OnClick="@(() => NavigationManager.NavigateTo($"/namespaces/{ClusterId}"))">
+            返回列表
+        </MudButton>
+        <MudText Typo="Typo.h4" Class="flex-auto ml-2">@Name</MudText>
+        @if (Detail is not null)
+        {
+            <StatusBadge Text="@Detail.StatusText" CssClass="@Detail.StatusCssClass" Raw="@Detail.Phase" />
+        }
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="OnRefresh"
+                   Disabled="Processing">
+            @if (Processing)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
+            }
+            刷新
+        </MudButton>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    [Parameter]
+    public string Name { get; set; } = "";
+
+    [Parameter]
+    public NamespaceDetailViewModel? Detail { get; set; }
+
+    [Parameter]
+    public bool Processing { get; set; }
+
+    [Parameter]
+    public EventCallback OnRefresh { get; set; }
+}

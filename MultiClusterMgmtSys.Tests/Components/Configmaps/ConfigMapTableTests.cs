@@ -1,7 +1,7 @@
 using Bunit;
 using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
-using MultiClusterMgmtSys.ViewModels;
+using MultiClusterMgmtSys.Application.ViewModels;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Configmaps;
@@ -26,7 +26,7 @@ public class ConfigMapListTableTests
         auth.SetAuthorized("admin");
         auth.SetRoles("Admin");
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Configmaps.Shared.ConfigMapListTable>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Configmaps.Shared.ConfigMapListTable>(
             parameters => parameters
                 .Add(p => p.Items, [Item("cm-a"), Item("cm-b", "kube-system", 5)]));
 
@@ -44,7 +44,7 @@ public class ConfigMapListTableTests
         auth.SetAuthorized("admin");
         auth.SetRoles("Admin");
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Configmaps.Shared.ConfigMapListTable>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Configmaps.Shared.ConfigMapListTable>(
             parameters => parameters.Add(p => p.Items, Array.Empty<ConfigMapListViewModel>()));
 
         Assert.Contains("暂无 ConfigMap", cut.Markup);
@@ -58,7 +58,7 @@ public class ConfigMapListTableTests
         auth.SetAuthorized("admin");
         auth.SetRoles("Admin");
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Configmaps.Shared.ConfigMapListTable>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Configmaps.Shared.ConfigMapListTable>(
             parameters => parameters
                 .Add(p => p.Items, [Item("cm")])
                 .Add(p => p.OnNavigateDetail, _ => Task.CompletedTask));
@@ -82,7 +82,7 @@ public class ConfigMapListTableTests
         auth.SetRoles("Admin");
 
         (string ns, string name)? navigated = null;
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Configmaps.Shared.ConfigMapListTable>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Configmaps.Shared.ConfigMapListTable>(
             parameters => parameters
                 .Add(p => p.Items, [Item("web")])
                 .Add(p => p.OnNavigateDetail, args => { navigated = args; return Task.CompletedTask; }));
@@ -100,7 +100,7 @@ public class ConfigMapDataViewCardTests
     {
         await using var ctx = new BunitHost();
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Configmaps.Shared.ConfigMapDataViewCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Configmaps.Shared.ConfigMapDataViewCard>(
             parameters => parameters.Add(p => p.Data, new Dictionary<string, string>
             {
                 ["key1"] = "value1",
@@ -117,7 +117,7 @@ public class ConfigMapDataViewCardTests
     {
         await using var ctx = new BunitHost();
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Configmaps.Shared.ConfigMapDataViewCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Configmaps.Shared.ConfigMapDataViewCard>(
             parameters => parameters.Add(p => p.Data, new Dictionary<string, string>()));
 
         Assert.Contains("暂无键", cut.Markup);
@@ -131,7 +131,7 @@ public class ConfigMapYamlViewCardTests
     {
         await using var ctx = new BunitHost();
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Configmaps.Shared.ConfigMapYamlViewCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Configmaps.Shared.ConfigMapYamlViewCard>(
             parameters => parameters.Add(p => p.Yaml, "apiVersion: v1\nkind: ConfigMap"));
 
         Assert.Contains("apiVersion: v1", cut.Markup);
@@ -144,7 +144,7 @@ public class ConfigMapYamlViewCardTests
     {
         await using var ctx = new BunitHost();
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Configmaps.Shared.ConfigMapYamlViewCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Configmaps.Shared.ConfigMapYamlViewCard>(
             parameters => parameters.Add(p => p.Yaml, ""));
 
         Assert.Contains("暂无 YAML", cut.Markup);

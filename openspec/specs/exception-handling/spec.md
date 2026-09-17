@@ -2,17 +2,16 @@
 
 ## Purpose
 
-Define the contract for business exception handling across service and UI layers. Services translate Kubernetes client errors and throw a typed business exception hierarchy under `MultiClusterMgmtSys.Common.Exceptions` carrying Chinese user-facing messages; the UI presents exceptions uniformly through an injected `ExceptionPresenter` without leaking underlying `ex.Message` text. Logging records warnings for translated business exceptions and errors for unexpected ones, while audit-log write failures stay silent.
+Define the contract for business exception handling across service and UI layers. Services translate Kubernetes client errors and throw a typed business exception hierarchy under `MultiClusterMgmtSys.Domain.Exceptions` carrying Chinese user-facing messages; the UI presents exceptions uniformly through an injected `ExceptionPresenter` without leaking underlying `ex.Message` text. Logging records warnings for translated business exceptions and errors for unexpected ones, while audit-log write failures stay silent.
 
 ## Requirements
 
 ### Requirement: 业务异常层次
-系统 SHALL 提供 `MultiClusterMgmtSys.Common.Exceptions` 下的业务异常层次:`BusinessException`(抽象基类,携带中文 `UserMessage` 属性)及子类 `NotFoundException` / `ConflictException` / `ValidationException` / `PermissionException`。业务异常的 `UserMessage` SHALL 是可直接展示给用户的中文文案。
+系统 SHALL 提供 `MultiClusterMgmtSys.Domain.Exceptions` 下的业务异常层次:`BusinessException`(抽象基类,携带中文 `UserMessage` 属性)及子类 `NotFoundException` / `ConflictException` / `ValidationException` / `PermissionException`。业务异常的 `UserMessage` SHALL 是可直接展示给用户的中文文案。
 
 #### Scenario: 抛业务异常
 - **WHEN** 服务层发现资源不存在并抛出 `NotFoundException`
 - **THEN** 该异常携带中文用户文案(如「集群 5 不存在」),且继承 `BusinessException`
-
 ### Requirement: K8s 异常翻译
 系统 SHALL 将 Kubernetes 客户端异常(`k8s.KubernetesException` 携带 `Status.Code`、`k8s.Autorest.HttpOperationException` 携带 `Response.StatusCode`)翻译为业务异常后再向 UI 层抛出:404→`NotFoundException`、409→`ConflictException`、403→`PermissionException`、400→`ValidationException`(优先取 API 返回消息)、超时/连接失败→`ClusterUnreachableException`(或等效的集群不可达业务异常)。非上述状态(5xx、未知)SHALL NOT 冒充业务异常。
 

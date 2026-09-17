@@ -1,0 +1,59 @@
+@using MultiClusterMgmtSys.Application.ViewModels
+
+<MudCard Class="pa-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">条件</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (Node.Conditions.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Class="mud-text-secondary">—</MudText>
+        }
+        else
+        {
+            <MudTable Items="Node.Conditions"
+                      Dense="true" Hover="true" Elevation="0">
+                <HeaderContent>
+                    <MudTh>类型</MudTh>
+                    <MudTh>状态</MudTh>
+                    <MudTh>原因</MudTh>
+                    <MudTh>消息</MudTh>
+                    <MudTh>最近心跳</MudTh>
+                    <MudTh>最近转换</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="类型">
+                        <StackedText Primary="@context.TypeText" Secondary="@context.Type" />
+                    </MudTd>
+                    <MudTd DataLabel="状态">
+                        <StatusBadge Text="@context.StatusText" CssClass="@context.StatusCssClass" Raw="@context.Status" />
+                    </MudTd>
+                    <MudTd DataLabel="原因">@(context.Reason ?? "—")</MudTd>
+                    <MudTd DataLabel="消息">
+                        @if (string.IsNullOrEmpty(context.Message))
+                        {
+                            <span>—</span>
+                        }
+                        else
+                        {
+                            <TextTooltip Text="@context.Message">
+                                <span style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;">
+                                    @context.Message
+                                </span>
+                            </TextTooltip>
+                        }
+                    </MudTd>
+                    <MudTd DataLabel="最近心跳"><span class="font-mono">@(context.LastHeartbeatTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")</span></MudTd>
+                    <MudTd DataLabel="最近转换"><span class="font-mono">@(context.LastTransitionTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")</span></MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public ClusterNodeDetailViewModel Node { get; set; } = default!;
+}

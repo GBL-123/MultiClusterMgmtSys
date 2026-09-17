@@ -5,10 +5,10 @@ using k8s;
 using k8s.Models;
 using Moq;
 using MudBlazor;
-using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Components.Common;
-using MultiClusterMgmtSys.Requests;
-using MultiClusterMgmtSys.Services;
+using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Web.Components.Common;
+using MultiClusterMgmtSys.Application.Requests;
+using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Pages;
@@ -41,7 +41,7 @@ public class WorkloadDetailFlowTests
             Status = new V1DeploymentStatus { ReadyReplicas = 3, UpdatedReplicas = 3, ObservedGeneration = 1 }
         };
 
-    private static async Task<(BunitHost Ctx, ServiceHarness Harness, Mock<k8s.IKubernetes> K8s, int ClusterId, IRenderedComponent<MultiClusterMgmtSys.Components.Workloads.Pages.DeploymentDetail> Cut)> RenderDetailAsync()
+    private static async Task<(BunitHost Ctx, ServiceHarness Harness, Mock<k8s.IKubernetes> K8s, int ClusterId, IRenderedComponent<MultiClusterMgmtSys.Web.Components.Workloads.Pages.DeploymentDetail> Cut)> RenderDetailAsync()
     {
         var ctx = new BunitHost();
         var auth = ctx.AddAuthorization();
@@ -54,7 +54,7 @@ public class WorkloadDetailFlowTests
         k8s.SetupReadDeployment("web", "app", HealthyDeployment("web"));
         k8s.SetupListEndpointSlices("app");
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Workloads.Pages.DeploymentDetail>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Workloads.Pages.DeploymentDetail>(
             parameters => parameters
                 .Add(p => p.ClusterId, cluster.Id)
                 .Add(p => p.Namespace, "app")

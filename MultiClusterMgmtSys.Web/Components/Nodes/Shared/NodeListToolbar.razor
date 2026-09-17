@@ -1,0 +1,39 @@
+@using MultiClusterMgmtSys.Domain.Enums
+@using MultiClusterMgmtSys.Application.ViewModels
+
+<MudStack Row="true" AlignItems="AlignItems.Center">
+    <MudText Typo="Typo.h5">节点管理</MudText>
+    <MudChip T="string"
+             Size="Size.Small"
+             Color="GetClusterStatusColor(Cluster.Status)"
+             Variant="Variant.Filled"
+             Class="ml-2">
+        @Cluster.Name · @Cluster.StatusText
+    </MudChip>
+    <MudSpacer />
+    <MudButton Variant="Variant.Text"
+               Color="Color.Inherit"
+               StartIcon="@Icons.Material.Filled.Refresh"
+               OnClick="OnRefresh"
+               Disabled="Processing">
+        刷新
+    </MudButton>
+</MudStack>
+
+@code {
+    [Parameter]
+    public ClusterDetailViewModel Cluster { get; set; } = default!;
+
+    [Parameter]
+    public bool Processing { get; set; }
+
+    [Parameter]
+    public EventCallback OnRefresh { get; set; }
+
+    private static Color GetClusterStatusColor(ClusterStatus status) => status switch
+    {
+        ClusterStatus.Online => Color.Success,
+        ClusterStatus.Offline => Color.Error,
+        _ => Color.Default
+    };
+}

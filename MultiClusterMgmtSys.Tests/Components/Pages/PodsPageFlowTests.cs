@@ -4,9 +4,9 @@ using Microsoft.Extensions.DependencyInjection;
 using k8s;
 using k8s.Models;
 using Moq;
-using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Components.Pods.Pages;
-using MultiClusterMgmtSys.Components.Pods.Shared;
+using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Web.Components.Pods.Pages;
+using MultiClusterMgmtSys.Web.Components.Pods.Shared;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Pages;
@@ -56,7 +56,7 @@ public class PodsPageFlowTests
                     }
                 ]));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Pods.Pages.Pods>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Pods.Pages.Pods>(
             parameters => parameters.Add(p => p.ClusterId, cluster.Id));
         cut.WaitForState(() => cut.Markup.Contains("web-1"));
 
@@ -78,7 +78,7 @@ public class PodsPageFlowTests
             K8sMocks.NewPod("web-1", "app"),
             K8sMocks.NewPod("db-0", "data"));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Pods.Pages.Pods>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Pods.Pages.Pods>(
             parameters => parameters.Add(p => p.ClusterId, cluster.Id));
         cut.WaitForState(() => cut.Markup.Contains("web-1"));
 
@@ -108,7 +108,7 @@ public class PodsPageFlowTests
             K8sMocks.NewPod("web-1", "app"),
             K8sMocks.NewPod("db-0", "data"));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Pods.Pages.Pods>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Pods.Pages.Pods>(
             parameters => parameters.Add(p => p.ClusterId, cluster.Id));
         cut.WaitForState(() => cut.Markup.Contains("web-1"));
 
@@ -131,7 +131,7 @@ public class PodsPageFlowTests
         SetupProbe(k8s);
         k8s.SetupListPods(K8sMocks.NewPod("web-1", "app"));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Pods.Pages.Pods>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Pods.Pages.Pods>(
             parameters => parameters.Add(p => p.ClusterId, cluster.Id));
         cut.WaitForState(() => cut.Markup.Contains("web-1"));
 
@@ -148,7 +148,7 @@ public class PodsPageFlowTests
         var (harness, k8s) = ctx.AddPodStack();
         var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("pod-offline", status: ClusterStatus.Offline));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Pods.Pages.Pods>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Pods.Pages.Pods>(
             parameters => parameters.Add(p => p.ClusterId, cluster.Id));
         cut.WaitForState(() => cut.Markup.Contains("集群不可达"));
 
@@ -168,7 +168,7 @@ public class PodsPageFlowTests
         AuthorizeAdmin(ctx);
         ctx.AddPodStack();
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Pods.Pages.Pods>();
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Pods.Pages.Pods>();
 
         Assert.Contains("请从左侧选择一个集群", cut.Markup);
     }

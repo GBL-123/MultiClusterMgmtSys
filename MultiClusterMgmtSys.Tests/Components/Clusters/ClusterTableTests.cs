@@ -1,7 +1,7 @@
 using Bunit;
 using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
-using MultiClusterMgmtSys.Common.Enums;
+using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Clusters;
@@ -19,9 +19,9 @@ public class ClusterTableTests
         await harness.ClusterRepo.AddAsync(TestData.NewCluster("prod-1", status: ClusterStatus.Online));
         await harness.ClusterRepo.AddAsync(TestData.NewCluster("down-1", status: ClusterStatus.Offline));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterTable>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Shared.ClusterTable>(
             parameters => parameters
-                .Add(p => p.Query, new MultiClusterMgmtSys.Requests.ClusterQueryRequest())
+                .Add(p => p.Query, new MultiClusterMgmtSys.Application.Requests.ClusterQueryRequest())
                 .Add(p => p.OnNavigateClusterDetail, id => Task.CompletedTask)
                 .Add(p => p.OnRefreshCluster, id => Task.CompletedTask)
                 .Add(p => p.OnEditCluster, id => Task.CompletedTask)
@@ -43,8 +43,8 @@ public class ClusterTableTests
         auth.SetRoles("Admin");
         ctx.AddClusterStack();
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterTable>(
-            parameters => parameters.Add(p => p.Query, new MultiClusterMgmtSys.Requests.ClusterQueryRequest()));
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Shared.ClusterTable>(
+            parameters => parameters.Add(p => p.Query, new MultiClusterMgmtSys.Application.Requests.ClusterQueryRequest()));
 
         cut.WaitForState(() => cut.Markup.Contains("empty-state"));
 
@@ -61,9 +61,9 @@ public class ClusterTableTests
         var harness = ctx.AddClusterStack();
         await harness.ClusterRepo.AddAsync(TestData.NewCluster("seeded"));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterTable>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Shared.ClusterTable>(
             parameters => parameters
-                .Add(p => p.Query, new MultiClusterMgmtSys.Requests.ClusterQueryRequest())
+                .Add(p => p.Query, new MultiClusterMgmtSys.Application.Requests.ClusterQueryRequest())
                 .Add(p => p.OnNavigateClusterDetail, id => Task.CompletedTask));
 
         cut.WaitForState(() => cut.Markup.Contains("seeded"));
@@ -87,9 +87,9 @@ public class ClusterTableTests
         var harness = ctx.AddClusterStack();
         var added = await harness.ClusterRepo.AddAsync(TestData.NewCluster("spinning"));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterTable>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Shared.ClusterTable>(
             parameters => parameters
-                .Add(p => p.Query, new MultiClusterMgmtSys.Requests.ClusterQueryRequest())
+                .Add(p => p.Query, new MultiClusterMgmtSys.Application.Requests.ClusterQueryRequest())
                 .Add(p => p.ProcessingIds, new HashSet<int> { added.Id })
                 .Add(p => p.OnRefreshCluster, id => Task.CompletedTask));
 
@@ -113,9 +113,9 @@ public class ClusterTableTests
         var added = await harness.ClusterRepo.AddAsync(TestData.NewCluster("clickable"));
 
         int? navigatedId = null;
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Shared.ClusterTable>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Shared.ClusterTable>(
             parameters => parameters
-                .Add(p => p.Query, new MultiClusterMgmtSys.Requests.ClusterQueryRequest())
+                .Add(p => p.Query, new MultiClusterMgmtSys.Application.Requests.ClusterQueryRequest())
                 .Add(p => p.OnNavigateClusterDetail, id => { navigatedId = id; return Task.CompletedTask; }));
 
         cut.WaitForState(() => cut.Markup.Contains("clickable"));

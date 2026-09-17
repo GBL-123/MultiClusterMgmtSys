@@ -1,0 +1,291 @@
+@attribute [Authorize]
+@page "/pods"
+@page "/pods/{ClusterId:int}"
+
+@using Microsoft.AspNetCore.WebUtilities
+@using MultiClusterMgmtSys.Domain.Enums
+@using MultiClusterMgmtSys.Application.Enums
+@using MultiClusterMgmtSys.Application.Models
+@using MultiClusterMgmtSys.Application.Requests
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Application.ViewModels
+@using MultiClusterMgmtSys.Web.Components.Pods.Shared
+
+@inject ClusterService ClusterService
+@inject PodService PodService
+@inject ClusterSelectionState ClusterSelection
+@inject NavigationManager NavigationManager
+@inject ExceptionPresenter ExHandler
+
+<PageTitle>Pod 管理</PageTitle>
+
+<MudStack Row="true" Spacing="3" Class="d-flex flex-auto">
+    <ClusterSelectSidebar Clusters="@clusters"
+                          SelectedClusterId="@EffectiveClusterId"
+                          OnClusterSelected="SelectCluster" />
+
+    <MudStack Class="flex-auto">
+        @if (!EffectiveClusterId.HasValue)
+        {
+            <div class="d-flex flex-column align-center justify-center" style="min-height:60vh;">
+                <MudIcon Icon="@Icons.Material.Filled.Copyright" Size="Size.Large" Class="mud-text-secondary mb-4" />
+                <MudText Typo="Typo.h6" Class="mud-text-secondary">请从左侧选择一个集群</MudText>
+            </div>
+        }
+        else if (loading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+        }
+        else if (cluster is null)
+        {
+            <MudCard Class="pa-8" Elevation="2">
+                <MudCardContent>
+                    <MudText Align="Align.Center" Class="mud-text-secondary">未找到该集群</MudText>
+                    <div class="d-flex justify-center mt-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                                   OnClick="@(() => NavigationManager.NavigateTo("/clusters"))">
+                            返回集群列表
+                        </MudButton>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        }
+        else
+        {
+            <MudPaper Class="pa-4">
+                <MudStack>
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudText Typo="Typo.h5">Pod 管理</MudText>
+                        <MudChip T="string"
+                                 Size="Size.Small"
+                                 Color="GetClusterStatusColor(cluster.Status)"
+                                 Variant="Variant.Filled"
+                                 Class="ml-2">
+                            @cluster.Name · @cluster.StatusText
+                        </MudChip>
+                        @if (!string.IsNullOrEmpty(labelSelector))
+                        {
+                            <span class="font-mono mud-text-secondary ml-2 pods-selector-hint">按标签选择器过滤: @labelSelector</span>
+                        }
+                    </MudStack>
+
+                    @if (cluster.IsReachable)
+                    {
+                        <PodsFilterBar Namespaces="@namespaces"
+                                       @bind-SelectedNamespace="selectedNamespace"
+                                       StatusOptions="@statusOptions"
+                                       @bind-SelectedStatus="selectedStatus"
+                                       @bind-Keyword="keyword"
+                                       LastLoadedAt="@lastLoadedAt"
+                                       Refreshing="@loading"
+                                       OnReset="OnResetClick"
+                                       OnRefresh="RefreshAsync" />
+                    }
+                </MudStack>
+            </MudPaper>
+
+            @if (!cluster.IsReachable)
+            {
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudText Align="Align.Center" Class="mud-text-secondary">集群不可达,无法获取 Pod</MudText>
+                    </MudCardContent>
+                </MudCard>
+            }
+            else
+            {
+                <PodsListTable Items="@filteredPods"
+                               Loading="@loading"
+                               OnOpenDetail="OpenDetail" />
+            }
+        }
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter]
+    public int? ClusterId { get; set; }
+
+    private List<ClusterViewModel> clusters = new();
+
+    private ClusterDetailViewModel? cluster;
+
+    private List<PodListViewModel> pods = new();
+
+    private List<string> namespaces = new();
+
+    private bool loading;
+
+    private string? selectedNamespace;
+
+    private string? selectedStatus;
+
+    private string keyword = "";
+
+    private DateTime? lastLoadedAt;
+
+    private int? previousClusterId;
+
+    private string? previousSelector;
+
+    private string? labelSelector;
+
+    private bool hasInitialized;
+
+    private int? EffectiveClusterId => ClusterId ?? ClusterSelection.SelectedClusterId;
+
+    private List<PodListViewModel> filteredPods
+        => pods.Apply(selectedNamespace, selectedStatus, keyword)
+            .OrderByDescending(p => p.StatusGroup == "异常")
+            .ThenBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private List<PodStatusOption> statusOptions
+        => pods.StatusOptions(selectedNamespace, keyword);
+
+    private int statusTotalCount
+        => pods.Apply(selectedNamespace, null, keyword).Count();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClustersAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (ClusterId.HasValue)
+        {
+            ClusterSelection.Set(ClusterId.Value);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var selector = GetLabelSelectorFromQuery();
+        if (ClusterId == previousClusterId && selector == previousSelector && hasInitialized)
+        {
+            return;
+        }
+        hasInitialized = true;
+        previousClusterId = ClusterId;
+        previousSelector = selector;
+        labelSelector = selector;
+
+        if (EffectiveClusterId.HasValue)
+        {
+            await LoadAsync(EffectiveClusterId.Value);
+        }
+        else
+        {
+            cluster = null;
+            pods = new();
+            namespaces = new();
+            loading = false;
+        }
+    }
+
+    private string? GetLabelSelectorFromQuery()
+    {
+        var query = new Uri(NavigationManager.Uri).Query;
+        var values = QueryHelpers.ParseQuery(query).TryGetValue("labelSelector", out var v) ? v.ToString() : null;
+        return string.IsNullOrWhiteSpace(values) ? null : values;
+    }
+
+    private async Task LoadClustersAsync()
+    {
+        try
+        {
+            var request = new ClusterQueryRequest { Page = 1, PageSize = 1000, SortBy = ClusterSortField.Name, SortDescending = false };
+            var result = await ClusterService.GetPagedAsync(request);
+            clusters = result.Items;
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载集群列表");
+        }
+    }
+
+    private async Task LoadAsync(int id)
+    {
+        loading = true;
+        try
+        {
+            cluster = await ClusterService.GetClusterDetailAsync(id);
+            if (cluster is not null)
+            {
+                ClusterSelection.Set(id);
+            }
+            if (cluster is not null && cluster.IsReachable)
+            {
+                try
+                {
+                    namespaces = await PodService.GetNamespacesAsync(id);
+                }
+                catch (Exception ex)
+                {
+                    await ExHandler.HandleAsync(ex, "加载命名空间列表");
+                }
+
+                try
+                {
+                    pods = await PodService.ListPodsAsync(new PodQueryRequest(id, null, labelSelector));
+                    lastLoadedAt = DateTime.Now;
+                }
+                catch (Exception ex)
+                {
+                    await ExHandler.HandleAsync(ex, "加载 Pod 列表");
+                }
+            }
+            else
+            {
+                pods = new();
+                namespaces = new();
+            }
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载集群详情");
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (!EffectiveClusterId.HasValue) return;
+        await LoadAsync(EffectiveClusterId.Value);
+    }
+
+    private void SelectCluster(int id)
+    {
+        NavigationManager.NavigateTo($"/pods/{id}");
+    }
+
+    private void OnResetClick()
+    {
+        if (!string.IsNullOrEmpty(labelSelector))
+        {
+            NavigationManager.NavigateTo($"/pods/{EffectiveClusterId}");
+            return;
+        }
+        selectedNamespace = null;
+        selectedStatus = null;
+        keyword = "";
+    }
+
+    private void OpenDetail(PodListViewModel item)
+    {
+        NavigationManager.NavigateTo(item.DetailRoute);
+    }
+
+    private static Color GetClusterStatusColor(ClusterStatus status) => status switch
+    {
+        ClusterStatus.Online => Color.Success,
+        ClusterStatus.Offline => Color.Error,
+        _ => Color.Default
+    };
+}

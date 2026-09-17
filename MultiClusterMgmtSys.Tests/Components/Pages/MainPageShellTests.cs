@@ -5,10 +5,10 @@ using k8s.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
-using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Data.Entities;
-using MultiClusterMgmtSys.Data.Repositories;
-using MultiClusterMgmtSys.Services;
+using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Application.Identity;
+using MultiClusterMgmtSys.Infrastructure.Persistence;
+using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Pages;
@@ -31,7 +31,7 @@ public class MainPageShellTests
         ctx.AddGroupAndSyncStack(harness);
         await harness.ClusterRepo.AddAsync(TestData.NewCluster("shell-cluster"));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Pages.Clusters>();
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Pages.Clusters>();
 
         cut.WaitForState(() => cut.Markup.Contains("shell-cluster"));
 
@@ -49,7 +49,7 @@ public class MainPageShellTests
         var added = await harness.ClusterRepo.AddAsync(
             TestData.NewCluster("detail-page", status: ClusterStatus.Offline));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Pages.ClusterDetail>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Pages.ClusterDetail>(
             parameters => parameters.Add(p => p.Id, added.Id));
 
         cut.WaitForState(() => cut.Markup.Contains("detail-page"));
@@ -66,7 +66,7 @@ public class MainPageShellTests
         var harness = ctx.AddClusterStack();
         ctx.AddGroupAndSyncStack(harness);
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Pages.ClusterDetail>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Pages.ClusterDetail>(
             parameters => parameters.Add(p => p.Id, 999));
 
         cut.WaitForState(() => cut.Markup.Contains("未找到该集群"));
@@ -80,7 +80,7 @@ public class MainPageShellTests
         var harness = ctx.AddClusterStack();
         ctx.AddGroupAndSyncStack(harness);
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Pages.Nodes>();
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Pages.Nodes>();
 
         cut.WaitForState(() => cut.Markup.Contains("请从左侧选择") || cut.Markup.Contains("节点管理"));
     }
@@ -94,7 +94,7 @@ public class MainPageShellTests
         ctx.AddGroupAndSyncStack(harness);
         ctx.Services.AddScoped<ConfigMapService>();
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Configmaps.Pages.ConfigMaps>();
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Configmaps.Pages.ConfigMaps>();
 
         cut.WaitForState(() => cut.Markup.Contains("请从左侧选择一个集群") || cut.Markup.Contains("配置管理"));
     }
@@ -119,11 +119,11 @@ public class MainPageShellTests
                 TestHttpContext.Anonymous().Object,
                 NullLogger<AuditService>.Instance);
             ctx.Services.AddSingleton(new AccountService(
-                identity.Users, identity.Roles, identity.Db, audit,
+                identity.Users, identity.Roles, new AccountQueryRepository(identity.Db), audit,
                 TestHttpContext.ForIdentity("admin", userId: 77, "Admin").Object,
                 NullLogger<AccountService>.Instance));
 
-            var cut = ctx.Render<MultiClusterMgmtSys.Components.Account.Pages.Accounts>();
+            var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Account.Pages.Accounts>();
 
             cut.WaitForState(() => cut.Markup.Contains("visible-user"));
 
@@ -144,7 +144,7 @@ public class MainPageShellTests
         ctx.AddGroupAndSyncStack(harness);
         await harness.Audit.LogAsync(AuditCategory.Cluster, AuditAction.Create, "集群: shell-audit");
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.AuditLogs.Pages.AuditLogs>();
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.AuditLogs.Pages.AuditLogs>();
 
         cut.WaitForState(() => cut.Markup.Contains("shell-audit"));
 

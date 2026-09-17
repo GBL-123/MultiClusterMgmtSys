@@ -1,13 +1,13 @@
 using Bunit;
 using MudBlazor;
-using MultiClusterMgmtSys.Models;
+using MultiClusterMgmtSys.Application.Models;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Nodes;
 
 public class NodeListTableTests
 {
-    private static MultiClusterMgmtSys.ViewModels.ClusterNodeViewModel Node(
+    private static MultiClusterMgmtSys.Application.ViewModels.ClusterNodeViewModel Node(
         string name, string status, string? note = null)
         => new()
         {
@@ -19,7 +19,7 @@ public class NodeListTableTests
             Unschedulable = false,
             IpAddresses =
             [
-                new MultiClusterMgmtSys.ViewModels.NodeIpViewModel { Address = "10.0.0.1", Note = note }
+                new MultiClusterMgmtSys.Application.ViewModels.NodeIpViewModel { Address = "10.0.0.1", Note = note }
             ]
         };
 
@@ -28,7 +28,7 @@ public class NodeListTableTests
     {
         await using var ctx = new BunitHost();
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeListTable>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeListTable>(
             parameters => parameters
                 .Add(p => p.Nodes, new[]
                 {
@@ -54,7 +54,7 @@ public class NodeListTableTests
     {
         await using var ctx = new BunitHost();
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeListTable>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeListTable>(
             parameters => parameters.Add(p => p.Nodes, [Node("n1", "Ready", note: "管理口")]));
 
         Assert.Contains("10.0.0.1", cut.Markup);
@@ -66,11 +66,11 @@ public class NodeListTableTests
     {
         await using var ctx = new BunitHost();
 
-        var idle = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeListTable>(
-            parameters => parameters.Add(p => p.Nodes, Array.Empty<MultiClusterMgmtSys.ViewModels.ClusterNodeViewModel>()));
-        var filtered = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeListTable>(
+        var idle = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeListTable>(
+            parameters => parameters.Add(p => p.Nodes, Array.Empty<MultiClusterMgmtSys.Application.ViewModels.ClusterNodeViewModel>()));
+        var filtered = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeListTable>(
             parameters => parameters
-                .Add(p => p.Nodes, Array.Empty<MultiClusterMgmtSys.ViewModels.ClusterNodeViewModel>())
+                .Add(p => p.Nodes, Array.Empty<MultiClusterMgmtSys.Application.ViewModels.ClusterNodeViewModel>())
                 .Add(p => p.FilterActive, true));
 
         Assert.Contains("暂无节点", idle.Markup);
@@ -83,7 +83,7 @@ public class NodeListTableTests
         await using var ctx = new BunitHost();
 
         string? navigated = null;
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeListTable>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeListTable>(
             parameters => parameters
                 .Add(p => p.Nodes, [Node("click-node", "Ready")])
                 .Add(p => p.OnNavigateNode, name => { navigated = name; return Task.CompletedTask; }));
@@ -96,7 +96,7 @@ public class NodeListTableTests
 
 public class NodeCardsTests
 {
-    private static MultiClusterMgmtSys.ViewModels.ClusterNodeDetailViewModel Detail()
+    private static MultiClusterMgmtSys.Application.ViewModels.ClusterNodeDetailViewModel Detail()
         => new()
         {
             ClusterId = 1,
@@ -112,18 +112,18 @@ public class NodeCardsTests
             CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             Addresses =
             [
-                new MultiClusterMgmtSys.ViewModels.NodeAddressViewModel { Type = "InternalIP", Address = "10.0.0.1" }
+                new MultiClusterMgmtSys.Application.ViewModels.NodeAddressViewModel { Type = "InternalIP", Address = "10.0.0.1" }
             ],
             Conditions =
             [
-                new MultiClusterMgmtSys.ViewModels.NodeConditionViewModel
+                new MultiClusterMgmtSys.Application.ViewModels.NodeConditionViewModel
                 {
                     Type = "Ready", Status = "True", Reason = "KubeletReady", Message = "ok"
                 }
             ],
             Resources =
             [
-                new MultiClusterMgmtSys.ViewModels.NodeResourceViewModel
+                new MultiClusterMgmtSys.Application.ViewModels.NodeResourceViewModel
                 {
                     Key = "cpu",
                     Label = "CPU",
@@ -133,7 +133,7 @@ public class NodeCardsTests
                     AllocatableText = "3.8 核",
                     AllocatablePercent = 95
                 },
-                new MultiClusterMgmtSys.ViewModels.NodeResourceViewModel
+                new MultiClusterMgmtSys.Application.ViewModels.NodeResourceViewModel
                 {
                     Key = "memory",
                     Label = "内存",
@@ -146,7 +146,7 @@ public class NodeCardsTests
             ],
             Labels = new Dictionary<string, string> { ["env"] = "prod" },
             Annotations = new Dictionary<string, string> { ["a"] = "b" },
-            SystemInfo = new MultiClusterMgmtSys.ViewModels.NodeSystemInfoViewModel
+            SystemInfo = new MultiClusterMgmtSys.Application.ViewModels.NodeSystemInfoViewModel
             {
                 Architecture = "amd64",
                 KubeletVersion = "v1.30.2"
@@ -162,7 +162,7 @@ public class NodeCardsTests
         auth.SetAuthorized("admin");
         auth.SetRoles("Admin");
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeOverviewCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeOverviewCard>(
             parameters => parameters.Add(p => p.Node, Detail()));
 
         Assert.Contains("node-1", cut.Markup);
@@ -184,12 +184,12 @@ public class NodeCardsTests
         var node = Detail();
         node.Addresses =
         [
-            new MultiClusterMgmtSys.ViewModels.NodeAddressViewModel { Type = "InternalIP", Address = "10.0.0.5", Note = "管理口" },
-            new MultiClusterMgmtSys.ViewModels.NodeAddressViewModel { Type = "InternalIP", Address = "172.16.8.2" },
-            new MultiClusterMgmtSys.ViewModels.NodeAddressViewModel { Type = "ExternalIP", Address = "203.0.113.10" }
+            new MultiClusterMgmtSys.Application.ViewModels.NodeAddressViewModel { Type = "InternalIP", Address = "10.0.0.5", Note = "管理口" },
+            new MultiClusterMgmtSys.Application.ViewModels.NodeAddressViewModel { Type = "InternalIP", Address = "172.16.8.2" },
+            new MultiClusterMgmtSys.Application.ViewModels.NodeAddressViewModel { Type = "ExternalIP", Address = "203.0.113.10" }
         ];
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeAddressesCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeAddressesCard>(
             parameters => parameters.Add(p => p.Node, node));
 
         Assert.Contains("内网 IP", cut.Markup);
@@ -207,7 +207,7 @@ public class NodeCardsTests
         var node = Detail();
         node.Addresses = new();
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeAddressesCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeAddressesCard>(
             parameters => parameters.Add(p => p.Node, node));
 
         Assert.Contains("[ 暂无地址 ]", cut.Markup);
@@ -220,10 +220,10 @@ public class NodeCardsTests
         var node = Detail();
         node.Taints =
         [
-            new MultiClusterMgmtSys.ViewModels.NodeTaintViewModel { Key = "dedicated", Value = "gpu", Effect = "NoSchedule" }
+            new MultiClusterMgmtSys.Application.ViewModels.NodeTaintViewModel { Key = "dedicated", Value = "gpu", Effect = "NoSchedule" }
         ];
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeTaintsCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeTaintsCard>(
             parameters => parameters.Add(p => p.Node, node));
 
         Assert.Contains("dedicated", cut.Markup);
@@ -237,7 +237,7 @@ public class NodeCardsTests
     {
         await using var ctx = new BunitHost();
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeTaintsCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeTaintsCard>(
             parameters => parameters.Add(p => p.Node, Detail()));
 
         Assert.Contains("[ 暂无污点 ]", cut.Markup);
@@ -248,7 +248,7 @@ public class NodeCardsTests
     {
         await using var ctx = new BunitHost();
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeResourcesCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeResourcesCard>(
             parameters => parameters.Add(p => p.Node, Detail()));
 
         Assert.Contains("CPU", cut.Markup);
@@ -256,7 +256,7 @@ public class NodeCardsTests
         Assert.Contains("3.8 核", cut.Markup);
         Assert.Contains("15.5 GiB", cut.Markup);
         Assert.Contains("95%", cut.Markup);
-        var tooltips = cut.FindComponents<MultiClusterMgmtSys.Components.Common.TextTooltip>();
+        var tooltips = cut.FindComponents<MultiClusterMgmtSys.Web.Components.Common.TextTooltip>();
         Assert.Contains(tooltips, t => t.Instance.Text == "3800m" && t.Instance.Mono);
         Assert.Contains(tooltips, t => t.Instance.Text == "16297496Ki");
     }
@@ -268,7 +268,7 @@ public class NodeCardsTests
         var node = Detail();
         node.Resources = new();
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeResourcesCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeResourcesCard>(
             parameters => parameters.Add(p => p.Node, node));
 
         Assert.Contains("资源容量", cut.Markup);
@@ -282,7 +282,7 @@ public class NodeCardsTests
         var node = Detail();
         node.Resources =
         [
-            new MultiClusterMgmtSys.ViewModels.NodeResourceViewModel
+            new MultiClusterMgmtSys.Application.ViewModels.NodeResourceViewModel
             {
                 Key = "nvidia.com/gpu",
                 Label = "nvidia.com/gpu",
@@ -292,7 +292,7 @@ public class NodeCardsTests
             }
         ];
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeResourcesCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeResourcesCard>(
             parameters => parameters.Add(p => p.Node, node));
 
         Assert.Contains("nvidia.com/gpu", cut.Markup);
@@ -305,7 +305,7 @@ public class NodeCardsTests
     {
         await using var ctx = new BunitHost();
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeConditionsCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeConditionsCard>(
             parameters => parameters.Add(p => p.Node, Detail()));
 
         Assert.Contains("Ready", cut.Markup);
@@ -319,7 +319,7 @@ public class NodeCardsTests
     {
         await using var ctx = new BunitHost();
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeSystemInfoCard>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeSystemInfoCard>(
             parameters => parameters.Add(p => p.Node, Detail()));
 
         Assert.Contains("架构 (Architecture)", cut.Markup);
@@ -337,7 +337,7 @@ public class NodeListFilterBarTests
         var filter = new NodeListFilter { Name = "x", Status = "Ready", Schedulable = true };
         var reset = false;
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeListFilterBar>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeListFilterBar>(
             parameters => parameters
                 .Add(p => p.Filter, filter)
                 .Add(p => p.OnReset, () => { reset = true; return Task.CompletedTask; }));
@@ -359,7 +359,7 @@ public class NodeListFilterBarTests
         await using var ctx = new BunitHost();
         var queried = false;
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Nodes.Shared.NodeListFilterBar>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeListFilterBar>(
             parameters => parameters
                 .Add(p => p.Filter, new NodeListFilter())
                 .Add(p => p.OnQuery, () => { queried = true; return Task.CompletedTask; }));

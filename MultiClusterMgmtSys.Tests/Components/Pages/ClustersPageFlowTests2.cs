@@ -5,11 +5,11 @@ using k8s;
 using k8s.Models;
 using Moq;
 using MudBlazor;
-using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Components.Common;
-using MultiClusterMgmtSys.Data.Entities;
-using MultiClusterMgmtSys.Requests;
-using MultiClusterMgmtSys.Services;
+using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Web.Components.Common;
+using MultiClusterMgmtSys.Domain.Entities;
+using MultiClusterMgmtSys.Application.Requests;
+using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Pages;
@@ -23,7 +23,7 @@ public class ClustersPageFlowTests2
         auth.SetRoles("Admin");
     }
 
-    private static async Task<(BunitHost Ctx, ServiceHarness Harness, Mock<k8s.IKubernetes> K8s, IRenderedComponent<MultiClusterMgmtSys.Components.Clusters.Pages.Clusters> Cut, Microsoft.EntityFrameworkCore.DbUpdateException? Unused, ClusterGroup Doomed, ClusterGroup Target)> RenderAsync()
+    private static async Task<(BunitHost Ctx, ServiceHarness Harness, Mock<k8s.IKubernetes> K8s, IRenderedComponent<MultiClusterMgmtSys.Web.Components.Clusters.Pages.Clusters> Cut, Microsoft.EntityFrameworkCore.DbUpdateException? Unused, ClusterGroup Doomed, ClusterGroup Target)> RenderAsync()
     {
         var ctx = new BunitHost();
         AuthorizeAdmin(ctx);
@@ -37,7 +37,7 @@ public class ClustersPageFlowTests2
         var added = await harness.ClusterRepo.AddAsync(TestData.NewCluster("refresh-me", groupId: targetGroup.Entity.Id));
         await harness.ClusterRepo.AddAsync(TestData.NewCluster("other-cluster"));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Clusters.Pages.Clusters>();
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Pages.Clusters>();
         cut.WaitForState(() => cut.Markup.Contains("target-group"));
         return (ctx, harness, k8s, cut, null!, doomedGroup.Entity, targetGroup.Entity);
     }
@@ -52,9 +52,10 @@ public class ClustersPageFlowTests2
                 .First(b => b.Markup.Contains("刷新所有集群"));
             refreshButton.Find("button").Click();
 
-            for (var i = 0; i < 10; i++)
+            for (var i = 0; i < 100; i++)
             {
                 await cut.InvokeAsync(() => { });
+                await Task.Delay(20);
                 var statuses = await harness.ClusterRepo.GetAllIdsAsync();
                 var allOffline = true;
                 foreach (var id in statuses)

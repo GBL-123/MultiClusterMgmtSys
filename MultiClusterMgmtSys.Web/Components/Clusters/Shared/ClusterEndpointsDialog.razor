@@ -1,0 +1,114 @@
+@using MultiClusterMgmtSys.Domain.Enums
+@using MultiClusterMgmtSys.Domain.Exceptions
+@using MultiClusterMgmtSys.Application.Requests
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Application.ViewModels
+
+@inject ClusterService ClusterService
+@inject ISnackbar Snackbar
+@inject ExceptionPresenter ExHandler
+
+<AuthorizeView Roles="Admin">
+    <Authorized>
+        <MudDialog>
+            <DialogContent>
+                @if (loading)
+                {
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                }
+                else
+                {
+                    <ClusterEndpointEditor Items="@Items" />
+                }
+            </DialogContent>
+            <DialogActions>
+                <MudButton OnClick="() => Dialog.Cancel()"
+                           Variant="Variant.Text"
+                           Disabled="saving">
+                    取消
+                </MudButton>
+                <MudButton OnClick="Submit"
+                           Color="Color.Primary"
+                           Variant="Variant.Filled"
+                           Disabled="saving || loading"
+                           StartIcon="@(!saving ? Icons.Material.Filled.Save : null)">
+                    @if (saving)
+                    {
+                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    }
+                    保存
+                </MudButton>
+            </DialogActions>
+        </MudDialog>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
+
+    private List<ClusterEndpointEditItem> Items = new();
+
+    private bool loading = true;
+
+    private bool saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var detail = await ClusterService.GetClusterDetailAsync(ClusterId);
+            if (detail is null)
+            {
+                Snackbar.Add("未找到该集群", Severity.Error);
+                Dialog.Cancel();
+                return;
+            }
+
+            Items = detail.Endpoints.Select(ep => new ClusterEndpointEditItem
+            {
+                Id = ep.Id,
+                Kind = ep.Kind,
+                Value = ep.Value,
+                Note = ep.Note,
+                SortOrder = ep.SortOrder
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载端点");
+            Dialog.Cancel();
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task Submit()
+    {
+        saving = true;
+        try
+        {
+            await ClusterService.UpdateClusterEndpointsAsync(new ClusterEndpointsUpdateRequest(ClusterId, Items));
+            Snackbar.Add("端点已更新", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (BusinessException ex)
+        {
+            Snackbar.Add(ex.UserMessage, Severity.Warning);
+            // 业务失败(如校验/冲突)：保持对话框打开，行数据原样保留供用户修正。
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "保存端点");
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}

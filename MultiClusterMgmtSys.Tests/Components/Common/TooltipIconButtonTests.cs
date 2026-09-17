@@ -14,7 +14,7 @@ public class TooltipIconButtonTests
         await using var ctx = new BunitHost();
         var clickCount = 0;
         var callback = EventCallback.Factory.Create(this, () => clickCount++);
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Common.TooltipIconButton>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Common.TooltipIconButton>(
             parameters => parameters
                 .Add(p => p.Text, "编辑分组")
                 .Add(p => p.Icon, Icons.Material.Filled.Edit)

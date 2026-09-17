@@ -5,9 +5,9 @@ using k8s;
 using k8s.Models;
 using Moq;
 using MudBlazor;
-using MultiClusterMgmtSys.Common.Enums;
-using MultiClusterMgmtSys.Components.Common;
-using MultiClusterMgmtSys.Services;
+using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Web.Components.Common;
+using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Pages;
@@ -64,7 +64,7 @@ public class YamlEditPagesTests
         });
         k8s.SetupReplaceConfigMap("cm-a", "app");
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Configmaps.Pages.EditConfigMapYaml>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Configmaps.Pages.EditConfigMapYaml>(
             parameters => parameters
                 .Add(p => p.ClusterId, cluster.Id)
                 .Add(p => p.Namespace, "app")
@@ -88,7 +88,7 @@ public class YamlEditPagesTests
         var k8s = SetupCore(ctx, harness);
         var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("cm-edit-miss"));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Configmaps.Pages.EditConfigMapYaml>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Configmaps.Pages.EditConfigMapYaml>(
             parameters => parameters
                 .Add(p => p.ClusterId, cluster.Id)
                 .Add(p => p.Namespace, "app")
@@ -115,7 +115,7 @@ public class YamlEditPagesTests
         });
         k8s.SetupReplaceService("web", "app");
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Svcs.Pages.EditSvcYaml>(
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Svcs.Pages.EditSvcYaml>(
             parameters => parameters
                 .Add(p => p.ClusterId, cluster.Id)
                 .Add(p => p.Namespace, "app")

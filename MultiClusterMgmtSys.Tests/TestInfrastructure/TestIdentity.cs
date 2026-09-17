@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using MultiClusterMgmtSys.Data;
-using MultiClusterMgmtSys.Data.Entities;
+using MultiClusterMgmtSys.Infrastructure.Persistence;
+using MultiClusterMgmtSys.Application.Identity;
 
 namespace MultiClusterMgmtSys.Tests.TestInfrastructure;
 

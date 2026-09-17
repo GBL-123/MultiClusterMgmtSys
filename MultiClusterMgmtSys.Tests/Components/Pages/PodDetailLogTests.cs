@@ -3,7 +3,7 @@ using k8s;
 using k8s.Models;
 using Moq;
 using MudBlazor;
-using MultiClusterMgmtSys.Common.Enums;
+using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Pages;
@@ -21,7 +21,7 @@ public class PodDetailLogTests
         BunitHost Ctx,
         ServiceHarness Harness,
         Mock<IKubernetes> K8s,
-        IRenderedComponent<MultiClusterMgmtSys.Components.Pods.Pages.PodDetail> Cut)> RenderDetailAsync(string podName = "web-1")
+        IRenderedComponent<MultiClusterMgmtSys.Web.Components.Pods.Pages.PodDetail> Cut)> RenderDetailAsync(string podName = "web-1")
     {
         var ctx = new BunitHost();
         AuthorizeAdmin(ctx);
@@ -29,7 +29,7 @@ public class PodDetailLogTests
         var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("log-cluster", status: ClusterStatus.Online));
         k8s.SetupReadPod(podName, "app", K8sMocks.NewPod(podName, "app"));
 
-        var cut = ctx.Render<MultiClusterMgmtSys.Components.Pods.Pages.PodDetail>(parameters => parameters
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Pods.Pages.PodDetail>(parameters => parameters
             .Add(p => p.ClusterId, cluster.Id)
             .Add(p => p.Namespace, "app")
             .Add(p => p.Name, podName));

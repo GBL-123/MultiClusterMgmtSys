@@ -1,0 +1,82 @@
+@using MultiClusterMgmtSys.Application.ViewModels
+
+<MudPaper Width="300px" Class="flex-none">
+    <MudStack Spacing="0">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="pa-4">
+            <MudText Typo="Typo.h5">集群分组</MudText>
+            <AuthorizeView Roles="Admin">
+                <Authorized>
+                    <MudSpacer />
+                    <TooltipIconButton Text="新建分组"
+                                       Icon="@Icons.Material.Filled.Add"
+                                       Color="Color.Primary"
+                                       OnClick="OnCreateGroup" />
+                </Authorized>
+            </AuthorizeView>
+        </MudStack>
+        <MudDivider />
+
+        <MudList T="string">
+            <MudListItem Icon="@Icons.Material.Filled.ViewModule"
+                         Text="全部集群"
+                         OnClick="@(() => OnGroupSelected.InvokeAsync(null))" />
+            <MudListItem Icon="@Icons.Material.Filled.FolderOpen"
+                         OnClick="@(() => OnGroupSelected.InvokeAsync(0))">
+                <MudStack Row="true" AlignItems="AlignItems.Center">
+                    <MudText>未分组</MudText>
+                    <MudSpacer />
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@UngroupedCount</MudChip>
+                </MudStack>
+            </MudListItem>
+        </MudList>
+
+        @if (Groups.Any())
+        {
+            <MudDivider />
+            <MudList T="string">
+                @foreach (var group in Groups)
+                {
+                    <MudListItem Icon="@Icons.Material.Filled.Folder"
+                                 OnClick="@(() => OnGroupSelected.InvokeAsync(group.Id))">
+                        <MudStack Row="true" AlignItems="AlignItems.Center">
+                            <MudText>@group.Name</MudText>
+                            <MudSpacer />
+                            <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@group.ClusterCount</MudChip>
+                            <AuthorizeView Roles="Admin">
+                                <Authorized>
+                                    <TooltipIconButton Text="编辑分组"
+                                                       Icon="@Icons.Material.Filled.Edit"
+                                                       OnClick="@(() => OnRenameGroup.InvokeAsync(group))" />
+                                    <TooltipIconButton Text="删除分组"
+                                                       Icon="@Icons.Material.Filled.DeleteOutline"
+                                                       Color="Color.Error"
+                                                       OnClick="@(() => OnDeleteGroup.InvokeAsync(group))" />
+                                </Authorized>
+                            </AuthorizeView>
+                        </MudStack>
+                    </MudListItem>
+                }
+            </MudList>
+        }
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<ClusterGroupViewModel> Groups { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<int?> OnGroupSelected { get; set; }
+
+    [Parameter]
+    public EventCallback OnCreateGroup { get; set; }
+
+    [Parameter]
+    public EventCallback<ClusterGroupViewModel> OnRenameGroup { get; set; }
+
+    [Parameter]
+    public EventCallback<ClusterGroupViewModel> OnDeleteGroup { get; set; }
+
+    [Parameter]
+    public int UngroupedCount { get; set; }
+}
