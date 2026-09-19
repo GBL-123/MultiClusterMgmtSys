@@ -720,3 +720,316 @@ a:focus-visible {
 .group-dialog {
     overflow: visible !important;
 }
+
+/* ---------- 13. Reconnect modal: industrial card (framework JS contract ids/classes kept) ---------- */
+
+#components-reconnect-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1400;
+    width: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    overflow: hidden;
+}
+
+    #components-reconnect-modal.components-reconnect-show,
+    #components-reconnect-modal[open],
+    #components-reconnect-modal.components-reconnect-failed,
+    #components-reconnect-modal.components-reconnect-retrying,
+    #components-reconnect-modal.components-reconnect-repeated-attempt,
+    #components-reconnect-modal.components-reconnect-paused,
+    #components-reconnect-modal.components-reconnect-resume-failed,
+    #components-reconnect-modal.components-pause,
+    #components-reconnect-modal.components-resume-failed {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+.components-reconnect-backdrop {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(17, 17, 17, 0.28);
+}
+
+.components-reconnect-surface {
+    width: min(460px, 100%);
+    padding: 20px;
+    background: #FCFBF7;
+    border: 1px solid #E2DED5;
+    border-radius: 3px;
+    color: #111111;
+}
+
+.components-reconnect-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+    .components-reconnect-header h2 {
+        margin: 0;
+        font-family: 'Space Grotesk', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+        font-size: 1.05rem;
+        font-weight: 600;
+        line-height: 1.3;
+        letter-spacing: -0.01em;
+    }
+
+.components-reconnect-mark {
+    width: 12px;
+    height: 12px;
+    flex: none;
+    border-radius: 3px;
+    background: #D97706;
+}
+
+.components-reconnect-code {
+    margin-left: auto;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: #6E675C;
+    white-space: nowrap;
+}
+
+.components-reconnect-supporting,
+.components-reconnect-message {
+    margin: 0;
+    line-height: 1.6;
+}
+
+.components-reconnect-supporting {
+    margin-bottom: 14px;
+    font-size: 0.875rem;
+    color: #6E675C;
+}
+
+.components-reconnect-message {
+    font-size: 12.5px;
+    color: #111111;
+}
+
+.components-reconnect-danger {
+    color: #9F2F2D;
+}
+
+.components-reconnect-progress {
+    display: none;
+    margin: 0 0 12px;
+}
+
+/* 弹窗在 MudThemeProvider 之外,Mud 的 bar 颜色依赖 --mud-palette-* 变量(未定义即透明)、
+   动画也走 Mud 的 indeterminate 规则;这里保留 MudProgressLinear 组件本身,
+   但隐藏其内部 bars,由轨道自身的 ::after 画面定死的琥珀滑动段。 */
+#components-reconnect-modal .components-reconnect-progress.mud-progress-linear {
+    position: relative;
+    height: 2px;
+    border-radius: 3px;
+    background-color: #E2DED5;
+    overflow: hidden;
+}
+
+    #components-reconnect-modal .components-reconnect-progress.mud-progress-linear::before {
+        display: none;
+    }
+
+    #components-reconnect-modal .components-reconnect-progress .mud-progress-linear-bars {
+        display: none;
+    }
+
+    #components-reconnect-modal .components-reconnect-progress.mud-progress-linear::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: -40%;
+        width: 40%;
+        background-color: #D97706;
+        animation: reconnect-progress-slide 1.2s linear infinite;
+    }
+
+@keyframes reconnect-progress-slide {
+    from {
+        left: -40%;
+    }
+
+    to {
+        left: 100%;
+    }
+}
+
+.components-reconnect-actions {
+    margin-top: 16px;
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+#components-reconnect-button,
+#components-resume-button,
+#components-reload-button {
+    display: none;
+}
+
+dialog#components-reconnect-modal #components-reconnect-button,
+dialog#components-reconnect-modal #components-resume-button,
+dialog#components-reconnect-modal #components-reload-button {
+    margin: 0 !important;
+    cursor: pointer;
+    padding: 7px 14px;
+    border-radius: 3px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.5;
+    letter-spacing: 0.01em;
+    text-transform: none;
+    transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+    dialog#components-reconnect-modal #components-reconnect-button:active,
+    dialog#components-reconnect-modal #components-resume-button:active,
+    dialog#components-reconnect-modal #components-reload-button:active {
+        transform: scale(0.98);
+    }
+
+    dialog#components-reconnect-modal #components-reconnect-button:focus-visible,
+    dialog#components-reconnect-modal #components-resume-button:focus-visible,
+    dialog#components-reconnect-modal #components-reload-button:focus-visible {
+        outline: 2px solid #D97706;
+        outline-offset: 2px;
+    }
+
+dialog#components-reconnect-modal .components-reconnect-action-primary {
+    border: 1px solid #111111;
+    background: #111111;
+    color: #FCFBF7;
+}
+
+    dialog#components-reconnect-modal .components-reconnect-action-primary:hover {
+        background: #2E2A24;
+        border-color: #2E2A24;
+    }
+
+dialog#components-reconnect-modal .components-reconnect-action-secondary {
+    border: 1px solid #E2DED5;
+    background: transparent;
+    color: #111111;
+}
+
+    dialog#components-reconnect-modal .components-reconnect-action-secondary:hover {
+        background: #E7E2D8;
+    }
+
+.components-reconnect-first-attempt-visible,
+.components-reconnect-repeated-attempt-visible,
+.components-reconnect-failed-visible,
+.components-pause-visible,
+.components-resume-failed-visible {
+    display: none;
+}
+
+dialog[open].components-reconnect-show .components-reconnect-progress,
+dialog[open].components-reconnect-retrying .components-reconnect-progress {
+    display: block;
+}
+
+dialog[open].components-reconnect-show .components-reconnect-first-attempt-visible {
+    display: block;
+}
+
+dialog[open].components-reconnect-failed .components-reconnect-failed-visible {
+    display: block;
+}
+
+dialog[open].components-reconnect-failed #components-reconnect-button,
+dialog[open].components-reconnect-failed #components-reload-button {
+    display: block;
+}
+
+dialog[open].components-reconnect-repeated-attempt .components-reconnect-repeated-attempt-visible {
+    display: block;
+}
+
+/* Framework adds components-reconnect-retrying (the template's repeated-attempt name never matches) */
+dialog[open].components-reconnect-retrying .components-reconnect-repeated-attempt-visible {
+    display: block;
+}
+
+dialog[open].components-reconnect-retrying .components-reconnect-first-attempt-visible {
+    display: none;
+}
+
+dialog[open].components-reconnect-paused .components-pause-visible,
+dialog[open].components-pause .components-pause-visible {
+    display: block;
+}
+
+dialog[open].components-reconnect-paused #components-resume-button,
+dialog[open].components-pause #components-resume-button,
+dialog[open].components-reconnect-resume-failed #components-resume-button,
+dialog[open].components-resume-failed #components-resume-button {
+    display: block;
+}
+
+dialog[open].components-reconnect-resume-failed .components-resume-failed-visible,
+dialog[open].components-resume-failed .components-resume-failed-visible {
+    display: block;
+}
+
+dialog[open].components-reconnect-resume-failed #components-reload-button,
+dialog[open].components-resume-failed #components-reload-button {
+    display: block;
+}
+
+@media (max-width: 600px) {
+    .components-reconnect-backdrop {
+        padding: 14px;
+    }
+
+    .components-reconnect-surface {
+        padding: 16px;
+    }
+}
+
+/* ---------- 14. Fallback pages: 404 / error ---------- */
+
+.fallback-page {
+    width: min(420px, 100%);
+    margin: 0 auto;
+    padding: 32px 24px;
+    text-align: center;
+    background: #FCFBF7;
+    border: 1px solid #E2DED5;
+    border-radius: 3px;
+}
+
+.fallback-code {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: #6E675C;
+}
+
+.fallback-title {
+    color: #111111;
+}
+
+.fallback-hint {
+    color: #6E675C;
+}
+
+.fallback-request-id {
+    font-size: 12px;
+    color: #6E675C;
+    word-break: break-all;
+}

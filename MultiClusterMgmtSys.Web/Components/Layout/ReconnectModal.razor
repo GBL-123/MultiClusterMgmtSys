@@ -1,46 +1,47 @@
-﻿<script type="module" src="@Assets["Components/Layout/ReconnectModal.razor.js"]"></script>
+﻿<script type="module" src="@Assets["js/reconnect.js"]"></script>
 
 <dialog id="components-reconnect-modal" data-nosnippet>
     <div class="components-reconnect-backdrop">
         <section class="components-reconnect-surface" aria-live="assertive" aria-atomic="true">
             <header class="components-reconnect-header">
-                <span class="components-reconnect-status-dot" aria-hidden="true"></span>
-                <h2>Connection Interrupted</h2>
+                <span class="components-reconnect-mark" aria-hidden="true"></span>
+                <h2>连接已中断</h2>
+                <MudText Typo="Typo.caption" Class="components-reconnect-code font-mono">MCM // LINK DOWN</MudText>
             </header>
 
-            <p class="components-reconnect-supporting">
-                Your current session is still open. We'll keep trying to restore it.
-            </p>
+            <MudText Class="components-reconnect-supporting">
+                当前会话仍然保留,正在尝试恢复。
+            </MudText>
 
-            <div class="components-rejoin-loader components-reconnect-first-attempt-visible components-reconnect-repeated-attempt-visible" aria-hidden="true">
-                <div></div>
-                <div></div>
-                <div></div>
-            </div>
+            <MudProgressLinear Indeterminate="true"
+                               Class="components-reconnect-progress" />
 
-            <p class="components-reconnect-first-attempt-visible components-reconnect-message">
-                Rejoining the server...
-            </p>
-            <p class="components-reconnect-repeated-attempt-visible components-reconnect-message">
-                Rejoin failed. Trying again in <span id="components-seconds-to-next-attempt"></span>s.
-            </p>
-            <p class="components-reconnect-failed-visible components-reconnect-message components-reconnect-danger">
-                Failed to rejoin. Retry now or reload the page.
-            </p>
+            <MudText Class="components-reconnect-first-attempt-visible components-reconnect-message font-mono">
+                // 正在重新连接服务器...
+            </MudText>
+            <MudText Class="components-reconnect-repeated-attempt-visible components-reconnect-message font-mono">
+                // 重连失败,将在 <span id="components-seconds-to-next-attempt"></span> 秒后重试
+            </MudText>
+            <MudText Class="components-reconnect-failed-visible components-reconnect-message components-reconnect-danger">
+                重连失败。请重试,或刷新页面。
+            </MudText>
 
-            <p class="components-pause-visible components-reconnect-message">
-                The session has been paused by the server.
-            </p>
-            <p class="components-resume-failed-visible components-reconnect-message components-reconnect-danger">
-                Failed to resume the session. Retry now or reload the page.
-            </p>
+            <MudText Class="components-pause-visible components-reconnect-message font-mono">
+                // 会话已被服务器暂停
+            </MudText>
+            <MudText Class="components-resume-failed-visible components-reconnect-message components-reconnect-danger">
+                恢复会话失败。请重试,或刷新页面。
+            </MudText>
 
             <div class="components-reconnect-actions">
-                <button id="components-reconnect-button" class="components-reconnect-failed-visible" type="button">
-                    Retry
+                <button id="components-reconnect-button" class="components-reconnect-action-primary components-reconnect-failed-visible" type="button">
+                    重试
                 </button>
-                <button id="components-resume-button" class="components-pause-visible components-resume-failed-visible" type="button">
-                    Resume
+                <button id="components-resume-button" class="components-reconnect-action-primary components-pause-visible components-resume-failed-visible" type="button">
+                    恢复会话
+                </button>
+                <button id="components-reload-button" class="components-reconnect-action-secondary components-reconnect-failed-visible components-resume-failed-visible" type="button">
+                    刷新页面
                 </button>
             </div>
         </section>

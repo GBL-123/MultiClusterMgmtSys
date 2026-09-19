@@ -4,7 +4,7 @@ Repo-specific guidance for OpenCode agents working in `MultiClusterMgmtSys`.
 
 ## Current state (2026-09-18)
 
-`dotnet build MultiClusterMgmtSys.slnx` 0 错误;`dotnet test MultiClusterMgmtSys.Tests` 733/733 green(xunit.v3 + MTP,see Testing conventions);`./coverage.ps1` 四程序集合并行覆盖率 **77.5%**(门禁 75%)。最近归档的 change:`clean-architecture-split`(四项目分层重构:Domain/Application/Infrastructure/Web)、`pod-logs`、`pod-management`、`event-management`、`k8s-client-cache`、`display-humanization` 等;`openspec/changes/` 当前无待实现 change。
+`dotnet build MultiClusterMgmtSys.slnx` 0 错误;`dotnet test MultiClusterMgmtSys.Tests` 733/733 green(xunit.v3 + MTP,see Testing conventions);`./coverage.ps1` 四程序集合并行覆盖率 **77.5%**(门禁 75%)。最近归档的 change:`restyle-reconnect-modal`(重连弹窗与 404/错误兜底页工业风统一,新增 `fallback-pages` 契约)、`clean-architecture-split`(四项目分层重构:Domain/Application/Infrastructure/Web)、`pod-logs`、`pod-management`、`event-management`、`k8s-client-cache`、`display-humanization` 等;`openspec/changes/` 当前无待实现 change。
 
 ## Coverage 工具链 (覆盖率口径见 `openspec/specs/unit-testing`)
 
@@ -123,6 +123,8 @@ Build gotcha: if `dotnet build` fails with MSB3021/MSB3026/MSB3027 (exe locked),
 - Empty states: `.empty-state` (mono dashed box `[ 暂无… ]`); table loading text `// 正在加载...` in `.font-mono`. Auth cards: `Elevation="0"` + `.auth-panel` hairline. Brand: `.brand-mark` amber square (28px; `.large` 40px on login/register) + `.appbar-subtitle` `MCM // CONTROL`.
 - **`MudDateRangePicker` 不能用 `@bind-Value`**——MudBlazor 该组件继承链上无 `Value` 参数,属性会被静默吞进 `UserAttributes`,选完日期不回写。必须 `DateRange="..."` + `DateRangeChanged="OnDateRangeChanged"` 显式绑定(ClusterFilterBar 是范本)。
 - 紧凑对话框(改密/重置密码)用 `Class="pwd-dialog"` + app.css 的 `[class~="pwd-dialog"]` 规则去除内部滚动条。
+- **断线重连弹窗**:`ReconnectModal.razor` 的样式位于全局 `app.css`(第 13 节,不依赖组件 scoped CSS,顺带规避 dev-run 样式包 500 怪癖);模块脚本位于 `wwwroot/js/reconnect.js`(从 collocated 位置迁出,规避 dev-run 静态资产 500 怪癖),引用 `@Assets["js/reconnect.js"]`;其原生 `<dialog>` 与按钮 id(`components-reconnect-*`、`components-reload-button`)是框架/组件 JS 契约,保持原生(ui-theme 例外);重连状态类名与倒计时 span 不得更名。**MudBlazor 自带 `#components-reconnect-modal button` 样式**(主题变量颜色 + `margin:40px auto !important`)且弹窗在 `MudThemeProvider` 之外,覆盖必须用 `dialog#components-reconnect-modal ...` 级选择器;进度线由 `MudProgressLinear` + `app.css` 自绘轨道/滑段(不依赖 Mud 内部 bar 的颜色与动画)。
+- **兜底页面**:`Pages/NotFound.razor`(`/not-found`,Router `NotFoundPage`)与 `Pages/Error.razor`(`/Error`,`UseExceptionHandler`)使用 `.fallback-page` 发丝线卡片 + mono 代码行 + 中文文案 + 「返回集群列表」入口,不保留 Blazor 模板英文与开发环境说明;两页均用 `EmptyLayout`。
 
 ## Exception handling
 
