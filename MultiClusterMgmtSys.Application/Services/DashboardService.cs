@@ -127,13 +127,13 @@ public class DashboardService(
     }
 
     /// <summary>
-    /// 构建舰队规模:取每个集群最近一条健康快照的节点数之和。
+    /// 构建舰队规模与就绪统计:取每个集群最近一条健康快照的节点总数、就绪数与未就绪数之和。
     /// 集群离线时其主档节点数已被降级为 0,这里改用快照中的最后已知值,使规模不凭空缩水;
-    /// 从未成功探测过的集群不参与规模,其数量单独报出。
+    /// 从未成功探测过的集群不参与统计,其数量单独报出。
     /// </summary>
     /// <param name="clusters">全部集群。</param>
     /// <param name="snapshots">集群 Id 到其最近一条健康快照的映射。</param>
-    /// <returns>舰队规模展示数据。</returns>
+    /// <returns>舰队规模与就绪展示数据。</returns>
     private static DashboardFleetSizeViewModel BuildFleetSize(
         IReadOnlyList<ClusterInfo> clusters,
         IReadOnlyDictionary<int, ClusterHealthSnapshot> snapshots)
@@ -146,6 +146,8 @@ public class DashboardService(
         return new DashboardFleetSizeViewModel
         {
             NodeCount = contributing.Sum(x => x.Snapshot.TotalNodes),
+            ReadyNodes = contributing.Sum(x => x.Snapshot.ReadyNodes),
+            NotReadyNodes = contributing.Sum(x => x.Snapshot.NotReadyNodes),
             OldestCapturedAt = contributing.Count == 0 ? null : AsUtc(contributing.Min(x => x.Snapshot.CapturedAt)),
             IncludesStaleData = contributing.Any(x => x.Cluster.Status != ClusterStatus.Online),
             ClustersWithoutSnapshot = clusters.Count - contributing.Count

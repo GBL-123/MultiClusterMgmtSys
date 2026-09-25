@@ -13,41 +13,48 @@
 <PageTitle>集群看板</PageTitle>
 
 <MudStack Class="dashboard-page flex-auto">
-    <MudPaper Class="dashboard-masthead">
-        <MudStack Spacing="3">
-            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
-                <MudText Class="dashboard-title font-grotesk">集群看板</MudText>
-                <MudSpacer />
-                <AuthorizeView Roles="Admin">
-                    <Authorized>
-                        <MudButton Variant="Variant.Text"
-                                   Color="Color.Inherit"
-                                   Class="dashboard-refresh-button"
-                                   StartIcon="@Icons.Material.Filled.Refresh"
-                                   Disabled="@_isRefreshing"
-                                   OnClick="RefreshAllAsync">
-                            @(_isRefreshing ? "刷新中..." : "刷新全部")
-                        </MudButton>
-                    </Authorized>
-                </AuthorizeView>
-            </MudStack>
-
-            @if (_model is { HasClusters: true })
-            {
-                <DashboardFreshnessBar Freshness="@_model.Freshness" />
-            }
-
-            @if (_isRefreshing)
-            {
+    <MudPaper Class="dashboard-board">
+        <div class="dashboard-masthead">
+            <MudStack Spacing="3">
                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
-                    <MudProgressLinear Color="Color.Primary"
-                                       Value="@((double)_refreshCurrent / Math.Max(_refreshTotal, 1) * 100)"
-                                       Class="progress-signal"
-                                       Style="flex:1; max-width:320px;" />
-                    <MudText Class="mud-text-secondary font-mono dashboard-refresh-progress">@_refreshCurrent / @_refreshTotal</MudText>
+                    <MudText Class="dashboard-title font-grotesk">集群看板</MudText>
+                    <MudSpacer />
+                    <AuthorizeView Roles="Admin">
+                        <Authorized>
+                            <MudButton Variant="Variant.Text"
+                                       Color="Color.Inherit"
+                                       Class="dashboard-refresh-button"
+                                       StartIcon="@Icons.Material.Filled.Refresh"
+                                       Disabled="@_isRefreshing"
+                                       OnClick="RefreshAllAsync">
+                                @(_isRefreshing ? "刷新中..." : "刷新全部")
+                            </MudButton>
+                        </Authorized>
+                    </AuthorizeView>
                 </MudStack>
-            }
-        </MudStack>
+
+                @if (_model is { HasClusters: true })
+                {
+                    <DashboardFreshnessBar Freshness="@_model.Freshness" />
+                }
+
+                @if (_isRefreshing)
+                {
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                        <MudProgressLinear Color="Color.Primary"
+                                           Value="@((double)_refreshCurrent / Math.Max(_refreshTotal, 1) * 100)"
+                                           Class="progress-signal"
+                                           Style="flex:1; max-width:320px;" />
+                        <MudText Class="mud-text-secondary font-mono dashboard-refresh-progress">@_refreshCurrent / @_refreshTotal</MudText>
+                    </MudStack>
+                }
+            </MudStack>
+        </div>
+
+        @if (_model is { HasClusters: true })
+        {
+            <DashboardStatBar Model="@_model" />
+        }
     </MudPaper>
 
     @if (_model is null)
@@ -66,17 +73,15 @@
     }
     else
     {
-        <DashboardStatBar Model="@_model" />
+        <div class="dashboard-metrics">
+            <DashboardGroupHealthCard Items="@_model.GroupHealth" />
+            <DashboardVersionCard Items="@_model.VersionBuckets" />
+            <DashboardNodeReadinessCard FleetSize="@_model.FleetSize" />
+        </div>
 
-        <div class="dashboard-columns">
-            <div class="dashboard-col">
-                <DashboardAttentionList Items="@_model.AttentionItems" OnOpenCluster="OpenCluster" />
-                <DashboardActivityCard Items="@_model.RecentActivity" SystemWide="@_model.RecentActivityIsSystemWide" />
-            </div>
-            <div class="dashboard-col">
-                <DashboardGroupHealthCard Items="@_model.GroupHealth" />
-                <DashboardVersionCard Items="@_model.VersionBuckets" />
-            </div>
+        <div class="dashboard-lists">
+            <DashboardAttentionList Items="@_model.AttentionItems" OnOpenCluster="OpenCluster" />
+            <DashboardActivityCard Items="@_model.RecentActivity" SystemWide="@_model.RecentActivityIsSystemWide" />
         </div>
     }
 </MudStack>

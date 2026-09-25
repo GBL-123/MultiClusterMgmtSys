@@ -183,6 +183,9 @@ public class DashboardServiceTests : IDisposable
         var model = await _service.GetDashboardAsync();
 
         Assert.Equal(13, model.FleetSize.NodeCount);
+        Assert.Equal(11, model.FleetSize.ReadyNodes);
+        Assert.Equal(2, model.FleetSize.NotReadyNodes);
+        Assert.Equal(model.FleetSize.NodeCount, model.FleetSize.ReadyNodes + model.FleetSize.NotReadyNodes);
         Assert.Equal(1, model.FleetSize.ClustersWithoutSnapshot);
         Assert.True(model.FleetSize.IncludesStaleData);
         Assert.NotNull(model.FleetSize.OldestCapturedAt);
@@ -196,6 +199,8 @@ public class DashboardServiceTests : IDisposable
         var model = await _service.GetDashboardAsync();
 
         Assert.Equal(0, model.FleetSize.NodeCount);
+        Assert.Equal(0, model.FleetSize.ReadyNodes);
+        Assert.Equal(0, model.FleetSize.NotReadyNodes);
         Assert.Equal(1, model.FleetSize.ClustersWithoutSnapshot);
         Assert.Null(model.FleetSize.OldestCapturedAt);
         Assert.False(model.FleetSize.IncludesStaleData);

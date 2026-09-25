@@ -116,8 +116,8 @@
 **选择**:`Web/Components/Dashboard/`(`Pages/Dashboard.razor` + `Shared/` 区块组件)。
 
 - **无** `MudTable`、**无** `ClusterSelectSidebar`、**无**分页与管理按钮——它是聚合快照,不是第二张集群列表。
-- 布局为「报头 + KPI 带 + 双栏主体」:左栏「需要关注 + 最近操作」、右栏「分组健康 + 版本分布」,把长列表与分布图并置,避免通栏列表右侧留白。
-- 字号对比承载层级:报头标题用 `font-grotesk` 紧字距;KPI 数字用 `.dashboard-stat-value`(clamp 40–48px、`font-grotesk`、`tabular-nums`)对 11px 字距拉开的标签;数据行与计量条用 `font-mono` + 发丝线分隔(1px 槽、纸色卡头、通栏行线),不引入新色。MudText 未指定 `Typo` 时自带 body1/caption 字号,自定义字号规则需 `html ` 前缀压过(app.css 先于 MudBlazor.min.css 加载)。
+- 布局为「看板板面卡 + 指标行 + 清单行」:板面卡(默认 elevation)内报头区与 KPI 统计带以 2px 墨线分区;主体第一行三张指标卡(分组健康 / 版本分布 / 节点就绪),第二行两张清单卡(需要关注 / 最近操作),同行卡片由 grid 拉伸为同高;≤1280px 折为单列。节点就绪复用快照中既有的就绪/未就绪数(零 K8s 调用),无快照时显示紧凑空态。
+- 字号对比承载层级:板面标题 28–32px `font-grotesk` 紧字距;KPI 数字 `.dashboard-stat-value` 56px 固定值(不用 `vw`,`html ` 前缀压过 Mud 的 body1 字号)对 11px 字距拉开的等宽标签;每格带 `01`–`05` 技术编号;KPI 带用 `auto-fit minmax(200px,1fr)` 且**不设 `overflow: hidden`**(避免窄屏裁切)。数据行与计量条用 `font-mono` + 发丝线分隔,卡头 13px 墨色等宽标题 + 1px 墨线,不引入新色。
 - 状态计数仅在非零时着色(在线绿/离线红/未知琥珀),零值保持墨色避免误报;状态用既有 `StatusBadge`;空态用既有 `.empty-state`(卡内紧凑变体)。
 - 内容卡片/面板保持 MudBlazor 默认 elevation(默认 1),与全站一致;**不**写 `Elevation="0"`(无阴影例外沿用 `ui-theme` 既有清单)。
 - 新增样式进全局 `app.css` 的看板段落。**不**登记进 `{feature}-table` 的 flex-fill 规则组——该规则组是给表格页的,看板不是表格页。

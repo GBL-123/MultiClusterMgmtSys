@@ -1,0 +1,43 @@
+@using MultiClusterMgmtSys.Application.ViewModels
+
+<MudPaper Class="dashboard-card">
+    <div class="dashboard-card-head">
+        <span class="dashboard-card-title">// 节点就绪</span>
+    </div>
+
+    <div class="dashboard-card-body">
+        @if (FleetSize.NodeCount == 0)
+        {
+            <div class="empty-state is-compact">
+                <span>[ 暂无快照 ]</span>
+            </div>
+        }
+        else
+        {
+            <div class="dashboard-breakdown-row">
+                <MudText Class="dashboard-breakdown-name">已就绪</MudText>
+                <div class="dashboard-meter">
+                    <div class="dashboard-meter-fill is-online" style="@Width(FleetSize.ReadyNodes)"></div>
+                </div>
+                <MudText Typo="Typo.caption" Class="dashboard-breakdown-count font-mono">@FleetSize.ReadyNodes / @FleetSize.NodeCount</MudText>
+            </div>
+            <div class="dashboard-breakdown-row">
+                <MudText Class="dashboard-breakdown-name">未就绪</MudText>
+                <div class="dashboard-meter">
+                    <div class="dashboard-meter-fill is-offline" style="@Width(FleetSize.NotReadyNodes)"></div>
+                </div>
+                <MudText Typo="Typo.caption" Class="dashboard-breakdown-count font-mono">@FleetSize.NotReadyNodes / @FleetSize.NodeCount</MudText>
+            </div>
+        }
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public DashboardFleetSizeViewModel FleetSize { get; set; } = new();
+
+    private string Width(int count)
+        => FleetSize.NodeCount == 0
+            ? "width:0%"
+            : $"width:{count * 100.0 / FleetSize.NodeCount:0.#}%";
+}

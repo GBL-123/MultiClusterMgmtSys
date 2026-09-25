@@ -1,32 +1,47 @@
 @using MultiClusterMgmtSys.Application.ViewModels
 
-<MudPaper Class="dashboard-stat-bar">
+<div class="dashboard-stat-bar">
     <div class="dashboard-stat">
-        <MudText Typo="Typo.caption" Class="dashboard-stat-label">集群总数</MudText>
+        <div class="dashboard-stat-head">
+            <span class="dashboard-stat-index font-mono">01</span>
+            <MudText Typo="Typo.caption" Class="dashboard-stat-label">集群总数</MudText>
+        </div>
         <MudText Class="dashboard-stat-value font-grotesk">@Model.TotalClusters</MudText>
     </div>
 
     <div class="dashboard-stat">
-        <MudText Typo="Typo.caption" Class="dashboard-stat-label">在线</MudText>
+        <div class="dashboard-stat-head">
+            <span class="dashboard-stat-index font-mono">02</span>
+            <MudText Typo="Typo.caption" Class="dashboard-stat-label">在线</MudText>
+        </div>
         <MudText Class="@ValueClass(Model.OnlineClusters, "is-online")">@Model.OnlineClusters</MudText>
     </div>
 
     <div class="dashboard-stat">
-        <MudText Typo="Typo.caption" Class="dashboard-stat-label">离线</MudText>
+        <div class="dashboard-stat-head">
+            <span class="dashboard-stat-index font-mono">03</span>
+            <MudText Typo="Typo.caption" Class="dashboard-stat-label">离线</MudText>
+        </div>
         <MudText Class="@ValueClass(Model.OfflineClusters, "is-offline")">@Model.OfflineClusters</MudText>
     </div>
 
     <div class="dashboard-stat">
-        <MudText Typo="Typo.caption" Class="dashboard-stat-label">未知</MudText>
+        <div class="dashboard-stat-head">
+            <span class="dashboard-stat-index font-mono">04</span>
+            <MudText Typo="Typo.caption" Class="dashboard-stat-label">未知</MudText>
+        </div>
         <MudText Class="@ValueClass(Model.UnknownClusters, "is-unknown")">@Model.UnknownClusters</MudText>
     </div>
 
     <div class="dashboard-stat">
-        <MudText Typo="Typo.caption" Class="dashboard-stat-label">舰队节点</MudText>
+        <div class="dashboard-stat-head">
+            <span class="dashboard-stat-index font-mono">05</span>
+            <MudText Typo="Typo.caption" Class="dashboard-stat-label">舰队节点</MudText>
+        </div>
         <MudText Class="dashboard-stat-value font-grotesk">@Model.FleetSize.NodeCount</MudText>
         <MudText Typo="Typo.caption" Class="dashboard-stat-note font-mono">@FleetNote</MudText>
     </div>
-</MudPaper>
+</div>
 
 @code {
     [Parameter]

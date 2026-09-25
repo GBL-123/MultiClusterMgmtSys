@@ -174,6 +174,27 @@ public class DashboardPageTests
     }
 
     [Fact]
+    public async Task Dashboard_shows_node_readiness_from_latest_snapshots()
+    {
+        await using var ctx = new BunitHost();
+        AuthorizeAdmin(ctx);
+        var (harness, _) = ctx.AddDashboardStack();
+        var online = TestData.NewCluster("ready-a", status: ClusterStatus.Online);
+        await harness.ClusterRepo.AddAsync(online);
+        var offline = TestData.NewCluster("ready-b", status: ClusterStatus.Offline);
+        await harness.ClusterRepo.AddAsync(offline);
+        await harness.ClusterHealthRepo.AddAsync(TestData.NewSnapshot(online.Id, totalNodes: 8, readyNodes: 6, notReadyNodes: 2));
+        await harness.ClusterHealthRepo.AddAsync(TestData.NewSnapshot(offline.Id, totalNodes: 4, readyNodes: 4, notReadyNodes: 0));
+
+        var cut = ctx.Render<Dashboard>();
+        cut.WaitForState(() => cut.FindAll(".dashboard-stat-bar").Count > 0, TimeSpan.FromSeconds(5));
+
+        Assert.Contains("// 节点就绪", cut.Markup);
+        Assert.Contains("10 / 12", cut.Markup);
+        Assert.Contains("2 / 12", cut.Markup);
+    }
+
+    [Fact]
     public async Task Drawer_lists_dashboard_entry_before_cluster_management()
     {
         await using var ctx = new BunitHost();
