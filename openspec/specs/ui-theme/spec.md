@@ -2,12 +2,12 @@
 
 ## Purpose
 
-为系统提供 "Swiss Industrial Print" 工业印刷视觉系统契约：暖纸色基底 + 墨色文字 + 单一琥珀强调色、发丝线分格、小圆角、无投影阴影；自托管拉丁字体（Space Grotesk / IBM Plex Mono）+ 系统中文栈；淡彩底状态徽章；AppBar 品牌区与墨块导航激活态；密集表格、等宽数据列；空态虚线框与加载反馈；琥珀焦点环与按压缩放反馈；组件选型优先 MudBlazor（原生元素仅限文档化例外）；并约定移除暗色模式（无 `PaletteDark`、无主题切换入口、无本地偏好残留）。
+为系统提供 "Swiss Industrial Print" 工业印刷视觉系统契约：暖纸色基底 + 墨色文字 + 单一琥珀强调色、发丝线分格、小圆角、内容卡片默认 elevation 阴影与发丝线分层；自托管拉丁字体（Space Grotesk / IBM Plex Mono）+ 系统中文栈；淡彩底状态徽章；AppBar 品牌区与墨块导航激活态；密集表格、等宽数据列；空态虚线框与加载反馈；琥珀焦点环与按压缩放反馈；组件选型优先 MudBlazor（原生元素仅限文档化例外）；并约定移除暗色模式（无 `PaletteDark`、无主题切换入口、无本地偏好残留）。
 
 ## Requirements
 
 ### Requirement: 设计 token(调色板/圆角/阴影)
-系统 SHALL 使用 Swiss Industrial Print 全亮色设计 token:MudTheme 与 app.css 中 SHALL 使用暖纸背景 `#F4F4F0`、卡面 `#FCFBF7`、发丝线 `#E2DED5`、墨色主文字/主色 `#111111`、次文字 `#6E675C`、单一琥珀强调色 `#D97706`。默认圆角 SHALL 为 3px。UI 层级 SHALL 通过发丝线与 inset 高光表达,不使用投影阴影。
+系统 SHALL 使用 Swiss Industrial Print 全亮色设计 token:MudTheme 与 app.css 中 SHALL 使用暖纸背景 `#F4F4F0`、卡面 `#FCFBF7`、发丝线 `#E2DED5`、墨色主文字/主色 `#111111`、次文字 `#6E675C`、单一琥珀强调色 `#D97706`。默认圆角 SHALL 为 3px。UI 层级 SHALL 通过 MudBlazor 默认 elevation 阴影与发丝线共同表达:内容卡片/面板 SHALL 保持默认 `Elevation`(`MudPaper`/`MudCard` 默认 1,列表页空态卡 2,卡片内表格 0),SHALL NOT 将其压平为 `Elevation="0"`;登录/注册面板、兜底页、AppBar/Drawer、tooltip 与断线重连弹窗 SHALL 保持无阴影、仅以发丝线表达层级。
 
 #### Scenario: 主题加载
 - **WHEN** 应用启动并渲染任意页面
@@ -16,6 +16,14 @@
 #### Scenario: 强调色稀缺性
 - **WHEN** 检查强调色出现位置
 - **THEN** 琥珀色仅出现在品牌方牌、焦点环、刷新与重连进度条、空态框中,不用于常规按钮与文字
+
+#### Scenario: 内容卡片保持默认阴影
+- **WHEN** 渲染任一内容页(列表页、详情页或看板)的卡片/面板
+- **THEN** 卡片呈现 MudBlazor 默认 elevation 阴影,与其余页面层级观感一致,不存在被压平的内容卡片
+
+#### Scenario: 无阴影例外
+- **WHEN** 检查登录/注册面板、兜底页、AppBar/Drawer、tooltip 与断线重连弹窗
+- **THEN** 这些界面仅以发丝线表达层级,不带投影阴影
 
 ### Requirement: 字体体系
 系统 SHALL 自托管两种拉丁字体:Space Grotesk(标题与数字)与 IBM Plex Mono(数据类内容);中文正文 SHALL 使用系统中文栈(PingFang SC / Microsoft YaHei / Noto Sans SC)。字体文件 SHALL 存放于 `wwwroot/fonts/` 并提交进仓库,通过 `@font-face` 加载并设置 `font-display: swap`。数字 SHALL 启用 `font-variant-numeric: tabular-nums`。

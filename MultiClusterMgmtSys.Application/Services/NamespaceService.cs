@@ -17,16 +17,16 @@ namespace MultiClusterMgmtSys.Application.Services;
 /// </summary>
 public class NamespaceService(IClusterRepository repo, AuditService auditService, ILogger<NamespaceService> logger, IClusterClientCache clientCache)
 {
-    private readonly IClusterRepository repo = repo;
+    private readonly IClusterRepository _repo = repo;
 
-    private readonly AuditService auditService = auditService;
+    private readonly AuditService _auditService = auditService;
 
-    private readonly ILogger<NamespaceService> logger = logger;
+    private readonly ILogger<NamespaceService> _logger = logger;
 
     /// <summary>拉取集群命名空间列表;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
     public async Task<List<NamespaceListViewModel>> ListNamespacesAsync(int clusterId)
     {
-        var entity = await repo.GetByIdAsync(clusterId)
+        var entity = await _repo.GetByIdAsync(clusterId)
             ?? throw new NotFoundException($"集群 {clusterId} 不存在");
         var client = clientCache.GetOrCreate(entity);
         try
@@ -36,7 +36,7 @@ public class NamespaceService(IClusterRepository repo, AuditService auditService
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "ListNamespaces failed clusterId={ClusterId}", clusterId);
+            _logger.LogWarning(ex, "ListNamespaces failed clusterId={ClusterId}", clusterId);
             throw K8sExceptionMapper.Translate(ex, "加载命名空间列表");
         }
     }
@@ -44,7 +44,7 @@ public class NamespaceService(IClusterRepository repo, AuditService auditService
     /// <summary>读取单个命名空间详情(含标签/注解/YAML);集群不存在返回 null,K8s 失败经翻译后抛业务异常。</summary>
     public async Task<NamespaceDetailViewModel?> GetNamespaceAsync(NamespaceKeyRequest request)
     {
-        var entity = await repo.GetByIdAsync(request.ClusterId);
+        var entity = await _repo.GetByIdAsync(request.ClusterId);
         if (entity is null) return null;
         var client = clientCache.GetOrCreate(entity);
         try
@@ -54,7 +54,7 @@ public class NamespaceService(IClusterRepository repo, AuditService auditService
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "ReadNamespace failed clusterId={ClusterId} name={Name}", request.ClusterId, request.Name);
+            _logger.LogWarning(ex, "ReadNamespace failed clusterId={ClusterId} name={Name}", request.ClusterId, request.Name);
             throw K8sExceptionMapper.Translate(ex, "加载命名空间详情");
         }
     }
@@ -62,7 +62,7 @@ public class NamespaceService(IClusterRepository repo, AuditService auditService
     /// <summary>以 YAML 创建命名空间,名称取自 YAML 的 metadata.name;YAML 非法或未指定名称抛 <see cref="ValidationException"/>,成功后写创建审计。</summary>
     public async Task CreateNamespaceFromYamlAsync(NamespaceCreateRequest request)
     {
-        var entity = await repo.GetByIdAsync(request.ClusterId)
+        var entity = await _repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
         var client = clientCache.GetOrCreate(entity);
         V1Namespace body;
@@ -72,7 +72,7 @@ public class NamespaceService(IClusterRepository repo, AuditService auditService
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Deserialize YAML failed for create clusterId={ClusterId}", request.ClusterId);
+            _logger.LogWarning(ex, "Deserialize YAML failed for create clusterId={ClusterId}", request.ClusterId);
             throw new ValidationException($"YAML 格式错误:{ex.Message}");
         }
         var name = body.Metadata?.Name;
@@ -84,10 +84,10 @@ public class NamespaceService(IClusterRepository repo, AuditService auditService
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "CreateNamespace failed clusterId={ClusterId} name={Name}", request.ClusterId, name);
+            _logger.LogWarning(ex, "CreateNamespace failed clusterId={ClusterId} name={Name}", request.ClusterId, name);
             throw K8sExceptionMapper.Translate(ex, "创建命名空间");
         }
-        await auditService.LogAsync(AuditCategory.Namespace, AuditAction.Create, $"命名空间: {name} @ 集群 {entity.Name}");
+        await _auditService.LogAsync(AuditCategory.Namespace, AuditAction.Create, $"命名空间: {name} @ 集群 {entity.Name}");
     }
 
     /// <summary>删除指定命名空间,成功后写删除审计;default 与 kube- 前缀系统命名空间受保护,直接抛 <see cref="ValidationException"/> 且不调用 K8s API。</summary>
@@ -95,7 +95,7 @@ public class NamespaceService(IClusterRepository repo, AuditService auditService
     {
         if (IsProtected(request.Name))
             throw new ValidationException($"「{request.Name}」为系统命名空间,禁止删除");
-        var entity = await repo.GetByIdAsync(request.ClusterId)
+        var entity = await _repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
         var client = clientCache.GetOrCreate(entity);
         try
@@ -104,10 +104,10 @@ public class NamespaceService(IClusterRepository repo, AuditService auditService
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "DeleteNamespace failed clusterId={ClusterId} name={Name}", request.ClusterId, request.Name);
+            _logger.LogWarning(ex, "DeleteNamespace failed clusterId={ClusterId} name={Name}", request.ClusterId, request.Name);
             throw K8sExceptionMapper.Translate(ex, "删除命名空间");
         }
-        await auditService.LogAsync(AuditCategory.Namespace, AuditAction.Delete, $"命名空间: {request.Name} @ 集群 {entity.Name}");
+        await _auditService.LogAsync(AuditCategory.Namespace, AuditAction.Delete, $"命名空间: {request.Name} @ 集群 {entity.Name}");
     }
 
     /// <summary>判断是否为受保护的系统命名空间:default 或以 kube- 开头;UI 与删除校验共用同一规则。</summary>

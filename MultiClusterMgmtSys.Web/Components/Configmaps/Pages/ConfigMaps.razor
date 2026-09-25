@@ -20,7 +20,7 @@
 <PageTitle>配置管理</PageTitle>
 
 <MudStack Row="true" Spacing="3" Class="d-flex flex-auto">
-    <ClusterSelectSidebar Clusters="@clusters"
+    <ClusterSelectSidebar Clusters="@_clusters"
                           SelectedClusterId="@EffectiveClusterId"
                           OnClusterSelected="SelectCluster" />
 
@@ -32,11 +32,11 @@
                 <MudText Typo="Typo.h6" Class="mud-text-secondary">请从左侧选择一个集群</MudText>
             </div>
         }
-        else if (loading)
+        else if (_loading)
         {
             <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
         }
-        else if (cluster is null)
+        else if (_cluster is null)
         {
             <MudCard Class="pa-8" Elevation="2">
                 <MudCardContent>
@@ -60,17 +60,17 @@
                         <MudText Typo="Typo.h5">配置管理</MudText>
                         <MudChip T="string"
                                  Size="Size.Small"
-                                 Color="GetClusterStatusColor(cluster.Status)"
+                                 Color="GetClusterStatusColor(_cluster.Status)"
                                  Variant="Variant.Filled"
                                  Class="ml-2">
-                            @cluster.Name · @cluster.StatusText
+                            @_cluster.Name · @_cluster.StatusText
                         </MudChip>
                         <MudSpacer />
                         <MudButton Variant="Variant.Text"
                                    Color="Color.Inherit"
                                    StartIcon="@Icons.Material.Filled.Refresh"
                                    OnClick="@(() => LoadAsync(EffectiveClusterId!.Value))"
-                                   Disabled="@loading">
+                                   Disabled="@_loading">
                             刷新
                         </MudButton>
                         <AuthorizeView Roles="Admin">
@@ -79,25 +79,25 @@
                                            Color="Color.Primary"
                                            StartIcon="@Icons.Material.Filled.Add"
                                            OnClick="OpenCreateDialog"
-                                           Disabled="@(!cluster.IsReachable)">
+                                           Disabled="@(!_cluster.IsReachable)">
                                     新建 ConfigMap
                                 </MudButton>
                             </Authorized>
                         </AuthorizeView>
                     </MudStack>
 
-                    @if (cluster.IsReachable)
+                    @if (_cluster.IsReachable)
                     {
-                        <ConfigMapListFilterBar @bind-SelectedNamespace="selectedNamespace"
-                                                @bind-SearchName="searchName"
-                                                Namespaces="@namespaces"
+                        <ConfigMapListFilterBar @bind-SelectedNamespace="_selectedNamespace"
+                                                @bind-SearchName="_searchName"
+                                                Namespaces="@_namespaces"
                                                 OnQuery="OnQueryClick"
                                                 OnReset="OnResetClick" />
                     }
                 </MudStack>
             </MudPaper>
 
-            @if (!cluster.IsReachable)
+            @if (!_cluster.IsReachable)
             {
                 <MudCard Elevation="1">
                     <MudCardContent>
@@ -108,7 +108,7 @@
             else
             {
                 <ConfigMapListTable Items="@filteredConfigMaps"
-                                    Loading="@loading"
+                                    Loading="@_loading"
                                     OnNavigateDetail="NavigateToDetail"
                                     OnNavigateEditYaml="NavigateToYamlEdit"
                                     OnDelete="DeleteConfigMap" />
@@ -122,25 +122,25 @@
     public int? ClusterId { get; set; }
 
 
-    private List<ClusterViewModel> clusters = new();
+    private List<ClusterViewModel> _clusters = new();
 
-    private ClusterDetailViewModel? cluster;
+    private ClusterDetailViewModel? _cluster;
 
-    private List<ConfigMapListViewModel> configMaps = new();
+    private List<ConfigMapListViewModel> _configMaps = new();
 
-    private List<string> namespaces = new();
+    private List<string> _namespaces = new();
 
-    private bool loading;
+    private bool _loading;
 
-    private string searchName = "";
+    private string _searchName = "";
 
-    private string appliedSearchName = "";
+    private string _appliedSearchName = "";
 
-    private string? selectedNamespace;
+    private string? _selectedNamespace;
 
-    private int? previousClusterId;
+    private int? _previousClusterId;
 
-    private bool hasInitialized;
+    private bool _hasInitialized;
 
     /// <summary>
     /// 当前生效的集群上下文:URL 参数存在时用 URL 参数,
@@ -152,9 +152,9 @@
     {
         get
         {
-            var q = configMaps.AsEnumerable();
-            if (!string.IsNullOrWhiteSpace(appliedSearchName))
-                q = q.Where(cm => cm.Name.Contains(appliedSearchName, StringComparison.OrdinalIgnoreCase));
+            var q = _configMaps.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(_appliedSearchName))
+                q = q.Where(cm => cm.Name.Contains(_appliedSearchName, StringComparison.OrdinalIgnoreCase));
             return q.ToList();
         }
     }
@@ -174,12 +174,12 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (ClusterId == previousClusterId && hasInitialized)
+        if (ClusterId == _previousClusterId && _hasInitialized)
         {
             return;
         }
-        hasInitialized = true;
-        previousClusterId = ClusterId;
+        _hasInitialized = true;
+        _previousClusterId = ClusterId;
 
         if (EffectiveClusterId.HasValue)
         {
@@ -187,10 +187,10 @@
         }
         else
         {
-            cluster = null;
-            configMaps = new();
-            namespaces = new();
-            loading = false;
+            _cluster = null;
+            _configMaps = new();
+            _namespaces = new();
+            _loading = false;
         }
     }
 
@@ -200,7 +200,7 @@
         {
             var request = new ClusterQueryRequest { Page = 1, PageSize = 1000, SortBy = ClusterSortField.Name, SortDescending = false };
             var result = await ClusterService.GetPagedAsync(request);
-            clusters = result.Items;
+            _clusters = result.Items;
         }
         catch (Exception ex)
         {
@@ -210,19 +210,19 @@
 
     private async Task LoadAsync(int id)
     {
-        loading = true;
+        _loading = true;
         try
         {
-            cluster = await ClusterService.GetClusterDetailAsync(id);
-            if (cluster is not null)
+            _cluster = await ClusterService.GetClusterDetailAsync(id);
+            if (_cluster is not null)
             {
                 ClusterSelection.Set(id);
             }
-            if (cluster is not null && cluster.IsReachable)
+            if (_cluster is not null && _cluster.IsReachable)
             {
                 try
                 {
-                    namespaces = await ConfigMapService.GetNamespacesAsync(id);
+                    _namespaces = await ConfigMapService.GetNamespacesAsync(id);
                 }
                 catch (Exception ex)
                 {
@@ -231,7 +231,7 @@
 
                 try
                 {
-                    configMaps = await ConfigMapService.ListConfigMapsAsync(new ConfigMapQueryRequest(id, selectedNamespace));
+                    _configMaps = await ConfigMapService.ListConfigMapsAsync(new ConfigMapQueryRequest(id, _selectedNamespace));
                 }
                 catch (Exception ex)
                 {
@@ -240,8 +240,8 @@
             }
             else
             {
-                configMaps = new();
-                namespaces = new();
+                _configMaps = new();
+                _namespaces = new();
             }
         }
         catch (Exception ex)
@@ -250,7 +250,7 @@
         }
         finally
         {
-            loading = false;
+            _loading = false;
         }
     }
 
@@ -262,11 +262,11 @@
     private async Task OnQueryClick()
     {
         if (!EffectiveClusterId.HasValue) return;
-        appliedSearchName = searchName;
-        loading = true;
+        _appliedSearchName = _searchName;
+        _loading = true;
         try
         {
-            configMaps = await ConfigMapService.ListConfigMapsAsync(new ConfigMapQueryRequest(EffectiveClusterId.Value, selectedNamespace));
+            _configMaps = await ConfigMapService.ListConfigMapsAsync(new ConfigMapQueryRequest(EffectiveClusterId.Value, _selectedNamespace));
         }
         catch (Exception ex)
         {
@@ -274,15 +274,15 @@
         }
         finally
         {
-            loading = false;
+            _loading = false;
         }
     }
 
     private async Task OnResetClick()
     {
-        selectedNamespace = null;
-        searchName = "";
-        appliedSearchName = "";
+        _selectedNamespace = null;
+        _searchName = "";
+        _appliedSearchName = "";
         if (EffectiveClusterId.HasValue)
         {
             await LoadAsync(EffectiveClusterId.Value);

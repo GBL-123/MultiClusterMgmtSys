@@ -18,21 +18,21 @@ public class GroupService(
     AuditService auditService,
     ILogger<GroupService> logger)
 {
-    private readonly IGroupRepository repo = repo;
+    private readonly IGroupRepository _repo = repo;
 
-    private readonly IClusterRepository clusterRepo = clusterRepo;
+    private readonly IClusterRepository _clusterRepo = clusterRepo;
 
-    private readonly AuditService auditService = auditService;
+    private readonly AuditService _auditService = auditService;
 
-    private readonly ILogger<GroupService> logger = logger;
+    private readonly ILogger<GroupService> _logger = logger;
 
     /// <summary>查询全部分组列表,每项含分组内集群数量。</summary>
     public async Task<List<ClusterGroupViewModel>> GetGroupsAsync()
     {
-        logger.LogInformation("GetGroups");
-        var groups = await repo.GetAllAsync();
+        _logger.LogInformation("GetGroups");
+        var groups = await _repo.GetAllAsync();
         var vms = groups.Select(g => g.ToViewModel()).ToList();
-        logger.LogInformation("GetGroups returned {Count} groups", vms.Count);
+        _logger.LogInformation("GetGroups returned {Count} groups", vms.Count);
         return vms;
     }
 
@@ -41,46 +41,46 @@ public class GroupService(
     /// <returns>新建分组的视图(含 Id)。</returns>
     public async Task<ClusterGroupViewModel> AddGroupAsync(string groupName)
     {
-        logger.LogInformation("AddGroup name={Name}", groupName);
+        _logger.LogInformation("AddGroup name={Name}", groupName);
         var entity = new ClusterGroup
         {
             Name = groupName,
             CreatedAt = DateTime.UtcNow
         };
 
-        await repo.AddAsync(entity);
-        logger.LogInformation("AddGroup created id={GroupId}", entity.Id);
-        await auditService.LogAsync(AuditCategory.Group, AuditAction.Create, $"分组: {entity.Name}");
+        await _repo.AddAsync(entity);
+        _logger.LogInformation("AddGroup created id={GroupId}", entity.Id);
+        await _auditService.LogAsync(AuditCategory.Group, AuditAction.Create, $"分组: {entity.Name}");
         return entity.ToViewModel();
     }
 
     /// <summary>删除分组;分组不存在时静默返回,删除成功后写删除审计,其下集群自动变为未分组(外键 SetNull)。</summary>
     public async Task DeleteGroupAsync(int id)
     {
-        logger.LogInformation("DeleteGroup id={GroupId}", id);
-        var entity = await repo.GetByIdAsync(id);
+        _logger.LogInformation("DeleteGroup id={GroupId}", id);
+        var entity = await _repo.GetByIdAsync(id);
         if (entity is not null)
         {
-            await repo.DeleteAsync(id);
-            await auditService.LogAsync(AuditCategory.Group, AuditAction.Delete, $"分组: {entity.Name}");
+            await _repo.DeleteAsync(id);
+            await _auditService.LogAsync(AuditCategory.Group, AuditAction.Delete, $"分组: {entity.Name}");
         }
-        logger.LogInformation("DeleteGroup done id={GroupId}", id);
+        _logger.LogInformation("DeleteGroup done id={GroupId}", id);
     }
 
     /// <summary>重命名分组;分组不存在抛 <see cref="NotFoundException"/>,成功后写重命名审计(审计目标记录原名)。</summary>
     public async Task RenameGroupAsync(GroupRenameRequest request)
     {
-        logger.LogInformation("RenameGroup id={GroupId} newName={NewName}", request.Id, request.NewName);
-        var existing = await repo.GetByIdAsync(request.Id);
+        _logger.LogInformation("RenameGroup id={GroupId} newName={NewName}", request.Id, request.NewName);
+        var existing = await _repo.GetByIdAsync(request.Id);
         if (existing is null)
         {
-            logger.LogWarning("RenameGroup id={GroupId} not found", request.Id);
+            _logger.LogWarning("RenameGroup id={GroupId} not found", request.Id);
             throw new NotFoundException($"分组 {request.Id} 不存在");
         }
 
-        await repo.RenameAsync(request.Id, request.NewName);
-        logger.LogInformation("RenameGroup done id={GroupId}", request.Id);
-        await auditService.LogAsync(AuditCategory.Group, AuditAction.Rename, $"分组: {existing.Name}");
+        await _repo.RenameAsync(request.Id, request.NewName);
+        _logger.LogInformation("RenameGroup done id={GroupId}", request.Id);
+        await _auditService.LogAsync(AuditCategory.Group, AuditAction.Rename, $"分组: {existing.Name}");
     }
 
     /// <summary>批量移动集群到目标分组;TargetGroupId 为 null 表示移出为未分组,为 0(未翻译的哨兵值)抛 <see cref="ValidationException"/>。移动数大于 0 时写审计。</summary>
@@ -89,21 +89,21 @@ public class GroupService(
     {
         if (request.TargetGroupId == 0)
         {
-            logger.LogWarning("MoveClustersToGroup rejected targetGroupId=0 (sentinel must be translated to null before service call)");
+            _logger.LogWarning("MoveClustersToGroup rejected targetGroupId=0 (sentinel must be translated to null before service call)");
             throw new ValidationException("目标分组无效,请刷新后重试");
         }
 
         var ids = request.ClusterIds.ToList();
-        logger.LogInformation("MoveClustersToGroup count={Count} targetGroupId={TargetGroupId}", ids.Count, request.TargetGroupId);
+        _logger.LogInformation("MoveClustersToGroup count={Count} targetGroupId={TargetGroupId}", ids.Count, request.TargetGroupId);
 
-        var affected = await clusterRepo.SetGroupIdForClustersAsync(ids, request.TargetGroupId);
-        logger.LogInformation("MoveClustersToGroup affected={Affected} targetGroupId={TargetGroupId}", affected, request.TargetGroupId);
+        var affected = await _clusterRepo.SetGroupIdForClustersAsync(ids, request.TargetGroupId);
+        _logger.LogInformation("MoveClustersToGroup affected={Affected} targetGroupId={TargetGroupId}", affected, request.TargetGroupId);
         if (affected > 0)
         {
             var groupName = request.TargetGroupId is null
                 ? "未分组"
-                : (await repo.GetByIdAsync(request.TargetGroupId.Value))?.Name ?? $"#{request.TargetGroupId}";
-            await auditService.LogAsync(AuditCategory.Group, AuditAction.Move, $"集群 {affected} 个 → {groupName}");
+                : (await _repo.GetByIdAsync(request.TargetGroupId.Value))?.Name ?? $"#{request.TargetGroupId}";
+            await _auditService.LogAsync(AuditCategory.Group, AuditAction.Move, $"集群 {affected} 个 → {groupName}");
         }
         return affected;
     }
@@ -111,8 +111,8 @@ public class GroupService(
     /// <summary>统计未分组集群的数量,供分组页提示与校验使用。</summary>
     public async Task<int> GetUngroupedClusterCountAsync()
     {
-        var count = await clusterRepo.CountUngroupedAsync();
-        logger.LogInformation("GetUngroupedClusterCount count={Count}", count);
+        var count = await _clusterRepo.CountUngroupedAsync();
+        _logger.LogInformation("GetUngroupedClusterCount count={Count}", count);
         return count;
     }
 }

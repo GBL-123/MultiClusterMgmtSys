@@ -15,11 +15,11 @@
 <PageTitle>集群详情</PageTitle>
 
 <MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
-    @if (loading)
+    @if (_loading)
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
     }
-    else if (cluster is null)
+    else if (_cluster is null)
     {
         <MudCard Class="pa-4">
             <MudCardContent>
@@ -37,27 +37,27 @@
     }
     else
     {
-        <ClusterDetailToolbar Cluster="@cluster"
-                             Processing="processing"
+        <ClusterDetailToolbar Cluster="@_cluster"
+                             Processing="_processing"
                              OnBack="@(() => NavigationManager.NavigateTo("/clusters"))"
                              OnRefresh="RefreshStatus"
                              OnEdit="OpenEditDialog"
                              OnDelete="DeleteCluster" />
 
-        <MudTabs @bind-ActivePanelIndex="activeTabIndex"
+        <MudTabs @bind-ActivePanelIndex="_activeTabIndex"
                  Class="detail-tabs"
                  Elevation="0"
                  Rounded="false"
                  TabPanelsClass="detail-tabs-panels">
             <MudTabPanel Text="概览">
-                <ClusterOverviewCard Cluster="@cluster" />
+                <ClusterOverviewCard Cluster="@_cluster" />
             </MudTabPanel>
             <MudTabPanel Text="集群端点">
-                <ClusterEndpointsCard Cluster="@cluster"
+                <ClusterEndpointsCard Cluster="@_cluster"
                                       OnEndpointsChanged="LoadAsync" />
             </MudTabPanel>
             <MudTabPanel Text="节点">
-                <ClusterNodesCard Cluster="@cluster" />
+                <ClusterNodesCard Cluster="@_cluster" />
             </MudTabPanel>
         </MudTabs>
     }
@@ -68,13 +68,13 @@
     public int Id { get; set; }
 
 
-    private ClusterDetailViewModel? cluster;
+    private ClusterDetailViewModel? _cluster;
 
-    private bool loading;
+    private bool _loading;
 
-    private bool processing;
+    private bool _processing;
 
-    private int activeTabIndex;
+    private int _activeTabIndex;
 
     protected override async Task OnInitializedAsync()
     {
@@ -83,11 +83,11 @@
 
     private async Task LoadAsync()
     {
-        loading = true;
+        _loading = true;
         try
         {
-            cluster = await ClusterService.GetClusterDetailAsync(Id);
-            if (cluster is not null)
+            _cluster = await ClusterService.GetClusterDetailAsync(Id);
+            if (_cluster is not null)
             {
                 ClusterSelection.Set(Id);
             }
@@ -98,13 +98,13 @@
         }
         finally
         {
-            loading = false;
+            _loading = false;
         }
     }
 
     private async Task RefreshStatus()
     {
-        processing = true;
+        _processing = true;
         try
         {
             await ClusterService.RefreshClusterStatusAsync(Id);
@@ -117,7 +117,7 @@
         }
         finally
         {
-            processing = false;
+            _processing = false;
         }
     }
 
@@ -137,7 +137,7 @@
     {
         var parameters = new DialogParameters
         {
-            { "Message", $"确认删除集群「{cluster?.Name ?? Id.ToString()}」？此操作不可撤销。" }
+            { "Message", $"确认删除集群「{_cluster?.Name ?? Id.ToString()}」？此操作不可撤销。" }
         };
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
         var dialog = await DialogService.ShowAsync<ConfirmDialog>("确认删除", parameters, options);
@@ -145,7 +145,7 @@
 
         if (result is not null && !result.Canceled)
         {
-            processing = true;
+            _processing = true;
             try
             {
                 await ClusterService.DeleteClusterAsync(Id);
@@ -158,7 +158,7 @@
             }
             finally
             {
-                processing = false;
+                _processing = false;
             }
         }
     }

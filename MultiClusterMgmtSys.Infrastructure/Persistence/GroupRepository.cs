@@ -10,7 +10,7 @@ namespace MultiClusterMgmtSys.Infrastructure.Persistence;
 /// </summary>
 public class GroupRepository(ApplicationDbContext db) : IGroupRepository
 {
-    private readonly ApplicationDbContext db = db;
+    private readonly ApplicationDbContext _db = db;
 
     /// <summary>
     /// 查询全部分组,按 Id 升序,附带组内集群集合用于计算侧栏计数;无副作用。
@@ -21,7 +21,7 @@ public class GroupRepository(ApplicationDbContext db) : IGroupRepository
         // AsNoTracking: 侧栏的 ClusterCount 是只读读模型。若跟踪实体, EF identity resolution
         // 会在 ExecuteUpdateAsync(SetGroupIdForClustersAsync) 改了库后仍返回内存里的旧 GroupId,
         // 导致批量移动分组后每个分组的数量不刷新。
-        return await db.ClusterGroups.AsNoTracking().Include(g => g.Clusters).OrderBy(g => g.Id).ToListAsync();
+        return await _db.ClusterGroups.AsNoTracking().Include(g => g.Clusters).OrderBy(g => g.Id).ToListAsync();
     }
 
     /// <summary>按 Id 查询单个分组,附带组内集群集合;不存在时返回 null。</summary>
@@ -29,7 +29,7 @@ public class GroupRepository(ApplicationDbContext db) : IGroupRepository
     /// <returns>分组实体;不存在为 null。</returns>
     public async Task<ClusterGroup?> GetByIdAsync(int id)
     {
-        return await db.ClusterGroups.Include(g => g.Clusters).FirstOrDefaultAsync(g => g.Id == id);
+        return await _db.ClusterGroups.Include(g => g.Clusters).FirstOrDefaultAsync(g => g.Id == id);
     }
 
     /// <summary>新增分组并保存;返回带自增 Id 的实体,审计由上层服务写入。</summary>
@@ -37,8 +37,8 @@ public class GroupRepository(ApplicationDbContext db) : IGroupRepository
     /// <returns>保存后的分组实体(含生成的 Id)。</returns>
     public async Task<ClusterGroup> AddAsync(ClusterGroup entity)
     {
-        db.ClusterGroups.Add(entity);
-        await db.SaveChangesAsync();
+        _db.ClusterGroups.Add(entity);
+        await _db.SaveChangesAsync();
         return entity;
     }
 
@@ -46,11 +46,11 @@ public class GroupRepository(ApplicationDbContext db) : IGroupRepository
     /// <param name="id">分组 Id。</param>
     public async Task DeleteAsync(int id)
     {
-        var entity = await db.ClusterGroups.FindAsync(id);
+        var entity = await _db.ClusterGroups.FindAsync(id);
         if (entity is not null)
         {
-            db.ClusterGroups.Remove(entity);
-            await db.SaveChangesAsync();
+            _db.ClusterGroups.Remove(entity);
+            await _db.SaveChangesAsync();
         }
     }
 
@@ -59,11 +59,11 @@ public class GroupRepository(ApplicationDbContext db) : IGroupRepository
     /// <param name="newName">新名称。</param>
     public async Task RenameAsync(int id, string newName)
     {
-        var entity = await db.ClusterGroups.FindAsync(id);
+        var entity = await _db.ClusterGroups.FindAsync(id);
         if (entity is not null)
         {
             entity.Name = newName;
-            await db.SaveChangesAsync();
+            await _db.SaveChangesAsync();
         }
     }
 }

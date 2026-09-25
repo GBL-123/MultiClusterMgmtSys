@@ -21,11 +21,11 @@
 <PageTitle>编辑 YAML: @Name</PageTitle>
 
 <MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
-    @if (loading)
+    @if (_loading)
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
     }
-    else if (loadError)
+    else if (_loadError)
     {
         <MudCard Class="pa-4">
             <MudCardContent>
@@ -55,8 +55,8 @@
                            Color="Color.Primary"
                            StartIcon="@Icons.Material.Filled.Save"
                            OnClick="Save"
-                           Disabled="saving">
-                    @if (saving)
+                           Disabled="_saving">
+                    @if (_saving)
                     {
                         <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                     }
@@ -65,7 +65,7 @@
             </MudStack>
         </MudPaper>
 
-        <WorkloadYamlEditCard @bind-Yaml="yamlContent" />
+        <WorkloadYamlEditCard @bind-Yaml="_yamlContent" />
     }
 </MudStack>
 
@@ -82,39 +82,39 @@
     [Parameter]
     public string Name { get; set; } = "";
 
-    private string yamlContent = "";
+    private string _yamlContent = "";
 
-    private bool loading = true;
+    private bool _loading = true;
 
-    private bool loadError;
+    private bool _loadError;
 
-    private bool saving;
+    private bool _saving;
 
     protected override async Task OnInitializedAsync()
     {
         ClusterSelection.Set(ClusterId);
         try
         {
-            loadError = false;
+            _loadError = false;
             var request = new WorkloadKeyRequest(ClusterId, Name, Namespace);
             var detail = await GetWorkloadAsync(request);
             if (detail is null)
             {
                 Snackbar.Add($"{Kind.ToDisplayText()}不存在或已被删除", Severity.Warning);
-                loadError = true;
+                _loadError = true;
                 return;
             }
 
-            yamlContent = detail.Yaml;
+            _yamlContent = detail.Yaml;
         }
         catch (Exception ex)
         {
             await ExHandler.HandleAsync(ex, $"加载{Kind.ToDisplayText()}详情");
-            loadError = true;
+            _loadError = true;
         }
         finally
         {
-            loading = false;
+            _loading = false;
         }
     }
 
@@ -130,7 +130,7 @@
     {
         try
         {
-            YamlValidator.ValidateWorkload(Kind, yamlContent);
+            YamlValidator.ValidateWorkload(Kind, _yamlContent);
         }
         catch (Exception ex)
         {
@@ -138,10 +138,10 @@
             return;
         }
 
-        saving = true;
+        _saving = true;
         try
         {
-            var request = new WorkloadUpdateRequest(ClusterId, Name, Namespace, yamlContent);
+            var request = new WorkloadUpdateRequest(ClusterId, Name, Namespace, _yamlContent);
             switch (Kind)
             {
                 case WorkloadKind.Deployment:
@@ -167,7 +167,7 @@
         }
         finally
         {
-            saving = false;
+            _saving = false;
         }
     }
 

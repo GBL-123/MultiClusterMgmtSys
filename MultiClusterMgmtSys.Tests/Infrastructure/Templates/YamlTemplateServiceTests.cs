@@ -17,11 +17,11 @@ namespace MultiClusterMgmtSys.Tests.Infrastructure.Templates;
 
 public class YamlTemplateServiceTests : IDisposable
 {
-    private readonly string tempRoot = Directory.CreateTempSubdirectory("yaml-templates").FullName;
+    private readonly string _tempRoot = Directory.CreateTempSubdirectory("yaml-templates").FullName;
 
     public void Dispose()
     {
-        Directory.Delete(tempRoot, recursive: true);
+        Directory.Delete(_tempRoot, recursive: true);
     }
 
     private YamlTemplateService CreateProvider(string? webRoot)
@@ -30,12 +30,12 @@ public class YamlTemplateServiceTests : IDisposable
     [Fact]
     public async Task Reads_template_file_from_wwwroot()
     {
-        var dir = Path.Combine(tempRoot, "templates", "service");
+        var dir = Path.Combine(_tempRoot, "templates", "service");
         Directory.CreateDirectory(dir);
         var file = Path.Combine(dir, "clusterip.yaml");
         await File.WriteAllTextAsync(file, "apiVersion: v1\nkind: Service\nmetadata:\n  name: \n");
 
-        var template = await CreateProvider(tempRoot).GetTemplateAsync("service", "clusterip");
+        var template = await CreateProvider(_tempRoot).GetTemplateAsync("service", "clusterip");
 
         Assert.Contains("kind: Service", template);
     }
@@ -43,7 +43,7 @@ public class YamlTemplateServiceTests : IDisposable
     [Fact]
     public async Task Missing_file_falls_back_to_skeleton_with_warning()
     {
-        var template = await CreateProvider(tempRoot).GetTemplateAsync("workload", "deployment");
+        var template = await CreateProvider(_tempRoot).GetTemplateAsync("workload", "deployment");
 
         Assert.Contains("templates/workload/deployment.yaml", template);
         Assert.Contains("kind: Deployment", template);

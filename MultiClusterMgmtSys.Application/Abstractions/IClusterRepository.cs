@@ -56,4 +56,8 @@ public interface IClusterRepository
     /// <summary>加载全部集群(跟踪查询,不加载导航集合),供全量状态刷新的探测与落库使用;无副作用。</summary>
     /// <returns>全部集群实体(处于跟踪状态,可修改后经 <see cref="UpdateAsync"/> 保存)。</returns>
     Task<List<ClusterInfo>> GetAllForSyncAsync();
+
+    /// <summary>加载全部集群(无跟踪查询,附带分组),供看板的跨集群聚合展示使用;无副作用。</summary>
+    /// <returns>全部集群实体(含分组信息,不加载端点与节点 IP 备注集合)。</returns>
+    Task<List<ClusterInfo>> GetAllForDashboardAsync();
 }

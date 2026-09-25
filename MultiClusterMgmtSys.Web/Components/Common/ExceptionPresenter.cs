@@ -9,9 +9,9 @@ namespace MultiClusterMgmtSys.Web.Components.Common;
 /// </summary>
 public class ExceptionPresenter(ISnackbar snackbar, ILogger<ExceptionPresenter> logger)
 {
-    private readonly ISnackbar snackbar = snackbar;
+    private readonly ISnackbar _snackbar = snackbar;
 
-    private readonly ILogger<ExceptionPresenter> logger = logger;
+    private readonly ILogger<ExceptionPresenter> _logger = logger;
 
     /// <summary>
     /// 统一处理并呈现异常:业务异常弹其 UserMessage,系统异常弹通用文案并记录日志。
@@ -23,12 +23,12 @@ public class ExceptionPresenter(ISnackbar snackbar, ILogger<ExceptionPresenter> 
         if (ex is BusinessException business)
         {
             var severity = business is ConflictException ? Severity.Warning : Severity.Error;
-            snackbar.Add(business.UserMessage, severity);
+            _snackbar.Add(business.UserMessage, severity);
             return Task.CompletedTask;
         }
 
-        logger.LogError(ex, "Unhandled exception during {Operation}", fallbackMessage);
-        snackbar.Add($"{fallbackMessage}失败,请稍后重试", Severity.Error);
+        _logger.LogError(ex, "Unhandled exception during {Operation}", fallbackMessage);
+        _snackbar.Add($"{fallbackMessage}失败,请稍后重试", Severity.Error);
         return Task.CompletedTask;
     }
 }

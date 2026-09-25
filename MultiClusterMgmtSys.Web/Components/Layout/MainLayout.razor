@@ -7,7 +7,7 @@
 
 <MudLayout Class="app-layout">
     <AppBar OnMenuClick="@ToggleDrawer" />
-    <Drawer IsOpen="@drawerOpen" />
+    <Drawer IsOpen="@_drawerOpen" />
 
     <MudMainContent Class="d-flex" Style="height:100%;">
         <MudContainer MaxWidth="MaxWidth.False" Class="pa-4 d-flex" Style="flex:1; min-height:0;">
@@ -17,10 +17,10 @@
 </MudLayout>
 
 @code {
-    private bool drawerOpen = true;
+    private bool _drawerOpen = true;
 
     private void ToggleDrawer()
     {
-        drawerOpen = !drawerOpen;
+        _drawerOpen = !_drawerOpen;
     }
 }

@@ -1,0 +1,43 @@
+@using MultiClusterMgmtSys.Application.ViewModels
+
+<MudPaper Class="dashboard-card">
+    <div class="dashboard-card-head">
+        <span class="dashboard-card-title">@(SystemWide ? "// 最近操作(全站)" : "// 我的最近操作")</span>
+    </div>
+
+    <div class="dashboard-card-body">
+        @if (Items.Count == 0)
+        {
+            <div class="empty-state is-compact">
+                <span>[ 暂无操作记录 ]</span>
+            </div>
+        }
+        else
+        {
+            @foreach (var item in Items)
+            {
+                <div class="dashboard-activity-row">
+                    <span class="dashboard-activity-time font-mono">@item.CreatedAt.ToLocalTime().ToString("MM-dd HH:mm")</span>
+                    <span class="dashboard-activity-user font-mono">@ActorText(item)</span>
+                    <span class="dashboard-activity-desc">
+                        <span class="dashboard-activity-kind font-mono">@item.CategoryName · @item.ActionName</span>
+                        <TextTooltip Text="@item.Target" Inline="true">
+                            <span class="dashboard-activity-target">@item.Target</span>
+                        </TextTooltip>
+                    </span>
+                </div>
+            }
+        }
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<DashboardActivityViewModel> Items { get; set; } = [];
+
+    [Parameter]
+    public bool SystemWide { get; set; }
+
+    private static string ActorText(DashboardActivityViewModel item)
+        => string.IsNullOrEmpty(item.UserName) ? "—" : item.UserName;
+}

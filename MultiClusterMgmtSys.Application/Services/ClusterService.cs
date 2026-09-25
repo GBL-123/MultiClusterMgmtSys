@@ -1,4 +1,5 @@
 using k8s;
+using k8s.Models;
 using System.Collections.Concurrent;
 using MultiClusterMgmtSys.Domain.Entities;
 using MultiClusterMgmtSys.Domain.Enums;
@@ -13,30 +14,31 @@ namespace MultiClusterMgmtSys.Application.Services;
 
 /// <summary>
 /// 集群信息服务:集群 CRUD、端点维护、连通性探测与状态刷新,以及带过滤/排序/分页的集群查询。
-/// 探测失败按优雅降级处理(状态置 Offline),不向调用方抛 K8s 异常。
+/// 探测失败按优雅降级处理(状态置 Offline),不向调用方抛 K8s 异常;
+/// 探测成功时顺带采集节点就绪统计并追加一条健康快照,采集复用当轮节点列表结果,不额外调用 K8s。
 /// </summary>
-public class ClusterService(IClusterRepository repo, ClusterNodeService nodeService, AuditService auditService, ILogger<ClusterService> logger, IClusterClientCache clientCache)
+public class ClusterService(IClusterRepository repo, ClusterNodeService nodeService, AuditService auditService, ILogger<ClusterService> logger, IClusterClientCache clientCache, IClusterHealthRepository healthRepo)
 {
-    private static readonly SemaphoreSlim syncGate = new(1, 1);
+    private static readonly SemaphoreSlim _syncGate = new(1, 1);
 
     private const int MaxProbeConcurrency = 4;
 
-    private readonly IClusterRepository repo = repo;
+    private readonly IClusterRepository _repo = repo;
 
-    private readonly ClusterNodeService nodeService = nodeService;
+    private readonly ClusterNodeService _nodeService = nodeService;
 
-    private readonly AuditService auditService = auditService;
+    private readonly AuditService _auditService = auditService;
 
-    private readonly ILogger<ClusterService> logger = logger;
+    private readonly ILogger<ClusterService> _logger = logger;
 
     /// <summary>分页查询集群列表,支持分组/名称/状态/版本/创建时间范围过滤与排序;版本筛选走哨兵语义(见 <see cref="VersionFilterSentinel"/>)。</summary>
     public async Task<PagedResult<ClusterViewModel>> GetPagedAsync(ClusterQueryRequest request)
     {
         var query = ToPageQuery(request);
-        logger.LogInformation("GetPagedClusters page={Page} size={PageSize} groupId={GroupId} nameContains={NameContains}",
+        _logger.LogInformation("GetPagedClusters page={Page} size={PageSize} groupId={GroupId} nameContains={NameContains}",
             query.Page, query.PageSize, query.GroupId, query.NameContains);
-        var (items, total) = await repo.GetPagedAsync(query);
-        logger.LogInformation("GetPagedClusters returned {Count} of {Total}", items.Count, total);
+        var (items, total) = await _repo.GetPagedAsync(query);
+        _logger.LogInformation("GetPagedClusters returned {Count} of {Total}", items.Count, total);
         return new PagedResult<ClusterViewModel>(
             [.. items.Select(c => c.ToViewModel())],
             total);
@@ -45,9 +47,9 @@ public class ClusterService(IClusterRepository repo, ClusterNodeService nodeServ
     /// <summary>查询集群表中已登记的不重复版本号列表,供版本筛选下拉使用。</summary>
     public async Task<List<string>> GetAvailableVersionsAsync()
     {
-        logger.LogInformation("GetAvailableVersions");
-        var versions = await repo.GetDistinctVersionsAsync();
-        logger.LogInformation("GetAvailableVersions returned {Count}", versions.Count);
+        _logger.LogInformation("GetAvailableVersions");
+        var versions = await _repo.GetDistinctVersionsAsync();
+        _logger.LogInformation("GetAvailableVersions returned {Count}", versions.Count);
         return versions;
     }
 
@@ -55,11 +57,11 @@ public class ClusterService(IClusterRepository repo, ClusterNodeService nodeServ
     /// <param name="id">集群 ID。</param>
     public async Task<ClusterDetailViewModel?> GetClusterDetailAsync(int id)
     {
-        logger.LogInformation("GetClusterDetail id={ClusterId}", id);
-        var entity = await repo.GetByIdAsync(id);
+        _logger.LogInformation("GetClusterDetail id={ClusterId}", id);
+        var entity = await _repo.GetByIdAsync(id);
         if (entity is null)
         {
-            logger.LogWarning("Cluster {ClusterId} not found", id);
+            _logger.LogWarning("Cluster {ClusterId} not found", id);
             return null;
         }
 
@@ -68,27 +70,27 @@ public class ClusterService(IClusterRepository repo, ClusterNodeService nodeServ
         {
             try
             {
-                vm.Nodes = await nodeService.GetClusterNodesAsync(id);
+                vm.Nodes = await _nodeService.GetClusterNodesAsync(id);
                 vm.IsReachable = true;
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "Failed to load nodes for cluster {ClusterId}", id);
+                _logger.LogWarning(ex, "Failed to load nodes for cluster {ClusterId}", id);
                 vm.IsReachable = false;
             }
         }
-        logger.LogInformation("GetClusterDetail id={ClusterId} reachable={IsReachable}", id, vm.IsReachable);
+        _logger.LogInformation("GetClusterDetail id={ClusterId} reachable={IsReachable}", id, vm.IsReachable);
         return vm;
     }
 
     /// <summary>查询集群的编辑用数据(含连接类型与凭据),不做连通性探测;集群不存在返回 null。</summary>
     public async Task<ClusterEditViewModel?> GetClusterForEditAsync(int id)
     {
-        logger.LogInformation("GetClusterForEdit id={ClusterId}", id);
-        var entity = await repo.GetByIdAsync(id);
+        _logger.LogInformation("GetClusterForEdit id={ClusterId}", id);
+        var entity = await _repo.GetByIdAsync(id);
         if (entity is null)
         {
-            logger.LogWarning("Cluster {ClusterId} not found", id);
+            _logger.LogWarning("Cluster {ClusterId} not found", id);
             return null;
         }
         return entity.ToEditViewModel();
@@ -98,7 +100,7 @@ public class ClusterService(IClusterRepository repo, ClusterNodeService nodeServ
     /// <param name="request">集群基本信息、连接凭据(KubeConfig 或 Token,按连接类型二选一)与端点列表。</param>
     public async Task<ClusterViewModel> AddClusterAsync(ClusterCreateRequest request)
     {
-        logger.LogInformation("AddCluster name={Name} groupId={GroupId}", request.Name, request.GroupId);
+        _logger.LogInformation("AddCluster name={Name} groupId={GroupId}", request.Name, request.GroupId);
         var entity = new ClusterInfo
         {
             Name = request.Name,
@@ -112,24 +114,24 @@ public class ClusterService(IClusterRepository repo, ClusterNodeService nodeServ
             CreatedAt = DateTime.UtcNow
         };
 
-        await repo.AddAsync(entity);
-        logger.LogInformation("AddCluster created id={ClusterId}", entity.Id);
+        await _repo.AddAsync(entity);
+        _logger.LogInformation("AddCluster created id={ClusterId}", entity.Id);
         entity.ApplyEndpoints(request.Endpoints);
         await ProbeAsync(entity);
-        logger.LogInformation("AddCluster probed id={ClusterId} status={Status}", entity.Id, entity.Status);
-        await repo.UpdateAsync(entity);
-        await auditService.LogAsync(AuditCategory.Cluster, AuditAction.Create, $"集群: {entity.Name}");
+        _logger.LogInformation("AddCluster probed id={ClusterId} status={Status}", entity.Id, entity.Status);
+        await _repo.UpdateAsync(entity);
+        await _auditService.LogAsync(AuditCategory.Cluster, AuditAction.Create, $"集群: {entity.Name}");
         return entity.ToViewModel();
     }
 
     /// <summary>更新集群;连接配置(连接类型/ApiServer/凭据/跳过 TLS 校验)发生变化时重新探测并回写结果。集群不存在抛 <see cref="NotFoundException"/>,成功后写更新审计。</summary>
     public async Task<ClusterViewModel> UpdateClusterAsync(ClusterUpdateRequest request)
     {
-        logger.LogInformation("UpdateCluster id={ClusterId}", request.Id);
-        var entity = await repo.GetByIdAsync(request.Id);
+        _logger.LogInformation("UpdateCluster id={ClusterId}", request.Id);
+        var entity = await _repo.GetByIdAsync(request.Id);
         if (entity is null)
         {
-            logger.LogWarning("Cluster {ClusterId} not found", request.Id);
+            _logger.LogWarning("Cluster {ClusterId} not found", request.Id);
             throw new NotFoundException($"集群 {request.Id} 不存在");
         }
 
@@ -149,48 +151,48 @@ public class ClusterService(IClusterRepository repo, ClusterNodeService nodeServ
 
         if (configChanged)
         {
-            logger.LogInformation("UpdateCluster id={ClusterId} config changed, probing", request.Id);
+            _logger.LogInformation("UpdateCluster id={ClusterId} config changed, probing", request.Id);
             await ProbeAsync(entity);
         }
 
-        await repo.UpdateAsync(entity);
-        await auditService.LogAsync(AuditCategory.Cluster, AuditAction.Update, $"集群: {entity.Name}");
+        await _repo.UpdateAsync(entity);
+        await _auditService.LogAsync(AuditCategory.Cluster, AuditAction.Update, $"集群: {entity.Name}");
         return entity.ToViewModel();
     }
 
     /// <summary>删除集群及其端点、节点备注(级联);集群不存在时静默返回,删除成功后写删除审计。</summary>
     public async Task DeleteClusterAsync(int id)
     {
-        logger.LogInformation("DeleteCluster id={ClusterId}", id);
-        var entity = await repo.GetByIdAsync(id);
+        _logger.LogInformation("DeleteCluster id={ClusterId}", id);
+        var entity = await _repo.GetByIdAsync(id);
         if (entity is not null)
         {
-            await repo.DeleteAsync(id);
-            await auditService.LogAsync(AuditCategory.Cluster, AuditAction.Delete, $"集群: {entity.Name}");
+            await _repo.DeleteAsync(id);
+            await _auditService.LogAsync(AuditCategory.Cluster, AuditAction.Delete, $"集群: {entity.Name}");
         }
     }
 
     /// <summary>整体替换集群的管理端点(VIP/域名元数据)列表;集群不存在抛 <see cref="NotFoundException"/>,成功后写更新审计。</summary>
     public async Task UpdateClusterEndpointsAsync(ClusterEndpointsUpdateRequest request)
     {
-        logger.LogInformation("UpdateClusterEndpoints id={ClusterId} count={Count}", request.ClusterId, request.Items.Count);
-        var entity = await repo.GetByIdAsync(request.ClusterId);
+        _logger.LogInformation("UpdateClusterEndpoints id={ClusterId} count={Count}", request.ClusterId, request.Items.Count);
+        var entity = await _repo.GetByIdAsync(request.ClusterId);
         if (entity is null)
         {
-            logger.LogWarning("Cluster {ClusterId} not found", request.ClusterId);
+            _logger.LogWarning("Cluster {ClusterId} not found", request.ClusterId);
             throw new NotFoundException($"集群 {request.ClusterId} 不存在");
         }
 
         entity.ApplyEndpoints(request.Items);
-        await repo.UpdateAsync(entity);
-        logger.LogInformation("UpdateClusterEndpoints persisted id={ClusterId}", request.ClusterId);
-        await auditService.LogAsync(AuditCategory.Cluster, AuditAction.Update, $"集群: {entity.Name} 端点");
+        await _repo.UpdateAsync(entity);
+        _logger.LogInformation("UpdateClusterEndpoints persisted id={ClusterId}", request.ClusterId);
+        await _auditService.LogAsync(AuditCategory.Cluster, AuditAction.Update, $"集群: {entity.Name} 端点");
     }
 
     /// <summary>立即探测单个集群连通性并回写状态/版本/节点数;探测失败置 Offline,不抛异常。</summary>
     public async Task<ClusterViewModel> RefreshClusterStatusAsync(int id)
     {
-        logger.LogInformation("RefreshClusterStatus id={ClusterId}", id);
+        _logger.LogInformation("RefreshClusterStatus id={ClusterId}", id);
         var (entity, _) = await RefreshClusterStatusCoreAsync(id);
         return entity.ToViewModel();
     }
@@ -202,11 +204,11 @@ public class ClusterService(IClusterRepository repo, ClusterNodeService nodeServ
     /// <returns>本轮探测成功的集群数量。</returns>
     public async Task<int> RefreshAllClustersStatusAsync(IProgress<(int current, int total)>? progress = null, string source = ClusterSyncSource.Manual, CancellationToken cancellationToken = default)
     {
-        logger.LogInformation("RefreshAllClustersStatus start source={Source}", source);
-        await syncGate.WaitAsync(cancellationToken);
+        _logger.LogInformation("RefreshAllClustersStatus start source={Source}", source);
+        await _syncGate.WaitAsync(cancellationToken);
         try
         {
-            var entities = await repo.GetAllForSyncAsync();
+            var entities = await _repo.GetAllForSyncAsync();
             var total = entities.Count;
             var previousStatuses = entities.ToDictionary(e => e.Id, e => e.Status);
             var probedIds = new ConcurrentDictionary<int, byte>();
@@ -234,12 +236,12 @@ public class ClusterService(IClusterRepository repo, ClusterNodeService nodeServ
             }
 
             await PersistProbedAsync(entities, previousStatuses, source);
-            logger.LogInformation("RefreshAllClustersStatus done succeeded={Succeeded} of {Total}", succeeded, total);
+            _logger.LogInformation("RefreshAllClustersStatus done succeeded={Succeeded} of {Total}", succeeded, total);
             return succeeded;
         }
         finally
         {
-            syncGate.Release();
+            _syncGate.Release();
         }
     }
 
@@ -249,33 +251,33 @@ public class ClusterService(IClusterRepository repo, ClusterNodeService nodeServ
         {
             try
             {
-                await repo.UpdateAsync(entity);
+                await _repo.UpdateAsync(entity);
                 if (previousStatuses[entity.Id] != entity.Status)
                 {
-                    await auditService.LogAsync(AuditCategory.Cluster, AuditAction.Update,
+                    await _auditService.LogAsync(AuditCategory.Cluster, AuditAction.Update,
                         $"集群 {entity.Name} 状态由 {previousStatuses[entity.Id].ToChineseText()} 变为 {entity.Status.ToChineseText()}({source})");
                 }
             }
             catch (Exception ex)
             {
-                logger.LogWarning(ex, "RefreshAllClustersStatus persist id={ClusterId} failed", entity.Id);
+                _logger.LogWarning(ex, "RefreshAllClustersStatus persist id={ClusterId} failed", entity.Id);
             }
         }
     }
 
     private async Task<(ClusterInfo Entity, ClusterStatus PreviousStatus)> RefreshClusterStatusCoreAsync(int id)
     {
-        var entity = await repo.GetByIdAsync(id);
+        var entity = await _repo.GetByIdAsync(id);
         if (entity is null)
         {
-            logger.LogWarning("Cluster {ClusterId} not found", id);
+            _logger.LogWarning("Cluster {ClusterId} not found", id);
             throw new NotFoundException($"集群 {id} 不存在");
         }
 
         var previousStatus = entity.Status;
         await ProbeAsync(entity);
-        logger.LogInformation("RefreshClusterStatus id={ClusterId} status={Status}", id, entity.Status);
-        await repo.UpdateAsync(entity);
+        _logger.LogInformation("RefreshClusterStatus id={ClusterId} status={Status}", id, entity.Status);
+        await _repo.UpdateAsync(entity);
         return (entity, previousStatus);
     }
 
@@ -283,7 +285,7 @@ public class ClusterService(IClusterRepository repo, ClusterNodeService nodeServ
 
     private async Task ProbeAsync(ClusterInfo cluster, CancellationToken cancellationToken = default)
     {
-        logger.LogInformation("Probe cluster {ClusterName} id={ClusterId}", cluster.Name, cluster.Id);
+        _logger.LogInformation("Probe cluster {ClusterName} id={ClusterId}", cluster.Name, cluster.Id);
         try
         {
             var client = clientCache.GetOrCreate(cluster);
@@ -298,22 +300,72 @@ public class ClusterService(IClusterRepository repo, ClusterNodeService nodeServ
                 cluster.ApiServer = clientCache.ResolveApiServer(cluster);
 
             cluster.LastCheckedAt = DateTime.UtcNow;
-            logger.LogInformation("Probe succeeded id={ClusterId} status={Status} version={Version} nodes={NodeCount}",
+
+            await TryAppendHealthSnapshotAsync(cluster, nodeList.Items);
+
+            _logger.LogInformation("Probe succeeded id={ClusterId} status={Status} version={Version} nodes={NodeCount}",
                 cluster.Id, cluster.Status, cluster.Version, cluster.NodeCount);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            logger.LogInformation("Probe canceled cluster {ClusterName} id={ClusterId}", cluster.Name, cluster.Id);
+            _logger.LogInformation("Probe canceled cluster {ClusterName} id={ClusterId}", cluster.Name, cluster.Id);
             throw;
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Probe failed for cluster {ClusterName} (Id={ClusterId})", cluster.Name, cluster.Id);
+            _logger.LogWarning(ex, "Probe failed for cluster {ClusterName} (Id={ClusterId})", cluster.Name, cluster.Id);
             cluster.Status = ClusterStatus.Offline;
             cluster.Version = null;
             cluster.NodeCount = 0;
             cluster.LastCheckedAt = DateTime.UtcNow;
         }
+    }
+
+    /// <summary>
+    /// 探测成功后追加一条节点健康快照;写入失败仅记警告,不改变本轮探测结论——
+    /// 本地落库异常不应把可达集群误判为离线,与审计写入的静默降级口径一致。
+    /// </summary>
+    /// <param name="cluster">本轮探测成功的集群(已回写状态)。</param>
+    /// <param name="nodes">当轮节点列表调用返回的节点集合,复用其结果不额外调用 K8s。</param>
+    private async Task TryAppendHealthSnapshotAsync(ClusterInfo cluster, IList<V1Node> nodes)
+    {
+        try
+        {
+            await healthRepo.AddAsync(BuildHealthSnapshot(cluster.Id, nodes));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Append cluster health snapshot failed id={ClusterId}", cluster.Id);
+        }
+    }
+
+    /// <summary>
+    /// 按当轮节点列表构建健康快照:就绪 = Ready 条件状态为 True,
+    /// 未就绪 = Ready 条件为 False/Unknown 或缺失该条件,两者之和恒等于节点总数。
+    /// </summary>
+    /// <param name="clusterId">所属集群 Id。</param>
+    /// <param name="nodes">当轮节点集合。</param>
+    /// <returns>待追加的健康快照。</returns>
+    private static ClusterHealthSnapshot BuildHealthSnapshot(int clusterId, IList<V1Node> nodes)
+    {
+        var readyNodes = nodes.Count(IsNodeReady);
+        return new ClusterHealthSnapshot
+        {
+            ClusterId = clusterId,
+            CapturedAt = DateTime.UtcNow,
+            TotalNodes = nodes.Count,
+            ReadyNodes = readyNodes,
+            NotReadyNodes = nodes.Count - readyNodes
+        };
+    }
+
+    /// <summary>判断节点是否就绪:存在 Ready 条件且状态为 True;与节点列表页的就绪判定口径一致。</summary>
+    /// <param name="node">待判定的节点。</param>
+    /// <returns>就绪为 true,否则 false。</returns>
+    private static bool IsNodeReady(V1Node node)
+    {
+        var readyCondition = node.Status?.Conditions?.FirstOrDefault(c => c.Type == "Ready");
+        return readyCondition is not null && readyCondition.Status == "True";
     }
 
     private static ClusterPageQuery ToPageQuery(ClusterQueryRequest r)

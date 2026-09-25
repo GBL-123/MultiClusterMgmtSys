@@ -7,7 +7,7 @@
 @inject IJSRuntime JS
 @inject ExceptionPresenter ExHandler
 
-<MudCard Class="@(state == CredentialState.Revealed ? "pa-4 credential-fill" : "pa-4")">
+<MudCard Class="@(_state == CredentialState.Revealed ? "pa-4 credential-fill" : "pa-4")">
     <MudCardHeader>
         <CardHeaderContent>
             <MudText Typo="Typo.h6">概览</MudText>
@@ -65,7 +65,7 @@
                                 连接凭据 · @Cluster.ConnectionTypeText (@Cluster.ConnectionTypeRawText)
                             </MudText>
                             <div class="d-flex align-center">
-                                @if (state == CredentialState.Revealed)
+                                @if (_state == CredentialState.Revealed)
                                 {
                                     <MudButton Variant="Variant.Text"
                                                Color="Color.Primary"
@@ -87,20 +87,20 @@
                                                Color="Color.Primary"
                                                Size="Size.Small"
                                                StartIcon="@Icons.Material.Filled.Visibility"
-                                               Disabled="state == CredentialState.Loading"
+                                               Disabled="_state == CredentialState.Loading"
                                                OnClick="RevealCredential">
                                         查看凭据
                                     </MudButton>
                                 }
                             </div>
                         </div>
-                        @if (state == CredentialState.Revealed)
+                        @if (_state == CredentialState.Revealed)
                         {
                             <div class="credential-viewer font-mono">@CredentialValue</div>
                         }
                         else
                         {
-                            <div class="credential-redacted font-mono">@(state == CredentialState.Loading ? "// 正在加载..." : "// 密文已隐藏 · 仅管理员可见")</div>
+                            <div class="credential-redacted font-mono">@(_state == CredentialState.Loading ? "// 正在加载..." : "// 密文已隐藏 · 仅管理员可见")</div>
                         }
                     </div>
                 }
@@ -113,46 +113,46 @@
     [Parameter]
     public ClusterDetailViewModel Cluster { get; set; } = default!;
 
-    private CredentialState state = CredentialState.Redacted;
+    private CredentialState _state = CredentialState.Redacted;
 
-    private ClusterEditViewModel? editForSecret;
+    private ClusterEditViewModel? _editForSecret;
 
-    private string CredentialValue => editForSecret?.ConnectionType == ConnectionType.KubeConfig
-        ? editForSecret.KubeConfig ?? ""
-        : editForSecret?.Token ?? "";
+    private string CredentialValue => _editForSecret?.ConnectionType == ConnectionType.KubeConfig
+        ? _editForSecret.KubeConfig ?? ""
+        : _editForSecret?.Token ?? "";
 
     private async Task RevealCredential()
     {
-        if (state == CredentialState.Loading)
+        if (_state == CredentialState.Loading)
         {
             return;
         }
 
-        if (editForSecret is null)
+        if (_editForSecret is null)
         {
-            state = CredentialState.Loading;
+            _state = CredentialState.Loading;
             try
             {
-                editForSecret = await ClusterService.GetClusterForEditAsync(Cluster.Id);
+                _editForSecret = await ClusterService.GetClusterForEditAsync(Cluster.Id);
             }
             catch (Exception ex)
             {
                 await ExHandler.HandleAsync(ex, "加载密文");
             }
 
-            if (editForSecret is null)
+            if (_editForSecret is null)
             {
-                state = CredentialState.Redacted;
+                _state = CredentialState.Redacted;
                 return;
             }
         }
 
-        state = CredentialState.Revealed;
+        _state = CredentialState.Revealed;
     }
 
     private void HideCredential()
     {
-        state = CredentialState.Redacted;
+        _state = CredentialState.Redacted;
     }
 
     private async Task CopyCredential()

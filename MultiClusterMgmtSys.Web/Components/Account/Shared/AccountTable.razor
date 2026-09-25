@@ -8,8 +8,8 @@
           Hover="true"
           FixedHeader="true"
           Class="accounts-table"
-          @key="tableKey"
-          @ref="table">
+          @key="_tableKey"
+          @ref="_table">
     <HeaderContent>
         @if (MultiSelectVisible)
         {
@@ -103,9 +103,9 @@
     [Parameter]
     public string BuiltInAdminName { get; set; } = "admin";
 
-    private MudTable<AccountViewModel> table = new();
+    private MudTable<AccountViewModel> _table = new();
 
-    private int tableKey;
+    private int _tableKey;
 
     private bool IsBuiltInAdmin(AccountViewModel account) => account.UserName == BuiltInAdminName;
 
@@ -137,11 +137,11 @@
         await OnSelectedIdsChanged.InvokeAsync(ids);
     }
 
-    public Task ReloadDataAsync() => table.ReloadServerData();
+    public Task ReloadDataAsync() => _table.ReloadServerData();
 
     public Task ResetSortAsync()
     {
-        tableKey++;
+        _tableKey++;
         StateHasChanged();
         return Task.CompletedTask;
     }

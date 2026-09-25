@@ -1,0 +1,39 @@
+@using MultiClusterMgmtSys.Application.ViewModels
+
+<MudPaper Class="dashboard-card">
+    <div class="dashboard-card-head">
+        <span class="dashboard-card-title">// 分组健康</span>
+    </div>
+
+    <div class="dashboard-card-body">
+        @if (Items.Count == 0)
+        {
+            <div class="empty-state is-compact">
+                <span>[ 暂无分组 ]</span>
+            </div>
+        }
+        else
+        {
+            @foreach (var item in Items)
+            {
+                <div class="dashboard-breakdown-row">
+                    <MudText Class="dashboard-breakdown-name">@item.GroupName</MudText>
+                    <div class="dashboard-meter">
+                        <div class="dashboard-meter-fill is-online" style="@OnlineWidth(item)"></div>
+                    </div>
+                    <MudText Typo="Typo.caption" Class="dashboard-breakdown-count font-mono">@item.OnlineClusters / @item.TotalClusters 在线</MudText>
+                </div>
+            }
+        }
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<DashboardGroupHealthViewModel> Items { get; set; } = [];
+
+    private static string OnlineWidth(DashboardGroupHealthViewModel item)
+        => item.TotalClusters == 0
+            ? "width:0%"
+            : $"width:{item.OnlineClusters * 100.0 / item.TotalClusters:0.#}%";
+}

@@ -11,7 +11,7 @@
     <MudStack AlignItems="AlignItems.Center">
         <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Size="Size.Large" Color="Color.Primary" />
         <MudText Typo="Typo.h5">注册新账号</MudText>
-        <StatusMessage IsSuccess="@isSuccess" Message="@successMessage" />
+        <StatusMessage IsSuccess="@_isSuccess" Message="@_successMessage" />
         <MudText Align="Align.Center">
             如果没有自动跳转，请点击<MudLink Href="/login" Underline="Underline.Always">立即跳转</MudLink>
         </MudText>
@@ -19,9 +19,9 @@
 </MudPaper>
 
 @code {
-    private bool isSuccess = true;
+    private bool _isSuccess = true;
 
-    private string? successMessage;
+    private string? _successMessage;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -35,7 +35,7 @@
     {
         for (int count = 5; count > 0; count--)
         {
-            successMessage = $"注册成功，{count} 秒后跳转登录页面...";
+            _successMessage = $"注册成功，{count} 秒后跳转登录页面...";
             StateHasChanged();
             await Task.Delay(1000);
         }

@@ -5,6 +5,9 @@
            Variant="@DrawerVariant.Mini"
            Elevation="0">
     <MudNavMenu Rounded="true">
+        <MudNavLink Href="/dashboard" Icon="@Icons.Material.Filled.SpaceDashboard" Match="NavLinkMatch.Prefix">
+            集群看板
+        </MudNavLink>
         <MudNavLink Href="/clusters" Icon="@Icons.Material.Filled.Hub" Match="NavLinkMatch.Prefix">
             集群管理
         </MudNavLink>
@@ -19,7 +22,7 @@
         </MudNavLink>
         <MudNavGroup Title="工作负载管理"
                      Icon="@Icons.Material.Filled.Widgets"
-                     Expanded="@workloadsExpanded">
+                     Expanded="@_workloadsExpanded">
             <MudNavLink Href="/workloads/deployments" Icon="@Icons.Material.Filled.Dns" Match="NavLinkMatch.Prefix">
                 部署管理
             </MudNavLink>
@@ -38,7 +41,7 @@
         </MudNavGroup>
         <MudNavGroup Title="网络管理"
                      Icon="@Icons.Material.Filled.Lan"
-                     Expanded="@networkExpanded">
+                     Expanded="@_networkExpanded">
             <MudNavLink Href="/services" Icon="@Icons.Material.Filled.SettingsEthernet" Match="NavLinkMatch.Prefix">
                 服务管理
             </MudNavLink>
@@ -66,13 +69,13 @@
     [Parameter]
     public bool IsOpen { get; set; }
 
-    private bool workloadsExpanded;
+    private bool _workloadsExpanded;
 
-    private bool networkExpanded;
+    private bool _networkExpanded;
 
     protected override void OnInitialized()
     {
-        workloadsExpanded = NavigationManager.Uri.Contains("/workloads", StringComparison.OrdinalIgnoreCase);
-        networkExpanded = NavigationManager.Uri.Contains("/services", StringComparison.OrdinalIgnoreCase);
+        _workloadsExpanded = NavigationManager.Uri.Contains("/workloads", StringComparison.OrdinalIgnoreCase);
+        _networkExpanded = NavigationManager.Uri.Contains("/services", StringComparison.OrdinalIgnoreCase);
     }
 }

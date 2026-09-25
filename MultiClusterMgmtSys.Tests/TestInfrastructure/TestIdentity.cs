@@ -11,11 +11,11 @@ namespace MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 public sealed class TestIdentity : IDisposable
 {
-    private readonly StaticHttpContextAccessor accessor = new();
+    private readonly StaticHttpContextAccessor _accessor = new();
 
     public ApplicationDbContext Db { get; }
 
-    public IHttpContextAccessor Accessor => accessor;
+    public IHttpContextAccessor Accessor => _accessor;
 
     public ServiceProvider Provider { get; }
 
@@ -32,7 +32,7 @@ public sealed class TestIdentity : IDisposable
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton(Db);
-        services.AddSingleton<IHttpContextAccessor>(accessor);
+        services.AddSingleton<IHttpContextAccessor>(_accessor);
         services.AddIdentityCore<ApplicationUser>(options =>
             {
                 options.Password.RequiredLength = 8;
@@ -55,7 +55,7 @@ public sealed class TestIdentity : IDisposable
         SignIn = Provider.GetRequiredService<SignInManager<ApplicationUser>>();
 
         var context = new DefaultHttpContext { RequestServices = Provider };
-        accessor.HttpContext = context;
+        _accessor.HttpContext = context;
     }
 
     public static TestIdentity Create(string actorName = "admin", params string[] roles)
@@ -65,7 +65,7 @@ public sealed class TestIdentity : IDisposable
         return identity;
     }
 
-    public HttpContext Context => accessor.HttpContext!;
+    public HttpContext Context => _accessor.HttpContext!;
 
     private static ClaimsPrincipal TestPrincipal(string name, string[] roles)
     {

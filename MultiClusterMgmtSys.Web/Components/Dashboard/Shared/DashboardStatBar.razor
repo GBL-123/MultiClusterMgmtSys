@@ -1,0 +1,47 @@
+@using MultiClusterMgmtSys.Application.ViewModels
+
+<MudPaper Class="dashboard-stat-bar">
+    <div class="dashboard-stat">
+        <MudText Typo="Typo.caption" Class="dashboard-stat-label">集群总数</MudText>
+        <MudText Class="dashboard-stat-value font-grotesk">@Model.TotalClusters</MudText>
+    </div>
+
+    <div class="dashboard-stat">
+        <MudText Typo="Typo.caption" Class="dashboard-stat-label">在线</MudText>
+        <MudText Class="@ValueClass(Model.OnlineClusters, "is-online")">@Model.OnlineClusters</MudText>
+    </div>
+
+    <div class="dashboard-stat">
+        <MudText Typo="Typo.caption" Class="dashboard-stat-label">离线</MudText>
+        <MudText Class="@ValueClass(Model.OfflineClusters, "is-offline")">@Model.OfflineClusters</MudText>
+    </div>
+
+    <div class="dashboard-stat">
+        <MudText Typo="Typo.caption" Class="dashboard-stat-label">未知</MudText>
+        <MudText Class="@ValueClass(Model.UnknownClusters, "is-unknown")">@Model.UnknownClusters</MudText>
+    </div>
+
+    <div class="dashboard-stat">
+        <MudText Typo="Typo.caption" Class="dashboard-stat-label">舰队节点</MudText>
+        <MudText Class="dashboard-stat-value font-grotesk">@Model.FleetSize.NodeCount</MudText>
+        <MudText Typo="Typo.caption" Class="dashboard-stat-note font-mono">@FleetNote</MudText>
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public DashboardViewModel Model { get; set; } = new();
+
+    private static string ValueClass(int value, string statusClass)
+        => value > 0
+            ? $"dashboard-stat-value font-grotesk {statusClass}"
+            : "dashboard-stat-value font-grotesk";
+
+    private string FleetNote => Model.FleetSize switch
+    {
+        { NodeCount: 0 } => "// 暂无快照",
+        { IncludesStaleData: true } => "// 含离线集群最后已知值",
+        { ClustersWithoutSnapshot: > 0 } => $"// {Model.FleetSize.ClustersWithoutSnapshot} 个集群暂无快照",
+        _ => "// 各集群最近一次探测"
+    };
+}

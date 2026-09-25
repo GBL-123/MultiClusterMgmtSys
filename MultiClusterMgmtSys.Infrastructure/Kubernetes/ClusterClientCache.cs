@@ -21,15 +21,15 @@ public class ClusterClientCache(
     ILogger<ClusterClientCache> logger,
     TimeSpan? idleEviction = null) : IClusterClientCache, IDisposable
 {
-    private static readonly TimeSpan DefaultIdleEviction = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan _DefaultIdleEviction = TimeSpan.FromMinutes(10);
 
     private const int MaxEntries = 100;
 
-    private readonly TimeSpan idle = idleEviction ?? DefaultIdleEviction;
+    private readonly TimeSpan _idle = idleEviction ?? _DefaultIdleEviction;
 
-    private readonly MemoryCache cache = new(new MemoryCacheOptions { SizeLimit = MaxEntries });
+    private readonly MemoryCache _cache = new(new MemoryCacheOptions { SizeLimit = MaxEntries });
 
-    private readonly object gate = new();
+    private readonly object _gate = new();
 
     /// <summary>按集群取 K8s 客户端:指纹命中直接复用(零握手);未命中或指纹变化时经统一配置与工厂重建,旧客户端由驱逐回调释放。</summary>
     /// <param name="cluster">集群实体(凭据相关字段须为当前值)。</param>
@@ -37,9 +37,9 @@ public class ClusterClientCache(
     public IKubernetes GetOrCreate(ClusterInfo cluster)
     {
         var fingerprint = Fingerprint(cluster);
-        lock (gate)
+        lock (_gate)
         {
-            if (cache.TryGetValue(cluster.Id, out CacheEntry? cached) && cached is not null && cached.Fingerprint == fingerprint)
+            if (_cache.TryGetValue(cluster.Id, out CacheEntry? cached) && cached is not null && cached.Fingerprint == fingerprint)
             {
                 return cached.Client;
             }
@@ -48,13 +48,13 @@ public class ClusterClientCache(
             var client = clientFactory(config);
             logger.LogInformation("K8s client {Action} for cluster {ClusterName} id={ClusterId}",
                 cached is null ? "created" : "rebuilt", cluster.Name, cluster.Id);
-            cache.Set(cluster.Id, new CacheEntry(fingerprint, client), CreateEntryOptions());
+            _cache.Set(cluster.Id, new CacheEntry(fingerprint, client), CreateEntryOptions());
             return client;
         }
     }
 
     /// <summary>释放缓存容器;其驱逐回调会同步释放全部在存客户端。</summary>
-    public void Dispose() => cache.Dispose();
+    public void Dispose() => _cache.Dispose();
 
     /// <summary>按集群凭据解析用于连接的 API Server 地址(kubeconfig 解析结果或 Token 方式的地址),供探测成功后回填集群记录。</summary>
     /// <param name="cluster">集群实体(凭据相关字段须为当前值)。</param>
@@ -64,7 +64,7 @@ public class ClusterClientCache(
     private MemoryCacheEntryOptions CreateEntryOptions() => new()
     {
         Size = 1,
-        SlidingExpiration = idle,
+        SlidingExpiration = _idle,
         PostEvictionCallbacks = { new PostEvictionCallbackRegistration
         {
             EvictionCallback = (_, value, _, _) =>

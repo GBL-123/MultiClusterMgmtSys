@@ -13,29 +13,29 @@ namespace MultiClusterMgmtSys.Tests.Application.Services;
 
 public class ClusterNodeServiceTests : IDisposable
 {
-    private readonly ServiceHarness harness = new("admin", "Admin");
-    private readonly Mock<IKubernetes> k8s = K8sMocks.Create();
-    private readonly ClusterNodeService service;
+    private readonly ServiceHarness _harness = new("admin", "Admin");
+    private readonly Mock<IKubernetes> _k8s = K8sMocks.Create();
+    private readonly ClusterNodeService _service;
 
     public ClusterNodeServiceTests()
     {
-        service = new ClusterNodeService(
-            harness.ClusterRepo, harness.Audit, NullLogger<ClusterNodeService>.Instance, K8sMocks.Cache(k8s));
+        _service = new ClusterNodeService(
+            _harness.ClusterRepo, _harness.Audit, NullLogger<ClusterNodeService>.Instance, K8sMocks.Cache(_k8s));
     }
 
-    public void Dispose() => harness.Dispose();
+    public void Dispose() => _harness.Dispose();
 
     [Fact]
     public async Task GetClusterNodesAsync_missing_cluster_throws_not_found()
     {
-        await Assert.ThrowsAsync<NotFoundException>(() => service.GetClusterNodesAsync(999));
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.GetClusterNodesAsync(999));
     }
 
     [Fact]
     public async Task GetClusterNodesAsync_maps_nodes_and_merges_remarks()
     {
         var clusterId = await SeedAsyncWithRemark();
-        k8s.SetupListNodes(
+        _k8s.SetupListNodes(
             new V1Node
             {
                 Metadata = new V1ObjectMeta
@@ -60,7 +60,7 @@ public class ClusterNodeServiceTests : IDisposable
                 Spec = new V1NodeSpec { Unschedulable = true }
             });
 
-        var nodes = await service.GetClusterNodesAsync(clusterId);
+        var nodes = await _service.GetClusterNodesAsync(clusterId);
 
         var node = nodes.Single();
         Assert.Equal("node-1", node.Name);
@@ -79,10 +79,10 @@ public class ClusterNodeServiceTests : IDisposable
     [Fact]
     public async Task GetClusterNodesAsync_k8s_404_translated_to_not_found()
     {
-        var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("k8s-404"));
-        k8s.SetupListNodesThrows(K8sMocks.K8sError(404));
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("k8s-404"));
+        _k8s.SetupListNodesThrows(K8sMocks.K8sError(404));
 
-        var ex = await Assert.ThrowsAsync<NotFoundException>(() => service.GetClusterNodesAsync(cluster.Id));
+        var ex = await Assert.ThrowsAsync<NotFoundException>(() => _service.GetClusterNodesAsync(cluster.Id));
 
         Assert.IsAssignableFrom<BusinessException>(ex);
     }
@@ -90,24 +90,24 @@ public class ClusterNodeServiceTests : IDisposable
     [Fact]
     public async Task GetClusterNodesAsync_timeout_translated_to_unreachable()
     {
-        var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("nodes-timeout"));
-        k8s.SetupListNodesThrows(new TaskCanceledException("timeout"));
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("nodes-timeout"));
+        _k8s.SetupListNodesThrows(new TaskCanceledException("timeout"));
 
-        await Assert.ThrowsAsync<ClusterUnreachableException>(() => service.GetClusterNodesAsync(cluster.Id));
+        await Assert.ThrowsAsync<ClusterUnreachableException>(() => _service.GetClusterNodesAsync(cluster.Id));
     }
 
     [Fact]
     public async Task GetNodeDetailAsync_missing_cluster_returns_null()
     {
-        Assert.Null(await service.GetNodeDetailAsync(new NodeDetailQueryRequest(999, "n1")));
+        Assert.Null(await _service.GetNodeDetailAsync(new NodeDetailQueryRequest(999, "n1")));
     }
 
     [Fact]
     public async Task GetNodeDetailAsync_offline_cluster_short_circuits_unreachable()
     {
-        var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("down", status: ClusterStatus.Offline));
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("down", status: ClusterStatus.Offline));
 
-        var detail = await service.GetNodeDetailAsync(new NodeDetailQueryRequest(cluster.Id, "n1"));
+        var detail = await _service.GetNodeDetailAsync(new NodeDetailQueryRequest(cluster.Id, "n1"));
 
         Assert.NotNull(detail);
         Assert.False(detail!.IsReachable);
@@ -116,8 +116,8 @@ public class ClusterNodeServiceTests : IDisposable
     [Fact]
     public async Task GetNodeDetailAsync_maps_full_node_view()
     {
-        var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("detail-src"));
-        k8s.SetupReadNode("n1", new V1Node
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("detail-src"));
+        _k8s.SetupReadNode("n1", new V1Node
         {
             ApiVersion = "v1",
             Kind = "Node",
@@ -145,7 +145,7 @@ public class ClusterNodeServiceTests : IDisposable
             }
         });
 
-        var detail = await service.GetNodeDetailAsync(new NodeDetailQueryRequest(cluster.Id, "n1"));
+        var detail = await _service.GetNodeDetailAsync(new NodeDetailQueryRequest(cluster.Id, "n1"));
 
         Assert.NotNull(detail);
         Assert.True(detail!.IsReachable);
@@ -183,8 +183,8 @@ public class ClusterNodeServiceTests : IDisposable
     [Fact]
     public async Task GetNodeDetailAsync_formats_resources_and_orders_rows()
     {
-        var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("resource-src"));
-        k8s.SetupReadNode("n1", new V1Node
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("resource-src"));
+        _k8s.SetupReadNode("n1", new V1Node
         {
             Metadata = new V1ObjectMeta { Name = "n1" },
             Status = new V1NodeStatus
@@ -209,7 +209,7 @@ public class ClusterNodeServiceTests : IDisposable
             }
         });
 
-        var detail = await service.GetNodeDetailAsync(new NodeDetailQueryRequest(cluster.Id, "n1"));
+        var detail = await _service.GetNodeDetailAsync(new NodeDetailQueryRequest(cluster.Id, "n1"));
 
         Assert.NotNull(detail);
         Assert.Equal(
@@ -258,8 +258,8 @@ public class ClusterNodeServiceTests : IDisposable
     [Fact]
     public async Task GetNodeDetailAsync_falls_back_to_raw_quantity_when_not_convertible()
     {
-        var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("overflow-src"));
-        k8s.SetupReadNode("n1", new V1Node
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("overflow-src"));
+        _k8s.SetupReadNode("n1", new V1Node
         {
             Metadata = new V1ObjectMeta { Name = "n1" },
             Status = new V1NodeStatus
@@ -271,7 +271,7 @@ public class ClusterNodeServiceTests : IDisposable
             }
         });
 
-        var detail = await service.GetNodeDetailAsync(new NodeDetailQueryRequest(cluster.Id, "n1"));
+        var detail = await _service.GetNodeDetailAsync(new NodeDetailQueryRequest(cluster.Id, "n1"));
 
         var memory = Assert.Single(detail!.Resources);
         Assert.NotNull(memory.CapacityRaw);
@@ -282,11 +282,11 @@ public class ClusterNodeServiceTests : IDisposable
     [Fact]
     public async Task GetNodeDetailAsync_k8s_error_translated()
     {
-        var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("detail-err"));
-        k8s.SetupReadNodeThrows("n1", K8sMocks.K8sError(404));
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("detail-err"));
+        _k8s.SetupReadNodeThrows("n1", K8sMocks.K8sError(404));
 
         await Assert.ThrowsAsync<NotFoundException>(
-            () => service.GetNodeDetailAsync(new NodeDetailQueryRequest(cluster.Id, "n1")));
+            () => _service.GetNodeDetailAsync(new NodeDetailQueryRequest(cluster.Id, "n1")));
     }
 
     [Fact]
@@ -294,35 +294,35 @@ public class ClusterNodeServiceTests : IDisposable
     {
         var request = new NodeIpNotesUpdateRequest(999, "n1", [new NodeIpNoteEditItem { Address = "10.0.0.1", Note = "a" }]);
 
-        await Assert.ThrowsAsync<NotFoundException>(() => service.UpdateNodeIpNotesAsync(request));
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.UpdateNodeIpNotesAsync(request));
     }
 
     [Fact]
     public async Task UpdateNodeIpNotesAsync_note_over_64_throws_validation()
     {
-        var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("note-err"));
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("note-err"));
         var request = new NodeIpNotesUpdateRequest(cluster.Id, "n1",
             [new NodeIpNoteEditItem { Address = "10.0.0.1", Note = new string('x', 65) }]);
 
-        await Assert.ThrowsAsync<ValidationException>(() => service.UpdateNodeIpNotesAsync(request));
+        await Assert.ThrowsAsync<ValidationException>(() => _service.UpdateNodeIpNotesAsync(request));
     }
 
     [Fact]
     public async Task UpdateNodeIpNotesAsync_adds_updates_and_removes_remarks()
     {
-        var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("remark-src"));
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("remark-src"));
         cluster.NodeIpRemarks.Add(TestData.NewIpRemark(cluster.Id, "n1", "10.0.0.1", "旧备注"));
         cluster.NodeIpRemarks.Add(TestData.NewIpRemark(cluster.Id, "n1", "10.0.0.9", "将被移除"));
-        await harness.ClusterRepo.UpdateAsync(cluster);
+        await _harness.ClusterRepo.UpdateAsync(cluster);
 
         var request = new NodeIpNotesUpdateRequest(cluster.Id, "n1",
         [
             new NodeIpNoteEditItem { Address = "10.0.0.1", Note = "新备注" },
             new NodeIpNoteEditItem { Address = "10.0.0.2", Note = "新增备注" }
         ]);
-        await service.UpdateNodeIpNotesAsync(request);
+        await _service.UpdateNodeIpNotesAsync(request);
 
-        var reloaded = await harness.ClusterRepo.GetByIdAsync(cluster.Id);
+        var reloaded = await _harness.ClusterRepo.GetByIdAsync(cluster.Id);
         var remarks = reloaded!.NodeIpRemarks.OrderBy(r => r.Address).ToList();
         Assert.Equal(2, remarks.Count);
         Assert.Equal("10.0.0.1", remarks[0].Address);
@@ -330,7 +330,7 @@ public class ClusterNodeServiceTests : IDisposable
         Assert.Equal("10.0.0.2", remarks[1].Address);
         Assert.Equal("新增备注", remarks[1].Note);
 
-        var audit = await harness.Db.AuditLogs.SingleAsync(TestContext.Current.CancellationToken);
+        var audit = await _harness.Db.AuditLogs.SingleAsync(TestContext.Current.CancellationToken);
         Assert.Equal(AuditCategory.Node, audit.Category);
         Assert.Equal(AuditAction.Update, audit.Action);
     }
@@ -338,20 +338,20 @@ public class ClusterNodeServiceTests : IDisposable
     [Fact]
     public async Task UpdateNodeIpNotesAsync_null_note_on_new_address_is_not_added()
     {
-        var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("null-note"));
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("null-note"));
         var request = new NodeIpNotesUpdateRequest(cluster.Id, "n1",
             [new NodeIpNoteEditItem { Address = "10.0.0.3", Note = null }]);
-        await service.UpdateNodeIpNotesAsync(request);
+        await _service.UpdateNodeIpNotesAsync(request);
 
-        var reloaded = await harness.ClusterRepo.GetByIdAsync(cluster.Id);
+        var reloaded = await _harness.ClusterRepo.GetByIdAsync(cluster.Id);
         Assert.Empty(reloaded!.NodeIpRemarks);
     }
 
     private async Task<int> SeedAsyncWithRemark()
     {
-        var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("remark-cluster"));
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("remark-cluster"));
         cluster.NodeIpRemarks.Add(TestData.NewIpRemark(cluster.Id, "node-1", "10.0.0.1", "管理口"));
-        await harness.ClusterRepo.UpdateAsync(cluster);
+        await _harness.ClusterRepo.UpdateAsync(cluster);
         return cluster.Id;
     }
 }

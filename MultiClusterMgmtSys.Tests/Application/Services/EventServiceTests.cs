@@ -11,19 +11,19 @@ namespace MultiClusterMgmtSys.Tests.Application.Services;
 
 public class EventServiceTests : IDisposable
 {
-    private readonly ServiceHarness harness = new("admin", "Admin");
-    private readonly Mock<IKubernetes> k8s = K8sMocks.Create();
-    private readonly EventService service;
+    private readonly ServiceHarness _harness = new("admin", "Admin");
+    private readonly Mock<IKubernetes> _k8s = K8sMocks.Create();
+    private readonly EventService _service;
 
     public EventServiceTests()
     {
-        service = new EventService(harness.ClusterRepo, NullLogger<EventService>.Instance, K8sMocks.Cache(k8s));
+        _service = new EventService(_harness.ClusterRepo, NullLogger<EventService>.Instance, K8sMocks.Cache(_k8s));
     }
 
-    public void Dispose() => harness.Dispose();
+    public void Dispose() => _harness.Dispose();
 
     private async Task<int> SeedAsync()
-        => (await harness.ClusterRepo.AddAsync(TestData.NewCluster("event-cluster"))).Id;
+        => (await _harness.ClusterRepo.AddAsync(TestData.NewCluster("event-cluster"))).Id;
 
     private static Corev1Event NewEvent(
         string name = "api-1",
@@ -48,9 +48,9 @@ public class EventServiceTests : IDisposable
     [Fact]
     public async Task ListEventsAsync_missing_cluster_throws_not_found()
     {
-        await Assert.ThrowsAsync<NotFoundException>(() => service.ListEventsAsync(new EventQueryRequest(999)));
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.ListEventsAsync(new EventQueryRequest(999)));
 
-        k8s.Verify(x => x.CoreV1.ListEventForAllNamespacesWithHttpMessagesAsync(
+        _k8s.Verify(x => x.CoreV1.ListEventForAllNamespacesWithHttpMessagesAsync(
             It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
             It.IsAny<int?>(), It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(),
             It.IsAny<bool?>(), It.IsAny<int?>(), It.IsAny<bool?>(),
@@ -62,11 +62,11 @@ public class EventServiceTests : IDisposable
     public async Task ListEventsAsync_all_namespaces_maps_aggregation_and_writes_no_audit()
     {
         var clusterId = await SeedAsync();
-        k8s.SetupListEvents(
+        _k8s.SetupListEvents(
             NewEvent("api-1", "app", count: 12),
             NewEvent("cache-0", "data", type: "Warning", reason: "BackOff"));
 
-        var items = await service.ListEventsAsync(new EventQueryRequest(clusterId));
+        var items = await _service.ListEventsAsync(new EventQueryRequest(clusterId));
 
         Assert.Equal(2, items.Count);
         var first = items.Single(e => e.Namespace == "app");
@@ -74,7 +74,7 @@ public class EventServiceTests : IDisposable
         Assert.Equal("正常", first.TypeText);
         var second = items.Single(e => e.Namespace == "data");
         Assert.Equal("警告", second.TypeText);
-        Assert.Empty(harness.Db.AuditLogs);
+        Assert.Empty(_harness.Db.AuditLogs);
     }
 
     [Fact]
@@ -82,9 +82,9 @@ public class EventServiceTests : IDisposable
     {
         var clusterId = await SeedAsync();
         var eventTime = new DateTime(2026, 9, 14, 10, 31, 2, DateTimeKind.Utc);
-        k8s.SetupListEvents(NewEvent(lastTimestamp: null, eventTime: eventTime));
+        _k8s.SetupListEvents(NewEvent(lastTimestamp: null, eventTime: eventTime));
 
-        var items = await service.ListEventsAsync(new EventQueryRequest(clusterId));
+        var items = await _service.ListEventsAsync(new EventQueryRequest(clusterId));
 
         Assert.Equal(eventTime, Assert.Single(items).OccurredAt);
     }
@@ -93,29 +93,29 @@ public class EventServiceTests : IDisposable
     public async Task ListEventsAsync_k8s_permission_error_translated()
     {
         var clusterId = await SeedAsync();
-        k8s.SetupListEventsThrows(K8sMocks.K8sError(403));
+        _k8s.SetupListEventsThrows(K8sMocks.K8sError(403));
 
         await Assert.ThrowsAsync<PermissionException>(
-            () => service.ListEventsAsync(new EventQueryRequest(clusterId)));
+            () => _service.ListEventsAsync(new EventQueryRequest(clusterId)));
     }
 
     [Fact]
     public async Task ListEventsAsync_timeout_translated_to_unreachable()
     {
         var clusterId = await SeedAsync();
-        k8s.SetupListEventsThrows(new TaskCanceledException("timeout"));
+        _k8s.SetupListEventsThrows(new TaskCanceledException("timeout"));
 
         await Assert.ThrowsAsync<ClusterUnreachableException>(
-            () => service.ListEventsAsync(new EventQueryRequest(clusterId)));
+            () => _service.ListEventsAsync(new EventQueryRequest(clusterId)));
     }
 
     [Fact]
     public async Task GetNamespacesAsync_returns_sorted_namespaces()
     {
         var clusterId = await SeedAsync();
-        k8s.SetupListNamespaces("zeta", "alpha");
+        _k8s.SetupListNamespaces("zeta", "alpha");
 
-        var namespaces = await service.GetNamespacesAsync(clusterId);
+        var namespaces = await _service.GetNamespacesAsync(clusterId);
 
         Assert.Equal(new[] { "alpha", "zeta" }, namespaces);
     }
@@ -123,15 +123,15 @@ public class EventServiceTests : IDisposable
     [Fact]
     public async Task GetNamespacesAsync_missing_cluster_throws_not_found()
     {
-        await Assert.ThrowsAsync<NotFoundException>(() => service.GetNamespacesAsync(999));
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.GetNamespacesAsync(999));
     }
 
     [Fact]
     public async Task GetNamespacesAsync_k8s_error_translated()
     {
         var clusterId = await SeedAsync();
-        k8s.SetupListNamespacesThrows(new TaskCanceledException("timeout"));
+        _k8s.SetupListNamespacesThrows(new TaskCanceledException("timeout"));
 
-        await Assert.ThrowsAsync<ClusterUnreachableException>(() => service.GetNamespacesAsync(clusterId));
+        await Assert.ThrowsAsync<ClusterUnreachableException>(() => _service.GetNamespacesAsync(clusterId));
     }
 }

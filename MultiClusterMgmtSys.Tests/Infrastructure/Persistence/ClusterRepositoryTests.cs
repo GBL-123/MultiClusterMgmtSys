@@ -10,15 +10,15 @@ namespace MultiClusterMgmtSys.Tests.Infrastructure.Persistence;
 
 public class ClusterRepositoryTests : IDisposable
 {
-    private readonly ApplicationDbContext db = SqliteDbFactory.CreateContext();
-    private readonly ClusterRepository repo;
+    private readonly ApplicationDbContext _db = SqliteDbFactory.CreateContext();
+    private readonly ClusterRepository _repo;
 
     public ClusterRepositoryTests()
     {
-        repo = new ClusterRepository(db);
+        _repo = new ClusterRepository(_db);
     }
 
-    public void Dispose() => db.Dispose();
+    public void Dispose() => _db.Dispose();
 
     private async Task<int> SeedClusterAsync(
         string name,
@@ -28,7 +28,7 @@ public class ClusterRepositoryTests : IDisposable
         int nodeCount = 3,
         DateTime? createdAt = null)
     {
-        var added = await repo.AddAsync(TestData.NewCluster(
+        var added = await _repo.AddAsync(TestData.NewCluster(
             name, groupId, status, version, nodeCount, createdAt));
         return added.Id;
     }
@@ -36,15 +36,15 @@ public class ClusterRepositoryTests : IDisposable
     [Fact]
     public async Task GetByIdAsync_includes_group_endpoints_and_remarks()
     {
-        var group = db.ClusterGroups.Add(TestData.NewGroup()).Entity;
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-        var cluster = db.Clusters.Add(TestData.NewCluster("full", groupId: group.Id)).Entity;
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-        db.ClusterEndpoints.Add(TestData.NewEndpoint(cluster.Id));
-        db.NodeIpRemarks.Add(TestData.NewIpRemark(cluster.Id));
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var group = _db.ClusterGroups.Add(TestData.NewGroup()).Entity;
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var cluster = _db.Clusters.Add(TestData.NewCluster("full", groupId: group.Id)).Entity;
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        _db.ClusterEndpoints.Add(TestData.NewEndpoint(cluster.Id));
+        _db.NodeIpRemarks.Add(TestData.NewIpRemark(cluster.Id));
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var loaded = await repo.GetByIdAsync(cluster.Id);
+        var loaded = await _repo.GetByIdAsync(cluster.Id);
 
         Assert.NotNull(loaded);
         Assert.Equal("group-1", loaded!.Group!.Name);
@@ -55,20 +55,20 @@ public class ClusterRepositoryTests : IDisposable
     [Fact]
     public async Task GetByIdAsync_returns_null_for_missing_id()
     {
-        Assert.Null(await repo.GetByIdAsync(999));
+        Assert.Null(await _repo.GetByIdAsync(999));
     }
 
     [Fact]
     public async Task GetPagedAsync_null_groupid_returns_all()
     {
-        var g1 = db.ClusterGroups.Add(TestData.NewGroup("g1")).Entity;
-        var g2 = db.ClusterGroups.Add(TestData.NewGroup("g2")).Entity;
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var g1 = _db.ClusterGroups.Add(TestData.NewGroup("g1")).Entity;
+        var g2 = _db.ClusterGroups.Add(TestData.NewGroup("g2")).Entity;
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
         await SeedClusterAsync("a", groupId: null);
         await SeedClusterAsync("b", groupId: g1.Id);
         await SeedClusterAsync("c", groupId: g2.Id);
 
-        var (items, total) = await repo.GetPagedAsync(new ClusterPageQuery());
+        var (items, total) = await _repo.GetPagedAsync(new ClusterPageQuery());
 
         Assert.Equal(3, total);
         Assert.Equal(3, items.Count);
@@ -77,12 +77,12 @@ public class ClusterRepositoryTests : IDisposable
     [Fact]
     public async Task GetPagedAsync_groupid_zero_returns_only_ungrouped()
     {
-        var g1 = db.ClusterGroups.Add(TestData.NewGroup("g1")).Entity;
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var g1 = _db.ClusterGroups.Add(TestData.NewGroup("g1")).Entity;
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
         await SeedClusterAsync("grouped", groupId: g1.Id);
         await SeedClusterAsync("loose", groupId: null);
 
-        var (items, total) = await repo.GetPagedAsync(new ClusterPageQuery { GroupId = 0 });
+        var (items, total) = await _repo.GetPagedAsync(new ClusterPageQuery { GroupId = 0 });
 
         Assert.Equal(1, total);
         Assert.Equal("loose", items.Single().Name);
@@ -91,14 +91,14 @@ public class ClusterRepositoryTests : IDisposable
     [Fact]
     public async Task GetPagedAsync_positive_groupid_filters_equality()
     {
-        var g1 = db.ClusterGroups.Add(TestData.NewGroup("g1")).Entity;
-        var g2 = db.ClusterGroups.Add(TestData.NewGroup("g2")).Entity;
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var g1 = _db.ClusterGroups.Add(TestData.NewGroup("g1")).Entity;
+        var g2 = _db.ClusterGroups.Add(TestData.NewGroup("g2")).Entity;
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
         await SeedClusterAsync("g1", groupId: g1.Id);
         await SeedClusterAsync("g2", groupId: g2.Id);
         await SeedClusterAsync("loose", groupId: null);
 
-        var (items, total) = await repo.GetPagedAsync(new ClusterPageQuery { GroupId = g2.Id });
+        var (items, total) = await _repo.GetPagedAsync(new ClusterPageQuery { GroupId = g2.Id });
 
         Assert.Equal(1, total);
         Assert.Equal("g2", items.Single().Name);
@@ -110,7 +110,7 @@ public class ClusterRepositoryTests : IDisposable
         await SeedClusterAsync("prod-cluster");
         await SeedClusterAsync("dev-cluster");
 
-        var (items, total) = await repo.GetPagedAsync(new ClusterPageQuery { NameContains = "prod" });
+        var (items, total) = await _repo.GetPagedAsync(new ClusterPageQuery { NameContains = "prod" });
 
         Assert.Equal(1, total);
         Assert.Equal("prod-cluster", items.Single().Name);
@@ -122,7 +122,7 @@ public class ClusterRepositoryTests : IDisposable
         await SeedClusterAsync("online", status: ClusterStatus.Online);
         await SeedClusterAsync("offline", status: ClusterStatus.Offline);
 
-        var (items, total) = await repo.GetPagedAsync(
+        var (items, total) = await _repo.GetPagedAsync(
             new ClusterPageQuery { Status = ClusterStatus.Offline });
 
         Assert.Equal(1, total);
@@ -135,7 +135,7 @@ public class ClusterRepositoryTests : IDisposable
         await SeedClusterAsync("v129", version: "1.29.0");
         await SeedClusterAsync("noVersion", version: null);
 
-        var (items, total) = await repo.GetPagedAsync(
+        var (items, total) = await _repo.GetPagedAsync(
             new ClusterPageQuery { Version = VersionFilterSentinel.OnlyNull });
 
         Assert.Equal(1, total);
@@ -149,7 +149,7 @@ public class ClusterRepositoryTests : IDisposable
         await SeedClusterAsync("blank", version: "");
         await SeedClusterAsync("noVersion", version: null);
 
-        var (items, total) = await repo.GetPagedAsync(
+        var (items, total) = await _repo.GetPagedAsync(
             new ClusterPageQuery { Version = VersionFilterSentinel.All });
 
         Assert.Equal(1, total);
@@ -162,7 +162,7 @@ public class ClusterRepositoryTests : IDisposable
         await SeedClusterAsync("v129", version: "1.29.0");
         await SeedClusterAsync("v130", version: "1.30.0");
 
-        var (items, total) = await repo.GetPagedAsync(new ClusterPageQuery { Version = "1.30.0" });
+        var (items, total) = await _repo.GetPagedAsync(new ClusterPageQuery { Version = "1.30.0" });
 
         Assert.Equal(1, total);
         Assert.Equal("v130", items.Single().Name);
@@ -175,7 +175,7 @@ public class ClusterRepositoryTests : IDisposable
         await SeedClusterAsync("before", createdAt: new DateTime(2026, 3, 4, 0, 0, 0, DateTimeKind.Utc));
         await SeedClusterAsync("after", createdAt: new DateTime(2026, 3, 7, 0, 0, 0, DateTimeKind.Utc));
 
-        var (items, total) = await repo.GetPagedAsync(new ClusterPageQuery
+        var (items, total) = await _repo.GetPagedAsync(new ClusterPageQuery
         {
             CreatedAfter = new DateTime(2026, 3, 5, 0, 0, 0, DateTimeKind.Utc),
             CreatedBefore = new DateTime(2026, 3, 6, 0, 0, 0, DateTimeKind.Utc)
@@ -192,7 +192,7 @@ public class ClusterRepositoryTests : IDisposable
         var idA = await SeedClusterAsync("a", createdAt: new DateTime(2026, 1, 3, 0, 0, 0, DateTimeKind.Utc));
         var idB = await SeedClusterAsync("b", createdAt: new DateTime(2026, 1, 3, 0, 0, 0, DateTimeKind.Utc));
 
-        var (items, _) = await repo.GetPagedAsync(new ClusterPageQuery { SortBy = ClusterSortField.Name, SortDescending = false });
+        var (items, _) = await _repo.GetPagedAsync(new ClusterPageQuery { SortBy = ClusterSortField.Name, SortDescending = false });
 
         Assert.Equal([idA, idB, idC], items.Select(c => c.Id).ToArray());
     }
@@ -203,7 +203,7 @@ public class ClusterRepositoryTests : IDisposable
         await SeedClusterAsync("small", nodeCount: 1);
         await SeedClusterAsync("big", nodeCount: 9);
 
-        var (items, _) = await repo.GetPagedAsync(new ClusterPageQuery { SortBy = ClusterSortField.NodeCount });
+        var (items, _) = await _repo.GetPagedAsync(new ClusterPageQuery { SortBy = ClusterSortField.NodeCount });
 
         Assert.Equal("big", items.First().Name);
     }
@@ -216,8 +216,8 @@ public class ClusterRepositoryTests : IDisposable
             await SeedClusterAsync($"cluster-{i}", createdAt: new DateTime(2026, 1, i, 0, 0, 0, DateTimeKind.Utc));
         }
 
-        var (page1, total) = await repo.GetPagedAsync(new ClusterPageQuery { Page = 1, PageSize = 2 });
-        var (page2, _) = await repo.GetPagedAsync(new ClusterPageQuery { Page = 2, PageSize = 2 });
+        var (page1, total) = await _repo.GetPagedAsync(new ClusterPageQuery { Page = 1, PageSize = 2 });
+        var (page2, _) = await _repo.GetPagedAsync(new ClusterPageQuery { Page = 2, PageSize = 2 });
 
         Assert.Equal(5, total);
         Assert.Equal(2, page1.Count);
@@ -230,7 +230,7 @@ public class ClusterRepositoryTests : IDisposable
     {
         await SeedClusterAsync("only");
 
-        var (items, total) = await repo.GetPagedAsync(new ClusterPageQuery { Page = 0, PageSize = 0 });
+        var (items, total) = await _repo.GetPagedAsync(new ClusterPageQuery { Page = 0, PageSize = 0 });
 
         Assert.Equal(1, total);
         Assert.Single(items);
@@ -244,7 +244,7 @@ public class ClusterRepositoryTests : IDisposable
         await SeedClusterAsync("c", version: "1.29.0");
         await SeedClusterAsync("d", version: null);
 
-        var versions = await repo.GetDistinctVersionsAsync();
+        var versions = await _repo.GetDistinctVersionsAsync();
 
         Assert.Equal(["1.29.0", "1.30.0"], versions);
     }
@@ -252,35 +252,35 @@ public class ClusterRepositoryTests : IDisposable
     [Fact]
     public async Task SetGroupIdForClustersAsync_moves_selected_clusters()
     {
-        var g1 = db.ClusterGroups.Add(TestData.NewGroup("g1")).Entity;
-        var g2 = db.ClusterGroups.Add(TestData.NewGroup("g2")).Entity;
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var g1 = _db.ClusterGroups.Add(TestData.NewGroup("g1")).Entity;
+        var g2 = _db.ClusterGroups.Add(TestData.NewGroup("g2")).Entity;
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
         var id1 = await SeedClusterAsync("one", groupId: g1.Id);
         var id2 = await SeedClusterAsync("two", groupId: g1.Id);
 
-        var moved = await repo.SetGroupIdForClustersAsync([id1, id2], g2.Id);
+        var moved = await _repo.SetGroupIdForClustersAsync([id1, id2], g2.Id);
 
         Assert.Equal(2, moved);
-        var moved1 = await db.Clusters.AsNoTracking().SingleAsync(c => c.Id == id1);
+        var moved1 = await _db.Clusters.AsNoTracking().SingleAsync(c => c.Id == id1);
         Assert.Equal(g2.Id, moved1.GroupId);
     }
 
     [Fact]
     public async Task SetGroupIdForClustersAsync_empty_ids_is_noop()
     {
-        Assert.Equal(0, await repo.SetGroupIdForClustersAsync([], 3));
+        Assert.Equal(0, await _repo.SetGroupIdForClustersAsync([], 3));
     }
 
     [Fact]
     public async Task CountUngroupedAsync_counts_null_groupid_only()
     {
-        var g1 = db.ClusterGroups.Add(TestData.NewGroup("g1")).Entity;
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var g1 = _db.ClusterGroups.Add(TestData.NewGroup("g1")).Entity;
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
         await SeedClusterAsync("loose-1", groupId: null);
         await SeedClusterAsync("loose-2", groupId: null);
         await SeedClusterAsync("grouped", groupId: g1.Id);
 
-        Assert.Equal(2, await repo.CountUngroupedAsync());
+        Assert.Equal(2, await _repo.CountUngroupedAsync());
     }
 
     [Fact]
@@ -289,7 +289,7 @@ public class ClusterRepositoryTests : IDisposable
         var id1 = await SeedClusterAsync("x");
         var id2 = await SeedClusterAsync("y");
 
-        var ids = await repo.GetAllIdsAsync();
+        var ids = await _repo.GetAllIdsAsync();
 
         Assert.Equal([id1, id2], [.. ids.OrderBy(i => i)]);
     }
@@ -300,33 +300,49 @@ public class ClusterRepositoryTests : IDisposable
         await SeedClusterAsync("sync-a");
         var secondId = await SeedClusterAsync("sync-b");
 
-        var clusters = await repo.GetAllForSyncAsync();
+        var clusters = await _repo.GetAllForSyncAsync();
 
         Assert.Equal(2, clusters.Count);
-        Assert.All(clusters, c => Assert.NotEqual(EntityState.Detached, db.Entry(c).State));
+        Assert.All(clusters, c => Assert.NotEqual(EntityState.Detached, _db.Entry(c).State));
 
         var second = clusters.Single(c => c.Id == secondId);
         second.Status = ClusterStatus.Offline;
-        await repo.UpdateAsync(second);
-        var reloaded = await repo.GetByIdAsync(secondId);
+        await _repo.UpdateAsync(second);
+        var reloaded = await _repo.GetByIdAsync(secondId);
         Assert.Equal(ClusterStatus.Offline, reloaded!.Status);
     }
 
     [Fact]
     public async Task DeleteAsync_removes_cascade_children_and_nulls_group()
     {
-        var group = db.ClusterGroups.Add(TestData.NewGroup()).Entity;
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-        var cluster = db.Clusters.Add(TestData.NewCluster("removable", groupId: group.Id)).Entity;
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-        db.ClusterEndpoints.Add(TestData.NewEndpoint(cluster.Id));
-        db.NodeIpRemarks.Add(TestData.NewIpRemark(cluster.Id));
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var group = _db.ClusterGroups.Add(TestData.NewGroup()).Entity;
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var cluster = _db.Clusters.Add(TestData.NewCluster("removable", groupId: group.Id)).Entity;
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        _db.ClusterEndpoints.Add(TestData.NewEndpoint(cluster.Id));
+        _db.NodeIpRemarks.Add(TestData.NewIpRemark(cluster.Id));
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await repo.DeleteAsync(cluster.Id);
+        await _repo.DeleteAsync(cluster.Id);
 
-        Assert.Null(await repo.GetByIdAsync(cluster.Id));
-        Assert.Empty(db.ClusterEndpoints.Where(e => e.ClusterId == cluster.Id).ToList());
-        Assert.Empty(db.NodeIpRemarks.Where(r => r.ClusterId == cluster.Id).ToList());
+        Assert.Null(await _repo.GetByIdAsync(cluster.Id));
+        Assert.Empty(_db.ClusterEndpoints.Where(e => e.ClusterId == cluster.Id).ToList());
+        Assert.Empty(_db.NodeIpRemarks.Where(r => r.ClusterId == cluster.Id).ToList());
+    }
+
+    [Fact]
+    public async Task GetAllForDashboardAsync_returns_all_clusters_with_group_and_untracked()
+    {
+        var group = _db.ClusterGroups.Add(TestData.NewGroup("prod")).Entity;
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await SeedClusterAsync("with-group", groupId: group.Id);
+        await SeedClusterAsync("loose");
+
+        var clusters = await _repo.GetAllForDashboardAsync();
+
+        Assert.Equal(2, clusters.Count);
+        Assert.All(clusters, c => Assert.Equal(EntityState.Detached, _db.Entry(c).State));
+        Assert.Equal("prod", clusters.Single(c => c.Name == "with-group").Group!.Name);
+        Assert.Null(clusters.Single(c => c.Name == "loose").Group);
     }
 }

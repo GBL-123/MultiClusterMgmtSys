@@ -22,7 +22,7 @@
         <MudText Typo="Typo.h5">个人资料</MudText>
     </MudPaper>
 
-    @if (loading)
+    @if (_loading)
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
     }
@@ -47,14 +47,14 @@
                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-4">
                     <span class="brand-mark large">@UserInitial</span>
                     <MudStack Spacing="1">
-                        <MudText Typo="Typo.h6">@(string.IsNullOrEmpty(currentUserName) ? "—" : currentUserName)</MudText>
+                        <MudText Typo="Typo.h6">@(string.IsNullOrEmpty(_currentUserName) ? "—" : _currentUserName)</MudText>
                         <span class="stacked-text">
-                            <span class="role-badge @(currentUserRole == "Admin" ? "admin" : "member")">
-                                @(string.IsNullOrEmpty(currentUserRole) ? "未知角色" : K8sDisplayText.AccountRoleText(currentUserRole))
+                            <span class="role-badge @(_currentUserRole == "Admin" ? "admin" : "member")">
+                                @(string.IsNullOrEmpty(_currentUserRole) ? "未知角色" : K8sDisplayText.AccountRoleText(_currentUserRole))
                             </span>
-                            @if (!string.IsNullOrEmpty(currentUserRole))
+                            @if (!string.IsNullOrEmpty(_currentUserRole))
                             {
-                                <span class="stacked-text-secondary font-mono">@currentUserRole</span>
+                                <span class="stacked-text-secondary font-mono">@_currentUserRole</span>
                             }
                         </span>
                     </MudStack>
@@ -65,21 +65,21 @@
                 <MudGrid Spacing="2">
                     <MudItem xs="12" sm="4">
                         <MudText Typo="Typo.body2" Class="mud-text-secondary">注册时间</MudText>
-                        <MudText Typo="Typo.body1" Class="font-mono">@(createdAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
+                        <MudText Typo="Typo.body1" Class="font-mono">@(_createdAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
                     </MudItem>
                     <MudItem xs="12" sm="4">
                         <MudText Typo="Typo.body2" Class="mud-text-secondary">修改时间</MudText>
-                        <MudText Typo="Typo.body1" Class="font-mono">@(updatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
+                        <MudText Typo="Typo.body1" Class="font-mono">@(_updatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
                     </MudItem>
                     <MudItem xs="12" sm="4">
                         <MudText Typo="Typo.body2" Class="mud-text-secondary">最后登录</MudText>
-                        <MudText Typo="Typo.body1" Class="font-mono">@(lastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
+                        <MudText Typo="Typo.body1" Class="font-mono">@(_lastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
                     </MudItem>
                 </MudGrid>
             </MudCardContent>
         </MudCard>
 
-        @if (isAdmin)
+        @if (_isAdmin)
         {
             <MudCard Class="pa-4">
                 <MudCardHeader>
@@ -89,8 +89,8 @@
                 </MudCardHeader>
                 <MudCardContent>
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4" Class="flex-wrap">
-                        <MudSwitch @bind-Value="syncEnabled" Label="启用定时同步" Color="Color.Primary" />
-                        <MudNumericField @bind-Value="syncIntervalMinutes"
+                        <MudSwitch @bind-Value="_syncEnabled" Label="启用定时同步" Color="Color.Primary" />
+                        <MudNumericField @bind-Value="_syncIntervalMinutes"
                                          Label="同步间隔(分钟)"
                                          Min="1" Max="1440" Step="1"
                                          Class="font-mono sync-interval-field" />
@@ -98,7 +98,7 @@
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Primary"
                                    StartIcon="@Icons.Material.Filled.Save"
-                                   Disabled="@savingSync"
+                                   Disabled="@_savingSync"
                                    OnClick="SaveSyncSettingsAsync">
                             保存
                         </MudButton>
@@ -120,16 +120,16 @@
                 </CardHeaderActions>
             </MudCardHeader>
             <MudCardContent>
-                @if (recentOps.Count == 0)
+                @if (_recentOps.Count == 0)
                 {
                     <div class="empty-state">[ 暂无操作记录 ]</div>
                 }
                 else
                 {
                     <MudStack Spacing="0">
-                        @for (var i = 0; i < recentOps.Count; i++)
+                        @for (var i = 0; i < _recentOps.Count; i++)
                         {
-                            var op = recentOps[i];
+                            var op = _recentOps[i];
                             <div class="d-flex align-center py-2" style="gap: 16px;">
                                 <span class="font-mono mud-text-secondary" style="flex: none;">@op.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</span>
                                 <span style="flex: none;">@op.CategoryName · @op.ActionName</span>
@@ -140,7 +140,7 @@
                                     </span>
                                 </TextTooltip>
                             </div>
-                            @if (i < recentOps.Count - 1)
+                            @if (i < _recentOps.Count - 1)
                             {
                                 <MudDivider Light="true" />
                             }
@@ -156,58 +156,58 @@
 
     private const int RecentOpsCount = 5;
 
-    private string currentUserName = "";
+    private string _currentUserName = "";
 
-    private string currentUserRole = "";
+    private string _currentUserRole = "";
 
-    private DateTime? createdAt;
+    private DateTime? _createdAt;
 
-    private DateTime? updatedAt;
+    private DateTime? _updatedAt;
 
-    private DateTime? lastLoginAt;
+    private DateTime? _lastLoginAt;
 
-    private List<AuditLogViewModel> recentOps = new();
+    private List<AuditLogViewModel> _recentOps = new();
 
-    private bool loading;
+    private bool _loading;
 
-    private bool isAdmin;
+    private bool _isAdmin;
 
-    private bool syncEnabled = true;
+    private bool _syncEnabled = true;
 
-    private int syncIntervalMinutes = 5;
+    private int _syncIntervalMinutes = 5;
 
-    private bool savingSync;
+    private bool _savingSync;
 
-    private string UserInitial => string.IsNullOrEmpty(currentUserName) ? "?" : currentUserName.Substring(0, 1).ToUpperInvariant();
+    private string UserInitial => string.IsNullOrEmpty(_currentUserName) ? "?" : _currentUserName.Substring(0, 1).ToUpperInvariant();
 
     protected override async Task OnInitializedAsync()
     {
-        loading = true;
+        _loading = true;
         try
         {
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-            currentUserName = authState.User.Identity?.Name ?? "";
-            currentUserRole = authState.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+            _currentUserName = authState.User.Identity?.Name ?? "";
+            _currentUserRole = authState.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
 
-            var userTask = AccountSvc.GetUserByNameAsync(currentUserName);
+            var userTask = AccountSvc.GetUserByNameAsync(_currentUserName);
             var recentTask = AuditSvc.GetRecentAsync(RecentOpsCount);
             await Task.WhenAll(userTask, recentTask);
 
             var user = userTask.Result;
             if (user is not null)
             {
-                createdAt = user.CreatedAt;
-                updatedAt = user.UpdatedAt;
-                lastLoginAt = user.LastLoginAt;
+                _createdAt = user.CreatedAt;
+                _updatedAt = user.UpdatedAt;
+                _lastLoginAt = user.LastLoginAt;
             }
-            recentOps = recentTask.Result;
+            _recentOps = recentTask.Result;
 
             if (authState.User.IsInRole("Admin"))
             {
-                isAdmin = true;
+                _isAdmin = true;
                 var settings = await SyncSettingSvc.GetClusterSyncSettingsAsync();
-                syncEnabled = settings.Enabled;
-                syncIntervalMinutes = settings.IntervalMinutes;
+                _syncEnabled = settings.Enabled;
+                _syncIntervalMinutes = settings.IntervalMinutes;
             }
         }
         catch (Exception ex)
@@ -216,13 +216,13 @@
         }
         finally
         {
-            loading = false;
+            _loading = false;
         }
     }
 
     private async Task OpenChangePasswordDialog()
     {
-        if (string.IsNullOrEmpty(currentUserName)) return;
+        if (string.IsNullOrEmpty(_currentUserName)) return;
 
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
         await DialogService.ShowAsync<ChangePasswordDialog>("修改密码", options);
@@ -230,10 +230,10 @@
 
     private async Task SaveSyncSettingsAsync()
     {
-        savingSync = true;
+        _savingSync = true;
         try
         {
-            await SyncSettingSvc.UpdateClusterSyncSettingsAsync(new ClusterSyncSettingsUpdateRequest(syncEnabled, syncIntervalMinutes));
+            await SyncSettingSvc.UpdateClusterSyncSettingsAsync(new ClusterSyncSettingsUpdateRequest(_syncEnabled, _syncIntervalMinutes));
             Snackbar.Add("定时同步设置已保存,下一轮同步生效", Severity.Success);
         }
         catch (Exception ex)
@@ -242,7 +242,7 @@
         }
         finally
         {
-            savingSync = false;
+            _savingSync = false;
         }
     }
 }

@@ -31,29 +31,30 @@ namespace MultiClusterMgmtSys.Tests.Infrastructure.Sync;
 
 public class ClusterSyncBackgroundServiceTests : IDisposable
 {
-    private readonly ServiceHarness harness = new("admin", "Admin");
-    private readonly Mock<IKubernetes> k8s = K8sMocks.Create();
+    private readonly ServiceHarness _harness = new("admin", "Admin");
+    private readonly Mock<IKubernetes> _k8s = K8sMocks.Create();
 
     public ClusterSyncBackgroundServiceTests()
     {
-        harness.Db.ClusterGroups.Add(TestData.NewGroup("g1"));
-        harness.Db.SaveChangesAsync(TestContext.Current.CancellationToken).Wait();
-        harness.ClusterRepo.AddAsync(TestData.NewCluster("sync-1")).Wait();
-        harness.ClusterRepo.AddAsync(TestData.NewCluster("sync-2")).Wait();
+        _harness.Db.ClusterGroups.Add(TestData.NewGroup("g1"));
+        _harness.Db.SaveChangesAsync(TestContext.Current.CancellationToken).Wait();
+        _harness.ClusterRepo.AddAsync(TestData.NewCluster("sync-1")).Wait();
+        _harness.ClusterRepo.AddAsync(TestData.NewCluster("sync-2")).Wait();
     }
 
-    public void Dispose() => harness.Dispose();
+    public void Dispose() => _harness.Dispose();
 
     private ClusterSyncBackgroundService BuildService()
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddSingleton(harness.Db);
-        services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8s));
+        services.AddSingleton(_harness.Db);
+        services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(_k8s));
         services.AddSingleton<IClusterClientCache>(new ClusterClientCache(
-            K8sMocks.Factory(k8s), NullLogger<ClusterClientCache>.Instance));
-        services.AddScoped<IClusterRepository>(_ => harness.ClusterRepo);
-        services.AddScoped(_ => harness.Audit);
+            K8sMocks.Factory(_k8s), NullLogger<ClusterClientCache>.Instance));
+        services.AddScoped<IClusterRepository>(_ => _harness.ClusterRepo);
+        services.AddScoped<IClusterHealthRepository>(_ => _harness.ClusterHealthRepo);
+        services.AddScoped(_ => _harness.Audit);
         services.AddScoped<ClusterNodeService>();
         services.AddScoped<ClusterService>();
         services.AddScoped<ClusterSyncSettingService>();
@@ -81,10 +82,10 @@ public class ClusterSyncBackgroundServiceTests : IDisposable
 
         await service.RunOnceAsync(TestContext.Current.CancellationToken);
 
-        var clusters = await harness.ClusterRepo.GetAllIdsAsync();
+        var clusters = await _harness.ClusterRepo.GetAllIdsAsync();
         foreach (var id in clusters)
         {
-            var cluster = await harness.ClusterRepo.GetByIdAsync(id);
+            var cluster = await _harness.ClusterRepo.GetByIdAsync(id);
             Assert.Equal(MultiClusterMgmtSys.Domain.Enums.ClusterStatus.Offline, cluster!.Status);
         }
     }

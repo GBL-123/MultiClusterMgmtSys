@@ -18,16 +18,16 @@ namespace MultiClusterMgmtSys.Application.Services;
 /// </summary>
 public class SvcService(IClusterRepository repo, AuditService auditService, ILogger<SvcService> logger, IClusterClientCache clientCache)
 {
-    private readonly IClusterRepository repo = repo;
+    private readonly IClusterRepository _repo = repo;
 
-    private readonly AuditService auditService = auditService;
+    private readonly AuditService _auditService = auditService;
 
-    private readonly ILogger<SvcService> logger = logger;
+    private readonly ILogger<SvcService> _logger = logger;
 
     /// <summary>拉取集群命名空间列表(升序),供服务页命名空间下拉使用;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
     public async Task<List<string>> GetNamespacesAsync(int clusterId)
     {
-        var entity = await repo.GetByIdAsync(clusterId)
+        var entity = await _repo.GetByIdAsync(clusterId)
             ?? throw new NotFoundException($"集群 {clusterId} 不存在");
         var client = clientCache.GetOrCreate(entity);
         try
@@ -37,7 +37,7 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "ListNamespaces failed clusterId={ClusterId}", clusterId);
+            _logger.LogWarning(ex, "ListNamespaces failed clusterId={ClusterId}", clusterId);
             throw K8sExceptionMapper.Translate(ex, "加载命名空间");
         }
     }
@@ -45,7 +45,7 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
     /// <summary>查询服务列表;Namespace 为 null 时查全部命名空间。集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
     public async Task<List<SvcListViewModel>> ListSvcsAsync(SvcQueryRequest request)
     {
-        var entity = await repo.GetByIdAsync(request.ClusterId)
+        var entity = await _repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
         var client = clientCache.GetOrCreate(entity);
         try
@@ -57,7 +57,7 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "ListServices failed clusterId={ClusterId} ns={Namespace}", request.ClusterId, request.Namespace);
+            _logger.LogWarning(ex, "ListServices failed clusterId={ClusterId} ns={Namespace}", request.ClusterId, request.Namespace);
             throw K8sExceptionMapper.Translate(ex, "加载服务列表");
         }
     }
@@ -65,7 +65,7 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
     /// <summary>读取单个服务详情(端口/选择器/类型等);集群不存在返回 null,K8s 失败经翻译后抛业务异常。</summary>
     public async Task<SvcDetailViewModel?> GetSvcAsync(SvcKeyRequest request)
     {
-        var entity = await repo.GetByIdAsync(request.ClusterId);
+        var entity = await _repo.GetByIdAsync(request.ClusterId);
         if (entity is null) return null;
         var client = clientCache.GetOrCreate(entity);
         try
@@ -75,7 +75,7 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "ReadService failed clusterId={ClusterId} ns={Namespace} name={Name}",
+            _logger.LogWarning(ex, "ReadService failed clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
             throw K8sExceptionMapper.Translate(ex, "加载服务详情");
         }
@@ -84,7 +84,7 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
     /// <summary>查询服务后端地址列表:优先 EndpointSlice,其 API 不可用(404)时回退传统 Endpoints;集群不存在返回空列表,其他 K8s 失败经翻译后抛业务异常。</summary>
     public async Task<List<SvcEndpointViewModel>> GetSvcEndpointsAsync(SvcKeyRequest request)
     {
-        var entity = await repo.GetByIdAsync(request.ClusterId);
+        var entity = await _repo.GetByIdAsync(request.ClusterId);
         if (entity is null) return new();
         var client = clientCache.GetOrCreate(entity);
         var labelSelector = $"{SvcMappingExtensions.EndpointSliceServiceLabel}={request.Name}";
@@ -95,19 +95,19 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
         }
         catch (KubernetesException kex) when (kex.Status?.Code == 404)
         {
-            logger.LogInformation("EndpointSlice API unavailable, falling back to legacy Endpoints clusterId={ClusterId} ns={Namespace} name={Name}",
+            _logger.LogInformation("EndpointSlice API unavailable, falling back to legacy Endpoints clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
             return await ListLegacyEndpointsAsync(client, request.Namespace, request.Name);
         }
         catch (HttpOperationException hopex) when (hopex.Response?.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
-            logger.LogInformation("EndpointSlice API unavailable, falling back to legacy Endpoints clusterId={ClusterId} ns={Namespace} name={Name}",
+            _logger.LogInformation("EndpointSlice API unavailable, falling back to legacy Endpoints clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
             return await ListLegacyEndpointsAsync(client, request.Namespace, request.Name);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "ListEndpointSlices failed clusterId={ClusterId} ns={Namespace} name={Name}",
+            _logger.LogWarning(ex, "ListEndpointSlices failed clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
             throw K8sExceptionMapper.Translate(ex, "加载服务后端列表");
         }
@@ -125,7 +125,7 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "ListLegacyEndpoints failed ns={Namespace} name={Name}", ns, name);
+            _logger.LogWarning(ex, "ListLegacyEndpoints failed ns={Namespace} name={Name}", ns, name);
             throw K8sExceptionMapper.Translate(ex, "加载服务后端列表");
         }
     }
@@ -133,7 +133,7 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
     /// <summary>删除指定服务,成功后写删除审计;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
     public async Task DeleteSvcAsync(SvcKeyRequest request)
     {
-        var entity = await repo.GetByIdAsync(request.ClusterId)
+        var entity = await _repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
         var client = clientCache.GetOrCreate(entity);
         try
@@ -142,17 +142,17 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "DeleteService failed clusterId={ClusterId} ns={Namespace} name={Name}",
+            _logger.LogWarning(ex, "DeleteService failed clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
             throw K8sExceptionMapper.Translate(ex, "删除服务");
         }
-        await auditService.LogAsync(AuditCategory.Service, AuditAction.Delete, $"服务: {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
+        await _auditService.LogAsync(AuditCategory.Service, AuditAction.Delete, $"服务: {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
     }
 
     /// <summary>以 YAML 更新服务:先校验 clusterIP/clusterIPs/ipFamilies 等不可变字段未被改动,再以服务器最新对象(补齐 resourceVersion/uid)替换提交;YAML 非法或改动不可变字段抛 <see cref="ValidationException"/>,成功后写更新审计。</summary>
     public async Task UpdateSvcFromYamlAsync(SvcUpdateRequest request)
     {
-        var entity = await repo.GetByIdAsync(request.ClusterId)
+        var entity = await _repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
         var client = clientCache.GetOrCreate(entity);
         V1Service deserialized;
@@ -162,7 +162,7 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Deserialize YAML failed for update clusterId={ClusterId} ns={Namespace} name={Name}",
+            _logger.LogWarning(ex, "Deserialize YAML failed for update clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
             throw new ValidationException($"YAML 格式错误:{ex.Message}");
         }
@@ -173,7 +173,7 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "ReadService failed for update clusterId={ClusterId} ns={Namespace} name={Name}",
+            _logger.LogWarning(ex, "ReadService failed for update clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
             throw K8sExceptionMapper.Translate(ex, "加载服务详情");
         }
@@ -191,17 +191,17 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "ReplaceService failed clusterId={ClusterId} ns={Namespace} name={Name}",
+            _logger.LogWarning(ex, "ReplaceService failed clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
             throw K8sExceptionMapper.Translate(ex, "保存服务");
         }
-        await auditService.LogAsync(AuditCategory.Service, AuditAction.Update, $"服务: {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
+        await _auditService.LogAsync(AuditCategory.Service, AuditAction.Update, $"服务: {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
     }
 
     /// <summary>以 YAML 创建服务,命名空间取自 YAML 的 metadata.namespace;YAML 非法或未指定命名空间抛 <see cref="ValidationException"/>,成功后写创建审计。</summary>
     public async Task CreateSvcFromYamlAsync(SvcCreateRequest request)
     {
-        var entity = await repo.GetByIdAsync(request.ClusterId)
+        var entity = await _repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
         var client = clientCache.GetOrCreate(entity);
         V1Service body;
@@ -211,7 +211,7 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Deserialize YAML failed for create clusterId={ClusterId}", request.ClusterId);
+            _logger.LogWarning(ex, "Deserialize YAML failed for create clusterId={ClusterId}", request.ClusterId);
             throw new ValidationException($"YAML 格式错误:{ex.Message}");
         }
         var ns = body.Metadata?.NamespaceProperty;
@@ -223,10 +223,10 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "CreateService failed clusterId={ClusterId} ns={Namespace}", request.ClusterId, ns);
+            _logger.LogWarning(ex, "CreateService failed clusterId={ClusterId} ns={Namespace}", request.ClusterId, ns);
             throw K8sExceptionMapper.Translate(ex, "创建服务");
         }
-        await auditService.LogAsync(AuditCategory.Service, AuditAction.Create, $"服务: {ns}/{body.Metadata?.Name ?? "未知"} @ 集群 {entity.Name}");
+        await _auditService.LogAsync(AuditCategory.Service, AuditAction.Create, $"服务: {ns}/{body.Metadata?.Name ?? "未知"} @ 集群 {entity.Name}");
     }
 
     private static void GuardImmutableFields(V1ServiceSpec? incoming, V1ServiceSpec? existing)

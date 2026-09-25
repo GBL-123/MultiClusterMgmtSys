@@ -1,0 +1,41 @@
+@using MultiClusterMgmtSys.Application.Enums
+@using MultiClusterMgmtSys.Application.ViewModels
+
+<MudStack Spacing="2">
+    @if (Freshness.State == DashboardFreshnessState.NeverSynced)
+    {
+        <MudText Typo="Typo.caption" Class="dashboard-freshness font-mono">// 尚未同步</MudText>
+    }
+    else if (Freshness.State == DashboardFreshnessState.SyncDisabled)
+    {
+        <MudText Typo="Typo.caption" Class="dashboard-freshness font-mono">
+            // 自动同步已停用 · 数据截至 @LastSyncedText
+        </MudText>
+    }
+    else
+    {
+        <MudText Typo="Typo.caption" Class="@FreshnessCssClass">
+            数据截至 @LastSyncedText · 每 @Freshness.SyncIntervalMinutes 分钟自动同步
+        </MudText>
+    }
+
+    @if (Freshness.State == DashboardFreshnessState.Stale)
+    {
+        <MudText Class="dashboard-stale-banner">
+            // 已 @Freshness.LastSyncedRelativeText 未同步 · 后台同步可能已停止,以下数字可能已过期
+        </MudText>
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public DashboardFreshnessViewModel Freshness { get; set; } = new();
+
+    private string LastSyncedText => Freshness.LastSyncedAt is { } value
+        ? $"{value.ToLocalTime():yyyy-MM-dd HH:mm}({Freshness.LastSyncedRelativeText})"
+        : "—";
+
+    private string FreshnessCssClass => Freshness.State == DashboardFreshnessState.Stale
+        ? "dashboard-freshness is-stale font-mono"
+        : "dashboard-freshness font-mono";
+}

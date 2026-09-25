@@ -20,7 +20,7 @@
 <PageTitle>事件管理</PageTitle>
 
 <MudStack Row="true" Spacing="3" Class="d-flex flex-auto">
-    <ClusterSelectSidebar Clusters="@clusters"
+    <ClusterSelectSidebar Clusters="@_clusters"
                           SelectedClusterId="@EffectiveClusterId"
                           OnClusterSelected="SelectCluster" />
 
@@ -32,11 +32,11 @@
                 <MudText Typo="Typo.h6" Class="mud-text-secondary">请从左侧选择一个集群</MudText>
             </div>
         }
-        else if (loading)
+        else if (_loading)
         {
             <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
         }
-        else if (cluster is null)
+        else if (_cluster is null)
         {
             <MudCard Class="pa-8" Elevation="2">
                 <MudCardContent>
@@ -60,31 +60,31 @@
                         <MudText Typo="Typo.h5">事件管理</MudText>
                         <MudChip T="string"
                                  Size="Size.Small"
-                                 Color="GetClusterStatusColor(cluster.Status)"
+                                 Color="GetClusterStatusColor(_cluster.Status)"
                                  Variant="Variant.Filled"
                                  Class="ml-2">
-                            @cluster.Name · @cluster.StatusText
+                            @_cluster.Name · @_cluster.StatusText
                         </MudChip>
                     </MudStack>
 
-                    @if (cluster.IsReachable)
+                    @if (_cluster.IsReachable)
                     {
-                        <EventListFilterBar Namespaces="@namespaces"
-                                            @bind-SelectedNamespace="selectedNamespace"
-                                            @bind-SelectedType="selectedType"
+                        <EventListFilterBar Namespaces="@_namespaces"
+                                            @bind-SelectedNamespace="_selectedNamespace"
+                                            @bind-SelectedType="_selectedType"
                                             KindOptions="@kindOptions"
                                             TotalCount="@kindTotalCount"
-                                            @bind-SelectedKind="selectedKind"
-                                            @bind-Keyword="keyword"
-                                            LastLoadedAt="@lastLoadedAt"
-                                            Refreshing="@loading"
+                                            @bind-SelectedKind="_selectedKind"
+                                            @bind-Keyword="_keyword"
+                                            LastLoadedAt="@_lastLoadedAt"
+                                            Refreshing="@_loading"
                                             OnReset="OnResetClick"
                                             OnRefresh="RefreshAsync" />
                     }
                 </MudStack>
             </MudPaper>
 
-            @if (!cluster.IsReachable)
+            @if (!_cluster.IsReachable)
             {
                 <MudCard Elevation="1">
                     <MudCardContent>
@@ -95,7 +95,7 @@
             else
             {
                 <EventListTable Items="@filteredEvents"
-                                Loading="@loading"
+                                Loading="@_loading"
                                 OnOpenDetail="OpenDetail"
                                 OnNavigateDetail="NavigateToDetail" />
             }
@@ -107,42 +107,42 @@
     [Parameter]
     public int? ClusterId { get; set; }
 
-    private List<ClusterViewModel> clusters = new();
+    private List<ClusterViewModel> _clusters = new();
 
-    private ClusterDetailViewModel? cluster;
+    private ClusterDetailViewModel? _cluster;
 
-    private List<EventListViewModel> events = new();
+    private List<EventListViewModel> _events = new();
 
-    private List<string> namespaces = new();
+    private List<string> _namespaces = new();
 
-    private bool loading;
+    private bool _loading;
 
-    private string? selectedNamespace;
+    private string? _selectedNamespace;
 
-    private string? selectedType;
+    private string? _selectedType;
 
-    private string selectedKind = "";
+    private string _selectedKind = "";
 
-    private string keyword = "";
+    private string _keyword = "";
 
-    private DateTime? lastLoadedAt;
+    private DateTime? _lastLoadedAt;
 
-    private int? previousClusterId;
+    private int? _previousClusterId;
 
-    private bool hasInitialized;
+    private bool _hasInitialized;
 
     private int? EffectiveClusterId => ClusterId ?? ClusterSelection.SelectedClusterId;
 
     private List<EventListViewModel> filteredEvents
-        => events.Apply(selectedNamespace, selectedType, selectedKind, keyword)
+        => _events.Apply(_selectedNamespace, _selectedType, _selectedKind, _keyword)
             .OrderByDescending(e => e.OccurredAt)
             .ToList();
 
     private List<EventKindOption> kindOptions
-        => events.KindOptions(selectedNamespace, selectedType, keyword);
+        => _events.KindOptions(_selectedNamespace, _selectedType, _keyword);
 
     private int kindTotalCount
-        => events.Apply(selectedNamespace, selectedType, null, keyword).Count();
+        => _events.Apply(_selectedNamespace, _selectedType, null, _keyword).Count();
 
     protected override async Task OnInitializedAsync()
     {
@@ -159,12 +159,12 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (ClusterId == previousClusterId && hasInitialized)
+        if (ClusterId == _previousClusterId && _hasInitialized)
         {
             return;
         }
-        hasInitialized = true;
-        previousClusterId = ClusterId;
+        _hasInitialized = true;
+        _previousClusterId = ClusterId;
 
         if (EffectiveClusterId.HasValue)
         {
@@ -172,10 +172,10 @@
         }
         else
         {
-            cluster = null;
-            events = new();
-            namespaces = new();
-            loading = false;
+            _cluster = null;
+            _events = new();
+            _namespaces = new();
+            _loading = false;
         }
     }
 
@@ -185,7 +185,7 @@
         {
             var request = new ClusterQueryRequest { Page = 1, PageSize = 1000, SortBy = ClusterSortField.Name, SortDescending = false };
             var result = await ClusterService.GetPagedAsync(request);
-            clusters = result.Items;
+            _clusters = result.Items;
         }
         catch (Exception ex)
         {
@@ -195,19 +195,19 @@
 
     private async Task LoadAsync(int id)
     {
-        loading = true;
+        _loading = true;
         try
         {
-            cluster = await ClusterService.GetClusterDetailAsync(id);
-            if (cluster is not null)
+            _cluster = await ClusterService.GetClusterDetailAsync(id);
+            if (_cluster is not null)
             {
                 ClusterSelection.Set(id);
             }
-            if (cluster is not null && cluster.IsReachable)
+            if (_cluster is not null && _cluster.IsReachable)
             {
                 try
                 {
-                    namespaces = await EventService.GetNamespacesAsync(id);
+                    _namespaces = await EventService.GetNamespacesAsync(id);
                 }
                 catch (Exception ex)
                 {
@@ -216,8 +216,8 @@
 
                 try
                 {
-                    events = await EventService.ListEventsAsync(new EventQueryRequest(id));
-                    lastLoadedAt = DateTime.Now;
+                    _events = await EventService.ListEventsAsync(new EventQueryRequest(id));
+                    _lastLoadedAt = DateTime.Now;
                 }
                 catch (Exception ex)
                 {
@@ -226,8 +226,8 @@
             }
             else
             {
-                events = new();
-                namespaces = new();
+                _events = new();
+                _namespaces = new();
             }
         }
         catch (Exception ex)
@@ -236,7 +236,7 @@
         }
         finally
         {
-            loading = false;
+            _loading = false;
         }
     }
 
@@ -253,10 +253,10 @@
 
     private void OnResetClick()
     {
-        selectedNamespace = null;
-        selectedType = null;
-        selectedKind = "";
-        keyword = "";
+        _selectedNamespace = null;
+        _selectedType = null;
+        _selectedKind = "";
+        _keyword = "";
     }
 
     private async Task OpenDetail(EventListViewModel item)

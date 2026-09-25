@@ -7,28 +7,28 @@ namespace MultiClusterMgmtSys.Tests.Infrastructure.Persistence;
 
 public class GroupRepositoryTests : IDisposable
 {
-    private readonly ApplicationDbContext db = SqliteDbFactory.CreateContext();
-    private readonly GroupRepository repo;
+    private readonly ApplicationDbContext _db = SqliteDbFactory.CreateContext();
+    private readonly GroupRepository _repo;
 
     public GroupRepositoryTests()
     {
-        repo = new GroupRepository(db);
+        _repo = new GroupRepository(_db);
     }
 
-    public void Dispose() => db.Dispose();
+    public void Dispose() => _db.Dispose();
 
     [Fact]
     public async Task GetAllAsync_returns_groups_with_cluster_counts()
     {
-        var g1 = db.ClusterGroups.Add(TestData.NewGroup("g1")).Entity;
-        var g2 = db.ClusterGroups.Add(TestData.NewGroup("g2")).Entity;
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-        db.Clusters.Add(TestData.NewCluster("c1", groupId: g1.Id));
-        db.Clusters.Add(TestData.NewCluster("c2", groupId: g1.Id));
-        db.Clusters.Add(TestData.NewCluster("c3", groupId: g2.Id));
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var g1 = _db.ClusterGroups.Add(TestData.NewGroup("g1")).Entity;
+        var g2 = _db.ClusterGroups.Add(TestData.NewGroup("g2")).Entity;
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        _db.Clusters.Add(TestData.NewCluster("c1", groupId: g1.Id));
+        _db.Clusters.Add(TestData.NewCluster("c2", groupId: g1.Id));
+        _db.Clusters.Add(TestData.NewCluster("c3", groupId: g2.Id));
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var groups = await repo.GetAllAsync();
+        var groups = await _repo.GetAllAsync();
 
         Assert.True(groups.Count == 2);
         Assert.Equal(2, groups[0].Clusters.Count);
@@ -38,39 +38,39 @@ public class GroupRepositoryTests : IDisposable
     [Fact]
     public async Task GetByIdAsync_returns_null_for_missing()
     {
-        Assert.Null(await repo.GetByIdAsync(999));
+        Assert.Null(await _repo.GetByIdAsync(999));
     }
 
     [Fact]
     public async Task AddAsync_returns_entity_with_id()
     {
-        var added = await repo.AddAsync(TestData.NewGroup("prod"));
+        var added = await _repo.AddAsync(TestData.NewGroup("prod"));
 
         Assert.True(added.Id > 0);
-        Assert.Equal("prod", (await repo.GetByIdAsync(added.Id))!.Name);
+        Assert.Equal("prod", (await _repo.GetByIdAsync(added.Id))!.Name);
     }
 
     [Fact]
     public async Task RenameAsync_updates_name()
     {
-        var added = await repo.AddAsync(TestData.NewGroup("old-name"));
+        var added = await _repo.AddAsync(TestData.NewGroup("old-name"));
 
-        await repo.RenameAsync(added.Id, "new-name");
+        await _repo.RenameAsync(added.Id, "new-name");
 
-        Assert.Equal("new-name", (await repo.GetByIdAsync(added.Id))!.Name);
+        Assert.Equal("new-name", (await _repo.GetByIdAsync(added.Id))!.Name);
     }
 
     [Fact]
     public async Task DeleteAsync_ungroups_clusters_setnull()
     {
-        var added = await repo.AddAsync(TestData.NewGroup("doomed"));
-        db.Clusters.Add(TestData.NewCluster("orphan", groupId: added.Id));
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var added = await _repo.AddAsync(TestData.NewGroup("doomed"));
+        _db.Clusters.Add(TestData.NewCluster("orphan", groupId: added.Id));
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        await repo.DeleteAsync(added.Id);
+        await _repo.DeleteAsync(added.Id);
 
-        Assert.Null(await repo.GetByIdAsync(added.Id));
-        var cluster = await db.Clusters.AsNoTracking().SingleAsync(c => c.Name == "orphan", TestContext.Current.CancellationToken);
+        Assert.Null(await _repo.GetByIdAsync(added.Id));
+        var cluster = await _db.Clusters.AsNoTracking().SingleAsync(c => c.Name == "orphan", TestContext.Current.CancellationToken);
         Assert.Null(cluster.GroupId);
     }
 }

@@ -16,7 +16,7 @@
 <PageTitle>@(Kind.ToDisplayText())管理</PageTitle>
 
 <MudStack Row="true" Spacing="3" Class="d-flex flex-auto">
-    <ClusterSelectSidebar Clusters="@clusters"
+    <ClusterSelectSidebar Clusters="@_clusters"
                           SelectedClusterId="@EffectiveClusterId"
                           OnClusterSelected="SelectCluster" />
 
@@ -31,11 +31,11 @@
                 <MudText Typo="Typo.h6" Class="mud-text-secondary">请从左侧选择一个集群</MudText>
             </MudStack>
         }
-        else if (loading)
+        else if (_loading)
         {
             <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
         }
-        else if (cluster is null)
+        else if (_cluster is null)
         {
             <MudCard Class="pa-8" Elevation="2">
                 <MudCardContent>
@@ -59,17 +59,17 @@
                         <MudText Typo="Typo.h5">@(Kind.ToDisplayText())管理</MudText>
                         <MudChip T="string"
                                  Size="Size.Small"
-                                 Color="GetClusterStatusColor(cluster.Status)"
+                                 Color="GetClusterStatusColor(_cluster.Status)"
                                  Variant="Variant.Filled"
                                  Class="ml-2">
-                            @cluster.Name · @cluster.StatusText
+                            @_cluster.Name · @_cluster.StatusText
                         </MudChip>
                         <MudSpacer />
                         <MudButton Variant="Variant.Text"
                                    Color="Color.Inherit"
                                    StartIcon="@Icons.Material.Filled.Refresh"
                                    OnClick="@(() => LoadAsync(EffectiveClusterId!.Value))"
-                                   Disabled="@loading">
+                                   Disabled="@_loading">
                             刷新
                         </MudButton>
                         <AuthorizeView Roles="Admin">
@@ -78,25 +78,25 @@
                                            Color="Color.Primary"
                                            StartIcon="@Icons.Material.Filled.Add"
                                            OnClick="OpenCreateDialog"
-                                           Disabled="@(!cluster.IsReachable)">
+                                           Disabled="@(!_cluster.IsReachable)">
                                     新建@(Kind.ToDisplayText())
                                 </MudButton>
                             </Authorized>
                         </AuthorizeView>
                     </MudStack>
 
-                    @if (cluster.IsReachable)
+                    @if (_cluster.IsReachable)
                     {
-                        <WorkloadListFilterBar @bind-SelectedNamespace="selectedNamespace"
-                                               @bind-SearchName="searchName"
-                                               Namespaces="@namespaces"
+                        <WorkloadListFilterBar @bind-SelectedNamespace="_selectedNamespace"
+                                               @bind-SearchName="_searchName"
+                                               Namespaces="@_namespaces"
                                                OnQuery="OnQueryClick"
                                                OnReset="OnResetClick" />
                     }
                 </MudStack>
             </MudPaper>
 
-            @if (!cluster.IsReachable)
+            @if (!_cluster.IsReachable)
             {
                 <MudCard Elevation="1">
                     <MudCardContent>
@@ -108,7 +108,7 @@
             {
                 <WorkloadListTable Kind="@Kind"
                                    Items="@filteredWorkloads"
-                                   Loading="@loading"
+                                   Loading="@_loading"
                                    OnNavigateDetail="NavigateToDetail"
                                    OnScale="OpenScaleDialog"
                                    OnRestart="RestartWorkload"
@@ -125,25 +125,25 @@
     [Parameter]
     public int? ClusterId { get; set; }
 
-    private List<ClusterViewModel> clusters = new();
+    private List<ClusterViewModel> _clusters = new();
 
-    private ClusterDetailViewModel? cluster;
+    private ClusterDetailViewModel? _cluster;
 
-    private List<WorkloadListViewModel> workloads = new();
+    private List<WorkloadListViewModel> _workloads = new();
 
-    private List<string> namespaces = new();
+    private List<string> _namespaces = new();
 
-    private bool loading;
+    private bool _loading;
 
-    private string searchName = "";
+    private string _searchName = "";
 
-    private string appliedSearchName = "";
+    private string _appliedSearchName = "";
 
-    private string? selectedNamespace;
+    private string? _selectedNamespace;
 
-    private int? previousClusterId;
+    private int? _previousClusterId;
 
-    private bool hasInitialized;
+    private bool _hasInitialized;
 
     private int? EffectiveClusterId => ClusterId ?? ClusterSelection.SelectedClusterId;
 
@@ -151,10 +151,10 @@
     {
         get
         {
-            var q = workloads.AsEnumerable();
-            if (!string.IsNullOrWhiteSpace(appliedSearchName))
+            var q = _workloads.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(_appliedSearchName))
             {
-                q = q.Where(w => w.Name.Contains(appliedSearchName, StringComparison.OrdinalIgnoreCase));
+                q = q.Where(w => w.Name.Contains(_appliedSearchName, StringComparison.OrdinalIgnoreCase));
             }
 
             return q.ToList();
@@ -176,13 +176,13 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (ClusterId == previousClusterId && hasInitialized)
+        if (ClusterId == _previousClusterId && _hasInitialized)
         {
             return;
         }
 
-        hasInitialized = true;
-        previousClusterId = ClusterId;
+        _hasInitialized = true;
+        _previousClusterId = ClusterId;
 
         if (EffectiveClusterId.HasValue)
         {
@@ -190,10 +190,10 @@
         }
         else
         {
-            cluster = null;
-            workloads = new();
-            namespaces = new();
-            loading = false;
+            _cluster = null;
+            _workloads = new();
+            _namespaces = new();
+            _loading = false;
         }
     }
 
@@ -203,7 +203,7 @@
         {
             var request = new ClusterQueryRequest { Page = 1, PageSize = 1000, SortBy = ClusterSortField.Name, SortDescending = false };
             var result = await ClusterService.GetPagedAsync(request);
-            clusters = result.Items;
+            _clusters = result.Items;
         }
         catch (Exception ex)
         {
@@ -213,20 +213,20 @@
 
     private async Task LoadAsync(int id)
     {
-        loading = true;
+        _loading = true;
         try
         {
-            cluster = await ClusterService.GetClusterDetailAsync(id);
-            if (cluster is not null)
+            _cluster = await ClusterService.GetClusterDetailAsync(id);
+            if (_cluster is not null)
             {
                 ClusterSelection.Set(id);
             }
 
-            if (cluster is not null && cluster.IsReachable)
+            if (_cluster is not null && _cluster.IsReachable)
             {
                 try
                 {
-                    namespaces = await WorkloadService.GetNamespacesAsync(id);
+                    _namespaces = await WorkloadService.GetNamespacesAsync(id);
                 }
                 catch (Exception ex)
                 {
@@ -235,7 +235,7 @@
 
                 try
                 {
-                    workloads = await ListWorkloadsAsync(id);
+                    _workloads = await ListWorkloadsAsync(id);
                 }
                 catch (Exception ex)
                 {
@@ -244,8 +244,8 @@
             }
             else
             {
-                workloads = new();
-                namespaces = new();
+                _workloads = new();
+                _namespaces = new();
             }
         }
         catch (Exception ex)
@@ -254,13 +254,13 @@
         }
         finally
         {
-            loading = false;
+            _loading = false;
         }
     }
 
     private async Task<List<WorkloadListViewModel>> ListWorkloadsAsync(int clusterId)
     {
-        var request = new WorkloadQueryRequest(clusterId, selectedNamespace);
+        var request = new WorkloadQueryRequest(clusterId, _selectedNamespace);
         return Kind switch
         {
             WorkloadKind.Deployment => await WorkloadService.ListDeploymentsAsync(request),
@@ -282,11 +282,11 @@
             return;
         }
 
-        appliedSearchName = searchName;
-        loading = true;
+        _appliedSearchName = _searchName;
+        _loading = true;
         try
         {
-            workloads = await ListWorkloadsAsync(EffectiveClusterId.Value);
+            _workloads = await ListWorkloadsAsync(EffectiveClusterId.Value);
         }
         catch (Exception ex)
         {
@@ -294,15 +294,15 @@
         }
         finally
         {
-            loading = false;
+            _loading = false;
         }
     }
 
     private async Task OnResetClick()
     {
-        selectedNamespace = null;
-        searchName = "";
-        appliedSearchName = "";
+        _selectedNamespace = null;
+        _searchName = "";
+        _appliedSearchName = "";
         if (EffectiveClusterId.HasValue)
         {
             await LoadAsync(EffectiveClusterId.Value);
@@ -332,7 +332,7 @@
 
     private async Task OpenScaleDialog((string Namespace, string Name) args)
     {
-        var current = workloads.FirstOrDefault(w => w.Namespace == args.Namespace && w.Name == args.Name);
+        var current = _workloads.FirstOrDefault(w => w.Namespace == args.Namespace && w.Name == args.Name);
         var parameters = new DialogParameters
         {
             { "Name", args.Name },

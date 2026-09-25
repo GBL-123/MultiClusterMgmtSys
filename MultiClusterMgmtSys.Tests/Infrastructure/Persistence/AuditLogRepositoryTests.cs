@@ -8,15 +8,15 @@ namespace MultiClusterMgmtSys.Tests.Infrastructure.Persistence;
 
 public class AuditLogRepositoryTests : IDisposable
 {
-    private readonly ApplicationDbContext db = SqliteDbFactory.CreateContext();
-    private readonly AuditLogRepository repo;
+    private readonly ApplicationDbContext _db = SqliteDbFactory.CreateContext();
+    private readonly AuditLogRepository _repo;
 
     public AuditLogRepositoryTests()
     {
-        repo = new AuditLogRepository(db);
+        _repo = new AuditLogRepository(_db);
     }
 
-    public void Dispose() => db.Dispose();
+    public void Dispose() => _db.Dispose();
 
     private async Task SeedLogsAsync()
     {
@@ -30,9 +30,9 @@ public class AuditLogRepositoryTests : IDisposable
                 createdAt: new DateTime(2026, 5, 2, 0, 0, 0, DateTimeKind.Utc))
         };
 
-        await repo.AddAsync(logs[0]);
-        await repo.AddAsync(logs[1]);
-        await repo.AddAsync(logs[2]);
+        await _repo.AddAsync(logs[0]);
+        await _repo.AddAsync(logs[1]);
+        await _repo.AddAsync(logs[2]);
     }
 
     [Fact]
@@ -40,7 +40,7 @@ public class AuditLogRepositoryTests : IDisposable
     {
         await SeedLogsAsync();
 
-        var recent = await repo.GetRecentForUserAsync("admin", 1);
+        var recent = await _repo.GetRecentForUserAsync("admin", 1);
 
         Assert.Single(recent);
         Assert.Equal(AuditAction.Delete, recent[0].Action);
@@ -51,7 +51,7 @@ public class AuditLogRepositoryTests : IDisposable
     {
         await SeedLogsAsync();
 
-        var (items, total) = await repo.GetPagedAsync(
+        var (items, total) = await _repo.GetPagedAsync(
             new AuditLogQueryRequest { Page = 1, PageSize = 10 }, "admin", isAdmin: true);
 
         Assert.Equal(3, total);
@@ -63,7 +63,7 @@ public class AuditLogRepositoryTests : IDisposable
     {
         await SeedLogsAsync();
 
-        var (items, total) = await repo.GetPagedAsync(
+        var (items, total) = await _repo.GetPagedAsync(
             new AuditLogQueryRequest { Page = 1, PageSize = 10, SearchName = "mem" }, "admin", isAdmin: true);
 
         Assert.Equal(1, total);
@@ -75,7 +75,7 @@ public class AuditLogRepositoryTests : IDisposable
     {
         await SeedLogsAsync();
 
-        var (items, total) = await repo.GetPagedAsync(
+        var (items, total) = await _repo.GetPagedAsync(
             new AuditLogQueryRequest { Page = 1, PageSize = 10 }, "member", isAdmin: false);
 
         Assert.Equal(1, total);
@@ -87,7 +87,7 @@ public class AuditLogRepositoryTests : IDisposable
     {
         await SeedLogsAsync();
 
-        var (items, total) = await repo.GetPagedAsync(
+        var (items, total) = await _repo.GetPagedAsync(
             new AuditLogQueryRequest { Page = 1, PageSize = 10, Category = AuditCategory.Cluster }, "admin", isAdmin: true);
 
         Assert.Equal(2, total);
@@ -99,7 +99,7 @@ public class AuditLogRepositoryTests : IDisposable
     {
         await SeedLogsAsync();
 
-        var (items, _) = await repo.GetPagedAsync(
+        var (items, _) = await _repo.GetPagedAsync(
             new AuditLogQueryRequest { Page = 1, PageSize = 10, SortDescending = false }, "admin", isAdmin: true);
 
         Assert.Equal(AuditAction.Create, items[0].Action);
@@ -112,7 +112,7 @@ public class AuditLogRepositoryTests : IDisposable
     {
         await SeedLogsAsync();
 
-        var (items, total) = await repo.GetPagedAsync(
+        var (items, total) = await _repo.GetPagedAsync(
             new AuditLogQueryRequest { Page = 0, PageSize = 2 }, "admin", isAdmin: true);
 
         Assert.Equal(3, total);

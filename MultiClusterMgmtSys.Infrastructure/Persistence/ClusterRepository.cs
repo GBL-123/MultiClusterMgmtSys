@@ -12,14 +12,14 @@ namespace MultiClusterMgmtSys.Infrastructure.Persistence;
 /// </summary>
 public class ClusterRepository(ApplicationDbContext db) : IClusterRepository
 {
-    private readonly ApplicationDbContext db = db;
+    private readonly ApplicationDbContext _db = db;
 
     /// <summary>按 Id 加载集群,附带分组、端点与节点 IP 备注集合(跟踪查询,可修改后保存);不存在时返回 null。</summary>
     /// <param name="id">集群 Id。</param>
     /// <returns>集群实体;不存在为 null。</returns>
     public async Task<ClusterInfo?> GetByIdAsync(int id)
     {
-        return await db.Clusters
+        return await _db.Clusters
             .Include(c => c.Group)
             .Include(c => c.Endpoints)
             .Include(c => c.NodeIpRemarks)
@@ -31,8 +31,8 @@ public class ClusterRepository(ApplicationDbContext db) : IClusterRepository
     /// <returns>保存后的集群实体(含生成的 Id)。</returns>
     public async Task<ClusterInfo> AddAsync(ClusterInfo entity)
     {
-        db.Clusters.Add(entity);
-        await db.SaveChangesAsync();
+        _db.Clusters.Add(entity);
+        await _db.SaveChangesAsync();
         return entity;
     }
 
@@ -40,19 +40,19 @@ public class ClusterRepository(ApplicationDbContext db) : IClusterRepository
     /// <param name="entity">待更新的集群实体。</param>
     public async Task UpdateAsync(ClusterInfo entity)
     {
-        db.Clusters.Update(entity);
-        await db.SaveChangesAsync();
+        _db.Clusters.Update(entity);
+        await _db.SaveChangesAsync();
     }
 
     /// <summary>删除指定集群并保存;不存在时静默跳过,其端点与节点 IP 备注级联删除。</summary>
     /// <param name="id">集群 Id。</param>
     public async Task DeleteAsync(int id)
     {
-        var entity = await db.Clusters.FindAsync(id);
+        var entity = await _db.Clusters.FindAsync(id);
         if (entity is not null)
         {
-            db.Clusters.Remove(entity);
-            await db.SaveChangesAsync();
+            _db.Clusters.Remove(entity);
+            await _db.SaveChangesAsync();
         }
     }
 
@@ -67,7 +67,7 @@ public class ClusterRepository(ApplicationDbContext db) : IClusterRepository
     /// <returns>当页集群列表,以及过滤后(分页前)的命中总数。</returns>
     public async Task<(List<ClusterInfo> Items, int Total)> GetPagedAsync(ClusterPageQuery q)
     {
-        var query = db.Clusters.Include(c => c.Group).AsNoTracking();
+        var query = _db.Clusters.Include(c => c.Group).AsNoTracking();
 
         if (q.GroupId.HasValue)
         {
@@ -137,7 +137,7 @@ public class ClusterRepository(ApplicationDbContext db) : IClusterRepository
     /// <returns>去重升序后的版本列表。</returns>
     public async Task<List<string>> GetDistinctVersionsAsync()
     {
-        return await db.Clusters
+        return await _db.Clusters
             .Select(c => c.Version)
             .Where(v => v != null)
             .Distinct()
@@ -158,7 +158,7 @@ public class ClusterRepository(ApplicationDbContext db) : IClusterRepository
         var ids = clusterIds.ToList();
         if (ids.Count == 0) return 0;
 
-        return await db.Clusters
+        return await _db.Clusters
             .Where(c => ids.Contains(c.Id))
             .ExecuteUpdateAsync(s => s.SetProperty(c => c.GroupId, targetGroupId));
     }
@@ -166,15 +166,20 @@ public class ClusterRepository(ApplicationDbContext db) : IClusterRepository
     /// <summary>统计未分组(GroupId 为空)的集群数量;无副作用。</summary>
     /// <returns>未分组集群数。</returns>
     public async Task<int> CountUngroupedAsync()
-        => await db.Clusters.CountAsync(c => c.GroupId == null);
+        => await _db.Clusters.CountAsync(c => c.GroupId == null);
 
     /// <summary>查询全部集群 Id,用于全量同步等批量任务;无副作用。</summary>
     /// <returns>全部集群 Id 列表。</returns>
     public async Task<List<int>> GetAllIdsAsync()
-        => await db.Clusters.Select(c => c.Id).ToListAsync();
+        => await _db.Clusters.Select(c => c.Id).ToListAsync();
 
     /// <summary>加载全部集群(跟踪查询,不加载导航集合),供全量状态刷新的探测与落库使用;无副作用。</summary>
     /// <returns>全部集群实体(处于跟踪状态,可修改后经 <see cref="UpdateAsync"/> 保存)。</returns>
     public async Task<List<ClusterInfo>> GetAllForSyncAsync()
-        => await db.Clusters.ToListAsync();
+        => await _db.Clusters.ToListAsync();
+
+    /// <summary>加载全部集群(无跟踪查询,附带分组),供看板的跨集群聚合展示使用;无副作用。</summary>
+    /// <returns>全部集群实体(含分组信息,不加载端点与节点 IP 备注集合)。</returns>
+    public async Task<List<ClusterInfo>> GetAllForDashboardAsync()
+        => await _db.Clusters.Include(c => c.Group).AsNoTracking().ToListAsync();
 }

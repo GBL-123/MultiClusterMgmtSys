@@ -17,7 +17,7 @@
 <MudDialog>
     <DialogContent>
         <MudTextField T="string"
-                      @bind-Value="yamlContent"
+                      @bind-Value="_yamlContent"
                       Label="YAML"
                       Lines="25"
                       Variant="Variant.Outlined"
@@ -25,10 +25,10 @@
                       Style="font-family: monospace;" />
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel" Variant="Variant.Text" Disabled="saving">取消</MudButton>
-        <MudButton OnClick="Submit" Color="Color.Primary" Variant="Variant.Filled" Disabled="saving"
-                   StartIcon="@(saving ? null : Icons.Material.Filled.Save)">
-            @if (saving)
+        <MudButton OnClick="Cancel" Variant="Variant.Text" Disabled="_saving">取消</MudButton>
+        <MudButton OnClick="Submit" Color="Color.Primary" Variant="Variant.Filled" Disabled="_saving"
+                   StartIcon="@(_saving ? null : Icons.Material.Filled.Save)">
+            @if (_saving)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
             }
@@ -47,23 +47,23 @@
     [Parameter]
     public WorkloadKind Kind { get; set; }
 
-    private string yamlContent = "";
+    private string _yamlContent = "";
 
-    private bool saving;
+    private bool _saving;
 
     protected override async Task OnInitializedAsync()
     {
-        yamlContent = await YamlTemplateService.GetTemplateAsync("workload", Kind.ToString().ToLowerInvariant());
+        _yamlContent = await YamlTemplateService.GetTemplateAsync("workload", Kind.ToString().ToLowerInvariant());
     }
 
     private void Cancel() => Dialog.Cancel();
 
     private async Task Submit()
     {
-        saving = true;
+        _saving = true;
         try
         {
-            var request = new WorkloadCreateRequest(ClusterId, yamlContent);
+            var request = new WorkloadCreateRequest(ClusterId, _yamlContent);
             switch (Kind)
             {
                 case WorkloadKind.Deployment:
@@ -93,7 +93,7 @@
         }
         finally
         {
-            saving = false;
+            _saving = false;
         }
     }
 }

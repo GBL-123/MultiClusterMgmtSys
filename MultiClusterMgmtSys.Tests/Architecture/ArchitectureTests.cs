@@ -18,18 +18,18 @@ public class ArchitectureTests
 {
     private const string ComponentsNamespace = "MultiClusterMgmtSys.Web.Components";
 
-    private static readonly Assembly DomainAssembly = typeof(BusinessException).Assembly;
+    private static readonly Assembly _DomainAssembly = typeof(BusinessException).Assembly;
 
-    private static readonly Assembly ApplicationAssembly = typeof(ApplicationServiceCollectionExtensions).Assembly;
+    private static readonly Assembly _ApplicationAssembly = typeof(ApplicationServiceCollectionExtensions).Assembly;
 
-    private static readonly Assembly InfrastructureAssembly = typeof(InfrastructureServiceCollectionExtensions).Assembly;
+    private static readonly Assembly _InfrastructureAssembly = typeof(InfrastructureServiceCollectionExtensions).Assembly;
 
-    private static readonly Assembly WebAssembly = typeof(MultiClusterMgmtSys.Web.Components.App).Assembly;
+    private static readonly Assembly _WebAssembly = typeof(MultiClusterMgmtSys.Web.Components.App).Assembly;
 
     [Fact]
     public void Web_components_do_not_depend_on_infrastructure_ef_entities_or_k8s()
     {
-        var result = Types.InAssembly(WebAssembly)
+        var result = Types.InAssembly(_WebAssembly)
             .That().ResideInNamespaceStartingWith(ComponentsNamespace)
             .ShouldNot().HaveDependencyOnAny(
                 "MultiClusterMgmtSys.Infrastructure",
@@ -54,7 +54,7 @@ public class ArchitectureTests
         };
 
         var violations = new List<string>();
-        foreach (var type in WebAssembly.GetTypes().Where(t => t.Namespace?.StartsWith(ComponentsNamespace, StringComparison.Ordinal) == true))
+        foreach (var type in _WebAssembly.GetTypes().Where(t => t.Namespace?.StartsWith(ComponentsNamespace, StringComparison.Ordinal) == true))
         {
             var usedTypes = type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
                 .Select(p => p.PropertyType)
@@ -76,7 +76,7 @@ public class ArchitectureTests
     [Fact]
     public void Application_does_not_depend_on_ef_infrastructure_or_web()
     {
-        var result = Types.InAssembly(ApplicationAssembly)
+        var result = Types.InAssembly(_ApplicationAssembly)
             .ShouldNot().HaveDependencyOnAny(
                 "Microsoft.EntityFrameworkCore",
                 "MultiClusterMgmtSys.Infrastructure",
@@ -89,13 +89,13 @@ public class ArchitectureTests
     [Fact]
     public void Requests_viewmodels_and_models_reside_in_their_application_folders()
     {
-        var requests = Types.InAssembly(ApplicationAssembly)
+        var requests = Types.InAssembly(_ApplicationAssembly)
             .That().HaveNameEndingWith("Request")
             .Should().ResideInNamespace("MultiClusterMgmtSys.Application.Requests")
             .GetResult();
         Assert.True(requests.IsSuccessful, Describe(requests));
 
-        var viewModels = Types.InAssembly(ApplicationAssembly)
+        var viewModels = Types.InAssembly(_ApplicationAssembly)
             .That().HaveNameEndingWith("ViewModel")
             .Should().ResideInNamespace("MultiClusterMgmtSys.Application.ViewModels")
             .GetResult();
@@ -110,13 +110,13 @@ public class ArchitectureTests
     [Fact]
     public void Domain_and_web_do_not_depend_on_k8s()
     {
-        var domain = Types.InAssembly(DomainAssembly)
+        var domain = Types.InAssembly(_DomainAssembly)
             .ShouldNot().HaveDependencyOn("k8s")
             .GetResult();
         Assert.True(domain.IsSuccessful, Describe(domain));
 
         // k8s 具体客户端类型仅由 Infrastructure 工厂创建;Web 整体不应再直接依赖 k8s。
-        var web = Types.InAssembly(WebAssembly)
+        var web = Types.InAssembly(_WebAssembly)
             .ShouldNot().HaveDependencyOn("k8s")
             .GetResult();
         Assert.True(web.IsSuccessful, Describe(web));
@@ -125,10 +125,10 @@ public class ArchitectureTests
     [Fact]
     public void Assembly_references_follow_the_layering()
     {
-        AssertNoReference(ApplicationAssembly, "MultiClusterMgmtSys.Infrastructure", "MultiClusterMgmtSys.Web");
-        AssertNoReference(InfrastructureAssembly, "MultiClusterMgmtSys.Web");
+        AssertNoReference(_ApplicationAssembly, "MultiClusterMgmtSys.Infrastructure", "MultiClusterMgmtSys.Web");
+        AssertNoReference(_InfrastructureAssembly, "MultiClusterMgmtSys.Web");
 
-        var domainRefs = DomainAssembly.GetReferencedAssemblies()
+        var domainRefs = _DomainAssembly.GetReferencedAssemblies()
             .Where(a => a.Name?.StartsWith("MultiClusterMgmtSys", StringComparison.Ordinal) == true)
             .Select(a => a.Name)
             .ToList();

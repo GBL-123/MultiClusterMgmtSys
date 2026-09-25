@@ -12,7 +12,7 @@
 <MudDialog>
     <DialogContent>
         <MudTextField T="string"
-                      @bind-Value="yamlContent"
+                      @bind-Value="_yamlContent"
                       Label="YAML"
                       Lines="25"
                       Variant="Variant.Outlined"
@@ -20,10 +20,10 @@
                       Style="font-family: monospace;" />
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel" Variant="Variant.Text" Disabled="saving">取消</MudButton>
-        <MudButton OnClick="Submit" Color="Color.Primary" Variant="Variant.Filled" Disabled="saving"
-                   StartIcon="@(saving ? null : Icons.Material.Filled.Save)">
-            @if (saving)
+        <MudButton OnClick="Cancel" Variant="Variant.Text" Disabled="_saving">取消</MudButton>
+        <MudButton OnClick="Submit" Color="Color.Primary" Variant="Variant.Filled" Disabled="_saving"
+                   StartIcon="@(_saving ? null : Icons.Material.Filled.Save)">
+            @if (_saving)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
             }
@@ -39,13 +39,13 @@
     [Parameter]
     public int ClusterId { get; set; }
 
-    private string yamlContent = "";
+    private string _yamlContent = "";
 
-    private bool saving;
+    private bool _saving;
 
     protected override async Task OnInitializedAsync()
     {
-        yamlContent = await YamlTemplateService.GetTemplateAsync("configmap", "default");
+        _yamlContent = await YamlTemplateService.GetTemplateAsync("configmap", "default");
     }
 
     private void Cancel() => Dialog.Cancel();
@@ -54,7 +54,7 @@
     {
         try
         {
-            YamlValidator.ValidateConfigMap(yamlContent);
+            YamlValidator.ValidateConfigMap(_yamlContent);
         }
         catch (Exception ex)
         {
@@ -62,10 +62,10 @@
             return;
         }
 
-        saving = true;
+        _saving = true;
         try
         {
-            await ConfigMapService.CreateConfigMapFromYamlAsync(new ConfigMapCreateRequest(ClusterId, yamlContent));
+            await ConfigMapService.CreateConfigMapFromYamlAsync(new ConfigMapCreateRequest(ClusterId, _yamlContent));
             Snackbar.Add("创建成功", Severity.Success);
             Dialog.Close(DialogResult.Ok(true));
         }
@@ -79,7 +79,7 @@
         }
         finally
         {
-            saving = false;
+            _saving = false;
         }
     }
 }

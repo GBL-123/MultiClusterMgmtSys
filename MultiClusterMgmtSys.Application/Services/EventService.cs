@@ -14,15 +14,15 @@ namespace MultiClusterMgmtSys.Application.Services;
 /// </summary>
 public class EventService(IClusterRepository repo, ILogger<EventService> logger, IClusterClientCache clientCache)
 {
-    private readonly IClusterRepository repo = repo;
+    private readonly IClusterRepository _repo = repo;
 
-    private readonly ILogger<EventService> logger = logger;
+    private readonly ILogger<EventService> _logger = logger;
 
     /// <summary>拉取集群命名空间列表(升序),供事件页命名空间筛选下拉使用;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
     /// <param name="clusterId">目标集群 Id(数据库主键)。</param>
     public async Task<List<string>> GetNamespacesAsync(int clusterId)
     {
-        var entity = await repo.GetByIdAsync(clusterId)
+        var entity = await _repo.GetByIdAsync(clusterId)
             ?? throw new NotFoundException($"集群 {clusterId} 不存在");
         var client = clientCache.GetOrCreate(entity);
         try
@@ -32,7 +32,7 @@ public class EventService(IClusterRepository repo, ILogger<EventService> logger,
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "ListNamespaces failed clusterId={ClusterId}", clusterId);
+            _logger.LogWarning(ex, "ListNamespaces failed clusterId={ClusterId}", clusterId);
             throw K8sExceptionMapper.Translate(ex, "加载命名空间");
         }
     }
@@ -41,7 +41,7 @@ public class EventService(IClusterRepository repo, ILogger<EventService> logger,
     /// <param name="request">列举入参(目标集群 Id)。</param>
     public async Task<List<EventListViewModel>> ListEventsAsync(EventQueryRequest request)
     {
-        var entity = await repo.GetByIdAsync(request.ClusterId)
+        var entity = await _repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
         var client = clientCache.GetOrCreate(entity);
         try
@@ -51,7 +51,7 @@ public class EventService(IClusterRepository repo, ILogger<EventService> logger,
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "ListEvents failed clusterId={ClusterId}", request.ClusterId);
+            _logger.LogWarning(ex, "ListEvents failed clusterId={ClusterId}", request.ClusterId);
             throw K8sExceptionMapper.Translate(ex, "加载事件列表");
         }
     }

@@ -1,0 +1,39 @@
+@using MultiClusterMgmtSys.Application.ViewModels
+
+<MudPaper Class="dashboard-card">
+    <div class="dashboard-card-head">
+        <span class="dashboard-card-title">// 版本分布</span>
+    </div>
+
+    <div class="dashboard-card-body">
+        @if (Items.Count == 0)
+        {
+            <div class="empty-state is-compact">
+                <span>[ 暂无版本数据 ]</span>
+            </div>
+        }
+        else
+        {
+            @foreach (var item in Items)
+            {
+                <div class="dashboard-breakdown-row">
+                    <MudText Typo="Typo.caption" Class="dashboard-breakdown-name font-mono">@item.Label</MudText>
+                    <div class="dashboard-meter">
+                        <div class="dashboard-meter-fill" style="@PercentStyle(item)"></div>
+                    </div>
+                    <MudText Typo="Typo.caption" Class="dashboard-breakdown-count font-mono">@item.Count 个</MudText>
+                </div>
+            }
+        }
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<DashboardVersionBucketViewModel> Items { get; set; } = [];
+
+    private int MaxCount => Items.Count == 0 ? 0 : Items.Max(i => i.Count);
+
+    private string PercentStyle(DashboardVersionBucketViewModel item)
+        => MaxCount == 0 ? "width:0%" : $"width:{item.Count * 100.0 / MaxCount:0.#}%";
+}

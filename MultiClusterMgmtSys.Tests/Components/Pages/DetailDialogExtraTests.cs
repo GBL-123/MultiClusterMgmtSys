@@ -265,6 +265,7 @@ public class DetailDialogExtraTests
                 .Build());
         services.AddScoped<IAppSettingRepository>(_ => new MultiClusterMgmtSys.Infrastructure.Persistence.AppSettingRepository(harness.Db));
         services.AddScoped<IClusterRepository>(_ => harness.ClusterRepo);
+        services.AddScoped<IClusterHealthRepository>(_ => harness.ClusterHealthRepo);
         services.AddScoped(_ => harness.Audit);
         services.AddScoped(_ => TestHttpContext.For("admin", "Admin").Object);
         services.AddScoped<ClusterNodeService>();

@@ -6,25 +6,25 @@ namespace MultiClusterMgmtSys.Tests.Infrastructure.Persistence;
 
 public class AppSettingRepositoryTests : IDisposable
 {
-    private readonly ApplicationDbContext db = SqliteDbFactory.CreateContext();
-    private readonly AppSettingRepository repo;
+    private readonly ApplicationDbContext _db = SqliteDbFactory.CreateContext();
+    private readonly AppSettingRepository _repo;
 
     public AppSettingRepositoryTests()
     {
-        repo = new AppSettingRepository(db);
+        _repo = new AppSettingRepository(_db);
     }
 
-    public void Dispose() => db.Dispose();
+    public void Dispose() => _db.Dispose();
 
     [Fact]
     public async Task GetByKeysAsync_returns_only_requested_keys()
     {
-        db.AppSettings.Add(TestData.NewSetting("sync.enabled", "true"));
-        db.AppSettings.Add(TestData.NewSetting("sync.interval", "5"));
-        db.AppSettings.Add(TestData.NewSetting("other.key", "x"));
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        _db.AppSettings.Add(TestData.NewSetting("sync.enabled", "true"));
+        _db.AppSettings.Add(TestData.NewSetting("sync.interval", "5"));
+        _db.AppSettings.Add(TestData.NewSetting("other.key", "x"));
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var values = await repo.GetByKeysAsync(["sync.enabled", "sync.interval"]);
+        var values = await _repo.GetByKeysAsync(["sync.enabled", "sync.interval"]);
 
         Assert.Equal(2, values.Count);
         Assert.Equal("true", values["sync.enabled"]);
@@ -35,7 +35,7 @@ public class AppSettingRepositoryTests : IDisposable
     [Fact]
     public async Task GetByKeysAsync_returns_empty_for_missing_keys()
     {
-        var values = await repo.GetByKeysAsync(["missing.key"]);
+        var values = await _repo.GetByKeysAsync(["missing.key"]);
 
         Assert.Empty(values);
     }
@@ -43,23 +43,23 @@ public class AppSettingRepositoryTests : IDisposable
     [Fact]
     public async Task SetAsync_inserts_new_key()
     {
-        await repo.SetAsync("sync.enabled", "true");
+        await _repo.SetAsync("sync.enabled", "true");
 
-        var values = await repo.GetByKeysAsync(["sync.enabled"]);
+        var values = await _repo.GetByKeysAsync(["sync.enabled"]);
         Assert.Equal("true", values["sync.enabled"]);
     }
 
     [Fact]
     public async Task SetAsync_updates_existing_key()
     {
-        await repo.SetAsync("sync.enabled", "true");
-        await repo.SetAsync("sync.enabled", "false");
+        await _repo.SetAsync("sync.enabled", "true");
+        await _repo.SetAsync("sync.enabled", "false");
 
-        var values = await repo.GetByKeysAsync(["sync.enabled"]);
+        var values = await _repo.GetByKeysAsync(["sync.enabled"]);
         Assert.Equal("false", values["sync.enabled"]);
 
-        var stored = db.AppSettings.Single(s => s.Key == "sync.enabled");
-        Assert.Single(db.AppSettings);
+        var stored = _db.AppSettings.Single(s => s.Key == "sync.enabled");
+        Assert.Single(_db.AppSettings);
         Assert.Equal("false", stored.Value);
     }
 }

@@ -11,14 +11,14 @@ namespace MultiClusterMgmtSys.Infrastructure.Persistence;
 /// </summary>
 public class AuditLogRepository(ApplicationDbContext db) : IAuditLogRepository
 {
-    private readonly ApplicationDbContext db = db;
+    private readonly ApplicationDbContext _db = db;
 
     /// <summary>写入一条审计记录并立即保存;调用方需自行处理异常(写失败不打扰用户)。</summary>
     /// <param name="entity">待写入的审计记录。</param>
     public async Task AddAsync(AuditLog entity)
     {
-        db.AuditLogs.Add(entity);
-        await db.SaveChangesAsync();
+        _db.AuditLogs.Add(entity);
+        await _db.SaveChangesAsync();
     }
 
     /// <summary>查询指定用户最近 count 条审计记录,按 CreatedAt 倒序(个人资料页「最近动态」用);无副作用。</summary>
@@ -27,7 +27,7 @@ public class AuditLogRepository(ApplicationDbContext db) : IAuditLogRepository
     /// <returns>按时间倒序的审计记录列表(至多 count 条)。</returns>
     public async Task<List<AuditLog>> GetRecentForUserAsync(string userName, int count)
     {
-        var items = await db.AuditLogs.AsNoTracking()
+        var items = await _db.AuditLogs.AsNoTracking()
             .Where(l => l.UserName == userName)
             .OrderByDescending(l => l.CreatedAt)
             .Take(count)
@@ -54,7 +54,7 @@ public class AuditLogRepository(ApplicationDbContext db) : IAuditLogRepository
         var pageSize = Math.Max(query.PageSize, 1);
         var sortDescending = query.SortDescending;
 
-        IQueryable<AuditLog> q = db.AuditLogs.AsNoTracking();
+        IQueryable<AuditLog> q = _db.AuditLogs.AsNoTracking();
 
         if (!isAdmin)
         {

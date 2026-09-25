@@ -15,11 +15,11 @@
 <PageTitle>Pod 详情: @Name</PageTitle>
 
 <MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
-    @if (loading)
+    @if (_loading)
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
     }
-    else if (notFound)
+    else if (_notFound)
     {
         <MudCard Class="pa-4">
             <MudCardContent>
@@ -35,7 +35,7 @@
             </MudCardContent>
         </MudCard>
     }
-    else if (unreachable)
+    else if (_unreachable)
     {
         <MudCard Class="pa-4">
             <MudCardContent>
@@ -51,14 +51,14 @@
             </MudCardContent>
         </MudCard>
     }
-    else if (detail is not null)
+    else if (_detail is not null)
     {
         <PodDetailToolbar ClusterId="@ClusterId"
-                          Name="@detail.Name"
-                          Detail="@detail"
-                          Processing="@loading"
+                          Name="@_detail.Name"
+                          Detail="@_detail"
+                          Processing="@_loading"
                           OnRefresh="LoadAsync" />
-        <MudTabs ActivePanelIndex="activeTabIndex"
+        <MudTabs ActivePanelIndex="_activeTabIndex"
                  ActivePanelIndexChanged="OnTabChanged"
                  Class="detail-tabs"
                  Elevation="0"
@@ -75,23 +75,23 @@
                         <MudGrid Spacing="3">
                             <MudItem xs="12" sm="6" md="4">
                                 <MudText Typo="Typo.body2" Class="mud-text-secondary">命名空间</MudText>
-                                <MudText Typo="Typo.body1" Class="font-mono">@detail.Namespace</MudText>
+                                <MudText Typo="Typo.body1" Class="font-mono">@_detail.Namespace</MudText>
                             </MudItem>
                             <MudItem xs="12" sm="6" md="4">
                                 <MudText Typo="Typo.body2" Class="mud-text-secondary">所在节点</MudText>
-                                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(detail.NodeName) ? "—" : detail.NodeName)</MudText>
+                                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(_detail.NodeName) ? "—" : _detail.NodeName)</MudText>
                             </MudItem>
                             <MudItem xs="12" sm="6" md="4">
                                 <MudText Typo="Typo.body2" Class="mud-text-secondary">Pod IP</MudText>
-                                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(detail.PodIp) ? "—" : detail.PodIp)</MudText>
+                                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(_detail.PodIp) ? "—" : _detail.PodIp)</MudText>
                             </MudItem>
                             <MudItem xs="12" sm="6" md="4">
                                 <MudText Typo="Typo.body2" Class="mud-text-secondary">服务质量</MudText>
-                                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(detail.QosClass) ? "—" : detail.QosClassText)</MudText>
+                                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(_detail.QosClass) ? "—" : _detail.QosClassText)</MudText>
                             </MudItem>
                             <MudItem xs="12" sm="6" md="4">
                                 <MudText Typo="Typo.body2" Class="mud-text-secondary">启动时间</MudText>
-                                <MudText Typo="Typo.body1" Class="font-mono">@detail.StartedAtAbsoluteText</MudText>
+                                <MudText Typo="Typo.body1" Class="font-mono">@_detail.StartedAtAbsoluteText</MudText>
                             </MudItem>
                         </MudGrid>
                     </MudCardContent>
@@ -103,14 +103,14 @@
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardContent>
-                        @if (detail.Conditions.Count == 0)
+                        @if (_detail.Conditions.Count == 0)
                         {
                             <div class="empty-state">[ 暂无条件 ]</div>
                         }
                         else
                         {
                             <MudTable T="PodConditionViewModel"
-                                      Items="@detail.Conditions"
+                                      Items="@_detail.Conditions"
                                       Hover="true"
                                       Dense="true"
                                       Elevation="0">
@@ -143,14 +143,14 @@
                         </CardHeaderContent>
                     </MudCardHeader>
                     <MudCardContent>
-                        @if (detail.Containers.Count == 0)
+                        @if (_detail.Containers.Count == 0)
                         {
                             <div class="empty-state">[ 暂无容器 ]</div>
                         }
                         else
                         {
                             <MudTable T="PodContainerViewModel"
-                                      Items="@detail.Containers"
+                                      Items="@_detail.Containers"
                                       Hover="true"
                                       Dense="true"
                                       Elevation="0">
@@ -203,67 +203,67 @@
                         <MudStack Spacing="3" Class="log-body">
                             <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
                                 <MudSelect T="string?"
-                                           Value="logContainer"
+                                           Value="_logContainer"
                                            ValueChanged="OnLogContainerChanged"
                                            Label="容器"
                                            Variant="Variant.Outlined"
                                            Margin="Margin.Dense"
                                            Style="min-width:180px;">
-                                    @foreach (var container in detail.Containers)
+                                    @foreach (var container in _detail.Containers)
                                     {
                                         <MudSelectItem Value="@((string?)container.Name)">@container.Name</MudSelectItem>
                                     }
                                 </MudSelect>
                                 <MudSelect T="int"
-                                           Value="logTailLines"
+                                           Value="_logTailLines"
                                            ValueChanged="OnLogTailChanged"
                                            Label="最近行数"
                                            Variant="Variant.Outlined"
                                            Margin="Margin.Dense"
                                            Style="min-width:120px;">
-                                    @foreach (var option in TailLineOptions)
+                                    @foreach (var option in _TailLineOptions)
                                     {
                                         <MudSelectItem Value="@option">@option</MudSelectItem>
                                     }
                                 </MudSelect>
                                 <MudSwitch T="bool"
-                                           Value="logPrevious"
+                                           Value="_logPrevious"
                                            ValueChanged="OnLogPreviousChanged"
                                            Color="Color.Primary"
                                            Label="上次运行(重启前)" />
                                 <MudSpacer />
-                                @if (logLoadedAt is not null)
+                                @if (_logLoadedAt is not null)
                                 {
-                                    <span class="font-mono mud-text-secondary log-asof">数据截至 @logLoadedAt.Value.ToString("HH:mm:ss")</span>
+                                    <span class="font-mono mud-text-secondary log-asof">数据截至 @_logLoadedAt.Value.ToString("HH:mm:ss")</span>
                                 }
                                 <MudButton Variant="Variant.Outlined"
                                            Color="Color.Primary"
                                            StartIcon="@Icons.Material.Filled.Refresh"
                                            OnClick="ReloadLogAsync"
-                                           Disabled="@logLoading">
+                                           Disabled="@_logLoading">
                                     刷新
                                 </MudButton>
                             </MudStack>
 
-                            @if (logLoading)
+                            @if (_logLoading)
                             {
                                 <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
                             }
-                            else if (logError is not null)
+                            else if (_logError is not null)
                             {
                                 <MudStack Row="true" AlignItems="AlignItems.Center">
-                                    <MudText Class="mud-text-secondary">@logError</MudText>
+                                    <MudText Class="mud-text-secondary">@_logError</MudText>
                                     <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="ReloadLogAsync">重试</MudButton>
                                 </MudStack>
                             }
-                            else if (log is not null && log.LineCount == 0)
+                            else if (_log is not null && _log.LineCount == 0)
                             {
                                 <div class="empty-state">[ 暂无日志 ]</div>
                             }
-                            else if (log is not null)
+                            else if (_log is not null)
                             {
-                                <span class="font-mono mud-text-secondary log-line-count">共 @log.LineCount 行</span>
-                                <pre class="log-viewer font-mono">@log.Content</pre>
+                                <span class="font-mono mud-text-secondary log-line-count">共 @_log.LineCount 行</span>
+                                <pre class="log-viewer font-mono">@_log.Content</pre>
                             }
                         </MudStack>
                     </MudCardContent>
@@ -283,33 +283,33 @@
     [Parameter]
     public string Name { get; set; } = "";
 
-    private PodDetailViewModel? detail;
+    private PodDetailViewModel? _detail;
 
-    private bool loading = true;
+    private bool _loading = true;
 
-    private bool notFound;
+    private bool _notFound;
 
-    private bool unreachable;
+    private bool _unreachable;
 
-    private int activeTabIndex;
+    private int _activeTabIndex;
 
-    private string? logContainer;
+    private string? _logContainer;
 
-    private int logTailLines = 500;
+    private int _logTailLines = 500;
 
-    private bool logPrevious;
+    private bool _logPrevious;
 
-    private bool logLoaded;
+    private bool _logLoaded;
 
-    private bool logLoading;
+    private bool _logLoading;
 
-    private string? logError;
+    private string? _logError;
 
-    private PodLogViewModel? log;
+    private PodLogViewModel? _log;
 
-    private DateTime? logLoadedAt;
+    private DateTime? _logLoadedAt;
 
-    private static readonly int[] TailLineOptions = [200, 500, 1000, 5000];
+    private static readonly int[] _TailLineOptions = [200, 500, 1000, 5000];
 
     private const int LogTabIndex = 2;
 
@@ -321,40 +321,40 @@
 
     private async Task LoadAsync()
     {
-        loading = true;
+        _loading = true;
         try
         {
-            detail = await PodService.GetPodAsync(new PodKeyRequest(ClusterId, Namespace, Name));
-            notFound = detail is null;
-            unreachable = false;
-            if (detail is not null && logContainer is null)
+            _detail = await PodService.GetPodAsync(new PodKeyRequest(ClusterId, Namespace, Name));
+            _notFound = _detail is null;
+            _unreachable = false;
+            if (_detail is not null && _logContainer is null)
             {
-                logContainer = detail.Containers.FirstOrDefault()?.Name;
+                _logContainer = _detail.Containers.FirstOrDefault()?.Name;
             }
         }
         catch (NotFoundException)
         {
-            detail = null;
-            notFound = true;
-            unreachable = false;
+            _detail = null;
+            _notFound = true;
+            _unreachable = false;
         }
         catch (Exception ex)
         {
-            detail = null;
-            notFound = false;
-            unreachable = true;
+            _detail = null;
+            _notFound = false;
+            _unreachable = true;
             await ExHandler.HandleAsync(ex, "加载 Pod 详情");
         }
         finally
         {
-            loading = false;
+            _loading = false;
         }
     }
 
     private async Task OnTabChanged(int index)
     {
-        activeTabIndex = index;
-        if (index == LogTabIndex && !logLoaded && !logLoading)
+        _activeTabIndex = index;
+        if (index == LogTabIndex && !_logLoaded && !_logLoading)
         {
             await LoadLogAsync();
         }
@@ -362,19 +362,19 @@
 
     private Task OnLogContainerChanged(string? container)
     {
-        logContainer = container;
+        _logContainer = container;
         return ReloadLogAsync();
     }
 
     private Task OnLogTailChanged(int lines)
     {
-        logTailLines = lines;
+        _logTailLines = lines;
         return ReloadLogAsync();
     }
 
     private Task OnLogPreviousChanged(bool previous)
     {
-        logPrevious = previous;
+        _logPrevious = previous;
         return ReloadLogAsync();
     }
 
@@ -382,23 +382,23 @@
 
     private async Task LoadLogAsync()
     {
-        logLoading = true;
-        logError = null;
+        _logLoading = true;
+        _logError = null;
         try
         {
-            log = await PodService.GetPodLogAsync(
-                new PodLogRequest(ClusterId, Namespace, Name, logContainer, logTailLines, logPrevious));
-            logLoaded = true;
-            logLoadedAt = DateTime.Now;
+            _log = await PodService.GetPodLogAsync(
+                new PodLogRequest(ClusterId, Namespace, Name, _logContainer, _logTailLines, _logPrevious));
+            _logLoaded = true;
+            _logLoadedAt = DateTime.Now;
         }
         catch (Exception ex)
         {
-            logError = "加载日志失败,请重试";
+            _logError = "加载日志失败,请重试";
             await ExHandler.HandleAsync(ex, "加载 Pod 日志");
         }
         finally
         {
-            logLoading = false;
+            _logLoading = false;
         }
     }
 }

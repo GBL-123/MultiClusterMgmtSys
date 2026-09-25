@@ -30,33 +30,33 @@ public class AccountService(
 
     private const string DefaultPassword = "Changeme_123";
 
-    private readonly UserManager<ApplicationUser> userManager = userManger;
+    private readonly UserManager<ApplicationUser> _userManager = userManger;
 
-    private readonly RoleManager<IdentityRole<int>> roleManager = roleManager;
+    private readonly RoleManager<IdentityRole<int>> _roleManager = roleManager;
 
-    private readonly IAccountQueryRepository accountQueryRepository = accountQueryRepository;
+    private readonly IAccountQueryRepository _accountQueryRepository = accountQueryRepository;
 
-    private readonly AuditService auditService = auditService;
+    private readonly AuditService _auditService = auditService;
 
-    private readonly IHttpContextAccessor httpContextAccessor = httpContextAccessor;
+    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
-    private readonly ILogger<AccountService> logger = logger;
+    private readonly ILogger<AccountService> _logger = logger;
 
     /// <summary>种子内置角色 Admin/Member 与内置管理员账号 admin(初始密码 Changeme_123,已存在则跳过),应用每次启动都会调用。</summary>
     public async Task CreateAdminAsync()
     {
         // Ensure roles
-        if (!await roleManager.RoleExistsAsync(AdminRole))
+        if (!await _roleManager.RoleExistsAsync(AdminRole))
         {
-            await roleManager.CreateAsync(new IdentityRole<int> { Name = AdminRole, NormalizedName = AdminRole.ToUpperInvariant() });
+            await _roleManager.CreateAsync(new IdentityRole<int> { Name = AdminRole, NormalizedName = AdminRole.ToUpperInvariant() });
         }
-        if (!await roleManager.RoleExistsAsync(MemberRole))
+        if (!await _roleManager.RoleExistsAsync(MemberRole))
         {
-            await roleManager.CreateAsync(new IdentityRole<int> { Name = MemberRole, NormalizedName = MemberRole.ToUpperInvariant() });
+            await _roleManager.CreateAsync(new IdentityRole<int> { Name = MemberRole, NormalizedName = MemberRole.ToUpperInvariant() });
         }
 
         // Ensure admin
-        if (await userManager.FindByNameAsync("admin") is null)
+        if (await _userManager.FindByNameAsync("admin") is null)
         {
             var admin = new ApplicationUser
             {
@@ -64,18 +64,18 @@ public class AccountService(
                 NormalizedUserName = "ADMIN",
                 CreatedAt = DateTime.UtcNow
             };
-            var result = await userManager.CreateAsync(admin, DefaultPassword);
+            var result = await _userManager.CreateAsync(admin, DefaultPassword);
             if (result.Succeeded)
             {
-                await userManager.AddToRoleAsync(admin, AdminRole);
+                await _userManager.AddToRoleAsync(admin, AdminRole);
             }
             else
             {
-                logger.LogError("Failed to create admin account: {Errors}",
+                _logger.LogError("Failed to create admin account: {Errors}",
                     string.Join(", ", result.Errors.Select(e => e.Description)));
             }
         }
-        logger.LogInformation("Create admin account succeeded");
+        _logger.LogInformation("Create admin account succeeded");
     }
 
     /// <summary>分页查询账号列表,支持按用户名模糊搜索、按角色过滤,并按创建时间/用户名/最后登录时间排序(均以 Id 作次级稳定排序)。</summary>
@@ -83,16 +83,16 @@ public class AccountService(
     /// <returns>账号视图分页结果,每项附带该用户的首个角色名。</returns>
     public async Task<PagedResult<AccountViewModel>> GetPagedAccountsAsync(AccountQueryRequest query)
     {
-        logger.LogInformation("Querying accounts: search={SearchName}, role={RoleFilter}", query.SearchName, query.RoleFilter);
-        var (users, total) = await accountQueryRepository.GetPagedAsync(query);
+        _logger.LogInformation("Querying accounts: search={SearchName}, role={RoleFilter}", query.SearchName, query.RoleFilter);
+        var (users, total) = await _accountQueryRepository.GetPagedAsync(query);
 
         var vms = new List<AccountViewModel>(users.Count);
         foreach (var user in users)
         {
-            var userRoles = await userManager.GetRolesAsync(user);
+            var userRoles = await _userManager.GetRolesAsync(user);
             vms.Add(user.ToAccountViewModel(userRoles.FirstOrDefault() ?? ""));
         }
-        logger.LogInformation("Account query done: total={Total}", total);
+        _logger.LogInformation("Account query done: total={Total}", total);
         return new PagedResult<AccountViewModel>(vms, total);
     }
 
@@ -101,16 +101,16 @@ public class AccountService(
     /// <returns>实际删除数与跳过数。</returns>
     public async Task<AccountBatchResult> BatchDeleteAsync(IReadOnlyList<int> ids)
     {
-        logger.LogInformation("Batch deleting accounts: count={Count}", ids.Count);
+        _logger.LogInformation("Batch deleting accounts: count={Count}", ids.Count);
         if (ids.Count == 0) return new AccountBatchResult(0, 0);
 
         var skipSet = new HashSet<int> { GetCurrentUserId() };
-        var builtIn = await userManager.FindByNameAsync(BuiltInAdminName);
+        var builtIn = await _userManager.FindByNameAsync(BuiltInAdminName);
         if (builtIn is not null) skipSet.Add(builtIn.Id);
 
-        var users = await accountQueryRepository.GetByIdsAsync(ids);
+        var users = await _accountQueryRepository.GetByIdsAsync(ids);
 
-        var adminUsers = await userManager.GetUsersInRoleAsync(AdminRole);
+        var adminUsers = await _userManager.GetUsersInRoleAsync(AdminRole);
         var adminIds = adminUsers.Select(u => u.Id).ToHashSet();
         var adminCandidates = users.Where(u => adminIds.Contains(u.Id)).Select(u => u.Id).ToList();
         if (adminCandidates.Count > 0 && adminUsers.Count - adminCandidates.Count < 1)
@@ -125,21 +125,21 @@ public class AccountService(
         foreach (var user in users)
         {
             if (skipSet.Contains(user.Id)) continue;
-            var result = await userManager.DeleteAsync(user);
+            var result = await _userManager.DeleteAsync(user);
             if (result.Succeeded)
             {
                 processed++;
             }
             else
             {
-                logger.LogWarning("Batch delete failed for user {UserId}: {Errors}",
+                _logger.LogWarning("Batch delete failed for user {UserId}: {Errors}",
                     user.Id, string.Join(", ", result.Errors.Select(e => e.Description)));
             }
         }
-        logger.LogInformation("Batch delete done: processed={Processed}, skipped={Skipped}", processed, users.Count - processed);
+        _logger.LogInformation("Batch delete done: processed={Processed}, skipped={Skipped}", processed, users.Count - processed);
         if (processed > 0)
         {
-            await auditService.LogAsync(AuditCategory.Account, AuditAction.Delete, $"账号 {processed} 个");
+            await _auditService.LogAsync(AuditCategory.Account, AuditAction.Delete, $"账号 {processed} 个");
         }
         return new AccountBatchResult(processed, users.Count - processed);
     }
@@ -149,22 +149,22 @@ public class AccountService(
     {
         var ids = request.Ids;
         var roleName = request.RoleName;
-        logger.LogInformation("Batch updating role: count={Count}, role={Role}", ids.Count, roleName);
+        _logger.LogInformation("Batch updating role: count={Count}, role={Role}", ids.Count, roleName);
         if (ids.Count == 0) return new AccountBatchResult(0, 0);
-        if (!await roleManager.RoleExistsAsync(roleName))
+        if (!await _roleManager.RoleExistsAsync(roleName))
         {
             throw new NotFoundException($"角色 {roleName} 不存在");
         }
 
         var skipSet = new HashSet<int> { GetCurrentUserId() };
-        var builtIn = await userManager.FindByNameAsync(BuiltInAdminName);
+        var builtIn = await _userManager.FindByNameAsync(BuiltInAdminName);
         if (builtIn is not null) skipSet.Add(builtIn.Id);
 
-        var users = await accountQueryRepository.GetByIdsAsync(ids);
+        var users = await _accountQueryRepository.GetByIdsAsync(ids);
 
         if (roleName != AdminRole)
         {
-            var adminUsers = await userManager.GetUsersInRoleAsync(AdminRole);
+            var adminUsers = await _userManager.GetUsersInRoleAsync(AdminRole);
             var adminIds = adminUsers.Select(u => u.Id).ToHashSet();
             var adminCandidates = users.Where(u => adminIds.Contains(u.Id)).Select(u => u.Id).ToList();
             if (adminCandidates.Count > 0 && adminUsers.Count - adminCandidates.Count < 1)
@@ -180,32 +180,32 @@ public class AccountService(
         foreach (var user in users)
         {
             if (skipSet.Contains(user.Id)) continue;
-            var currentRoles = await userManager.GetRolesAsync(user);
+            var currentRoles = await _userManager.GetRolesAsync(user);
             if (currentRoles.Any())
             {
-                var removeResult = await userManager.RemoveFromRolesAsync(user, currentRoles);
+                var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
                 if (!removeResult.Succeeded)
                 {
-                    logger.LogWarning("Batch role change: failed to remove roles for user {UserId}: {Errors}",
+                    _logger.LogWarning("Batch role change: failed to remove roles for user {UserId}: {Errors}",
                         user.Id, string.Join(", ", removeResult.Errors.Select(e => e.Description)));
                     continue;
                 }
             }
-            var addResult = await userManager.AddToRoleAsync(user, roleName);
+            var addResult = await _userManager.AddToRoleAsync(user, roleName);
             if (addResult.Succeeded)
             {
                 processed++;
             }
             else
             {
-                logger.LogWarning("Batch role change: failed to add role for user {UserId}: {Errors}",
+                _logger.LogWarning("Batch role change: failed to add role for user {UserId}: {Errors}",
                     user.Id, string.Join(", ", addResult.Errors.Select(e => e.Description)));
             }
         }
-        logger.LogInformation("Batch role change done: processed={Processed}, skipped={Skipped}", processed, users.Count - processed);
+        _logger.LogInformation("Batch role change done: processed={Processed}, skipped={Skipped}", processed, users.Count - processed);
         if (processed > 0)
         {
-            await auditService.LogAsync(AuditCategory.Account, AuditAction.Update, $"账号 {processed} 个 → 角色 {roleName}");
+            await _auditService.LogAsync(AuditCategory.Account, AuditAction.Update, $"账号 {processed} 个 → 角色 {roleName}");
         }
         return new AccountBatchResult(processed, users.Count - processed);
     }
@@ -215,7 +215,7 @@ public class AccountService(
     /// <returns>Identity 结果(错误文案为中文)。</returns>
     public async Task<IdentityResult> CreateAccountAsync(AccountCreateRequest request)
     {
-        if (!await roleManager.RoleExistsAsync(request.RoleName))
+        if (!await _roleManager.RoleExistsAsync(request.RoleName))
         {
             return IdentityResult.Failed(new IdentityError
             {
@@ -231,11 +231,11 @@ public class AccountService(
             CreatedAt = DateTime.UtcNow,
             EmailConfirmed = true
         };
-        var result = await userManager.CreateAsync(user, request.Password);
+        var result = await _userManager.CreateAsync(user, request.Password);
         if (result.Succeeded)
         {
-            await userManager.AddToRoleAsync(user, request.RoleName);
-            await auditService.LogAsync(AuditCategory.Account, AuditAction.Create, $"账号: {request.UserName}");
+            await _userManager.AddToRoleAsync(user, request.RoleName);
+            await _auditService.LogAsync(AuditCategory.Account, AuditAction.Create, $"账号: {request.UserName}");
         }
         return result;
     }
@@ -243,7 +243,7 @@ public class AccountService(
     /// <summary>更新账号信息并按需切换角色(先移除旧角色再赋予新角色);账号不存在或目标是内置管理员时返回失败结果,无论角色是否变化都写更新审计。</summary>
     public async Task<IdentityResult> UpdateAccountAsync(AccountUpdateRequest request)
     {
-        var user = await userManager.FindByIdAsync(request.Id.ToString());
+        var user = await _userManager.FindByIdAsync(request.Id.ToString());
         if (user is null)
         {
             return IdentityResult.Failed(new IdentityError
@@ -255,7 +255,7 @@ public class AccountService(
 
         if (user.UserName == BuiltInAdminName)
         {
-            logger.LogWarning("Rejected update of built-in admin account");
+            _logger.LogWarning("Rejected update of built-in admin account");
             return IdentityResult.Failed(new IdentityError
             {
                 Code = "CannotModifyBuiltInAdmin",
@@ -263,27 +263,27 @@ public class AccountService(
             });
         }
 
-        if (!string.IsNullOrEmpty(request.RoleName) && await roleManager.RoleExistsAsync(request.RoleName))
+        if (!string.IsNullOrEmpty(request.RoleName) && await _roleManager.RoleExistsAsync(request.RoleName))
         {
-            var currentRoles = await userManager.GetRolesAsync(user);
+            var currentRoles = await _userManager.GetRolesAsync(user);
             if (!currentRoles.Contains(request.RoleName))
             {
                 if (currentRoles.Any())
                 {
-                    await userManager.RemoveFromRolesAsync(user, currentRoles);
+                    await _userManager.RemoveFromRolesAsync(user, currentRoles);
                 }
-                await userManager.AddToRoleAsync(user, request.RoleName);
+                await _userManager.AddToRoleAsync(user, request.RoleName);
             }
         }
 
-        await auditService.LogAsync(AuditCategory.Account, AuditAction.Update, $"账号: {user.UserName}");
+        await _auditService.LogAsync(AuditCategory.Account, AuditAction.Update, $"账号: {user.UserName}");
         return IdentityResult.Success;
     }
 
     /// <summary>删除单个账号。禁止删除内置管理员与当前登录账号,并保证系统至少保留一个 Admin;以上保护以失败结果返回,正常删除成功后写审计。</summary>
     public async Task<IdentityResult> DeleteAccountAsync(int id)
     {
-        var user = await userManager.FindByIdAsync(id.ToString());
+        var user = await _userManager.FindByIdAsync(id.ToString());
         if (user is null)
         {
             return IdentityResult.Failed(new IdentityError
@@ -295,7 +295,7 @@ public class AccountService(
 
         if (user.UserName == BuiltInAdminName)
         {
-            logger.LogWarning("Rejected deletion of built-in admin account");
+            _logger.LogWarning("Rejected deletion of built-in admin account");
             return IdentityResult.Failed(new IdentityError
             {
                 Code = "CannotDeleteBuiltInAdmin",
@@ -312,13 +312,13 @@ public class AccountService(
             });
         }
 
-        var userRoles = await userManager.GetRolesAsync(user);
+        var userRoles = await _userManager.GetRolesAsync(user);
         if (userRoles.Contains(AdminRole))
         {
-            var adminRole = await roleManager.FindByNameAsync(AdminRole);
+            var adminRole = await _roleManager.FindByNameAsync(AdminRole);
             if (adminRole is not null)
             {
-                var adminCount = (await userManager.GetUsersInRoleAsync(AdminRole)).Count;
+                var adminCount = (await _userManager.GetUsersInRoleAsync(AdminRole)).Count;
                 if (adminCount <= 1)
                 {
                     return IdentityResult.Failed(new IdentityError
@@ -330,10 +330,10 @@ public class AccountService(
             }
         }
 
-        var deleteResult = await userManager.DeleteAsync(user);
+        var deleteResult = await _userManager.DeleteAsync(user);
         if (deleteResult.Succeeded)
         {
-            await auditService.LogAsync(AuditCategory.Account, AuditAction.Delete, $"账号: {user.UserName}");
+            await _auditService.LogAsync(AuditCategory.Account, AuditAction.Delete, $"账号: {user.UserName}");
         }
         return deleteResult;
     }
@@ -341,7 +341,7 @@ public class AccountService(
     /// <summary>管理员重置指定账号密码,经 Identity 重置令牌与密码策略校验;内置管理员不可重置,成功后写审计。</summary>
     public async Task<IdentityResult> ResetPasswordAsync(ResetPasswordRequest request)
     {
-        var user = await userManager.FindByIdAsync(request.Id.ToString());
+        var user = await _userManager.FindByIdAsync(request.Id.ToString());
         if (user is null)
         {
             return IdentityResult.Failed(new IdentityError
@@ -353,7 +353,7 @@ public class AccountService(
 
         if (user.UserName == BuiltInAdminName)
         {
-            logger.LogWarning("Rejected password reset of built-in admin account");
+            _logger.LogWarning("Rejected password reset of built-in admin account");
             return IdentityResult.Failed(new IdentityError
             {
                 Code = "CannotModifyBuiltInAdmin",
@@ -362,11 +362,11 @@ public class AccountService(
         }
 
         // Validate via Create + Remove approach to leverage IPasswordValidator pipeline
-        var token = await userManager.GeneratePasswordResetTokenAsync(user);
-        var result = await userManager.ResetPasswordAsync(user, token, request.NewPassword);
+        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+        var result = await _userManager.ResetPasswordAsync(user, token, request.NewPassword);
         if (result.Succeeded)
         {
-            await auditService.LogAsync(AuditCategory.Account, AuditAction.Update, $"账号: {user.UserName} 重置密码");
+            await _auditService.LogAsync(AuditCategory.Account, AuditAction.Update, $"账号: {user.UserName} 重置密码");
         }
         return result;
     }
@@ -375,7 +375,7 @@ public class AccountService(
     public async Task<IdentityResult> ChangePasswordAsync(ChangePasswordRequest request)
     {
         var username = GetCurrentUserName();
-        var user = await userManager.FindByNameAsync(username);
+        var user = await _userManager.FindByNameAsync(username);
         if (user is null)
         {
             return IdentityResult.Failed(new IdentityError
@@ -390,12 +390,12 @@ public class AccountService(
             throw new ValidationException("新密码不能与当前密码相同");
         }
 
-        var result = await userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+        var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
         if (result.Succeeded)
         {
             user.UpdatedAt = DateTime.UtcNow;
-            await userManager.UpdateAsync(user);
-            await auditService.LogAsync(AuditCategory.Account, AuditAction.Update, $"账号: {username} 修改密码");
+            await _userManager.UpdateAsync(user);
+            await _auditService.LogAsync(AuditCategory.Account, AuditAction.Update, $"账号: {username} 修改密码");
         }
         return result;
     }
@@ -403,19 +403,19 @@ public class AccountService(
     /// <summary>按用户名查询单个账号(含其首个角色名);用户不存在返回 null。</summary>
     public async Task<AccountViewModel?> GetUserByNameAsync(string username)
     {
-        var user = await userManager.FindByNameAsync(username);
+        var user = await _userManager.FindByNameAsync(username);
         if (user is null)
         {
             return null;
         }
 
-        var roles = await userManager.GetRolesAsync(user);
+        var roles = await _userManager.GetRolesAsync(user);
         return user.ToAccountViewModel(roles.FirstOrDefault() ?? "");
     }
 
     private int GetCurrentUserId()
     {
-        var idStr = httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var idStr = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!int.TryParse(idStr, out var id))
         {
             throw new PermissionException("无法获取当前登录账号信息");
@@ -425,7 +425,7 @@ public class AccountService(
 
     private string GetCurrentUserName()
     {
-        var name = httpContextAccessor.HttpContext?.User.Identity?.Name;
+        var name = _httpContextAccessor.HttpContext?.User.Identity?.Name;
         if (string.IsNullOrEmpty(name))
         {
             throw new PermissionException("无法获取当前登录账号信息");

@@ -42,12 +42,12 @@ public class ClusterClientCacheTests : IDisposable
             token: abc
         """;
 
-    private readonly ServiceHarness harness = new("admin", "Admin");
+    private readonly ServiceHarness _harness = new("admin", "Admin");
 
-    public void Dispose() => harness.Dispose();
+    public void Dispose() => _harness.Dispose();
 
     private async Task<int> SeedAsync(string name)
-        => (await harness.ClusterRepo.AddAsync(TestData.NewCluster(name))).Id;
+        => (await _harness.ClusterRepo.AddAsync(TestData.NewCluster(name))).Id;
 
     private static ClusterInfo StandaloneCluster(string name, int id)
     {
@@ -210,9 +210,9 @@ public class ClusterClientCacheTests : IDisposable
         K8sMocks.SetupListNodes(k8s);
         var (cache, count) = SingleClientCache(k8s.Object);
         var nodeService = new ClusterNodeService(
-            harness.ClusterRepo, harness.Audit, NullLogger<ClusterNodeService>.Instance, cache);
+            _harness.ClusterRepo, _harness.Audit, NullLogger<ClusterNodeService>.Instance, cache);
         var service = new ClusterService(
-            harness.ClusterRepo, nodeService, harness.Audit, NullLogger<ClusterService>.Instance, cache);
+            _harness.ClusterRepo, nodeService, _harness.Audit, NullLogger<ClusterService>.Instance, cache, _harness.ClusterHealthRepo);
         var id = await SeedAsync("probe-reuse");
 
         await service.RefreshClusterStatusAsync(id);

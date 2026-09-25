@@ -69,7 +69,7 @@ builder.Services.ConfigureApplicationCookie(options =>
         var returnUrl = context.Request.Path + context.Request.QueryString;
         if (string.IsNullOrEmpty(returnUrl) || returnUrl == "/")
         {
-            returnUrl = "/clusters";
+            returnUrl = "/dashboard";
         }
         context.Response.Redirect($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}");
         return Task.CompletedTask;

@@ -26,6 +26,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     /// <summary>节点 IP 备注表:随所属集群级联删除,(ClusterId, NodeName, Address) 三元组唯一。</summary>
     public DbSet<NodeIpRemark> NodeIpRemarks => Set<NodeIpRemark>();
 
+    /// <summary>集群节点健康快照表:每次成功探测追加一条,(ClusterId, CapturedAt) 建有索引,随所属集群级联删除。</summary>
+    public DbSet<ClusterHealthSnapshot> ClusterHealthSnapshots => Set<ClusterHealthSnapshot>();
+
     /// <summary>审计日志表:记录用户关键操作,CreatedAt 建有索引以支撑按时间排序分页。</summary>
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
@@ -34,9 +37,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     /// <summary>
     /// 配置实体映射与库级约束:凭据列用 TEXT 且 SkipTlsVerify 默认 true;
-    /// 端点与节点 IP 备注随集群级联删除,分组删除时集群 GroupId 置空(SetNull);
-    /// 节点 IP 备注按 (ClusterId, NodeName, Address) 唯一索引,审计日志按 CreatedAt 建索引,
-    /// 应用设置按 Key 唯一索引,用户 CreatedAt 使用数据库默认值 CURRENT_TIMESTAMP。
+    /// 端点、节点 IP 备注与节点健康快照随集群级联删除,分组删除时集群 GroupId 置空(SetNull);
+    /// 节点 IP 备注按 (ClusterId, NodeName, Address) 唯一索引,节点健康快照按 (ClusterId, CapturedAt) 建索引,
+    /// 审计日志按 CreatedAt 建索引,应用设置按 Key 唯一索引,用户 CreatedAt 使用数据库默认值 CURRENT_TIMESTAMP。
     /// </summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -78,6 +81,16 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
             entity.HasOne(e => e.Cluster)
                   .WithMany(c => c.NodeIpRemarks)
+                  .HasForeignKey(e => e.ClusterId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ClusterHealthSnapshot>(entity =>
+        {
+            entity.HasIndex(e => new { e.ClusterId, e.CapturedAt });
+
+            entity.HasOne(e => e.Cluster)
+                  .WithMany()
                   .HasForeignKey(e => e.ClusterId)
                   .OnDelete(DeleteBehavior.Cascade);
         });

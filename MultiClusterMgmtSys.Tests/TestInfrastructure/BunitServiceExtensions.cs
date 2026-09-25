@@ -77,6 +77,7 @@ public static class BunitServiceExtensions
         ctx.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8sMock));
         ctx.AddClientCache();
         ctx.Services.AddScoped<IClusterRepository>(_ => harness.ClusterRepo);
+        ctx.Services.AddScoped<IClusterHealthRepository>(_ => harness.ClusterHealthRepo);
         ctx.Services.AddScoped(_ => harness.Audit);
         ctx.Services.AddSingleton<IYamlValidator, YamlValidator>();
         ctx.Services.AddScoped<ClusterNodeService>();
@@ -160,6 +161,17 @@ public static class BunitServiceExtensions
         ctx.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8s));
         ctx.AddClientCache();
         ctx.Services.AddScoped<PodService>();
+        return (harness, k8s);
+    }
+
+    public static (ServiceHarness Harness, Mock<IKubernetes> K8s) AddDashboardStack(this BunitContext ctx, string actor = "admin")
+    {
+        var harness = ctx.AddClusterStack(actor);
+        ctx.AddGroupAndSyncStack(harness, actor);
+        var k8s = new Mock<IKubernetes>();
+        ctx.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8s));
+        ctx.AddClientCache();
+        ctx.Services.AddScoped<DashboardService>();
         return (harness, k8s);
     }
 }

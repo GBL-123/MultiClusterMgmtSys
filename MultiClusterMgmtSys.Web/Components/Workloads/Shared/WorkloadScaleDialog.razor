@@ -8,7 +8,7 @@
                            Size="Size.Small"
                            OnClick="@(() => Adjust(-1))" />
             <MudNumericField T="int"
-                             @bind-Value="replicas"
+                             @bind-Value="_replicas"
                              Min="0"
                              Max="500"
                              Variant="Variant.Outlined"
@@ -36,20 +36,20 @@
     [Parameter]
     public int CurrentReplicas { get; set; }
 
-    private int replicas;
+    private int _replicas;
 
     protected override void OnInitialized()
     {
-        replicas = CurrentReplicas;
+        _replicas = CurrentReplicas;
     }
 
     private void Adjust(int delta)
     {
-        var next = replicas + delta;
-        replicas = next < 0 ? 0 : next;
+        var next = _replicas + delta;
+        _replicas = next < 0 ? 0 : next;
     }
 
     private void Cancel() => Dialog.Cancel();
 
-    private void Submit() => Dialog.Close(DialogResult.Ok(replicas));
+    private void Submit() => Dialog.Close(DialogResult.Ok(_replicas));
 }

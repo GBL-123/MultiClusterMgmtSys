@@ -14,11 +14,11 @@
 <PageTitle>@(Kind.ToDisplayText())详情: @Name</PageTitle>
 
 <MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
-    @if (loading)
+    @if (_loading)
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
     }
-    else if (detail is null)
+    else if (_detail is null)
     {
         <MudCard Class="pa-4">
             <MudCardContent>
@@ -40,25 +40,25 @@
                                Kind="@Kind"
                                Name="@Name"
                                Namespace="@Namespace"
-                               Detail="@detail"
-                               Processing="@processing"
+                               Detail="@_detail"
+                               Processing="@_processing"
                                OnRefresh="LoadAsync"
                                OnEditYaml="@(() => NavigationManager.NavigateTo($"/workloads/{Kind.ToRouteSegment()}/{ClusterId}/{Namespace}/{Name}/yaml"))"
                                OnScale="OpenScaleDialog"
                                OnRestart="RestartWorkload"
                                OnDelete="DeleteWorkload" />
-        <MudTabs @bind-ActivePanelIndex="activeTabIndex"
+        <MudTabs @bind-ActivePanelIndex="_activeTabIndex"
                  Class="detail-tabs"
                  Elevation="0"
                  Rounded="false"
                  TabPanelsClass="detail-tabs-panels">
             <MudTabPanel Text="YAML">
-                <WorkloadYamlViewCard Yaml="@detail.Yaml" />
+                <WorkloadYamlViewCard Yaml="@_detail.Yaml" />
             </MudTabPanel>
             <MudTabPanel Text="运行状态">
                 <MudStack Spacing="3">
-                    <WorkloadStatusCard Detail="@detail" />
-                    <WorkloadConditionsCard Detail="@detail" />
+                    <WorkloadStatusCard Detail="@_detail" />
+                    <WorkloadConditionsCard Detail="@_detail" />
                 </MudStack>
             </MudTabPanel>
         </MudTabs>
@@ -78,13 +78,13 @@
     [Parameter]
     public string Name { get; set; } = "";
 
-    private WorkloadDetailViewModel? detail;
+    private WorkloadDetailViewModel? _detail;
 
-    private bool loading = true;
+    private bool _loading = true;
 
-    private bool processing;
+    private bool _processing;
 
-    private int activeTabIndex;
+    private int _activeTabIndex;
 
     protected override async Task OnInitializedAsync()
     {
@@ -94,11 +94,11 @@
 
     private async Task LoadAsync()
     {
-        loading = true;
+        _loading = true;
         try
         {
-            detail = await GetWorkloadAsync(new WorkloadKeyRequest(ClusterId, Name, Namespace));
-            if (detail is null)
+            _detail = await GetWorkloadAsync(new WorkloadKeyRequest(ClusterId, Name, Namespace));
+            if (_detail is null)
             {
                 Snackbar.Add($"{Kind.ToDisplayText()}不存在或已被删除", Severity.Warning);
             }
@@ -109,7 +109,7 @@
         }
         finally
         {
-            loading = false;
+            _loading = false;
         }
     }
 
@@ -126,7 +126,7 @@
         var parameters = new DialogParameters
         {
             { "Name", Name },
-            { "CurrentReplicas", detail?.DesiredCount ?? 0 }
+            { "CurrentReplicas", _detail?.DesiredCount ?? 0 }
         };
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
         var dialog = await DialogService.ShowAsync<WorkloadScaleDialog>("扩缩容", parameters, options);
@@ -136,7 +136,7 @@
             return;
         }
 
-        processing = true;
+        _processing = true;
         try
         {
             var request = new WorkloadScaleRequest(ClusterId, Name, Namespace, replicas);
@@ -162,7 +162,7 @@
         }
         finally
         {
-            processing = false;
+            _processing = false;
         }
     }
 
@@ -180,7 +180,7 @@
             return;
         }
 
-        processing = true;
+        _processing = true;
         try
         {
             var request = new WorkloadKeyRequest(ClusterId, Name, Namespace);
@@ -206,7 +206,7 @@
         }
         finally
         {
-            processing = false;
+            _processing = false;
         }
     }
 
@@ -224,7 +224,7 @@
             return;
         }
 
-        processing = true;
+        _processing = true;
         try
         {
             var request = new WorkloadKeyRequest(ClusterId, Name, Namespace);
@@ -253,7 +253,7 @@
         }
         finally
         {
-            processing = false;
+            _processing = false;
         }
     }
 }

@@ -22,11 +22,11 @@
 <PageTitle>编辑 YAML: @Name</PageTitle>
 
 <MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
-    @if (loading)
+    @if (_loading)
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
     }
-    else if (loadError)
+    else if (_loadError)
     {
         <MudCard Class="pa-4">
             <MudCardContent>
@@ -56,8 +56,8 @@
                            Color="Color.Primary"
                            StartIcon="@Icons.Material.Filled.Save"
                            OnClick="Save"
-                           Disabled="saving">
-                    @if (saving)
+                           Disabled="_saving">
+                    @if (_saving)
                     {
                         <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                     }
@@ -66,7 +66,7 @@
             </MudStack>
         </MudPaper>
 
-        <SvcYamlEditCard @bind-Yaml="yamlContent" />
+        <SvcYamlEditCard @bind-Yaml="_yamlContent" />
     }
 </MudStack>
 
@@ -81,37 +81,37 @@
     public string Name { get; set; } = "";
 
 
-    private string yamlContent = "";
+    private string _yamlContent = "";
 
-    private bool loading = true;
+    private bool _loading = true;
 
-    private bool loadError;
+    private bool _loadError;
 
-    private bool saving;
+    private bool _saving;
 
     protected override async Task OnInitializedAsync()
     {
         ClusterSelection.Set(ClusterId);
         try
         {
-            loadError = false;
+            _loadError = false;
             var detail = await SvcService.GetSvcAsync(new SvcKeyRequest(ClusterId, Name, Namespace));
             if (detail is null)
             {
                 Snackbar.Add("Service 不存在或已被删除", Severity.Warning);
-                loadError = true;
+                _loadError = true;
                 return;
             }
-            yamlContent = detail.Yaml;
+            _yamlContent = detail.Yaml;
         }
         catch (Exception ex)
         {
             await ExHandler.HandleAsync(ex, "加载服务详情");
-            loadError = true;
+            _loadError = true;
         }
         finally
         {
-            loading = false;
+            _loading = false;
         }
     }
 
@@ -119,7 +119,7 @@
     {
         try
         {
-            YamlValidator.ValidateService(yamlContent);
+            YamlValidator.ValidateService(_yamlContent);
         }
         catch (Exception ex)
         {
@@ -127,10 +127,10 @@
             return;
         }
 
-        saving = true;
+        _saving = true;
         try
         {
-            await SvcService.UpdateSvcFromYamlAsync(new SvcUpdateRequest(ClusterId, Name, Namespace, yamlContent));
+            await SvcService.UpdateSvcFromYamlAsync(new SvcUpdateRequest(ClusterId, Name, Namespace, _yamlContent));
             Snackbar.Add("修改成功", Severity.Success);
             NavigationManager.NavigateTo($"/services/{ClusterId}");
         }
@@ -140,7 +140,7 @@
         }
         finally
         {
-            saving = false;
+            _saving = false;
         }
     }
 }

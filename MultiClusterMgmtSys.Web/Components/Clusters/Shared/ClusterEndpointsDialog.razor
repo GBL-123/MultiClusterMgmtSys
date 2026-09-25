@@ -12,27 +12,27 @@
     <Authorized>
         <MudDialog>
             <DialogContent>
-                @if (loading)
+                @if (_loading)
                 {
                     <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
                 }
                 else
                 {
-                    <ClusterEndpointEditor Items="@Items" />
+                    <ClusterEndpointEditor Items="@_Items" />
                 }
             </DialogContent>
             <DialogActions>
                 <MudButton OnClick="() => Dialog.Cancel()"
                            Variant="Variant.Text"
-                           Disabled="saving">
+                           Disabled="_saving">
                     取消
                 </MudButton>
                 <MudButton OnClick="Submit"
                            Color="Color.Primary"
                            Variant="Variant.Filled"
-                           Disabled="saving || loading"
-                           StartIcon="@(!saving ? Icons.Material.Filled.Save : null)">
-                    @if (saving)
+                           Disabled="_saving || _loading"
+                           StartIcon="@(!_saving ? Icons.Material.Filled.Save : null)">
+                    @if (_saving)
                     {
                         <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                     }
@@ -50,11 +50,11 @@
     [CascadingParameter]
     public IMudDialogInstance Dialog { get; set; } = default!;
 
-    private List<ClusterEndpointEditItem> Items = new();
+    private List<ClusterEndpointEditItem> _Items = new();
 
-    private bool loading = true;
+    private bool _loading = true;
 
-    private bool saving;
+    private bool _saving;
 
     protected override async Task OnInitializedAsync()
     {
@@ -68,7 +68,7 @@
                 return;
             }
 
-            Items = detail.Endpoints.Select(ep => new ClusterEndpointEditItem
+            _Items = detail.Endpoints.Select(ep => new ClusterEndpointEditItem
             {
                 Id = ep.Id,
                 Kind = ep.Kind,
@@ -84,16 +84,16 @@
         }
         finally
         {
-            loading = false;
+            _loading = false;
         }
     }
 
     private async Task Submit()
     {
-        saving = true;
+        _saving = true;
         try
         {
-            await ClusterService.UpdateClusterEndpointsAsync(new ClusterEndpointsUpdateRequest(ClusterId, Items));
+            await ClusterService.UpdateClusterEndpointsAsync(new ClusterEndpointsUpdateRequest(ClusterId, _Items));
             Snackbar.Add("端点已更新", Severity.Success);
             Dialog.Close(DialogResult.Ok(true));
         }
@@ -108,7 +108,7 @@
         }
         finally
         {
-            saving = false;
+            _saving = false;
         }
     }
 }

@@ -14,20 +14,20 @@ namespace MultiClusterMgmtSys.Tests.Application.Services;
 
 public class SvcServiceTests : IDisposable
 {
-    private readonly ServiceHarness harness = new("admin", "Admin");
-    private readonly Mock<IKubernetes> k8s = K8sMocks.Create();
-    private readonly SvcService service;
+    private readonly ServiceHarness _harness = new("admin", "Admin");
+    private readonly Mock<IKubernetes> _k8s = K8sMocks.Create();
+    private readonly SvcService _service;
 
     public SvcServiceTests()
     {
-        service = new SvcService(
-            harness.ClusterRepo, harness.Audit, NullLogger<SvcService>.Instance, K8sMocks.Cache(k8s));
+        _service = new SvcService(
+            _harness.ClusterRepo, _harness.Audit, NullLogger<SvcService>.Instance, K8sMocks.Cache(_k8s));
     }
 
-    public void Dispose() => harness.Dispose();
+    public void Dispose() => _harness.Dispose();
 
     private async Task<int> SeedAsync()
-        => (await harness.ClusterRepo.AddAsync(TestData.NewCluster("svc-cluster"))).Id;
+        => (await _harness.ClusterRepo.AddAsync(TestData.NewCluster("svc-cluster"))).Id;
 
     private static V1Service NewService(string name, string ns, string type = "ClusterIP", string? clusterIp = "10.96.0.10")
         => new()
@@ -57,20 +57,20 @@ public class SvcServiceTests : IDisposable
     [Fact]
     public async Task GetNamespacesAsync_missing_cluster_throws_not_found()
     {
-        await Assert.ThrowsAsync<NotFoundException>(() => service.GetNamespacesAsync(999));
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.GetNamespacesAsync(999));
     }
 
     [Fact]
     public async Task ListSvcsAsync_all_namespaces()
     {
         var clusterId = await SeedAsync();
-        k8s.SetupListServices(new V1Service
+        _k8s.SetupListServices(new V1Service
         {
             Metadata = new V1ObjectMeta { Name = "svc-a", NamespaceProperty = "app" },
             Spec = new V1ServiceSpec { Type = "ClusterIP", ClusterIP = "10.96.0.10" }
         });
 
-        var items = await service.ListSvcsAsync(new SvcQueryRequest(clusterId, null));
+        var items = await _service.ListSvcsAsync(new SvcQueryRequest(clusterId, null));
 
         var vm = Assert.Single(items);
         Assert.Equal("svc-a", vm.Name);
@@ -81,13 +81,13 @@ public class SvcServiceTests : IDisposable
     public async Task ListSvcsAsync_namespaced_and_headless_flag()
     {
         var clusterId = await SeedAsync();
-        k8s.SetupListNamespacedServices("app", new V1Service
+        _k8s.SetupListNamespacedServices("app", new V1Service
         {
             Metadata = new V1ObjectMeta { Name = "headless-svc", NamespaceProperty = "app" },
             Spec = new V1ServiceSpec { Type = "ClusterIP", ClusterIP = "None" }
         });
 
-        var items = await service.ListSvcsAsync(new SvcQueryRequest(clusterId, "app"));
+        var items = await _service.ListSvcsAsync(new SvcQueryRequest(clusterId, "app"));
 
         var vm = Assert.Single(items);
         Assert.Equal("headless-svc", vm.Name);
@@ -98,23 +98,23 @@ public class SvcServiceTests : IDisposable
     public async Task ListSvcsAsync_k8s_error_translated()
     {
         var clusterId = await SeedAsync();
-        k8s.SetupListServicesThrows(new TaskCanceledException("timeout"));
+        _k8s.SetupListServicesThrows(new TaskCanceledException("timeout"));
 
         await Assert.ThrowsAsync<ClusterUnreachableException>(
-            () => service.ListSvcsAsync(new SvcQueryRequest(clusterId, null)));
+            () => _service.ListSvcsAsync(new SvcQueryRequest(clusterId, null)));
     }
 
     [Fact]
     public async Task GetSvcAsync_missing_cluster_returns_null()
     {
-        Assert.Null(await service.GetSvcAsync(new SvcKeyRequest(999, "svc", "app")));
+        Assert.Null(await _service.GetSvcAsync(new SvcKeyRequest(999, "svc", "app")));
     }
 
     [Fact]
     public async Task GetSvcAsync_maps_detail_with_ports()
     {
         var clusterId = await SeedAsync();
-        k8s.SetupReadService("web", "app", new V1Service
+        _k8s.SetupReadService("web", "app", new V1Service
         {
             Metadata = new V1ObjectMeta { Name = "web", NamespaceProperty = "app", Uid = "u-1" },
             Spec = new V1ServiceSpec
@@ -125,7 +125,7 @@ public class SvcServiceTests : IDisposable
             }
         });
 
-        var detail = await service.GetSvcAsync(new SvcKeyRequest(clusterId, "web", "app"));
+        var detail = await _service.GetSvcAsync(new SvcKeyRequest(clusterId, "web", "app"));
 
         Assert.NotNull(detail);
         Assert.Equal("NodePort", detail!.Type);
@@ -137,7 +137,7 @@ public class SvcServiceTests : IDisposable
     public async Task GetSvcEndpointsAsync_slices_mapped_with_ready()
     {
         var clusterId = await SeedAsync();
-        k8s.SetupListEndpointSlices("app", SvcMappingExtensions.EndpointSliceServiceLabel + "=web", new V1EndpointSlice
+        _k8s.SetupListEndpointSlices("app", SvcMappingExtensions.EndpointSliceServiceLabel + "=web", new V1EndpointSlice
         {
             Endpoints =
             [
@@ -147,7 +147,7 @@ public class SvcServiceTests : IDisposable
             Ports = [new Discoveryv1EndpointPort { Port = 80 }]
         });
 
-        var endpoints = await service.GetSvcEndpointsAsync(new SvcKeyRequest(clusterId, "web", "app"));
+        var endpoints = await _service.GetSvcEndpointsAsync(new SvcKeyRequest(clusterId, "web", "app"));
 
         Assert.Equal(2, endpoints.Count);
         Assert.Equal("10.1.1.1:80", endpoints[0].Address);
@@ -159,8 +159,8 @@ public class SvcServiceTests : IDisposable
     public async Task GetSvcEndpointsAsync_falls_back_to_legacy_endpoints()
     {
         var clusterId = await SeedAsync();
-        k8s.SetupListEndpointSlicesThrows("app", K8sMocks.K8sError(404));
-        k8s.SetupListEndpoints("app", new V1Endpoints
+        _k8s.SetupListEndpointSlicesThrows("app", K8sMocks.K8sError(404));
+        _k8s.SetupListEndpoints("app", new V1Endpoints
         {
             Metadata = new V1ObjectMeta { Name = "web" },
             Subsets =
@@ -173,7 +173,7 @@ public class SvcServiceTests : IDisposable
             ]
         });
 
-        var endpoints = await service.GetSvcEndpointsAsync(new SvcKeyRequest(clusterId, "web", "app"));
+        var endpoints = await _service.GetSvcEndpointsAsync(new SvcKeyRequest(clusterId, "web", "app"));
 
         Assert.Equal(2, endpoints.Count);
         Assert.True(endpoints[0].Ready);
@@ -184,11 +184,11 @@ public class SvcServiceTests : IDisposable
     public async Task DeleteSvcAsync_success_audits()
     {
         var clusterId = await SeedAsync();
-        k8s.SetupDeleteService("svc-a", "app");
+        _k8s.SetupDeleteService("svc-a", "app");
 
-        await service.DeleteSvcAsync(new SvcKeyRequest(clusterId, "svc-a", "app"));
+        await _service.DeleteSvcAsync(new SvcKeyRequest(clusterId, "svc-a", "app"));
 
-        var audit = harness.Db.AuditLogs.Single();
+        var audit = _harness.Db.AuditLogs.Single();
         Assert.Equal(AuditCategory.Service, audit.Category);
         Assert.Equal(AuditAction.Delete, audit.Action);
     }
@@ -197,21 +197,21 @@ public class SvcServiceTests : IDisposable
     public async Task DeleteSvcAsync_k8s_error_translated()
     {
         var clusterId = await SeedAsync();
-        k8s.SetupDeleteServiceThrows("svc-a", "app", K8sMocks.K8sError(409));
+        _k8s.SetupDeleteServiceThrows("svc-a", "app", K8sMocks.K8sError(409));
 
         await Assert.ThrowsAsync<ConflictException>(
-            () => service.DeleteSvcAsync(new SvcKeyRequest(clusterId, "svc-a", "app")));
+            () => _service.DeleteSvcAsync(new SvcKeyRequest(clusterId, "svc-a", "app")));
     }
 
     [Fact]
     public async Task CreateSvcFromYamlAsync_success_audits()
     {
         var clusterId = await SeedAsync();
-        k8s.SetupCreateService("app");
+        _k8s.SetupCreateService("app");
 
-        await service.CreateSvcFromYamlAsync(new SvcCreateRequest(clusterId, ServiceYaml));
+        await _service.CreateSvcFromYamlAsync(new SvcCreateRequest(clusterId, ServiceYaml));
 
-        var audit = harness.Db.AuditLogs.Single();
+        var audit = _harness.Db.AuditLogs.Single();
         Assert.Equal(AuditAction.Create, audit.Action);
         Assert.Contains("web-svc", audit.Target);
     }
@@ -223,7 +223,7 @@ public class SvcServiceTests : IDisposable
         var yaml = ServiceYaml.Replace("  namespace: app\n", "");
 
         var ex = await Assert.ThrowsAsync<ValidationException>(
-            () => service.CreateSvcFromYamlAsync(new SvcCreateRequest(clusterId, yaml)));
+            () => _service.CreateSvcFromYamlAsync(new SvcCreateRequest(clusterId, yaml)));
 
         Assert.Contains("metadata.namespace", ex.UserMessage);
     }
@@ -232,7 +232,7 @@ public class SvcServiceTests : IDisposable
     public async Task UpdateSvcFromYamlAsync_changed_cluster_ip_throws_validation()
     {
         var clusterId = await SeedAsync();
-        k8s.SetupReadService("web", "app", new V1Service
+        _k8s.SetupReadService("web", "app", new V1Service
         {
             Metadata = new V1ObjectMeta { Name = "web", NamespaceProperty = "app" },
             Spec = new V1ServiceSpec { ClusterIP = "10.96.0.10" }
@@ -249,7 +249,7 @@ public class SvcServiceTests : IDisposable
             """;
 
         var ex = await Assert.ThrowsAsync<ValidationException>(
-            () => service.UpdateSvcFromYamlAsync(new SvcUpdateRequest(clusterId, "web", "app", yaml)));
+            () => _service.UpdateSvcFromYamlAsync(new SvcUpdateRequest(clusterId, "web", "app", yaml)));
 
         Assert.Contains("clusterIP", ex.UserMessage);
     }
@@ -258,12 +258,12 @@ public class SvcServiceTests : IDisposable
     public async Task UpdateSvcFromYamlAsync_replaces_and_audits()
     {
         var clusterId = await SeedAsync();
-        k8s.SetupReadService("web", "app", new V1Service
+        _k8s.SetupReadService("web", "app", new V1Service
         {
             Metadata = new V1ObjectMeta { Name = "web", NamespaceProperty = "app", ResourceVersion = "42", Uid = "uid-1" },
             Spec = new V1ServiceSpec { ClusterIP = "10.96.0.10" }
         });
-        k8s.SetupReplaceService("web", "app");
+        _k8s.SetupReplaceService("web", "app");
 
         var yaml = """
             apiVersion: v1
@@ -275,9 +275,9 @@ public class SvcServiceTests : IDisposable
               selector:
                 app: web
             """;
-        await service.UpdateSvcFromYamlAsync(new SvcUpdateRequest(clusterId, "web", "app", yaml));
+        await _service.UpdateSvcFromYamlAsync(new SvcUpdateRequest(clusterId, "web", "app", yaml));
 
-        k8s.Verify(x => x.CoreV1.ReplaceNamespacedServiceWithHttpMessagesAsync(
+        _k8s.Verify(x => x.CoreV1.ReplaceNamespacedServiceWithHttpMessagesAsync(
             It.Is<V1Service>(s => s.Spec!.ClusterIP == "10.96.0.10" && s.Metadata!.ResourceVersion == "42"),
             "web", "app",
             It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
@@ -285,7 +285,7 @@ public class SvcServiceTests : IDisposable
             It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
             It.IsAny<CancellationToken>()), Times.Once);
 
-        Assert.Equal(AuditAction.Update, harness.Db.AuditLogs.Single().Action);
+        Assert.Equal(AuditAction.Update, _harness.Db.AuditLogs.Single().Action);
     }
 }
 

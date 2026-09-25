@@ -8,7 +8,7 @@ internal sealed class RedirectManager(NavigationManager navigationManager)
 {
     public const string StatusCookieName = "Identity.StatusMessage";
 
-    private static readonly CookieBuilder StatusCookieBuilder = new()
+    private static readonly CookieBuilder _StatusCookieBuilder = new()
     {
         SameSite = SameSiteMode.Strict,
         HttpOnly = true,
@@ -38,7 +38,7 @@ internal sealed class RedirectManager(NavigationManager navigationManager)
 
     public void RedirectToWithStatus(string uri, string message, HttpContext context)
     {
-        context.Response.Cookies.Append(StatusCookieName, message, StatusCookieBuilder.Build(context));
+        context.Response.Cookies.Append(StatusCookieName, message, _StatusCookieBuilder.Build(context));
         RedirectTo(uri);
     }
 

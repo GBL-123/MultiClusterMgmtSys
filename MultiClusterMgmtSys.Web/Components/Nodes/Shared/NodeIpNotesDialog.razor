@@ -41,15 +41,15 @@
             <DialogActions>
                 <MudButton OnClick="() => Dialog.Cancel()"
                            Variant="Variant.Text"
-                           Disabled="saving">
+                           Disabled="_saving">
                     取消
                 </MudButton>
                 <MudButton OnClick="Submit"
                            Color="Color.Primary"
                            Variant="Variant.Filled"
-                           Disabled="saving"
-                           StartIcon="@(!saving ? Icons.Material.Filled.Save : null)">
-                    @if (saving)
+                           Disabled="_saving"
+                           StartIcon="@(!_saving ? Icons.Material.Filled.Save : null)">
+                    @if (_saving)
                     {
                         <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
                     }
@@ -73,14 +73,14 @@
     [CascadingParameter]
     public IMudDialogInstance Dialog { get; set; } = default!;
 
-    private bool saving;
+    private bool _saving;
 
     private List<NodeAddressViewModel> IpClassAddresses =>
         Addresses.Where(a => a.Type == "InternalIP" || a.Type == "ExternalIP").ToList();
 
     private async Task Submit()
     {
-        saving = true;
+        _saving = true;
         try
         {
             var items = IpClassAddresses.Select(a => new NodeIpNoteEditItem
@@ -103,7 +103,7 @@
         }
         finally
         {
-            saving = false;
+            _saving = false;
         }
     }
 }

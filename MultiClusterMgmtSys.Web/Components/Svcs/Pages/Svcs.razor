@@ -21,7 +21,7 @@
 <PageTitle>服务管理</PageTitle>
 
 <MudStack Row="true" Spacing="3" Class="d-flex flex-auto">
-    <ClusterSelectSidebar Clusters="@clusters"
+    <ClusterSelectSidebar Clusters="@_clusters"
                           SelectedClusterId="@EffectiveClusterId"
                           OnClusterSelected="SelectCluster" />
 
@@ -33,11 +33,11 @@
                 <MudText Typo="Typo.h6" Class="mud-text-secondary">请从左侧选择一个集群</MudText>
             </div>
         }
-        else if (loading)
+        else if (_loading)
         {
             <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
         }
-        else if (cluster is null)
+        else if (_cluster is null)
         {
             <MudCard Class="pa-8" Elevation="2">
                 <MudCardContent>
@@ -61,17 +61,17 @@
                         <MudText Typo="Typo.h5">服务管理</MudText>
                         <MudChip T="string"
                                  Size="Size.Small"
-                                 Color="GetClusterStatusColor(cluster.Status)"
+                                 Color="GetClusterStatusColor(_cluster.Status)"
                                  Variant="Variant.Filled"
                                  Class="ml-2">
-                            @cluster.Name · @cluster.StatusText
+                            @_cluster.Name · @_cluster.StatusText
                         </MudChip>
                         <MudSpacer />
                         <MudButton Variant="Variant.Text"
                                    Color="Color.Inherit"
                                    StartIcon="@Icons.Material.Filled.Refresh"
                                    OnClick="@(() => LoadAsync(EffectiveClusterId!.Value))"
-                                   Disabled="@loading">
+                                   Disabled="@_loading">
                             刷新
                         </MudButton>
                         <AuthorizeView Roles="Admin">
@@ -80,27 +80,27 @@
                                            Color="Color.Primary"
                                            StartIcon="@Icons.Material.Filled.Add"
                                            OnClick="OpenCreateDialog"
-                                           Disabled="@(!cluster.IsReachable)">
+                                           Disabled="@(!_cluster.IsReachable)">
                                     新建 Service
                                 </MudButton>
                             </Authorized>
                         </AuthorizeView>
                     </MudStack>
 
-                    @if (cluster.IsReachable)
+                    @if (_cluster.IsReachable)
                     {
-                        <SvcListFilterBar @bind-SelectedNamespace="selectedNamespace"
-                                          @bind-SelectedType="selectedType"
-                                          @bind-SearchName="searchName"
-                                          @bind-PortQuery="portQuery"
-                                          Namespaces="@namespaces"
+                        <SvcListFilterBar @bind-SelectedNamespace="_selectedNamespace"
+                                          @bind-SelectedType="_selectedType"
+                                          @bind-SearchName="_searchName"
+                                          @bind-PortQuery="_portQuery"
+                                          Namespaces="@_namespaces"
                                           OnQuery="OnQueryClick"
                                           OnReset="OnResetClick" />
                     }
                 </MudStack>
             </MudPaper>
 
-            @if (!cluster.IsReachable)
+            @if (!_cluster.IsReachable)
             {
                 <MudCard Elevation="1">
                     <MudCardContent>
@@ -111,7 +111,7 @@
             else
             {
                 <SvcListTable Items="@filteredSvcs"
-                              Loading="@loading"
+                              Loading="@_loading"
                               OnNavigateDetail="NavigateToDetail"
                               OnNavigateEditYaml="NavigateToYamlEdit"
                               OnDelete="DeleteSvc" />
@@ -125,38 +125,38 @@
     public int? ClusterId { get; set; }
 
 
-    private List<ClusterViewModel> clusters = new();
+    private List<ClusterViewModel> _clusters = new();
 
-    private ClusterDetailViewModel? cluster;
+    private ClusterDetailViewModel? _cluster;
 
-    private List<SvcListViewModel> svcs = new();
+    private List<SvcListViewModel> _svcs = new();
 
-    private List<string> namespaces = new();
+    private List<string> _namespaces = new();
 
-    private bool loading;
+    private bool _loading;
 
-    private string searchName = "";
+    private string _searchName = "";
 
-    private string appliedSearchName = "";
+    private string _appliedSearchName = "";
 
-    private string portQuery = "";
+    private string _portQuery = "";
 
-    private string appliedPortQuery = "";
+    private string _appliedPortQuery = "";
 
-    private string? selectedType;
+    private string? _selectedType;
 
-    private string? appliedType;
+    private string? _appliedType;
 
-    private string? selectedNamespace;
+    private string? _selectedNamespace;
 
-    private int? previousClusterId;
+    private int? _previousClusterId;
 
-    private bool hasInitialized;
+    private bool _hasInitialized;
 
     private int? EffectiveClusterId => ClusterId ?? ClusterSelection.SelectedClusterId;
 
     private List<SvcListViewModel> filteredSvcs
-        => svcs.Apply(appliedSearchName, appliedPortQuery, appliedType).ToList();
+        => _svcs.Apply(_appliedSearchName, _appliedPortQuery, _appliedType).ToList();
 
     protected override async Task OnInitializedAsync()
     {
@@ -173,12 +173,12 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (ClusterId == previousClusterId && hasInitialized)
+        if (ClusterId == _previousClusterId && _hasInitialized)
         {
             return;
         }
-        hasInitialized = true;
-        previousClusterId = ClusterId;
+        _hasInitialized = true;
+        _previousClusterId = ClusterId;
 
         if (EffectiveClusterId.HasValue)
         {
@@ -186,10 +186,10 @@
         }
         else
         {
-            cluster = null;
-            svcs = new();
-            namespaces = new();
-            loading = false;
+            _cluster = null;
+            _svcs = new();
+            _namespaces = new();
+            _loading = false;
         }
     }
 
@@ -199,7 +199,7 @@
         {
             var request = new ClusterQueryRequest { Page = 1, PageSize = 1000, SortBy = ClusterSortField.Name, SortDescending = false };
             var result = await ClusterService.GetPagedAsync(request);
-            clusters = result.Items;
+            _clusters = result.Items;
         }
         catch (Exception ex)
         {
@@ -209,19 +209,19 @@
 
     private async Task LoadAsync(int id)
     {
-        loading = true;
+        _loading = true;
         try
         {
-            cluster = await ClusterService.GetClusterDetailAsync(id);
-            if (cluster is not null)
+            _cluster = await ClusterService.GetClusterDetailAsync(id);
+            if (_cluster is not null)
             {
                 ClusterSelection.Set(id);
             }
-            if (cluster is not null && cluster.IsReachable)
+            if (_cluster is not null && _cluster.IsReachable)
             {
                 try
                 {
-                    namespaces = await SvcService.GetNamespacesAsync(id);
+                    _namespaces = await SvcService.GetNamespacesAsync(id);
                 }
                 catch (Exception ex)
                 {
@@ -230,7 +230,7 @@
 
                 try
                 {
-                    svcs = await SvcService.ListSvcsAsync(new SvcQueryRequest(id, selectedNamespace));
+                    _svcs = await SvcService.ListSvcsAsync(new SvcQueryRequest(id, _selectedNamespace));
                 }
                 catch (Exception ex)
                 {
@@ -239,8 +239,8 @@
             }
             else
             {
-                svcs = new();
-                namespaces = new();
+                _svcs = new();
+                _namespaces = new();
             }
         }
         catch (Exception ex)
@@ -249,7 +249,7 @@
         }
         finally
         {
-            loading = false;
+            _loading = false;
         }
     }
 
@@ -261,13 +261,13 @@
     private async Task OnQueryClick()
     {
         if (!EffectiveClusterId.HasValue) return;
-        appliedSearchName = searchName;
-        appliedPortQuery = portQuery;
-        appliedType = selectedType;
-        loading = true;
+        _appliedSearchName = _searchName;
+        _appliedPortQuery = _portQuery;
+        _appliedType = _selectedType;
+        _loading = true;
         try
         {
-            svcs = await SvcService.ListSvcsAsync(new SvcQueryRequest(EffectiveClusterId.Value, selectedNamespace));
+            _svcs = await SvcService.ListSvcsAsync(new SvcQueryRequest(EffectiveClusterId.Value, _selectedNamespace));
         }
         catch (Exception ex)
         {
@@ -275,19 +275,19 @@
         }
         finally
         {
-            loading = false;
+            _loading = false;
         }
     }
 
     private async Task OnResetClick()
     {
-        selectedNamespace = null;
-        searchName = "";
-        appliedSearchName = "";
-        portQuery = "";
-        appliedPortQuery = "";
-        selectedType = null;
-        appliedType = null;
+        _selectedNamespace = null;
+        _searchName = "";
+        _appliedSearchName = "";
+        _portQuery = "";
+        _appliedPortQuery = "";
+        _selectedType = null;
+        _appliedType = null;
         if (EffectiveClusterId.HasValue)
         {
             await LoadAsync(EffectiveClusterId.Value);

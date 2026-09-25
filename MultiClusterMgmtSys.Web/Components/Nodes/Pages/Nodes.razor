@@ -19,7 +19,7 @@
 <PageTitle>节点管理</PageTitle>
 
 <MudStack Row="true" Spacing="3" Class="d-flex flex-auto">
-    <ClusterSelectSidebar Clusters="@clusters"
+    <ClusterSelectSidebar Clusters="@_clusters"
                           SelectedClusterId="@EffectiveClusterId"
                           OnClusterSelected="SelectCluster" />
 
@@ -31,11 +31,11 @@
                 <MudText Typo="Typo.h6" Class="mud-text-secondary">请从左侧选择一个集群</MudText>
             </div>
         }
-        else if (cluster is null && loading)
+        else if (_cluster is null && _loading)
         {
             <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
         }
-        else if (cluster is null)
+        else if (_cluster is null)
         {
             <MudCard Class="pa-8" Elevation="2">
                 <MudCardContent>
@@ -55,20 +55,20 @@
         {
             <MudPaper Class="pa-4">
                 <MudStack>
-                    <NodeListToolbar Cluster="@cluster"
-                                     Processing="@loading"
+                    <NodeListToolbar Cluster="@_cluster"
+                                     Processing="@_loading"
                                      OnRefresh="@(() => LoadAsync(EffectiveClusterId!.Value))" />
 
-                    @if (cluster.IsReachable)
+                    @if (_cluster.IsReachable)
                     {
-                        <NodeListFilterBar Filter="@filter"
+                        <NodeListFilterBar Filter="@_filter"
                                            OnQuery="ApplyFilter"
                                            OnReset="ResetFilter" />
                     }
                 </MudStack>
             </MudPaper>
 
-            @if (!cluster.IsReachable)
+            @if (!_cluster.IsReachable)
             {
                 <MudCard Elevation="1">
                     <MudCardContent>
@@ -79,8 +79,8 @@
             else
             {
                 <NodeListTable Nodes="@filteredNodes"
-                               FilterActive="@appliedFilter.IsActive"
-                               Loading="@loading"
+                               FilterActive="@_appliedFilter.IsActive"
+                               Loading="@_loading"
                                OnNavigateNode="@(name => NavigationManager.NavigateTo($"/nodes/{EffectiveClusterId}/{name}"))" />
             }
         }
@@ -92,21 +92,21 @@
     public int? ClusterId { get; set; }
 
 
-    private List<ClusterViewModel> clusters = new();
+    private List<ClusterViewModel> _clusters = new();
 
-    private ClusterDetailViewModel? cluster;
+    private ClusterDetailViewModel? _cluster;
 
-    private List<ClusterNodeViewModel> nodes = new();
+    private List<ClusterNodeViewModel> _nodes = new();
 
-    private bool loading;
+    private bool _loading;
 
-    private int? previousClusterId;
+    private int? _previousClusterId;
 
-    private bool hasInitialized;
+    private bool _hasInitialized;
 
-    private NodeListFilter filter = new();
+    private NodeListFilter _filter = new();
 
-    private NodeListFilter appliedFilter = new();
+    private NodeListFilter _appliedFilter = new();
 
     /// <summary>
     /// 当前生效的集群上下文:URL 参数存在时用 URL 参数,
@@ -118,21 +118,21 @@
     {
         get
         {
-            var q = nodes.AsEnumerable();
+            var q = _nodes.AsEnumerable();
 
-            if (!string.IsNullOrWhiteSpace(appliedFilter.Name))
-                q = q.Where(n => n.Name.Contains(appliedFilter.Name, StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrWhiteSpace(_appliedFilter.Name))
+                q = q.Where(n => n.Name.Contains(_appliedFilter.Name, StringComparison.OrdinalIgnoreCase));
 
-            if (!string.IsNullOrEmpty(appliedFilter.Role))
+            if (!string.IsNullOrEmpty(_appliedFilter.Role))
                 q = q.Where(n => (n.Roles ?? "")
                     .Split(',', StringSplitOptions.RemoveEmptyEntries)
-                    .Contains(appliedFilter.Role, StringComparer.OrdinalIgnoreCase));
+                    .Contains(_appliedFilter.Role, StringComparer.OrdinalIgnoreCase));
 
-            if (!string.IsNullOrEmpty(appliedFilter.Status))
-                q = q.Where(n => n.Status == appliedFilter.Status);
+            if (!string.IsNullOrEmpty(_appliedFilter.Status))
+                q = q.Where(n => n.Status == _appliedFilter.Status);
 
-            if (appliedFilter.Schedulable.HasValue)
-                q = q.Where(n => n.Unschedulable == appliedFilter.Schedulable.Value);
+            if (_appliedFilter.Schedulable.HasValue)
+                q = q.Where(n => n.Unschedulable == _appliedFilter.Schedulable.Value);
 
             return q.ToList();
         }
@@ -153,24 +153,24 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (ClusterId == previousClusterId && hasInitialized)
+        if (ClusterId == _previousClusterId && _hasInitialized)
         {
             return;
         }
-        hasInitialized = true;
-        previousClusterId = ClusterId;
+        _hasInitialized = true;
+        _previousClusterId = ClusterId;
 
         if (EffectiveClusterId.HasValue)
         {
-            cluster = null;
-            nodes = new();
+            _cluster = null;
+            _nodes = new();
             await LoadAsync(EffectiveClusterId.Value);
         }
         else
         {
-            cluster = null;
-            nodes = new();
-            loading = false;
+            _cluster = null;
+            _nodes = new();
+            _loading = false;
         }
     }
 
@@ -180,7 +180,7 @@
         {
             var request = new ClusterQueryRequest { Page = 1, PageSize = 1000, SortBy = ClusterSortField.Name, SortDescending = false };
             var result = await ClusterService.GetPagedAsync(request);
-            clusters = result.Items;
+            _clusters = result.Items;
         }
         catch (Exception ex)
         {
@@ -190,25 +190,25 @@
 
     private async Task LoadAsync(int id)
     {
-        loading = true;
+        _loading = true;
         try
         {
-            cluster = await ClusterService.GetClusterDetailAsync(id);
-            if (cluster is not null && cluster.IsReachable)
+            _cluster = await ClusterService.GetClusterDetailAsync(id);
+            if (_cluster is not null && _cluster.IsReachable)
             {
                 try
                 {
-                    nodes = await ClusterNodeService.GetClusterNodesAsync(id);
+                    _nodes = await ClusterNodeService.GetClusterNodesAsync(id);
                 }
                 catch (Exception ex)
                 {
-                    nodes = new();
+                    _nodes = new();
                     await ExHandler.HandleAsync(ex, "加载节点列表");
                 }
             }
             else
             {
-                nodes = new();
+                _nodes = new();
             }
         }
         catch (Exception ex)
@@ -217,7 +217,7 @@
         }
         finally
         {
-            loading = false;
+            _loading = false;
         }
     }
 
@@ -228,17 +228,17 @@
 
     private void ApplyFilter()
     {
-        appliedFilter.Name = filter.Name;
-        appliedFilter.Role = filter.Role;
-        appliedFilter.Status = filter.Status;
-        appliedFilter.Schedulable = filter.Schedulable;
+        _appliedFilter.Name = _filter.Name;
+        _appliedFilter.Role = _filter.Role;
+        _appliedFilter.Status = _filter.Status;
+        _appliedFilter.Schedulable = _filter.Schedulable;
         StateHasChanged();
     }
 
     private void ResetFilter()
     {
-        filter.Reset();
-        appliedFilter.Reset();
+        _filter.Reset();
+        _appliedFilter.Reset();
         StateHasChanged();
     }
 }

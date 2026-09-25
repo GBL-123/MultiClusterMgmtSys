@@ -15,11 +15,11 @@
 <PageTitle>节点详情: @NodeName</PageTitle>
 
 <MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
-    @if (loading)
+    @if (_loading)
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
     }
-    else if (node is null)
+    else if (_node is null)
     {
         <MudCard Class="pa-4">
             <MudCardContent>
@@ -36,7 +36,7 @@
             </MudCardContent>
         </MudCard>
     }
-    else if (!node.IsReachable)
+    else if (!_node.IsReachable)
     {
         <MudCard Elevation="1">
             <MudCardContent>
@@ -54,40 +54,40 @@
     }
     else
     {
-        <NodeDetailToolbar Node="@node"
-                           Processing="@loading"
+        <NodeDetailToolbar Node="@_node"
+                           Processing="@_loading"
                            OnBack="@(() => NavigationManager.NavigateTo($"/nodes/{ClusterId}"))"
                            OnRefresh="LoadAsync" />
 
-        <MudTabs @bind-ActivePanelIndex="activeTabIndex"
+        <MudTabs @bind-ActivePanelIndex="_activeTabIndex"
                  Class="detail-tabs"
                  Elevation="0"
                  Rounded="false"
                  TabPanelsClass="detail-tabs-panels">
             <MudTabPanel Text="YAML">
-                <NodeYamlViewCard Yaml="@node.Yaml" />
+                <NodeYamlViewCard Yaml="@_node.Yaml" />
             </MudTabPanel>
             <MudTabPanel Text="基本信息">
                 <MudStack Spacing="3">
-                    <NodeOverviewCard Node="@node" />
-                    <NodeAddressesCard Node="@node" OnRemarksChanged="LoadAsync" />
-                    <NodeTaintsCard Node="@node" />
+                    <NodeOverviewCard Node="@_node" />
+                    <NodeAddressesCard Node="@_node" OnRemarksChanged="LoadAsync" />
+                    <NodeTaintsCard Node="@_node" />
                 </MudStack>
             </MudTabPanel>
             <MudTabPanel Text="资源容量">
-                <NodeResourcesCard Node="@node" />
+                <NodeResourcesCard Node="@_node" />
             </MudTabPanel>
             <MudTabPanel Text="条件">
-                <NodeConditionsCard Node="@node" />
+                <NodeConditionsCard Node="@_node" />
             </MudTabPanel>
             <MudTabPanel Text="标签与注解">
                 <MudStack Spacing="3">
-                    <NodeLabelsCard Node="@node" />
-                    <NodeAnnotationsCard Node="@node" />
+                    <NodeLabelsCard Node="@_node" />
+                    <NodeAnnotationsCard Node="@_node" />
                 </MudStack>
             </MudTabPanel>
             <MudTabPanel Text="系统信息">
-                <NodeSystemInfoCard Node="@node" />
+                <NodeSystemInfoCard Node="@_node" />
             </MudTabPanel>
         </MudTabs>
     }
@@ -101,15 +101,15 @@
     public string NodeName { get; set; } = "";
 
 
-    private ClusterNodeDetailViewModel? node;
+    private ClusterNodeDetailViewModel? _node;
 
-    private bool loading;
+    private bool _loading;
 
-    private int activeTabIndex;
+    private int _activeTabIndex;
 
-    private int previousClusterId;
+    private int _previousClusterId;
 
-    private string previousNodeName = "";
+    private string _previousNodeName = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -123,20 +123,20 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (ClusterId != previousClusterId || NodeName != previousNodeName)
+        if (ClusterId != _previousClusterId || NodeName != _previousNodeName)
         {
-            previousClusterId = ClusterId;
-            previousNodeName = NodeName;
+            _previousClusterId = ClusterId;
+            _previousNodeName = NodeName;
             await LoadAsync();
         }
     }
 
     private async Task LoadAsync()
     {
-        loading = true;
+        _loading = true;
         try
         {
-            node = await ClusterNodeService.GetNodeDetailAsync(new NodeDetailQueryRequest(ClusterId, NodeName));
+            _node = await ClusterNodeService.GetNodeDetailAsync(new NodeDetailQueryRequest(ClusterId, NodeName));
         }
         catch (Exception ex)
         {
@@ -144,7 +144,7 @@
         }
         finally
         {
-            loading = false;
+            _loading = false;
         }
     }
 }

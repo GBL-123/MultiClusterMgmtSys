@@ -12,7 +12,7 @@
 <MudDialog>
     <DialogContent>
         <MudSelect T="string"
-                   Value="svcType"
+                   Value="_svcType"
                    ValueChanged="OnTypeChanged"
                    Label="Service 类型"
                    Variant="Variant.Outlined"
@@ -24,7 +24,7 @@
             <MudSelectItem Value="@ExternalNameType">ExternalName(外部 DNS 别名)</MudSelectItem>
         </MudSelect>
         <MudTextField T="string"
-                      @bind-Value="yamlContent"
+                      @bind-Value="_yamlContent"
                       Label="YAML"
                       Lines="25"
                       Variant="Variant.Outlined"
@@ -32,10 +32,10 @@
                       Style="font-family: monospace;" />
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel" Variant="Variant.Text" Disabled="saving">取消</MudButton>
-        <MudButton OnClick="Submit" Color="Color.Primary" Variant="Variant.Filled" Disabled="saving"
-                   StartIcon="@(saving ? null : Icons.Material.Filled.Save)">
-            @if (saving)
+        <MudButton OnClick="Cancel" Variant="Variant.Text" Disabled="_saving">取消</MudButton>
+        <MudButton OnClick="Submit" Color="Color.Primary" Variant="Variant.Filled" Disabled="_saving"
+                   StartIcon="@(_saving ? null : Icons.Material.Filled.Save)">
+            @if (_saving)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
             }
@@ -59,21 +59,21 @@
     [Parameter]
     public int ClusterId { get; set; }
 
-    private string svcType = ClusterIPType;
+    private string _svcType = ClusterIPType;
 
-    private string yamlContent = "";
+    private string _yamlContent = "";
 
-    private bool saving;
+    private bool _saving;
 
     protected override async Task OnInitializedAsync()
     {
-        yamlContent = await YamlTemplateService.GetTemplateAsync("service", ClusterIPType.ToLowerInvariant());
+        _yamlContent = await YamlTemplateService.GetTemplateAsync("service", ClusterIPType.ToLowerInvariant());
     }
 
     private async Task OnTypeChanged(string type)
     {
-        svcType = type;
-        yamlContent = await YamlTemplateService.GetTemplateAsync("service", type.ToLowerInvariant());
+        _svcType = type;
+        _yamlContent = await YamlTemplateService.GetTemplateAsync("service", type.ToLowerInvariant());
     }
 
     private void Cancel() => Dialog.Cancel();
@@ -82,7 +82,7 @@
     {
         try
         {
-            YamlValidator.ValidateService(yamlContent);
+            YamlValidator.ValidateService(_yamlContent);
         }
         catch (Exception ex)
         {
@@ -90,10 +90,10 @@
             return;
         }
 
-        saving = true;
+        _saving = true;
         try
         {
-            await SvcService.CreateSvcFromYamlAsync(new SvcCreateRequest(ClusterId, yamlContent));
+            await SvcService.CreateSvcFromYamlAsync(new SvcCreateRequest(ClusterId, _yamlContent));
             Snackbar.Add("创建成功", Severity.Success);
             Dialog.Close(DialogResult.Ok(true));
         }
@@ -107,7 +107,7 @@
         }
         finally
         {
-            saving = false;
+            _saving = false;
         }
     }
 }

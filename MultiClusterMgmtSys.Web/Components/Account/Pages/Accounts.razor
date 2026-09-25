@@ -25,11 +25,11 @@
                            OnClick="RefreshTable">
                     刷新
                 </MudButton>
-                <MudButton Variant="@(isBatchMode ? Variant.Filled : Variant.Text)"
-                           Color="@(isBatchMode ? Color.Secondary : Color.Inherit)"
-                           StartIcon="@(isBatchMode ? Icons.Material.Filled.Close : Icons.Material.Filled.Checklist)"
+                <MudButton Variant="@(_isBatchMode ? Variant.Filled : Variant.Text)"
+                           Color="@(_isBatchMode ? Color.Secondary : Color.Inherit)"
+                           StartIcon="@(_isBatchMode ? Icons.Material.Filled.Close : Icons.Material.Filled.Checklist)"
                            OnClick="ToggleBatchMode">
-                    @(isBatchMode ? "退出批量" : "批量操作")
+                    @(_isBatchMode ? "退出批量" : "批量操作")
                 </MudButton>
                 <MudButton Variant="Variant.Filled"
                            Color="Color.Primary"
@@ -39,26 +39,26 @@
                 </MudButton>
             </MudStack>
 
-            <AccountFilterBar Query="@query"
+            <AccountFilterBar Query="@_query"
                               OnFilterChanged="RefreshTable"
                               OnReset="ResetTable" />
         </MudStack>
     </MudPaper>
 
-    <AccountTable Query="@query"
+    <AccountTable Query="@_query"
                   OnEditAccount="OpenEditDialog"
                   OnResetPassword="OpenResetPasswordDialog"
                   OnDeleteAccount="DeleteAccount"
-                  MultiSelectVisible="isBatchMode"
-                  SelectedIds="selectedAccountIds"
+                  MultiSelectVisible="_isBatchMode"
+                  SelectedIds="_selectedAccountIds"
                   OnSelectedIdsChanged="OnSelectionChanged"
-                  @ref="tableComponent" />
+                  @ref="_tableComponent" />
 
-    @if (isBatchMode && selectedAccountIds.Count > 0)
+    @if (_isBatchMode && _selectedAccountIds.Count > 0)
     {
         <MudPaper Class="pa-4">
             <MudStack Row="true" AlignItems="AlignItems.Center">
-                <MudText>@selectedAccountIds.Count 个账号已选</MudText>
+                <MudText>@_selectedAccountIds.Count 个账号已选</MudText>
                 <MudSpacer />
                 <MudMenu Label="批量改角色" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.SupervisorAccount">
                     <MudMenuItem OnClick="@(() => BatchUpdateRoleAsync("Admin"))">管理员 (Admin)</MudMenuItem>
@@ -77,24 +77,24 @@
 </MudStack>
 
 @code {
-    private AccountQueryRequest query = new();
+    private AccountQueryRequest _query = new();
 
-    private bool isBatchMode;
+    private bool _isBatchMode;
 
-    private HashSet<int> selectedAccountIds = new();
+    private HashSet<int> _selectedAccountIds = new();
 
-    private AccountTable? tableComponent;
+    private AccountTable? _tableComponent;
 
     protected override Task OnInitializedAsync() => Task.CompletedTask;
 
-    private Task RefreshTable() => tableComponent?.ReloadDataAsync() ?? Task.CompletedTask;
+    private Task RefreshTable() => _tableComponent?.ReloadDataAsync() ?? Task.CompletedTask;
 
-    private Task ResetTable() => tableComponent?.ResetSortAsync() ?? Task.CompletedTask;
+    private Task ResetTable() => _tableComponent?.ResetSortAsync() ?? Task.CompletedTask;
 
     private void ToggleBatchMode()
     {
-        isBatchMode = !isBatchMode;
-        if (!isBatchMode)
+        _isBatchMode = !_isBatchMode;
+        if (!_isBatchMode)
         {
             ClearSelection();
         }
@@ -102,14 +102,14 @@
 
     private Task OnSelectionChanged(HashSet<int> newSelection)
     {
-        selectedAccountIds = newSelection;
+        _selectedAccountIds = newSelection;
         return Task.CompletedTask;
     }
 
     private void ClearSelection()
     {
-        selectedAccountIds.Clear();
-        tableComponent?.ClearSelection();
+        _selectedAccountIds.Clear();
+        _tableComponent?.ClearSelection();
     }
 
     private async Task OpenCreateDialog()
@@ -187,7 +187,7 @@
     {
         var parameters = new DialogParameters
         {
-            { "Message", $"确认删除选中的 {selectedAccountIds.Count} 个账号？此操作不可撤销。" }
+            { "Message", $"确认删除选中的 {_selectedAccountIds.Count} 个账号？此操作不可撤销。" }
         };
         var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
         var dialog = await DialogService.ShowAsync<ConfirmDialog>("确认删除", parameters, options);
@@ -196,7 +196,7 @@
         {
             try
             {
-                var result = await AccountSvc.BatchDeleteAsync(selectedAccountIds.ToList());
+                var result = await AccountSvc.BatchDeleteAsync(_selectedAccountIds.ToList());
                 ShowBatchResult(result, "已删除");
                 ClearSelection();
                 await RefreshTable();
@@ -212,7 +212,7 @@
     {
         try
         {
-            var result = await AccountSvc.BatchUpdateRoleAsync(new BatchRoleUpdateRequest(selectedAccountIds.ToList(), roleName));
+            var result = await AccountSvc.BatchUpdateRoleAsync(new BatchRoleUpdateRequest(_selectedAccountIds.ToList(), roleName));
             ShowBatchResult(result, $"已设置为 {roleName}");
             ClearSelection();
             await RefreshTable();

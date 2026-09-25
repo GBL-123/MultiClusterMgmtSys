@@ -13,7 +13,7 @@
 }
 
 @code {
-    private string? messageFromCookie;
+    private string? _messageFromCookie;
 
     [Parameter]
     public string? Message { get; set; }
@@ -24,7 +24,7 @@
     [CascadingParameter]
     private HttpContext? HttpContext { get; set; }
 
-    private string? DisplayMessage => Message ?? messageFromCookie;
+    private string? DisplayMessage => Message ?? _messageFromCookie;
 
     protected override void OnInitialized()
     {
@@ -32,9 +32,9 @@
         {
             return;
         }
-        messageFromCookie = HttpContext.Request.Cookies[RedirectManager.StatusCookieName];
+        _messageFromCookie = HttpContext.Request.Cookies[RedirectManager.StatusCookieName];
 
-        if (messageFromCookie is not null)
+        if (_messageFromCookie is not null)
         {
             HttpContext.Response.Cookies.Delete(RedirectManager.StatusCookieName);
         }

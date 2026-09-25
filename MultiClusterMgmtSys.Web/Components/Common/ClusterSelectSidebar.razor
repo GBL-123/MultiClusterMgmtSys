@@ -63,7 +63,7 @@
     [Parameter]
     public EventCallback<int> OnClusterSelected { get; set; }
 
-    private readonly HashSet<string> collapsedGroups = new();
+    private readonly HashSet<string> _collapsedGroups = new();
 
     private List<ClusterGroupNode> GroupedClusters
     {
@@ -84,15 +84,15 @@
 
     private bool IsGroupExpanded(string name)
     {
-        return !collapsedGroups.Contains(name);
+        return !_collapsedGroups.Contains(name);
     }
 
     private void ToggleGroup(string name)
     {
-        if (collapsedGroups.Contains(name))
-            collapsedGroups.Remove(name);
+        if (_collapsedGroups.Contains(name))
+            _collapsedGroups.Remove(name);
         else
-            collapsedGroups.Add(name);
+            _collapsedGroups.Add(name);
     }
 
     private static Color GetStatusColor(ClusterStatus status) => status switch

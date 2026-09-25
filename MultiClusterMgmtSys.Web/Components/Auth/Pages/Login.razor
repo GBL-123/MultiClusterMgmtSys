@@ -20,10 +20,10 @@
             <span class="brand-mark large">▮</span>
             <MudText Typo="Typo.h5">多集群管理系统</MudText>
             <span class="appbar-subtitle">MCM // CONTROL</span>
-            <StatusMessage IsSuccess="@isSuccess" Message="@errorMessage" />
+            <StatusMessage IsSuccess="@_isSuccess" Message="@_errorMessage" />
         </MudStack>
        
-        <EditForm EditContext="editContext" method="post" OnSubmit="LoginUser" FormName="login">
+        <EditForm EditContext="_editContext" method="post" OnSubmit="LoginUser" FormName="login">
             <DataAnnotationsValidator />
             <MudStaticTextField For="@(() => Input.UserName)"
                                 @bind-Value="Input.UserName"
@@ -31,7 +31,7 @@
                                 Variant="Variant.Outlined"
                                 Margin="Margin.Dense"
                                 Class="pb-2"
-                                UserAttributes="@userNameTextFieldAttr" />
+                                UserAttributes="@_userNameTextFieldAttr" />
             <MudStaticTextField For="@(() => Input.Password)"
                                 @bind-Value="Input.Password"
                                 Label="密码"
@@ -43,7 +43,7 @@
                                 AdornmentToggledIcon="@Icons.Material.Outlined.VisibilityOff"
                                 AdornmentClickFunction="showPassword"
                                 Class="pb-2"
-                                UserAttributes="@passwordTextFieldAttr" />
+                                UserAttributes="@_passwordTextFieldAttr" />
             <MudStaticCheckBox For="@(() => Input.AutoLogin)"
                                @bind-Value="Input.AutoLogin">
                 自动登录
@@ -67,18 +67,18 @@
 </MudPaper>
 
 @code {
-    private bool isSuccess = false;
+    private bool _isSuccess = false;
 
-    private string? errorMessage;
+    private string? _errorMessage;
 
-    private EditContext editContext = default!;
+    private EditContext _editContext = default!;
 
-    private Dictionary<string, object> userNameTextFieldAttr = new()
+    private Dictionary<string, object> _userNameTextFieldAttr = new()
     {
         { "autocomplete", "username webauthn"},
         { "aria-required", "true" }
     };
-    private Dictionary<string, object> passwordTextFieldAttr = new()
+    private Dictionary<string, object> _passwordTextFieldAttr = new()
     {
         { "autocomplete", "current-password" },
         { "aria-required", "true" }
@@ -97,7 +97,7 @@
     {
         Input ??= new();
 
-        editContext = new EditContext(Input);
+        _editContext = new EditContext(Input);
 
         if (HttpMethods.IsGet(HttpContext.Request.Method))
         {
@@ -109,7 +109,7 @@
     public async Task LoginUser()
     {
         // If doing a password sign-in, validate the form.
-        if (!editContext.Validate())
+        if (!_editContext.Validate())
         {
             return;
         }
@@ -125,11 +125,11 @@
         );
         if (!result.Succeeded)
         {
-            isSuccess = false;
-            errorMessage = "用户名或密码错误";
+            _isSuccess = false;
+            _errorMessage = "用户名或密码错误";
             return;
         }
-        isSuccess = true;
+        _isSuccess = true;
         RedirectManager.RedirectTo(ReturnUrl);
     }
 

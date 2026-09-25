@@ -16,11 +16,11 @@ public class AuditService(
     IHttpContextAccessor httpContextAccessor,
     ILogger<AuditService> logger)
 {
-    private readonly IAuditLogRepository repo = repo;
+    private readonly IAuditLogRepository _repo = repo;
 
-    private readonly IHttpContextAccessor httpContextAccessor = httpContextAccessor;
+    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
-    private readonly ILogger<AuditService> logger = logger;
+    private readonly ILogger<AuditService> _logger = logger;
 
     /// <summary>写一条审计日志,操作者默认取当前登录用户名;写入失败静默降级(记录警告日志,不向调用方抛异常)。</summary>
     /// <param name="category">业务类别,如集群/账号/工作负载。</param>
@@ -31,8 +31,8 @@ public class AuditService(
     {
         try
         {
-            var actor = userName ?? httpContextAccessor.HttpContext?.User.Identity?.Name;
-            await repo.AddAsync(new AuditLog
+            var actor = userName ?? _httpContextAccessor.HttpContext?.User.Identity?.Name;
+            await _repo.AddAsync(new AuditLog
             {
                 UserName = actor,
                 Category = category,
@@ -40,12 +40,12 @@ public class AuditService(
                 Target = target,
                 CreatedAt = DateTime.UtcNow
             });
-            logger.LogInformation("Audit logged actor={Actor} category={Category} action={Action} target={Target}",
+            _logger.LogInformation("Audit logged actor={Actor} category={Category} action={Action} target={Target}",
                 actor, category, action, target);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Audit log write failed category={Category} action={Action} target={Target}",
+            _logger.LogWarning(ex, "Audit log write failed category={Category} action={Action} target={Target}",
                 category, action, target);
         }
     }
@@ -55,14 +55,14 @@ public class AuditService(
     /// <returns>按时间倒序的最近审计记录视图列表。</returns>
     public async Task<List<AuditLogViewModel>> GetRecentAsync(int count)
     {
-        var userName = httpContextAccessor.HttpContext?.User.Identity?.Name;
-        logger.LogInformation("GetRecentAuditLogs user={UserName} count={Count}", userName, count);
+        var userName = _httpContextAccessor.HttpContext?.User.Identity?.Name;
+        _logger.LogInformation("GetRecentAuditLogs user={UserName} count={Count}", userName, count);
         if (string.IsNullOrEmpty(userName))
         {
             return [];
         }
-        var items = await repo.GetRecentForUserAsync(userName, count);
-        logger.LogInformation("GetRecentAuditLogs returned {Count} for user={UserName}", items.Count, userName);
+        var items = await _repo.GetRecentForUserAsync(userName, count);
+        _logger.LogInformation("GetRecentAuditLogs returned {Count} for user={UserName}", items.Count, userName);
         return [.. items.Select(l => l.ToAuditLogViewModel())];
     }
 
@@ -70,11 +70,11 @@ public class AuditService(
     /// <param name="query">分页与过滤条件。</param>
     public async Task<PagedResult<AuditLogViewModel>> GetPagedAsync(AuditLogQueryRequest query)
     {
-        var currentUserName = httpContextAccessor.HttpContext?.User.Identity?.Name;
-        var isAdmin = httpContextAccessor.HttpContext?.User.IsInRole("Admin") == true;
-        logger.LogInformation("GetAuditLogs page={Page} isAdmin={IsAdmin}", query.Page, isAdmin);
-        var (items, total) = await repo.GetPagedAsync(query, currentUserName, isAdmin);
-        logger.LogInformation("GetAuditLogs returned {Count} of {Total}", items.Count, total);
+        var currentUserName = _httpContextAccessor.HttpContext?.User.Identity?.Name;
+        var isAdmin = _httpContextAccessor.HttpContext?.User.IsInRole("Admin") == true;
+        _logger.LogInformation("GetAuditLogs page={Page} isAdmin={IsAdmin}", query.Page, isAdmin);
+        var (items, total) = await _repo.GetPagedAsync(query, currentUserName, isAdmin);
+        _logger.LogInformation("GetAuditLogs returned {Count} of {Total}", items.Count, total);
         return new PagedResult<AuditLogViewModel>([.. items.Select(l => l.ToAuditLogViewModel())], total);
     }
 }

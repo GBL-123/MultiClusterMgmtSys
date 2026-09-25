@@ -35,7 +35,7 @@
     </MudStack>
 
     <MudStack Row="true" Class="flex-auto">
-        <MudDateRangePicker DateRange="@dateRange"
+        <MudDateRangePicker DateRange="@_dateRange"
                             DateRangeChanged="OnDateRangeChanged"
                             Label="创建日期"
                             PlaceholderStart="开始日期"
@@ -74,7 +74,7 @@
     [Parameter]
     public EventCallback OnReset { get; set; }
 
-    private DateRange dateRange = new(null, null);
+    private DateRange _dateRange = new(null, null);
 
     private Task Search()
     {
@@ -83,7 +83,7 @@
 
     private void OnDateRangeChanged(DateRange range)
     {
-        dateRange = range;
+        _dateRange = range;
         Query.CreatedFrom = range.Start;
         Query.CreatedTo = range.End;
     }
@@ -95,7 +95,7 @@
         Query.VersionSelection = VersionFilterSentinel.All;
         Query.CreatedFrom = null;
         Query.CreatedTo = null;
-        dateRange = new DateRange(null, null);
+        _dateRange = new DateRange(null, null);
         return OnReset.InvokeAsync();
     }
 }

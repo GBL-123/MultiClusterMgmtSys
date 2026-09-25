@@ -27,23 +27,23 @@ namespace MultiClusterMgmtSys.Tests.Application.Services;
 
 public class ClusterServiceTests : IDisposable
 {
-    private readonly ServiceHarness harness = new("admin", "Admin");
-    private readonly Mock<IKubernetes> k8s = K8sMocks.Create();
-    private readonly ClusterService service;
+    private readonly ServiceHarness _harness = new("admin", "Admin");
+    private readonly Mock<IKubernetes> _k8s = K8sMocks.Create();
+    private readonly ClusterService _service;
 
     public ClusterServiceTests()
     {
         var nodeService = new ClusterNodeService(
-            harness.ClusterRepo, harness.Audit, NullLogger<ClusterNodeService>.Instance, K8sMocks.Cache(k8s));
-        service = new ClusterService(
-            harness.ClusterRepo, nodeService, harness.Audit,
-            NullLogger<ClusterService>.Instance, K8sMocks.Cache(k8s));
+            _harness.ClusterRepo, _harness.Audit, NullLogger<ClusterNodeService>.Instance, K8sMocks.Cache(_k8s));
+        _service = new ClusterService(
+            _harness.ClusterRepo, nodeService, _harness.Audit,
+            NullLogger<ClusterService>.Instance, K8sMocks.Cache(_k8s), _harness.ClusterHealthRepo);
     }
 
-    public void Dispose() => harness.Dispose();
+    public void Dispose() => _harness.Dispose();
 
     private Task<int> SeedAsync(string name, ClusterStatus status = ClusterStatus.Unknown, string? version = null)
-        => harness.ClusterRepo.AddAsync(TestData.NewCluster(name, status: status, version: version)).ContinueWith(t => t.Result.Id);
+        => _harness.ClusterRepo.AddAsync(TestData.NewCluster(name, status: status, version: version)).ContinueWith(t => t.Result.Id);
 
     [Fact]
     public async Task GetPagedAsync_version_all_sentinel_maps_to_no_filter()
@@ -51,7 +51,7 @@ public class ClusterServiceTests : IDisposable
         await SeedAsync("a", version: "1.29.0");
         await SeedAsync("b", version: null);
 
-        var result = await service.GetPagedAsync(new ClusterQueryRequest { VersionSelection = VersionFilterSentinel.All });
+        var result = await _service.GetPagedAsync(new ClusterQueryRequest { VersionSelection = VersionFilterSentinel.All });
 
         Assert.Equal(2, result.Total);
     }
@@ -63,7 +63,7 @@ public class ClusterServiceTests : IDisposable
         await SeedAsync("b", version: null);
         await SeedAsync("c", version: "");
 
-        var result = await service.GetPagedAsync(new ClusterQueryRequest { VersionSelection = VersionFilterSentinel.OnlyNull });
+        var result = await _service.GetPagedAsync(new ClusterQueryRequest { VersionSelection = VersionFilterSentinel.OnlyNull });
 
         Assert.Equal(2, result.Total);
     }
@@ -74,7 +74,7 @@ public class ClusterServiceTests : IDisposable
         await SeedAsync("a", version: "1.29.0");
         await SeedAsync("b", version: "1.30.0");
 
-        var result = await service.GetPagedAsync(new ClusterQueryRequest { VersionSelection = "1.29.0" });
+        var result = await _service.GetPagedAsync(new ClusterQueryRequest { VersionSelection = "1.29.0" });
 
         Assert.Equal(1, result.Total);
         Assert.Equal("a", result.Items.Single().Name);
@@ -83,7 +83,7 @@ public class ClusterServiceTests : IDisposable
     [Fact]
     public async Task GetClusterDetailAsync_missing_returns_null()
     {
-        Assert.Null(await service.GetClusterDetailAsync(999));
+        Assert.Null(await _service.GetClusterDetailAsync(999));
     }
 
     [Fact]
@@ -91,7 +91,7 @@ public class ClusterServiceTests : IDisposable
     {
         var id = await SeedAsync("offline", status: ClusterStatus.Offline);
 
-        var detail = await service.GetClusterDetailAsync(id);
+        var detail = await _service.GetClusterDetailAsync(id);
 
         Assert.NotNull(detail);
         Assert.False(detail!.IsReachable);
@@ -103,7 +103,7 @@ public class ClusterServiceTests : IDisposable
     {
         var id = await SeedAsync("online", status: ClusterStatus.Online);
 
-        var detail = await service.GetClusterDetailAsync(id);
+        var detail = await _service.GetClusterDetailAsync(id);
 
         Assert.NotNull(detail);
         Assert.False(detail!.IsReachable);
@@ -114,9 +114,9 @@ public class ClusterServiceTests : IDisposable
     public async Task GetClusterDetailAsync_online_with_k8s_returns_nodes()
     {
         var id = await SeedAsync("online", status: ClusterStatus.Online);
-        k8s.SetupListNodes(BuildNode("node-1", ready: true), BuildNode("node-2", ready: false));
+        _k8s.SetupListNodes(BuildNode("node-1", ready: true), BuildNode("node-2", ready: false));
 
-        var detail = await service.GetClusterDetailAsync(id);
+        var detail = await _service.GetClusterDetailAsync(id);
 
         Assert.NotNull(detail);
         Assert.True(detail!.IsReachable);
@@ -128,7 +128,7 @@ public class ClusterServiceTests : IDisposable
     [Fact]
     public async Task GetClusterForEditAsync_missing_returns_null()
     {
-        Assert.Null(await service.GetClusterForEditAsync(999));
+        Assert.Null(await _service.GetClusterForEditAsync(999));
     }
 
     [Fact]
@@ -136,7 +136,7 @@ public class ClusterServiceTests : IDisposable
     {
         var id = await SeedAsync("editable", version: null);
 
-        var edit = await service.GetClusterForEditAsync(id);
+        var edit = await _service.GetClusterForEditAsync(id);
 
         Assert.NotNull(edit);
         Assert.Equal("editable", edit!.Name);
@@ -154,11 +154,11 @@ public class ClusterServiceTests : IDisposable
             Token = "tok"
         };
 
-        var vm = await service.AddClusterAsync(request);
+        var vm = await _service.AddClusterAsync(request);
 
         Assert.Equal(ClusterStatus.Offline, vm.Status);
         Assert.Equal("new-cluster", vm.Name);
-        var audit = await harness.Db.AuditLogs.SingleAsync(TestContext.Current.CancellationToken);
+        var audit = await _harness.Db.AuditLogs.SingleAsync(TestContext.Current.CancellationToken);
         Assert.Equal(AuditAction.Create, audit.Action);
         Assert.Contains("new", audit.Target);
     }
@@ -166,10 +166,10 @@ public class ClusterServiceTests : IDisposable
     [Fact]
     public async Task AddClusterAsync_probe_success_sets_online_version_and_nodes()
     {
-        k8s.SetupGetVersion("v1.30.2");
-        k8s.SetupListNodes(BuildNode("n1", ready: true), BuildNode("n2", ready: true), BuildNode("n3", ready: false));
+        _k8s.SetupGetVersion("v1.30.2");
+        _k8s.SetupListNodes(BuildNode("n1", ready: true), BuildNode("n2", ready: true), BuildNode("n3", ready: false));
 
-        var vm = await service.AddClusterAsync(new ClusterCreateRequest
+        var vm = await _service.AddClusterAsync(new ClusterCreateRequest
         {
             Name = "healthy",
             ConnectionType = ConnectionType.Token,
@@ -185,10 +185,10 @@ public class ClusterServiceTests : IDisposable
     [Fact]
     public async Task AddClusterAsync_applies_endpoints_from_request()
     {
-        k8s.SetupGetVersion("v1.30.2");
-        k8s.SetupListNodes();
+        _k8s.SetupGetVersion("v1.30.2");
+        _k8s.SetupListNodes();
 
-        var vm = await service.AddClusterAsync(new ClusterCreateRequest
+        var vm = await _service.AddClusterAsync(new ClusterCreateRequest
         {
             Name = "with-endpoints",
             ConnectionType = ConnectionType.Token,
@@ -199,7 +199,7 @@ public class ClusterServiceTests : IDisposable
             ]
         });
 
-        var cluster = await harness.ClusterRepo.GetByIdAsync(vm.Id);
+        var cluster = await _harness.ClusterRepo.GetByIdAsync(vm.Id);
         var endpoints = cluster!.Endpoints.OrderBy(e => e.Kind).ToList();
         Assert.Equal(2, endpoints.Count);
         Assert.Equal("10.1.1.1", endpoints[0].Value);
@@ -211,16 +211,16 @@ public class ClusterServiceTests : IDisposable
     public async Task UpdateClusterAsync_missing_throws_not_found()
     {
         await Assert.ThrowsAsync<NotFoundException>(
-            () => service.UpdateClusterAsync(new ClusterUpdateRequest { Id = 999, Name = "x" }));
+            () => _service.UpdateClusterAsync(new ClusterUpdateRequest { Id = 999, Name = "x" }));
     }
 
     [Fact]
     public async Task UpdateClusterAsync_unchanged_config_skips_probe()
     {
         var id = await SeedAsync("keep");
-        var entity = await harness.ClusterRepo.GetByIdAsync(id);
+        var entity = await _harness.ClusterRepo.GetByIdAsync(id);
 
-        var vm = await service.UpdateClusterAsync(new ClusterUpdateRequest
+        var vm = await _service.UpdateClusterAsync(new ClusterUpdateRequest
         {
             Id = id,
             Name = "renamed",
@@ -232,10 +232,10 @@ public class ClusterServiceTests : IDisposable
 
         Assert.Equal("renamed", vm.Name);
         Assert.Equal(ClusterStatus.Unknown, vm.Status);
-        k8s.Verify(x => x.Version.GetCodeWithHttpMessagesAsync(
+        _k8s.Verify(x => x.Version.GetCodeWithHttpMessagesAsync(
             It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
             It.IsAny<CancellationToken>()), Times.Never);
-        var audit = await harness.Db.AuditLogs.SingleAsync(TestContext.Current.CancellationToken);
+        var audit = await _harness.Db.AuditLogs.SingleAsync(TestContext.Current.CancellationToken);
         Assert.Equal(AuditAction.Update, audit.Action);
     }
 
@@ -244,7 +244,7 @@ public class ClusterServiceTests : IDisposable
     {
         var id = await SeedAsync("flip");
 
-        var vm = await service.UpdateClusterAsync(new ClusterUpdateRequest
+        var vm = await _service.UpdateClusterAsync(new ClusterUpdateRequest
         {
             Id = id,
             Name = "flip",
@@ -261,19 +261,19 @@ public class ClusterServiceTests : IDisposable
     {
         var id = await SeedAsync("doomed");
 
-        await service.DeleteClusterAsync(id);
+        await _service.DeleteClusterAsync(id);
 
-        Assert.Null(await harness.ClusterRepo.GetByIdAsync(id));
-        var audit = await harness.Db.AuditLogs.SingleAsync(TestContext.Current.CancellationToken);
+        Assert.Null(await _harness.ClusterRepo.GetByIdAsync(id));
+        var audit = await _harness.Db.AuditLogs.SingleAsync(TestContext.Current.CancellationToken);
         Assert.Equal(AuditAction.Delete, audit.Action);
     }
 
     [Fact]
     public async Task DeleteClusterAsync_missing_is_silent_noop()
     {
-        await service.DeleteClusterAsync(999);
+        await _service.DeleteClusterAsync(999);
 
-        Assert.Empty(await harness.Db.AuditLogs.ToListAsync(TestContext.Current.CancellationToken));
+        Assert.Empty(await _harness.Db.AuditLogs.ToListAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -281,7 +281,7 @@ public class ClusterServiceTests : IDisposable
     {
         var request = new ClusterEndpointsUpdateRequest(999, [new ClusterEndpointEditItem { Value = "1.2.3.4" }]);
 
-        await Assert.ThrowsAsync<NotFoundException>(() => service.UpdateClusterEndpointsAsync(request));
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.UpdateClusterEndpointsAsync(request));
     }
 
     [Fact]
@@ -289,15 +289,15 @@ public class ClusterServiceTests : IDisposable
     {
         var id = await SeedAsync("with-eps");
 
-        await service.UpdateClusterEndpointsAsync(new ClusterEndpointsUpdateRequest(id,
+        await _service.UpdateClusterEndpointsAsync(new ClusterEndpointsUpdateRequest(id,
         [
             new ClusterEndpointEditItem { Id = 1, Kind = ClusterEndpointKind.Vip, Value = "10.0.0.9", SortOrder = 1 }
         ]));
 
-        var cluster = await harness.ClusterRepo.GetByIdAsync(id);
+        var cluster = await _harness.ClusterRepo.GetByIdAsync(id);
         Assert.Single(cluster!.Endpoints);
         Assert.Equal("10.0.0.9", cluster.Endpoints.First().Value);
-        var audit = await harness.Db.AuditLogs.SingleAsync(TestContext.Current.CancellationToken);
+        var audit = await _harness.Db.AuditLogs.SingleAsync(TestContext.Current.CancellationToken);
         Assert.Contains("端点", audit.Target);
     }
 
@@ -311,7 +311,7 @@ public class ClusterServiceTests : IDisposable
             new ClusterEndpointEditItem { Value = new string('x', 257) }
         ]);
 
-        await Assert.ThrowsAsync<ArgumentException>(() => service.UpdateClusterEndpointsAsync(request));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateClusterEndpointsAsync(request));
     }
 
     [Fact]
@@ -319,7 +319,7 @@ public class ClusterServiceTests : IDisposable
     {
         var id = await SeedAsync("was-online", status: ClusterStatus.Online);
 
-        var vm = await service.RefreshClusterStatusAsync(id);
+        var vm = await _service.RefreshClusterStatusAsync(id);
 
         Assert.Equal(ClusterStatus.Offline, vm.Status);
     }
@@ -329,18 +329,19 @@ public class ClusterServiceTests : IDisposable
     {
         var captured = new List<KubernetesClientConfiguration>();
         var probeService = new ClusterService(
-            harness.ClusterRepo,
-            new ClusterNodeService(harness.ClusterRepo, harness.Audit, NullLogger<ClusterNodeService>.Instance,
-                new ClusterClientCache(config => { captured.Add(config); return k8s.Object; }, NullLogger<ClusterClientCache>.Instance)),
-            harness.Audit,
+            _harness.ClusterRepo,
+            new ClusterNodeService(_harness.ClusterRepo, _harness.Audit, NullLogger<ClusterNodeService>.Instance,
+                new ClusterClientCache(config => { captured.Add(config); return _k8s.Object; }, NullLogger<ClusterClientCache>.Instance)),
+            _harness.Audit,
             NullLogger<ClusterService>.Instance,
-            new ClusterClientCache(config => { captured.Add(config); return k8s.Object; }, NullLogger<ClusterClientCache>.Instance));
+            new ClusterClientCache(config => { captured.Add(config); return _k8s.Object; }, NullLogger<ClusterClientCache>.Instance),
+            _harness.ClusterHealthRepo);
 
         var tokenId = await SeedAsync("token-timeout");
         var kubeConfigCluster = TestData.NewCluster("kubeconfig-timeout");
         kubeConfigCluster.ConnectionType = ConnectionType.KubeConfig;
         kubeConfigCluster.KubeConfig = MinimalKubeConfig;
-        var kubeConfigId = (await harness.ClusterRepo.AddAsync(kubeConfigCluster)).Id;
+        var kubeConfigId = (await _harness.ClusterRepo.AddAsync(kubeConfigCluster)).Id;
 
         await probeService.RefreshClusterStatusAsync(tokenId);
         await probeService.RefreshClusterStatusAsync(kubeConfigId);
@@ -355,10 +356,10 @@ public class ClusterServiceTests : IDisposable
         await SeedAsync("was-online", status: ClusterStatus.Online);
         await SeedAsync("was-unknown", status: ClusterStatus.Unknown);
 
-        var succeeded = await service.RefreshAllClustersStatusAsync(source: ClusterSyncSource.Scheduled);
+        var succeeded = await _service.RefreshAllClustersStatusAsync(source: ClusterSyncSource.Scheduled);
 
         Assert.Equal(2, succeeded);
-        var audits = await harness.Db.AuditLogs.ToListAsync(TestContext.Current.CancellationToken);
+        var audits = await _harness.Db.AuditLogs.ToListAsync(TestContext.Current.CancellationToken);
         Assert.Equal(2, audits.Count);
         Assert.All(audits, a => Assert.Contains("定时同步", a.Target));
     }
@@ -370,7 +371,7 @@ public class ClusterServiceTests : IDisposable
         await SeedAsync("b", version: "1.29.0");
         await SeedAsync("c", version: "1.29.0");
 
-        var versions = await service.GetAvailableVersionsAsync();
+        var versions = await _service.GetAvailableVersionsAsync();
 
         Assert.Equal(["1.29.0", "1.30.0"], versions);
     }

@@ -1,0 +1,145 @@
+@attribute [Authorize]
+@page "/dashboard"
+
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Application.ViewModels
+@using MultiClusterMgmtSys.Web.Components.Dashboard.Shared
+
+@inject DashboardService DashboardService
+@inject ClusterService ClusterService
+@inject NavigationManager NavigationManager
+@inject ExceptionPresenter ExHandler
+
+<PageTitle>集群看板</PageTitle>
+
+<MudStack Class="dashboard-page flex-auto">
+    <MudPaper Class="dashboard-masthead">
+        <MudStack Spacing="3">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <MudText Class="dashboard-title font-grotesk">集群看板</MudText>
+                <MudSpacer />
+                <AuthorizeView Roles="Admin">
+                    <Authorized>
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Inherit"
+                                   Class="dashboard-refresh-button"
+                                   StartIcon="@Icons.Material.Filled.Refresh"
+                                   Disabled="@_isRefreshing"
+                                   OnClick="RefreshAllAsync">
+                            @(_isRefreshing ? "刷新中..." : "刷新全部")
+                        </MudButton>
+                    </Authorized>
+                </AuthorizeView>
+            </MudStack>
+
+            @if (_model is { HasClusters: true })
+            {
+                <DashboardFreshnessBar Freshness="@_model.Freshness" />
+            }
+
+            @if (_isRefreshing)
+            {
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                    <MudProgressLinear Color="Color.Primary"
+                                       Value="@((double)_refreshCurrent / Math.Max(_refreshTotal, 1) * 100)"
+                                       Class="progress-signal"
+                                       Style="flex:1; max-width:320px;" />
+                    <MudText Class="mud-text-secondary font-mono dashboard-refresh-progress">@_refreshCurrent / @_refreshTotal</MudText>
+                </MudStack>
+            }
+        </MudStack>
+    </MudPaper>
+
+    @if (_model is null)
+    {
+        <MudText Class="font-mono mud-text-secondary">// 正在加载...</MudText>
+    }
+    else if (!_model.HasClusters)
+    {
+        <MudPaper Class="pa-4">
+            <div class="empty-state">
+                <span>[ 暂无集群 ]</span>
+                <MudText Typo="Typo.caption" Class="font-mono">// 先登记集群,看板才会有数据</MudText>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/clusters">前往集群管理</MudButton>
+            </div>
+        </MudPaper>
+    }
+    else
+    {
+        <DashboardStatBar Model="@_model" />
+
+        <div class="dashboard-columns">
+            <div class="dashboard-col">
+                <DashboardAttentionList Items="@_model.AttentionItems" OnOpenCluster="OpenCluster" />
+                <DashboardActivityCard Items="@_model.RecentActivity" SystemWide="@_model.RecentActivityIsSystemWide" />
+            </div>
+            <div class="dashboard-col">
+                <DashboardGroupHealthCard Items="@_model.GroupHealth" />
+                <DashboardVersionCard Items="@_model.VersionBuckets" />
+            </div>
+        </div>
+    }
+</MudStack>
+
+@code {
+    private DashboardViewModel? _model;
+
+    private bool _isRefreshing;
+
+    private int _refreshCurrent;
+
+    private int _refreshTotal;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _model = await DashboardService.GetDashboardAsync();
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载集群看板");
+        }
+    }
+
+    private void OpenCluster(int clusterId)
+        => NavigationManager.NavigateTo($"/clusters/{clusterId}");
+
+    private async Task RefreshAllAsync()
+    {
+        if (_isRefreshing)
+        {
+            return;
+        }
+
+        _isRefreshing = true;
+        _refreshCurrent = 0;
+        _refreshTotal = 0;
+
+        var progress = new Progress<(int current, int total)>(p =>
+        {
+            _refreshCurrent = p.current;
+            _refreshTotal = p.total;
+            StateHasChanged();
+        });
+
+        try
+        {
+            await ClusterService.RefreshAllClustersStatusAsync(progress);
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "刷新全部集群");
+        }
+        finally
+        {
+            _isRefreshing = false;
+        }
+    }
+}

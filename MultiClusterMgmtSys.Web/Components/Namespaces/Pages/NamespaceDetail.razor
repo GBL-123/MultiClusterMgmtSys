@@ -15,11 +15,11 @@
 <PageTitle>命名空间详情: @Name</PageTitle>
 
 <MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
-    @if (loading)
+    @if (_loading)
     {
         <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
     }
-    else if (detail is null)
+    else if (_detail is null)
     {
         <MudCard Class="pa-4">
             <MudCardContent>
@@ -39,21 +39,21 @@
     {
         <NamespaceDetailToolbar ClusterId="@ClusterId"
                                 Name="@Name"
-                                Detail="@detail"
-                                Processing="@loading"
+                                Detail="@_detail"
+                                Processing="@_loading"
                                 OnRefresh="LoadAsync" />
-        <MudTabs @bind-ActivePanelIndex="activeTabIndex"
+        <MudTabs @bind-ActivePanelIndex="_activeTabIndex"
                  Class="detail-tabs"
                  Elevation="0"
                  Rounded="false"
                  TabPanelsClass="detail-tabs-panels">
             <MudTabPanel Text="YAML">
-                <NamespaceYamlViewCard Yaml="@detail.Yaml" />
+                <NamespaceYamlViewCard Yaml="@_detail.Yaml" />
             </MudTabPanel>
             <MudTabPanel Text="标签与注解">
                 <MudStack Spacing="3">
-                    <NamespaceLabelsCard Labels="@detail.Labels" />
-                    <NamespaceAnnotationsCard Annotations="@detail.Annotations" />
+                    <NamespaceLabelsCard Labels="@_detail.Labels" />
+                    <NamespaceAnnotationsCard Annotations="@_detail.Annotations" />
                 </MudStack>
             </MudTabPanel>
         </MudTabs>
@@ -68,11 +68,11 @@
     public string Name { get; set; } = "";
 
 
-    private NamespaceDetailViewModel? detail;
+    private NamespaceDetailViewModel? _detail;
 
-    private bool loading = true;
+    private bool _loading = true;
 
-    private int activeTabIndex;
+    private int _activeTabIndex;
 
     protected override async Task OnInitializedAsync()
     {
@@ -82,11 +82,11 @@
 
     private async Task LoadAsync()
     {
-        loading = true;
+        _loading = true;
         try
         {
-            detail = await NamespaceService.GetNamespaceAsync(new NamespaceKeyRequest(ClusterId, Name));
-            if (detail is null)
+            _detail = await NamespaceService.GetNamespaceAsync(new NamespaceKeyRequest(ClusterId, Name));
+            if (_detail is null)
             {
                 Snackbar.Add("命名空间不存在或已被删除", Severity.Warning);
             }
@@ -97,7 +97,7 @@
         }
         finally
         {
-            loading = false;
+            _loading = false;
         }
     }
 }

@@ -51,6 +51,7 @@ public static class InfrastructureServiceCollectionExtensions
             options.UseSqlite(sqliteBuilder.ToString()));
 
         services.AddScoped<IClusterRepository, ClusterRepository>();
+        services.AddScoped<IClusterHealthRepository, ClusterHealthRepository>();
         services.AddScoped<IGroupRepository, GroupRepository>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IAppSettingRepository, AppSettingRepository>();

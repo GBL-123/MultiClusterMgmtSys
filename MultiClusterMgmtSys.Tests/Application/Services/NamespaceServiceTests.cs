@@ -12,20 +12,20 @@ namespace MultiClusterMgmtSys.Tests.Application.Services;
 
 public class NamespaceServiceTests : IDisposable
 {
-    private readonly ServiceHarness harness = new("admin", "Admin");
-    private readonly Mock<IKubernetes> k8s = K8sMocks.Create();
-    private readonly NamespaceService service;
+    private readonly ServiceHarness _harness = new("admin", "Admin");
+    private readonly Mock<IKubernetes> _k8s = K8sMocks.Create();
+    private readonly NamespaceService _service;
 
     public NamespaceServiceTests()
     {
-        service = new NamespaceService(
-            harness.ClusterRepo, harness.Audit, NullLogger<NamespaceService>.Instance, K8sMocks.Cache(k8s));
+        _service = new NamespaceService(
+            _harness.ClusterRepo, _harness.Audit, NullLogger<NamespaceService>.Instance, K8sMocks.Cache(_k8s));
     }
 
-    public void Dispose() => harness.Dispose();
+    public void Dispose() => _harness.Dispose();
 
     private async Task<int> SeedClusterAsync()
-        => (await harness.ClusterRepo.AddAsync(TestData.NewCluster("ns-cluster"))).Id;
+        => (await _harness.ClusterRepo.AddAsync(TestData.NewCluster("ns-cluster"))).Id;
 
     private static V1Namespace NewNamespace(
         string name,
@@ -54,18 +54,18 @@ public class NamespaceServiceTests : IDisposable
     [Fact]
     public async Task ListNamespacesAsync_missing_cluster_throws_not_found()
     {
-        await Assert.ThrowsAsync<NotFoundException>(() => service.ListNamespacesAsync(999));
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.ListNamespacesAsync(999));
     }
 
     [Fact]
     public async Task ListNamespacesAsync_maps_status_and_labels()
     {
         var clusterId = await SeedClusterAsync();
-        k8s.SetupListNamespaceObjects(
+        _k8s.SetupListNamespaceObjects(
             NewNamespace("default", "Active", labels: new Dictionary<string, string> { ["a"] = "1", ["b"] = "2" }),
             NewNamespace("old-dev", "Terminating"));
 
-        var items = await service.ListNamespacesAsync(clusterId);
+        var items = await _service.ListNamespacesAsync(clusterId);
 
         Assert.Equal(2, items.Count);
         Assert.Equal("default", items[0].Name);
@@ -82,27 +82,27 @@ public class NamespaceServiceTests : IDisposable
     public async Task ListNamespacesAsync_k8s_error_translated()
     {
         var clusterId = await SeedClusterAsync();
-        k8s.SetupListNamespacesThrows(K8sMocks.K8sError(403));
+        _k8s.SetupListNamespacesThrows(K8sMocks.K8sError(403));
 
-        await Assert.ThrowsAsync<PermissionException>(() => service.ListNamespacesAsync(clusterId));
+        await Assert.ThrowsAsync<PermissionException>(() => _service.ListNamespacesAsync(clusterId));
     }
 
     [Fact]
     public async Task GetNamespaceAsync_missing_cluster_returns_null()
     {
-        Assert.Null(await service.GetNamespaceAsync(new NamespaceKeyRequest(999, "dev")));
+        Assert.Null(await _service.GetNamespaceAsync(new NamespaceKeyRequest(999, "dev")));
     }
 
     [Fact]
     public async Task GetNamespaceAsync_maps_detail_view()
     {
         var clusterId = await SeedClusterAsync();
-        k8s.SetupReadNamespace("dev", NewNamespace(
+        _k8s.SetupReadNamespace("dev", NewNamespace(
             "dev",
             labels: new Dictionary<string, string> { ["team"] = "platform" },
             annotations: new Dictionary<string, string> { ["owner"] = "ops" }));
 
-        var detail = await service.GetNamespaceAsync(new NamespaceKeyRequest(clusterId, "dev"));
+        var detail = await _service.GetNamespaceAsync(new NamespaceKeyRequest(clusterId, "dev"));
 
         Assert.NotNull(detail);
         Assert.Equal("dev", detail!.Name);
@@ -117,10 +117,10 @@ public class NamespaceServiceTests : IDisposable
     public async Task GetNamespaceAsync_k8s_404_translated()
     {
         var clusterId = await SeedClusterAsync();
-        k8s.SetupReadNamespaceThrows("missing", K8sMocks.K8sError(404));
+        _k8s.SetupReadNamespaceThrows("missing", K8sMocks.K8sError(404));
 
         await Assert.ThrowsAsync<NotFoundException>(
-            () => service.GetNamespaceAsync(new NamespaceKeyRequest(clusterId, "missing")));
+            () => _service.GetNamespaceAsync(new NamespaceKeyRequest(clusterId, "missing")));
     }
 
     [Fact]
@@ -129,7 +129,7 @@ public class NamespaceServiceTests : IDisposable
         var clusterId = await SeedClusterAsync();
 
         var ex = await Assert.ThrowsAsync<ValidationException>(
-            () => service.CreateNamespaceFromYamlAsync(new NamespaceCreateRequest(clusterId, "{ broken")));
+            () => _service.CreateNamespaceFromYamlAsync(new NamespaceCreateRequest(clusterId, "{ broken")));
 
         Assert.Contains("YAML 格式错误", ex.UserMessage);
         VerifyCreateNamespaceNever();
@@ -148,7 +148,7 @@ public class NamespaceServiceTests : IDisposable
             """;
 
         var ex = await Assert.ThrowsAsync<ValidationException>(
-            () => service.CreateNamespaceFromYamlAsync(new NamespaceCreateRequest(clusterId, yaml)));
+            () => _service.CreateNamespaceFromYamlAsync(new NamespaceCreateRequest(clusterId, yaml)));
 
         Assert.Contains("metadata.name", ex.UserMessage);
         VerifyCreateNamespaceNever();
@@ -159,12 +159,12 @@ public class NamespaceServiceTests : IDisposable
     {
         var clusterId = await SeedClusterAsync();
         V1Namespace? created = null;
-        k8s.SetupCreateNamespace(onCreated: ns => created = ns);
+        _k8s.SetupCreateNamespace(onCreated: ns => created = ns);
 
-        await service.CreateNamespaceFromYamlAsync(new NamespaceCreateRequest(clusterId, ValidYaml));
+        await _service.CreateNamespaceFromYamlAsync(new NamespaceCreateRequest(clusterId, ValidYaml));
 
         Assert.Equal("dev-team", created?.Metadata?.Name);
-        var audit = harness.Db.AuditLogs.Single();
+        var audit = _harness.Db.AuditLogs.Single();
         Assert.Equal(AuditCategory.Namespace, audit.Category);
         Assert.Equal(AuditAction.Create, audit.Action);
         Assert.Contains("dev-team", audit.Target);
@@ -175,10 +175,10 @@ public class NamespaceServiceTests : IDisposable
     public async Task CreateNamespaceFromYamlAsync_conflict_translated()
     {
         var clusterId = await SeedClusterAsync();
-        k8s.SetupCreateNamespaceThrows(K8sMocks.K8sError(409));
+        _k8s.SetupCreateNamespaceThrows(K8sMocks.K8sError(409));
 
         await Assert.ThrowsAsync<ConflictException>(
-            () => service.CreateNamespaceFromYamlAsync(new NamespaceCreateRequest(clusterId, ValidYaml)));
+            () => _service.CreateNamespaceFromYamlAsync(new NamespaceCreateRequest(clusterId, ValidYaml)));
     }
 
     [Theory]
@@ -191,10 +191,10 @@ public class NamespaceServiceTests : IDisposable
         var clusterId = await SeedClusterAsync();
 
         var ex = await Assert.ThrowsAsync<ValidationException>(
-            () => service.DeleteNamespaceAsync(new NamespaceKeyRequest(clusterId, name)));
+            () => _service.DeleteNamespaceAsync(new NamespaceKeyRequest(clusterId, name)));
 
         Assert.Contains("系统命名空间", ex.UserMessage);
-        k8s.Verify(x => x.CoreV1.DeleteNamespaceWithHttpMessagesAsync(
+        _k8s.Verify(x => x.CoreV1.DeleteNamespaceWithHttpMessagesAsync(
             It.IsAny<string>(),
             It.IsAny<V1DeleteOptions?>(),
             It.IsAny<string?>(),
@@ -211,18 +211,18 @@ public class NamespaceServiceTests : IDisposable
     public async Task DeleteNamespaceAsync_missing_cluster_throws_not_found()
     {
         await Assert.ThrowsAsync<NotFoundException>(
-            () => service.DeleteNamespaceAsync(new NamespaceKeyRequest(999, "dev")));
+            () => _service.DeleteNamespaceAsync(new NamespaceKeyRequest(999, "dev")));
     }
 
     [Fact]
     public async Task DeleteNamespaceAsync_success_audits()
     {
         var clusterId = await SeedClusterAsync();
-        k8s.SetupDeleteNamespace("dev");
+        _k8s.SetupDeleteNamespace("dev");
 
-        await service.DeleteNamespaceAsync(new NamespaceKeyRequest(clusterId, "dev"));
+        await _service.DeleteNamespaceAsync(new NamespaceKeyRequest(clusterId, "dev"));
 
-        var audit = harness.Db.AuditLogs.Single();
+        var audit = _harness.Db.AuditLogs.Single();
         Assert.Equal(AuditCategory.Namespace, audit.Category);
         Assert.Equal(AuditAction.Delete, audit.Action);
         Assert.Contains("dev", audit.Target);
@@ -233,14 +233,14 @@ public class NamespaceServiceTests : IDisposable
     public async Task DeleteNamespaceAsync_k8s_error_translated()
     {
         var clusterId = await SeedClusterAsync();
-        k8s.SetupDeleteNamespaceThrows("dev", K8sMocks.K8sError(404));
+        _k8s.SetupDeleteNamespaceThrows("dev", K8sMocks.K8sError(404));
 
         await Assert.ThrowsAsync<NotFoundException>(
-            () => service.DeleteNamespaceAsync(new NamespaceKeyRequest(clusterId, "dev")));
+            () => _service.DeleteNamespaceAsync(new NamespaceKeyRequest(clusterId, "dev")));
     }
 
     private void VerifyCreateNamespaceNever()
-        => k8s.Verify(x => x.CoreV1.CreateNamespaceWithHttpMessagesAsync(
+        => _k8s.Verify(x => x.CoreV1.CreateNamespaceWithHttpMessagesAsync(
             It.IsAny<V1Namespace>(),
             It.IsAny<string?>(),
             It.IsAny<string?>(),

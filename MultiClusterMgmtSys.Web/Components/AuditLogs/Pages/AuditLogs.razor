@@ -25,8 +25,8 @@
                 </MudButton>
             </MudStack>
 
-            <AuditLogFilterBar Query="@query"
-                               ShowUserFilter="@isAdmin"
+            <AuditLogFilterBar Query="@_query"
+                               ShowUserFilter="@_isAdmin"
                                OnFilterChanged="RefreshTable"
                                OnReset="ResetTable" />
         </MudStack>
@@ -36,7 +36,7 @@
               Hover="true"
               FixedHeader="true"
               Class="audit-logs-table"
-              @ref="table">
+              @ref="_table">
         <HeaderContent>
             <MudTh><MudTableSortLabel T="AuditLogViewModel" SortBy="@(x => x.CreatedAt)" SortLabel="CreatedAt">时间</MudTableSortLabel></MudTh>
             <MudTh>操作人</MudTh>
@@ -64,29 +64,29 @@
 </MudStack>
 
 @code {
-    private AuditLogQueryRequest query = new();
+    private AuditLogQueryRequest _query = new();
 
-    private bool isAdmin;
+    private bool _isAdmin;
 
-    private MudTable<AuditLogViewModel> table = new();
+    private MudTable<AuditLogViewModel> _table = new();
 
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        isAdmin = authState.User.IsInRole("Admin");
+        _isAdmin = authState.User.IsInRole("Admin");
     }
 
-    private Task RefreshTable() => table.ReloadServerData();
+    private Task RefreshTable() => _table.ReloadServerData();
 
-    private Task ResetTable() => table.ReloadServerData();
+    private Task ResetTable() => _table.ReloadServerData();
 
     private async Task<TableData<AuditLogViewModel>> LoadData(TableState state, CancellationToken _)
     {
-        query.Page = state.Page > 0 ? state.Page + 1 : Math.Max(query.Page, 1);
-        query.PageSize = Math.Max(state.PageSize > 0 ? state.PageSize : query.PageSize, 1);
-        query.SortBy = string.IsNullOrEmpty(state.SortLabel) ? "CreatedAt" : state.SortLabel;
-        query.SortDescending = state.SortDirection != SortDirection.Ascending;
-        var result = await AuditSvc.GetPagedAsync(query);
+        _query.Page = state.Page > 0 ? state.Page + 1 : Math.Max(_query.Page, 1);
+        _query.PageSize = Math.Max(state.PageSize > 0 ? state.PageSize : _query.PageSize, 1);
+        _query.SortBy = string.IsNullOrEmpty(state.SortLabel) ? "CreatedAt" : state.SortLabel;
+        _query.SortDescending = state.SortDirection != SortDirection.Ascending;
+        var result = await AuditSvc.GetPagedAsync(_query);
         return new TableData<AuditLogViewModel>
         {
             Items = result.Items,

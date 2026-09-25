@@ -1,0 +1,52 @@
+@using MultiClusterMgmtSys.Application.ViewModels
+
+<MudPaper Class="dashboard-card">
+    <div class="dashboard-card-head">
+        <span class="dashboard-card-title">// 需要关注</span>
+        @if (Items.Count > 0)
+        {
+            <span class="dashboard-card-count font-mono">@Items.Count</span>
+        }
+    </div>
+
+    <div class="dashboard-card-body">
+        @if (Items.Count == 0)
+        {
+            <div class="empty-state is-compact">
+                <span>[ 暂无需要关注的集群 ]</span>
+            </div>
+        }
+        else
+        {
+            @foreach (var item in Items)
+            {
+                <div class="dashboard-attention-row">
+                    <StatusBadge Text="@item.KindText" CssClass="@item.BadgeCssClass" />
+                    <MudText Class="dashboard-attention-name font-mono">@item.ClusterName</MudText>
+                    <MudText Typo="Typo.caption" Class="dashboard-row-meta font-mono">@LastCheckedText(item)</MudText>
+                    <MudSpacer />
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Primary"
+                               Class="dashboard-row-action"
+                               EndIcon="@Icons.Material.Filled.ArrowForward"
+                               OnClick="@(() => OnOpenCluster.InvokeAsync(item.ClusterId))">
+                        查看
+                    </MudButton>
+                </div>
+            }
+        }
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<DashboardAttentionItemViewModel> Items { get; set; } = [];
+
+    [Parameter]
+    public EventCallback<int> OnOpenCluster { get; set; }
+
+    private static string LastCheckedText(DashboardAttentionItemViewModel item)
+        => item.LastCheckedAt is { } value
+            ? $"最近检测 {value.ToLocalTime():yyyy-MM-dd HH:mm}"
+            : "从未检测";
+}

@@ -18,22 +18,22 @@ namespace MultiClusterMgmtSys.Application.Services;
 /// </summary>
 public class ClusterNodeService(IClusterRepository repo, AuditService auditService, ILogger<ClusterNodeService> logger, IClusterClientCache clientCache)
 {
-    private readonly IClusterRepository repo = repo;
+    private readonly IClusterRepository _repo = repo;
 
-    private readonly AuditService auditService = auditService;
+    private readonly AuditService _auditService = auditService;
 
-    private readonly ILogger<ClusterNodeService> logger = logger;
+    private readonly ILogger<ClusterNodeService> _logger = logger;
 
-    private static readonly string[] IpAddressTypes = ["InternalIP", "ExternalIP"];
+    private static readonly string[] _IpAddressTypes = ["InternalIP", "ExternalIP"];
 
     /// <summary>实时拉取指定集群的节点列表(状态/角色/Kubelet 版本/IP 地址含管理员备注)。集群不存在抛 <see cref="NotFoundException"/>,K8s 调用失败经翻译后抛业务异常。</summary>
     public async Task<List<ClusterNodeViewModel>> GetClusterNodesAsync(int id)
     {
-        logger.LogInformation("GetClusterNodes clusterId={ClusterId}", id);
-        var entity = await repo.GetByIdAsync(id);
+        _logger.LogInformation("GetClusterNodes clusterId={ClusterId}", id);
+        var entity = await _repo.GetByIdAsync(id);
         if (entity is null)
         {
-            logger.LogWarning("Cluster {ClusterId} not found", id);
+            _logger.LogWarning("Cluster {ClusterId} not found", id);
             throw new NotFoundException($"集群 {id} 不存在");
         }
 
@@ -48,18 +48,18 @@ public class ClusterNodeService(IClusterRepository repo, AuditService auditServi
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "ListNodes failed clusterId={ClusterId}", id);
+            _logger.LogWarning(ex, "ListNodes failed clusterId={ClusterId}", id);
             throw K8sExceptionMapper.Translate(ex, "加载节点列表");
         }
         var result = nodeItems.Select(n => MapNode(n, remarks)).ToList();
-        logger.LogInformation("GetClusterNodes done clusterId={ClusterId} count={Count}", id, result.Count);
+        _logger.LogInformation("GetClusterNodes done clusterId={ClusterId} count={Count}", id, result.Count);
         return result;
     }
 
     /// <summary>拉取节点详情(地址/条件/污点/容量/标签/系统信息)。集群状态为 Offline 时直接返回 IsReachable=false 的占位视图;集群不存在返回 null,K8s 调用失败经翻译后抛业务异常。</summary>
     public async Task<ClusterNodeDetailViewModel?> GetNodeDetailAsync(NodeDetailQueryRequest request)
     {
-        var entity = await repo.GetByIdAsync(request.ClusterId);
+        var entity = await _repo.GetByIdAsync(request.ClusterId);
         if (entity is null) return null;
 
         if (entity.Status == ClusterStatus.Offline)
@@ -82,7 +82,7 @@ public class ClusterNodeService(IClusterRepository repo, AuditService auditServi
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "ReadNode failed clusterId={ClusterId} node={NodeName}", request.ClusterId, request.NodeName);
+            _logger.LogWarning(ex, "ReadNode failed clusterId={ClusterId} node={NodeName}", request.ClusterId, request.NodeName);
             throw K8sExceptionMapper.Translate(ex, "加载节点详情");
         }
         var vm = MapNodeDetail(node, entity, remarks);
@@ -95,12 +95,12 @@ public class ClusterNodeService(IClusterRepository repo, AuditService auditServi
     /// <summary>整体维护某节点各地址的 IP 备注:提交的条目做新增/更新,提交中未出现的既有备注删除;备注超过 64 字符抛 <see cref="ValidationException"/>,成功后写审计。</summary>
     public async Task UpdateNodeIpNotesAsync(NodeIpNotesUpdateRequest request)
     {
-        logger.LogInformation("UpdateNodeIpNotes clusterId={ClusterId} node={NodeName} count={Count}",
+        _logger.LogInformation("UpdateNodeIpNotes clusterId={ClusterId} node={NodeName} count={Count}",
             request.ClusterId, request.NodeName, request.Items.Count);
-        var entity = await repo.GetByIdAsync(request.ClusterId);
+        var entity = await _repo.GetByIdAsync(request.ClusterId);
         if (entity is null)
         {
-            logger.LogWarning("Cluster {ClusterId} not found", request.ClusterId);
+            _logger.LogWarning("Cluster {ClusterId} not found", request.ClusterId);
             throw new NotFoundException($"集群 {request.ClusterId} 不存在");
         }
 
@@ -116,7 +116,7 @@ public class ClusterNodeService(IClusterRepository repo, AuditService auditServi
         {
             if (note is not null && note.Length > 64)
             {
-                logger.LogWarning("NodeIpRemark note too long node={NodeName} address={Address}", request.NodeName, address);
+                _logger.LogWarning("NodeIpRemark note too long node={NodeName} address={Address}", request.NodeName, address);
                 throw new ValidationException("备注长度不能超过 64 个字符");
             }
 
@@ -144,9 +144,9 @@ public class ClusterNodeService(IClusterRepository repo, AuditService auditServi
             }
         }
 
-        await repo.UpdateAsync(entity);
-        logger.LogInformation("UpdateNodeIpNotes persisted clusterId={ClusterId} node={NodeName}", request.ClusterId, request.NodeName);
-        await auditService.LogAsync(AuditCategory.Node, AuditAction.Update, $"节点: {request.NodeName} @ 集群 {entity.Name}");
+        await _repo.UpdateAsync(entity);
+        _logger.LogInformation("UpdateNodeIpNotes persisted clusterId={ClusterId} node={NodeName}", request.ClusterId, request.NodeName);
+        await _auditService.LogAsync(AuditCategory.Node, AuditAction.Update, $"节点: {request.NodeName} @ 集群 {entity.Name}");
     }
 
     // ---- Private k8s helpers ----
@@ -159,7 +159,7 @@ public class ClusterNodeService(IClusterRepository repo, AuditService auditServi
     }
 
     private static bool IsIpClassAddress(string type)
-        => IpAddressTypes.Contains(type);
+        => _IpAddressTypes.Contains(type);
 
     private static ClusterNodeViewModel MapNode(V1Node node, Dictionary<(string, string), string?> remarks)
     {

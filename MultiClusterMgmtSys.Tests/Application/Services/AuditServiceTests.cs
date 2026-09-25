@@ -11,29 +11,29 @@ namespace MultiClusterMgmtSys.Tests.Application.Services;
 
 public class AuditServiceTests : IDisposable
 {
-    private readonly ApplicationDbContext db = SqliteDbFactory.CreateContext();
-    private readonly AuditLogRepository repo;
+    private readonly ApplicationDbContext _db = SqliteDbFactory.CreateContext();
+    private readonly AuditLogRepository _repo;
 
     public AuditServiceTests()
     {
-        repo = new AuditLogRepository(db);
+        _repo = new AuditLogRepository(_db);
     }
 
-    public void Dispose() => db.Dispose();
+    public void Dispose() => _db.Dispose();
 
     private AuditService BuildService(string? actor = "admin", params string[] roles)
     {
         var accessor = actor is null
             ? TestHttpContext.Anonymous().Object
             : TestHttpContext.For(actor, roles).Object;
-        return new AuditService(repo, accessor, NullLogger<AuditService>.Instance);
+        return new AuditService(_repo, accessor, NullLogger<AuditService>.Instance);
     }
 
     private async Task SeedAsync(string userName, int count)
     {
         for (var i = 0; i < count; i++)
         {
-            await repo.AddAsync(TestData.NewAudit(userName, createdAt: DateTime.UtcNow.AddMinutes(i)));
+            await _repo.AddAsync(TestData.NewAudit(userName, createdAt: DateTime.UtcNow.AddMinutes(i)));
         }
     }
 
@@ -42,7 +42,7 @@ public class AuditServiceTests : IDisposable
     {
         await BuildService().LogAsync(AuditCategory.Cluster, AuditAction.Create, "集群: c1");
 
-        var log = db.AuditLogs.Single();
+        var log = _db.AuditLogs.Single();
         Assert.Equal("admin", log.UserName);
         Assert.Equal(AuditCategory.Cluster, log.Category);
         Assert.Equal(AuditAction.Create, log.Action);
@@ -53,7 +53,7 @@ public class AuditServiceTests : IDisposable
     {
         await BuildService(actor: "someone-else").LogAsync(AuditCategory.Authentication, AuditAction.Login, "账号: bob", userName: "bob");
 
-        Assert.Equal("bob", db.AuditLogs.Single().UserName);
+        Assert.Equal("bob", _db.AuditLogs.Single().UserName);
     }
 
     [Fact]
@@ -61,14 +61,14 @@ public class AuditServiceTests : IDisposable
     {
         await BuildService(actor: null).LogAsync(AuditCategory.Cluster, AuditAction.Create, "集群: c1");
 
-        Assert.Null(db.AuditLogs.Single().UserName);
+        Assert.Null(_db.AuditLogs.Single().UserName);
     }
 
     [Fact]
     public async Task LogAsync_swallows_persistence_failure()
     {
         var service = BuildService();
-        await db.DisposeAsync();
+        await _db.DisposeAsync();
 
         var ex = await Record.ExceptionAsync(() => service.LogAsync(AuditCategory.Cluster, AuditAction.Create, "集群: c1"));
 

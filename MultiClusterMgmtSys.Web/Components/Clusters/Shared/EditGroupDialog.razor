@@ -7,8 +7,8 @@
 
 <MudDialog ContentClass="group-dialog">
     <DialogContent>
-        <MudForm @ref="form">
-            <MudTextField @bind-Value="@groupName"
+        <MudForm @ref="_form">
+            <MudTextField @bind-Value="@_groupName"
                           Label="分组名称"
                           Required="true"
                           RequiredError="请输入分组名称"
@@ -20,15 +20,15 @@
     <DialogActions>
         <MudButton OnClick="() => Dialog.Cancel()"
                    Variant="Variant.Text"
-                   Disabled="saving">
+                   Disabled="_saving">
             取消
         </MudButton>
         <MudButton OnClick="Submit"
                    Color="Color.Primary"
                    Variant="Variant.Filled"
-                   Disabled="saving"
-                   StartIcon="@(saving ? null : (IsRename ? Icons.Material.Filled.Save : Icons.Material.Filled.Add))">
-            @if (saving)
+                   Disabled="_saving"
+                   StartIcon="@(_saving ? null : (IsRename ? Icons.Material.Filled.Save : Icons.Material.Filled.Add))">
+            @if (_saving)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" />
             }
@@ -47,35 +47,35 @@
     [Parameter]
     public string? InitialName { get; set; }
 
-    private MudForm form = default!;
+    private MudForm _form = default!;
 
-    private string groupName = "";
+    private string _groupName = "";
 
-    private bool saving;
+    private bool _saving;
 
     private bool IsRename => GroupId.HasValue;
 
     protected override void OnInitialized()
     {
-        groupName = InitialName ?? "";
+        _groupName = InitialName ?? "";
     }
 
     private async Task Submit()
     {
-        await form.ValidateAsync();
-        if (!form.IsValid) return;
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
 
-        saving = true;
+        _saving = true;
         try
         {
             if (GroupId is null)
             {
-                await GroupService.AddGroupAsync(groupName);
+                await GroupService.AddGroupAsync(_groupName);
                 Snackbar.Add("分组已创建", Severity.Success);
             }
             else
             {
-                await GroupService.RenameGroupAsync(new GroupRenameRequest(GroupId.Value, groupName));
+                await GroupService.RenameGroupAsync(new GroupRenameRequest(GroupId.Value, _groupName));
                 Snackbar.Add("分组已重命名", Severity.Success);
             }
             Dialog.Close(DialogResult.Ok(true));
@@ -86,7 +86,7 @@
         }
         finally
         {
-            saving = false;
+            _saving = false;
         }
     }
 }

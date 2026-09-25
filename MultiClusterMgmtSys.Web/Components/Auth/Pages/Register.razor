@@ -18,7 +18,7 @@
             <span class="brand-mark large">▮</span>
             <MudText Typo="Typo.h5">注册新账号</MudText>
             <span class="appbar-subtitle">MCM // CONTROL</span>
-            <StatusMessage IsSuccess="@isSuccess" Message="@errorMessage" />
+            <StatusMessage IsSuccess="@_isSuccess" Message="@_errorMessage" />
         </MudStack>
 
         <EditForm Model="Input" method="post" OnValidSubmit="RegisterUser" FormName="register">
@@ -30,7 +30,7 @@
                                 Variant="Variant.Outlined"
                                 Margin="Margin.Dense"
                                 Class="pb-2"
-                                UserAttributes="@userNameTextFieldAttr" />
+                                UserAttributes="@_userNameTextFieldAttr" />
             <MudStaticTextField For="@(() => Input.Password)"
                                 @bind-Value="Input.Password"
                                 Label="密码"
@@ -43,7 +43,7 @@
                                 AdornmentToggledIcon="@Icons.Material.Outlined.VisibilityOff"
                                 AdornmentClickFunction="showPassword"
                                 Class="pb-2"
-                                UserAttributes="@passwordTextFieldAttr" />
+                                UserAttributes="@_passwordTextFieldAttr" />
             <MudStaticTextField For="@(() => Input.ConfirmPassword)"
                                 @bind-Value="Input.ConfirmPassword"
                                 Label="确认密码"
@@ -56,7 +56,7 @@
                                 AdornmentToggledIcon="@Icons.Material.Outlined.VisibilityOff"
                                 AdornmentClickFunction="showPassword"
                                 Class="pb-4"
-                                UserAttributes="@confirmPasswordTextFieldAttr" />
+                                UserAttributes="@_confirmPasswordTextFieldAttr" />
 
             <MudStaticButton Variant="Variant.Filled"
                              Color="Color.Primary"
@@ -76,21 +76,21 @@
 </MudPaper>
 
 @code {
-    private bool isSuccess = false;
+    private bool _isSuccess = false;
 
-    private string? errorMessage;
+    private string? _errorMessage;
 
-    private Dictionary<string, object> userNameTextFieldAttr = new()
+    private Dictionary<string, object> _userNameTextFieldAttr = new()
     {
         { "autocomplete", "username"},
         { "aria-required", "true" }
     };
-    private Dictionary<string, object> passwordTextFieldAttr = new()
+    private Dictionary<string, object> _passwordTextFieldAttr = new()
     {
         { "autocomplete", "new-password" },
         { "aria-required", "true" }
     };
-    private Dictionary<string, object> confirmPasswordTextFieldAttr = new()
+    private Dictionary<string, object> _confirmPasswordTextFieldAttr = new()
     {
         { "autocomplete", "new-password" },
         { "aria-required", "true" }
@@ -110,11 +110,11 @@
         var result = await AuthService.RegisterAsync(request);
         if (!result.Succeeded)
         {
-            isSuccess = false;
-            errorMessage = string.Join("\n", result.Errors.Select(e => e.Description));
+            _isSuccess = false;
+            _errorMessage = string.Join("\n", result.Errors.Select(e => e.Description));
             return;
         }
-        isSuccess = true;
+        _isSuccess = true;
         RedirectManager.RedirectTo("/register/confirmation");
     }
 

@@ -12,26 +12,26 @@ namespace MultiClusterMgmtSys.Tests.Application.Services;
 
 public class ClusterRefreshConcurrencyTests : IDisposable
 {
-    private readonly ServiceHarness harness = new("admin", "Admin");
-    private readonly Mock<IKubernetes> k8s = K8sMocks.Create();
-    private readonly ClusterService service;
+    private readonly ServiceHarness _harness = new("admin", "Admin");
+    private readonly Mock<IKubernetes> _k8s = K8sMocks.Create();
+    private readonly ClusterService _service;
 
     public ClusterRefreshConcurrencyTests()
     {
         var nodeService = new ClusterNodeService(
-            harness.ClusterRepo, harness.Audit, NullLogger<ClusterNodeService>.Instance, K8sMocks.Cache(k8s));
-        service = new ClusterService(
-            harness.ClusterRepo, nodeService, harness.Audit,
-            NullLogger<ClusterService>.Instance, K8sMocks.Cache(k8s));
+            _harness.ClusterRepo, _harness.Audit, NullLogger<ClusterNodeService>.Instance, K8sMocks.Cache(_k8s));
+        _service = new ClusterService(
+            _harness.ClusterRepo, nodeService, _harness.Audit,
+            NullLogger<ClusterService>.Instance, K8sMocks.Cache(_k8s), _harness.ClusterHealthRepo);
     }
 
-    public void Dispose() => harness.Dispose();
+    public void Dispose() => _harness.Dispose();
 
     private Task<int> SeedAsync(string name, ClusterStatus status = ClusterStatus.Online)
-        => harness.ClusterRepo.AddAsync(TestData.NewCluster(name, status: status)).ContinueWith(t => t.Result.Id);
+        => _harness.ClusterRepo.AddAsync(TestData.NewCluster(name, status: status)).ContinueWith(t => t.Result.Id);
 
     private void SetupBlockingGetVersion(Func<CancellationToken, Task> behavior)
-        => k8s.Setup(x => x.Version.GetCodeWithHttpMessagesAsync(
+        => _k8s.Setup(x => x.Version.GetCodeWithHttpMessagesAsync(
                 It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
                 It.IsAny<CancellationToken>()))
             .Returns(async (IReadOnlyDictionary<string, IReadOnlyList<string>> _, CancellationToken ct) =>
@@ -74,7 +74,7 @@ public class ClusterRefreshConcurrencyTests : IDisposable
             }
         });
 
-        var succeeded = await service.RefreshAllClustersStatusAsync();
+        var succeeded = await _service.RefreshAllClustersStatusAsync();
 
         Assert.Equal(2, succeeded);
         Assert.True(maxInFlight >= 2, $"期望并发探测,实际最大在途 {maxInFlight}");
@@ -117,7 +117,7 @@ public class ClusterRefreshConcurrencyTests : IDisposable
             }
         });
 
-        var succeeded = await service.RefreshAllClustersStatusAsync();
+        var succeeded = await _service.RefreshAllClustersStatusAsync();
 
         Assert.Equal(6, succeeded);
         Assert.Equal(4, maxInFlight);
@@ -127,31 +127,31 @@ public class ClusterRefreshConcurrencyTests : IDisposable
     public async Task RefreshAllClustersStatusAsync_pre_canceled_token_skips_probes()
     {
         var id = await SeedAsync("cancel-pre");
-        var before = await harness.ClusterRepo.GetByIdAsync(id);
+        var before = await _harness.ClusterRepo.GetByIdAsync(id);
 
         using var cts = new CancellationTokenSource();
         cts.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => service.RefreshAllClustersStatusAsync(cancellationToken: cts.Token));
+            () => _service.RefreshAllClustersStatusAsync(cancellationToken: cts.Token));
 
-        k8s.Verify(x => x.Version.GetCodeWithHttpMessagesAsync(
+        _k8s.Verify(x => x.Version.GetCodeWithHttpMessagesAsync(
             It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
             It.IsAny<CancellationToken>()), Times.Never);
 
-        var after = await harness.ClusterRepo.GetByIdAsync(id);
+        var after = await _harness.ClusterRepo.GetByIdAsync(id);
         Assert.Equal(before!.Status, after!.Status);
         Assert.Equal(before.Version, after.Version);
         Assert.Equal(before.NodeCount, after.NodeCount);
         Assert.Equal(before.LastCheckedAt, after.LastCheckedAt);
-        Assert.Empty(await harness.Db.AuditLogs.ToListAsync(TestContext.Current.CancellationToken));
+        Assert.Empty(await _harness.Db.AuditLogs.ToListAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
     public async Task RefreshAllClustersStatusAsync_cancel_mid_probe_leaves_state_untouched()
     {
         var id = await SeedAsync("cancel-mid");
-        var before = await harness.ClusterRepo.GetByIdAsync(id);
+        var before = await _harness.ClusterRepo.GetByIdAsync(id);
 
         var probeStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         SetupBlockingGetVersion(async ct =>
@@ -161,17 +161,17 @@ public class ClusterRefreshConcurrencyTests : IDisposable
         });
 
         using var cts = new CancellationTokenSource();
-        var refreshTask = service.RefreshAllClustersStatusAsync(cancellationToken: cts.Token);
+        var refreshTask = _service.RefreshAllClustersStatusAsync(cancellationToken: cts.Token);
         await probeStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
         cts.Cancel();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => refreshTask);
 
-        var after = await harness.ClusterRepo.GetByIdAsync(id);
+        var after = await _harness.ClusterRepo.GetByIdAsync(id);
         Assert.Equal(ClusterStatus.Online, after!.Status);
         Assert.Equal(before!.Version, after.Version);
         Assert.Equal(before.NodeCount, after.NodeCount);
         Assert.Equal(before.LastCheckedAt, after.LastCheckedAt);
-        Assert.Empty(await harness.Db.AuditLogs.ToListAsync(TestContext.Current.CancellationToken));
+        Assert.Empty(await _harness.Db.AuditLogs.ToListAsync(TestContext.Current.CancellationToken));
     }
 }

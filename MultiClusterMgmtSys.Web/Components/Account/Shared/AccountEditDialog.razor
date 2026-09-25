@@ -8,8 +8,8 @@
 
 <MudDialog>
     <DialogContent>
-        <MudForm @ref="form">
-            <MudTextField @bind-Value="userName"
+        <MudForm @ref="_form">
+            <MudTextField @bind-Value="_userName"
                           Label="用户名"
                           Required="true"
                           RequiredError="请输入用户名"
@@ -20,7 +20,7 @@
                           Class="mb-3" />
 
             <MudSelect T="string"
-                       @bind-Value="roleName"
+                       @bind-Value="_roleName"
                        Label="角色"
                        Variant="Variant.Outlined"
                        Margin="Margin.Dense"
@@ -31,15 +31,15 @@
 
             @if (!isEdit)
             {
-                <MudTextField @bind-Value="password"
+                <MudTextField @bind-Value="_password"
                               Label="初始密码"
                               Required="true"
                               RequiredError="请输入初始密码"
                               Immediate="true"
-                              InputType="@(showPassword ? InputType.Text : InputType.Password)"
+                              InputType="@(_showPassword ? InputType.Text : InputType.Password)"
                               Adornment="Adornment.End"
-                              AdornmentIcon="@(showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
-                              OnAdornmentClick="@(() => showPassword = !showPassword)"
+                              AdornmentIcon="@(_showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                              OnAdornmentClick="@(() => _showPassword = !_showPassword)"
                               HelperText="至少 8 位且包含数字"
                               Variant="Variant.Outlined"
                               Margin="Margin.Dense"
@@ -50,14 +50,14 @@
     <DialogActions>
         <MudButton OnClick="() => Dialog.Cancel()"
                    Variant="Variant.Text"
-                   Disabled="saving">
+                   Disabled="_saving">
             取消
         </MudButton>
         <MudButton OnClick="Submit"
                    Color="Color.Primary"
                    Variant="Variant.Filled"
-                   Disabled="saving">
-            @if (saving)
+                   Disabled="_saving">
+            @if (_saving)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
             }
@@ -73,40 +73,40 @@
     [Parameter]
     public AccountViewModel? EditingAccount { get; set; }
 
-    private MudForm form = default!;
+    private MudForm _form = default!;
 
     private bool isEdit => EditingAccount is not null;
 
-    private string userName = "";
+    private string _userName = "";
 
-    private string roleName = "Member";
+    private string _roleName = "Member";
 
-    private string password = "";
+    private string _password = "";
 
-    private bool showPassword;
+    private bool _showPassword;
 
-    private bool saving;
+    private bool _saving;
 
     protected override void OnInitialized()
     {
         if (EditingAccount is not null)
         {
-            userName = EditingAccount.UserName;
-            roleName = EditingAccount.RoleName;
+            _userName = EditingAccount.UserName;
+            _roleName = EditingAccount.RoleName;
         }
     }
 
     private async Task Submit()
     {
-        await form.ValidateAsync();
-        if (!form.IsValid) return;
+        await _form.ValidateAsync();
+        if (!_form.IsValid) return;
 
-        saving = true;
+        _saving = true;
         try
         {
             var result = isEdit
-                ? await AccountSvc.UpdateAccountAsync(new AccountUpdateRequest(EditingAccount!.Id, roleName))
-                : await AccountSvc.CreateAccountAsync(new AccountCreateRequest(userName, password, roleName));
+                ? await AccountSvc.UpdateAccountAsync(new AccountUpdateRequest(EditingAccount!.Id, _roleName))
+                : await AccountSvc.CreateAccountAsync(new AccountCreateRequest(_userName, _password, _roleName));
             if (result.Succeeded)
             {
                 Dialog.Close(DialogResult.Ok(true));
@@ -118,7 +118,7 @@
         }
         finally
         {
-            saving = false;
+            _saving = false;
         }
     }
 

@@ -86,6 +86,22 @@ public static class K8sMocks
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(ex);
 
+    public static void VerifyListNodes(this Mock<IKubernetes> mock, Times times)
+        => mock.Verify(x => x.CoreV1.ListNodeWithHttpMessagesAsync(
+                It.IsAny<bool?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<int?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<int?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()), times);
+
     public static void SetupGetVersion(this Mock<IKubernetes> mock, string gitVersion)
         => mock.Setup(x => x.Version.GetCodeWithHttpMessagesAsync(
                 It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),

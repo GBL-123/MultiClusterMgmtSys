@@ -39,6 +39,21 @@ public static class TestData
     public static NodeIpRemark NewIpRemark(int clusterId, string nodeName = "node-1", string address = "192.168.1.10", string? note = null)
         => new() { ClusterId = clusterId, NodeName = nodeName, Address = address, Note = note };
 
+    public static ClusterHealthSnapshot NewSnapshot(
+        int clusterId,
+        DateTime? capturedAt = null,
+        int totalNodes = 3,
+        int readyNodes = 3,
+        int notReadyNodes = 0)
+        => new()
+        {
+            ClusterId = clusterId,
+            CapturedAt = capturedAt ?? new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            TotalNodes = totalNodes,
+            ReadyNodes = readyNodes,
+            NotReadyNodes = notReadyNodes
+        };
+
     public static AuditLog NewAudit(
         string userName = "admin",
         AuditCategory category = AuditCategory.Cluster,
