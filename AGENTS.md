@@ -53,6 +53,8 @@ dotnet run  --project MultiClusterMgmtSys.Web --launch-profile https            
 
 测试项目是 `MultiClusterMgmtSys.Tests/`(xunit.v3 + Moq + bUnit + SQLite 内存库);无 lint/format/typecheck config,不要虚构 lint 命令。
 
+**Helm CLI 前置(开发机)**:应用内的 Helm 操作以子进程方式调用 `helm` 二进制——开发机需安装 Helm 4.x 并确保在 PATH,或配置 `Helm:CliPath` 指向本地安装路径;生产镜像已在构建时内置钉版二进制(见 Docker 节)。
+
 Build gotcha: if `dotnet build` fails with MSB3021/MSB3026/MSB3027 (exe locked), a running app instance is holding `bin/.../MultiClusterMgmtSys.Web.exe` (often a leftover `dotnet run`) — the error prints the locking PID; `Stop-Process -Id <pid> -Force`, then rebuild. 项目/目录改名后如出现静态资产 404/500,删 `bin/`+`obj/` 全量重建。
 
 ## Testing conventions
@@ -75,6 +77,7 @@ Build gotcha: if `dotnet build` fails with MSB3021/MSB3026/MSB3027 (exe locked),
 - Prod stack is app + **nginx**: the app port is **not** exposed on the host; nginx terminates TLS on 80/443 (WebSocket upgrade for Blazor Server) and proxies to app :8080. Certs: `./nginx/certs/fullchain.pem` + `privkey.pem` (gitignored; self-signed generation commands are in the compose file comments).
 - First run is fully automated: a one-shot `fs-init` container (same app image, root, `/bin/sh`) creates `db/ logs/ nginx/certs/` and chowns `db/`+`logs/` to the app UID (default 1654, from `USER $APP_UID` in `MultiClusterMgmtSys.Web/Dockerfile`; override with `MCMS_APP_UID` env var). It runs on every `up -d` (idempotent), and `multiclustermgmtsys` starts only after it (`service_completed_successfully`). Only the TLS certs remain manual: place `./nginx/certs/fullchain.pem` + `privkey.pem`.
 - Env overrides in compose: `ConnectionStrings__DefaultConnection` → `/app/db/MultiClusterMgmtSys.db`, `Logging__File__Path` → `/app/logs/app-.log`; host `./db` and `./logs` are bind mounts. Backup = stop service, copy `db/MultiClusterMgmtSys.db`.
+- **镜像内置 Helm CLI**:Dockerfile 的 `helm` 阶段按 `TARGETARCH` 从 get.helm.sh 下载钉定版本并校验 `.sha256sum`,把二进制拷入 `/usr/local/bin/helm`(当前钉 `HELM_VERSION=v4.3.0`);升级 Helm = 改 `HELM_VERSION` 后重建镜像。运行配置 `Helm:CliPath` / `Helm:MaxPackageBytes` 见 appsettings。
 - Entry dll 为 `MultiClusterMgmtSys.Web.dll`(Dockerfile ENTRYPOINT),镜像/容器名仍为 `multiclustermgmtsys`。
 
 ## Database quirks (important)
@@ -87,6 +90,7 @@ Build gotcha: if `dotnet build` fails with MSB3021/MSB3026/MSB3027 (exe locked),
 - Schema facts (`Infrastructure/Persistence/ApplicationDbContext.cs`): `ClusterInfo.GroupId` FK is `SetNull`;`ClusterEndpoint`、`NodeIpRemark` 与 `ClusterHealthSnapshot` cascade from `ClusterInfo`;`NodeIpRemark` has a unique index `(ClusterId, NodeName, Address)`;`ClusterHealthSnapshot` has an index `(ClusterId, CapturedAt)`;`AuditLog.CreatedAt` is indexed;`ApplicationUser.CreatedAt` defaults to `CURRENT_TIMESTAMP`。
 - **`ClusterHealthSnapshot` 是只追加表**(契约 `cluster-scheduled-sync`):后台同步每次**成功**探测一个集群即追加一行节点就绪统计(总数/就绪/未就绪),不覆盖、不修改;探测失败与停机取消均不写。因此「每集群最新一行」即该集群最近一次成功探测的结果——看板据此计算舰队规模,集群离线时主档 `NodeCount` 虽被置 0,规模仍取快照的最后已知值而不缩水。目前**无保留策略**(7 集群 / 5 分钟间隔约 2000 行/天,SQLite 无感)。
 - **`add-cluster-dashboard` 引入建表变更**:升级到该版本必须删除 `MultiClusterMgmtSys.Web/db/` 下的库文件后重启重建(`EnsureCreated` 不会为既有库补建新表),已登记的集群与凭据需重新录入。
+- **`HelmReleaseOwnership` 是归属记账表**(契约 `helm-release-management`):安装成功写入、系统内卸载删除、随集群级联;(ClusterId, Namespace, ReleaseName) 唯一。它只用于「Admin 可操作任意 release、成员仅可操作自己安装的」服务端判定——界面不展示安装者列,追溯走审计日志;无记录或当前 revision 小于安装时 revision(系统外重装)视为无主,仅 Admin 可操作。**`add-helm-management` 引入建表变更**:升级到该版本同样必须删除 `MultiClusterMgmtSys.Web/db/` 下的库文件后重启重建。
 
 ## Folder / namespace gotchas
 
@@ -103,6 +107,7 @@ Build gotcha: if `dotnet build` fails with MSB3021/MSB3026/MSB3027 (exe locked),
 - **事件管理**:`Web/Components/Events/`(命名空间 `.Web.Components.Events`,路由 `/events`、`/events/{ClusterId:int}`)+ `EventService`(只读、无审计);相对时间展示统一 `Application/Common/Time/RelativeTimeFormatter.Format`(null→「—」,刚刚/N 分钟前/N 小时前/N 天前)。
 - **全局集群看板**(契约 `cluster-dashboard`):`Web/Components/Dashboard/`(命名空间 `.Web.Components.Dashboard`,路由 `/dashboard`,**登录后默认落地页**)+ `DashboardService`。数据**全部读自 SQLite**(集群主档 + 节点健康快照 + 审计 + 同步设置),**不发起任何 K8s 调用**——集群全部离线时看板仍可用,`[刷新全部]` 复用 `ClusterService.RefreshAllClustersStatusAsync` 并带进度。新鲜度以**生效同步间隔 × 2** 为过期阈值(停用/从未同步各自表达,不误报为过期);「最近操作」复用审计可见范围(Admin 全站 / 非 Admin 仅本人,标题随之切换)。看板是聚合视图,**不**用 `MudTable`、不接 `ClusterSelectSidebar`、不提供管理操作——与集群列表页的分工是「健康视角」对「管理视角」。
 - **全量刷新有界并发 + 停机取消**:`ClusterService.RefreshAllClustersStatusAsync` 三段式(取数 → `Parallel.ForEachAsync` 最多 4 个并发探测 → 串行 `UpdateAsync` + 状态翻转审计),进度用 `Interlocked`,`CancellationToken` 由 `ClusterSyncBackgroundService`(`Infrastructure/Sync`)透传;`ProbeAsync` 用 `catch (OperationCanceledException) when (token.IsCancellationRequested)` 区分停机取消与探测失败——取消不置 `Offline`、不写审计(契约 `cluster-scheduled-sync`)。探测**成功**时额外解析当轮 `ListNodeAsync` 结果的节点就绪统计并追加一条 `ClusterHealthSnapshot`(复用既有调用,**不新增 K8s 请求**);探测失败与停机取消均不写快照;快照落库失败只记警告,不把可达集群误判为离线。
+- **Helm 应用管理**(契约 `helm-release-management` / `helm-cli-runtime`):`Web/Components/Helm/`(命名空间 `.Web.Components.Helm`,路由 `/helm` 与 `/helm/releases/{clusterId}/{ns}/{name}`)+ `HelmService`。经 helm CLI 子进程读写 release(安装/升级/回滚/卸载与列表/详情/历史/values/manifest),chart 来源为上传 `.tgz` 即传即用(临时文件,操作结束删除);权限:列表全员可见、操作按归属——Admin 任意、成员仅本人安装的、无主仅 Admin(归属存 `HelmReleaseOwnership` 表,界面不展示安装者列,追溯走审计);Helm CLI 调用**不经** `IClusterClientCache`、**不适用** 10s 超时契约(走 helm `--timeout` 与进程级上限,见两个契约的边界条款)。
 - **YAML 模板**:`IYamlTemplateService`(接口在 `Application/Abstractions`,实现 `Infrastructure/Templates/YamlTemplateService.cs`,singleton)从 Web `wwwroot/templates/{category}/{name}.yaml` 读取新建对话框的初始 YAML(workload/configmap/service/namespace 四类);文件缺失或读取失败时回退内置最小骨架且只记日志、不抛异常。
 - **Exception handling**: services throw `BusinessException` subclasses (中文 `UserMessage`,位于 `Domain/Exceptions`);K8s 调用点 catch → `K8sExceptionMapper.Translate(ex, "操作")` 再抛;UI catch → `await ExHandler.HandleAsync(ex, "操作")`,不直出 `ex.Message`。详见下方 "Exception handling" 节。
 - Pipeline extras: `UseForwardedHeaders` trusting **all** proxies (required by prod nginx TLS termination — keep), `UseStatusCodePagesWithReExecute("/not-found")`, `MapStaticAssets()`, dev-only `UseMigrationsEndPoint` + `AddDatabaseDeveloperPageExceptionFilter`.

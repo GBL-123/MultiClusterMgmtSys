@@ -1,0 +1,349 @@
+@attribute [Authorize]
+@page "/helm"
+@page "/helm/{ClusterId:int}"
+
+@using MultiClusterMgmtSys.Application.Enums
+@using MultiClusterMgmtSys.Application.Requests
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Application.ViewModels
+@using MultiClusterMgmtSys.Domain.Enums
+@using MultiClusterMgmtSys.Web.Components.Helm.Shared
+
+@inject ClusterService ClusterService
+@inject HelmService HelmService
+@inject ClusterSelectionState ClusterSelection
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+@inject ExceptionPresenter ExHandler
+
+<PageTitle>应用管理</PageTitle>
+
+<MudStack Row="true" Spacing="3" Class="d-flex flex-auto">
+    <ClusterSelectSidebar Clusters="@_clusters"
+                          SelectedClusterId="@EffectiveClusterId"
+                          OnClusterSelected="SelectCluster" />
+
+    <MudStack Class="flex-auto">
+        @if (!EffectiveClusterId.HasValue)
+        {
+            <div class="d-flex flex-column align-center justify-center" style="min-height:60vh;">
+                <MudIcon Icon="@Icons.Material.Filled.Apps" Size="Size.Large" Class="mud-text-secondary mb-4" />
+                <MudText Typo="Typo.h6" Class="mud-text-secondary">请从左侧选择一个集群</MudText>
+            </div>
+        }
+        else if (_loading && _cluster is null)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+        }
+        else if (_cluster is null)
+        {
+            <MudCard Class="pa-8" Elevation="2">
+                <MudCardContent>
+                    <MudText Align="Align.Center" Class="mud-text-secondary">未找到该集群</MudText>
+                    <div class="d-flex justify-center mt-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                                   OnClick="@(() => NavigationManager.NavigateTo("/clusters"))">
+                            返回集群列表
+                        </MudButton>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        }
+        else
+        {
+            <MudPaper Class="pa-4">
+                <MudStack Row="true" AlignItems="AlignItems.Center">
+                    <MudText Typo="Typo.h5">应用管理</MudText>
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="GetClusterStatusColor(_cluster.Status)"
+                             Variant="Variant.Filled"
+                             Class="ml-2">
+                        @_cluster.Name · @_cluster.StatusText
+                    </MudChip>
+                    <MudSpacer />
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Inherit"
+                               StartIcon="@Icons.Material.Filled.Refresh"
+                               OnClick="@(() => LoadAsync(EffectiveClusterId!.Value))"
+                               Disabled="@_loading">
+                        刷新
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="OpenInstallDialog"
+                               Disabled="@(!_cluster.IsReachable)">
+                        安装 Chart
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+
+            @if (!_cluster.IsReachable)
+            {
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudText Align="Align.Center" Class="mud-text-secondary">集群不可达，无法获取已安装的 Chart 包</MudText>
+                    </MudCardContent>
+                </MudCard>
+            }
+            else
+            {
+                <MudTable T="HelmReleaseListViewModel"
+                          Items="@_releases"
+                          Hover="true"
+                          FixedHeader="true"
+                          Loading="@_loading"
+                          Class="helm-table">
+                    <HeaderContent>
+                        <MudTh>名称</MudTh>
+                        <MudTh>命名空间</MudTh>
+                        <MudTh>Chart</MudTh>
+                        <MudTh>版本</MudTh>
+                        <MudTh>Revision</MudTh>
+                        <MudTh>状态</MudTh>
+                        <MudTh>更新时间</MudTh>
+                        <MudTh>操作</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="名称">
+                            <MudText Class="font-mono link-primary" @onclick="() => NavigateToDetail(context)">@context.Name</MudText>
+                        </MudTd>
+                        <MudTd DataLabel="命名空间">
+                            <MudChip T="string" Size="Size.Small" Class="font-mono">@context.Namespace</MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Chart"><span class="font-mono">@context.ChartName</span></MudTd>
+                        <MudTd DataLabel="版本">
+                            <span class="font-mono">@context.ChartVersion</span>
+                            @if (!string.IsNullOrEmpty(context.AppVersion))
+                            {
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary font-mono">app @context.AppVersion</MudText>
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="Revision"><span class="font-mono">@context.Revision</span></MudTd>
+                        <MudTd DataLabel="状态">
+                            <StatusBadge Text="@context.StatusText" CssClass="@context.StatusCssClass" Raw="@context.Status" />
+                        </MudTd>
+                        <MudTd DataLabel="更新时间">
+                            <span class="font-mono">@(context.UpdatedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—")</span>
+                        </MudTd>
+                        <MudTd DataLabel="操作">
+                            <div class="d-flex" style="gap: 4px;">
+                                <TooltipIconButton Text="详情"
+                                                   Icon="@Icons.Material.Filled.Visibility"
+                                                   Color="Color.Primary"
+                                                   OnClick="@(() => NavigateToDetail(context))" />
+                                @if (context.CanOperate)
+                                {
+                                    <TooltipIconButton Text="升级"
+                                                       Icon="@Icons.Material.Filled.Upgrade"
+                                                       OnClick="@(() => OpenUpgradeDialog(context))" />
+                                    <TooltipIconButton Text="回滚"
+                                                       Icon="@Icons.Material.Filled.History"
+                                                       OnClick="@(() => OpenRollbackDialog(context))" />
+                                    <TooltipIconButton Text="卸载"
+                                                       Icon="@Icons.Material.Filled.DeleteOutline"
+                                                       Color="Color.Error"
+                                                       OnClick="@(() => OpenUninstallDialog(context))" />
+                                }
+                            </div>
+                        </MudTd>
+                    </RowTemplate>
+                    <LoadingContent>
+                        <MudText Class="pa-4 font-mono mud-text-secondary">// 正在加载...</MudText>
+                    </LoadingContent>
+                    <NoRecordsContent>
+                        <div class="empty-state">[ 暂无已安装的 Chart 包 ]</div>
+                    </NoRecordsContent>
+                </MudTable>
+            }
+        }
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter]
+    public int? ClusterId { get; set; }
+
+    private List<ClusterViewModel> _clusters = new();
+
+    private ClusterDetailViewModel? _cluster;
+
+    private List<HelmReleaseListViewModel> _releases = new();
+
+    private bool _loading;
+
+    private int? _previousClusterId;
+
+    private bool _hasInitialized;
+
+    private int? EffectiveClusterId => ClusterId ?? ClusterSelection.SelectedClusterId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClustersAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (ClusterId.HasValue)
+        {
+            ClusterSelection.Set(ClusterId.Value);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ClusterId == _previousClusterId && _hasInitialized)
+        {
+            return;
+        }
+        _hasInitialized = true;
+        _previousClusterId = ClusterId;
+
+        if (EffectiveClusterId.HasValue)
+        {
+            await LoadAsync(EffectiveClusterId.Value);
+        }
+        else
+        {
+            _cluster = null;
+            _releases = new();
+            _loading = false;
+        }
+    }
+
+    private async Task LoadClustersAsync()
+    {
+        try
+        {
+            var request = new ClusterQueryRequest { Page = 1, PageSize = 1000, SortBy = ClusterSortField.Name, SortDescending = false };
+            var result = await ClusterService.GetPagedAsync(request);
+            _clusters = result.Items;
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载集群列表");
+        }
+    }
+
+    private async Task LoadAsync(int id)
+    {
+        _loading = true;
+        try
+        {
+            _cluster = await ClusterService.GetClusterDetailAsync(id);
+            if (_cluster is not null)
+            {
+                ClusterSelection.Set(id);
+            }
+            if (_cluster is not null && _cluster.IsReachable)
+            {
+                try
+                {
+                    _releases = await HelmService.ListReleasesAsync(id);
+                }
+                catch (Exception ex)
+                {
+                    await ExHandler.HandleAsync(ex, "加载应用列表");
+                }
+            }
+            else
+            {
+                _releases = new();
+            }
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载集群详情");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void SelectCluster(int id)
+    {
+        NavigationManager.NavigateTo($"/helm/{id}");
+    }
+
+    private void NavigateToDetail(HelmReleaseListViewModel release)
+    {
+        NavigationManager.NavigateTo($"/helm/releases/{EffectiveClusterId!.Value}/{release.Namespace}/{release.Name}");
+    }
+
+    private async Task OpenInstallDialog()
+    {
+        var parameters = new DialogParameters { { "ClusterId", EffectiveClusterId!.Value } };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<InstallHelmReleaseDialog>("安装 Chart 包", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await LoadAsync(EffectiveClusterId!.Value);
+        }
+    }
+
+    private async Task OpenUpgradeDialog(HelmReleaseListViewModel release)
+    {
+        var parameters = new DialogParameters
+        {
+            { "ClusterId", EffectiveClusterId!.Value },
+            { "Namespace", release.Namespace },
+            { "ReleaseName", release.Name },
+            { "ChartName", release.ChartName },
+            { "ChartVersion", release.ChartVersion }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<UpgradeHelmReleaseDialog>("升级 Release", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await LoadAsync(EffectiveClusterId!.Value);
+        }
+    }
+
+    private async Task OpenRollbackDialog(HelmReleaseListViewModel release)
+    {
+        var parameters = new DialogParameters
+        {
+            { "ClusterId", EffectiveClusterId!.Value },
+            { "Namespace", release.Namespace },
+            { "ReleaseName", release.Name }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<RollbackHelmReleaseDialog>("回滚 Release", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await LoadAsync(EffectiveClusterId!.Value);
+        }
+    }
+
+    private async Task OpenUninstallDialog(HelmReleaseListViewModel release)
+    {
+        var parameters = new DialogParameters
+        {
+            { "ClusterId", EffectiveClusterId!.Value },
+            { "Namespace", release.Namespace },
+            { "ReleaseName", release.Name }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<UninstallHelmReleaseDialog>("卸载 Release", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await LoadAsync(EffectiveClusterId!.Value);
+        }
+    }
+
+    private static Color GetClusterStatusColor(ClusterStatus status) => status switch
+    {
+        ClusterStatus.Online => Color.Success,
+        ClusterStatus.Offline => Color.Error,
+        _ => Color.Default
+    };
+}

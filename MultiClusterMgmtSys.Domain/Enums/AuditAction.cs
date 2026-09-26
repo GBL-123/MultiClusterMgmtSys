@@ -33,5 +33,17 @@ public enum AuditAction
     Scale = 8,
 
     /// <summary>工作负载滚动重启。</summary>
-    Restart = 9
+    Restart = 9,
+
+    /// <summary>Helm release 安装。</summary>
+    Install = 10,
+
+    /// <summary>Helm release 升级。</summary>
+    Upgrade = 11,
+
+    /// <summary>Helm release 回滚。</summary>
+    Rollback = 12,
+
+    /// <summary>Helm release 卸载。</summary>
+    Uninstall = 13
 }

@@ -220,7 +220,7 @@ public class SvcServiceTests : IDisposable
     public async Task CreateSvcFromYamlAsync_missing_namespace_throws_validation()
     {
         var clusterId = await SeedAsync();
-        var yaml = ServiceYaml.Replace("  namespace: app\n", "");
+        var yaml = ServiceYaml.Replace("  namespace: app", "");
 
         var ex = await Assert.ThrowsAsync<ValidationException>(
             () => _service.CreateSvcFromYamlAsync(new SvcCreateRequest(clusterId, yaml)));

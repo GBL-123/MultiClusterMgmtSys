@@ -29,6 +29,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<AccountService>();
         services.AddScoped<ClusterSyncSettingService>();
         services.AddScoped<DashboardService>();
+        services.AddScoped<HelmService>();
         services.AddSingleton<IYamlValidator, YamlValidator>();
         return services;
     }

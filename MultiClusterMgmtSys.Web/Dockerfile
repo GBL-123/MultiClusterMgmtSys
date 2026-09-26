@@ -1,6 +1,19 @@
 # 请参阅 https://aka.ms/customizecontainer 以了解如何自定义调试容器，以及 Visual Studio 如何使用此 Dockerfile 生成映像以更快地进行调试。
 
 # 此阶段用于在快速模式(默认为调试配置)下从 VS 运行时
+# Helm CLI 下载阶段:复用构建链中的 SDK 基础镜像,避免额外的 registry 依赖;
+# 按 TARGETARCH 下载钉定版本并校验 SHA256,仅把二进制拷入运行镜像。
+# 升级步骤:改 HELM_VERSION 为新的 v4.x.y(get.helm.sh 提供配套 .sha256sum 校验文件),重跑构建即可。
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS helm
+ARG HELM_VERSION=v4.3.0
+ARG TARGETARCH
+RUN cd /tmp \
+ && curl -fsSLO "https://get.helm.sh/helm-${HELM_VERSION}-linux-${TARGETARCH}.tar.gz" \
+ && curl -fsSLO "https://get.helm.sh/helm-${HELM_VERSION}-linux-${TARGETARCH}.tar.gz.sha256sum" \
+ && sha256sum -c "helm-${HELM_VERSION}-linux-${TARGETARCH}.tar.gz.sha256sum" \
+ && tar -xzf "helm-${HELM_VERSION}-linux-${TARGETARCH}.tar.gz" \
+ && cp "linux-${TARGETARCH}/helm" /helm
+
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
 # SQLite 数据目录 + Serilog 日志目录：需以非 root 用户可写
@@ -33,4 +46,5 @@ RUN dotnet publish "./MultiClusterMgmtSys.Web.csproj" -c $BUILD_CONFIGURATION -o
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
+COPY --from=helm /helm /usr/local/bin/helm
 ENTRYPOINT ["dotnet", "MultiClusterMgmtSys.Web.dll"]

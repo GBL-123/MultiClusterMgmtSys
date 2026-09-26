@@ -13,6 +13,8 @@ public sealed class ServiceHarness : IDisposable
 
     public ClusterHealthRepository ClusterHealthRepo { get; }
 
+    public HelmReleaseOwnershipRepository OwnershipRepo { get; }
+
     public AuditService Audit { get; }
 
     public ServiceHarness(string actor = "admin", params string[] roles)
@@ -24,6 +26,7 @@ public sealed class ServiceHarness : IDisposable
             NullLogger<AuditService>.Instance);
         ClusterRepo = new ClusterRepository(Db);
         ClusterHealthRepo = new ClusterHealthRepository(Db);
+        OwnershipRepo = new HelmReleaseOwnershipRepository(Db);
     }
 
     public void Dispose() => Db.Dispose();

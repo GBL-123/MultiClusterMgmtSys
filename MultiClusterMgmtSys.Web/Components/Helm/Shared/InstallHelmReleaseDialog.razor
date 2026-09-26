@@ -1,0 +1,198 @@
+@using MultiClusterMgmtSys.Application.Common.Helm
+@using MultiClusterMgmtSys.Application.Requests
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Application.ViewModels
+
+@inject HelmService HelmService
+@inject HelmOptions HelmOptions
+@inject ISnackbar Snackbar
+@inject ExceptionPresenter ExHandler
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">安装 Chart 包</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3" Class="pt-2">
+            <div>
+                <InputFile OnChange="OnFileSelected" accept=".tgz" style="width:100%;" />
+                <MudText Typo="Typo.caption" Class="mud-text-secondary mt-1">选择打包好的 .tgz chart 包（最大 @MaxPackageMegabytes MB）</MudText>
+                @if (!string.IsNullOrEmpty(_fileName))
+                {
+                    <MudText Typo="Typo.body2" Class="mt-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Class="mr-1" />@_fileName
+                    </MudText>
+                }
+            </div>
+
+            @if (_package is not null)
+            {
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.body2">Chart:<span class="font-mono ml-1">@_package.Name @_package.Version</span></MudText>
+                    @if (!string.IsNullOrEmpty(_package.AppVersion))
+                    {
+                        <MudText Typo="Typo.body2">appVersion:<span class="font-mono ml-1">@_package.AppVersion</span></MudText>
+                    }
+                    @if (!string.IsNullOrEmpty(_package.Description))
+                    {
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary">@_package.Description</MudText>
+                    }
+                </MudStack>
+                @foreach (var warning in _package.Warnings)
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true">@warning</MudAlert>
+                }
+            }
+
+            <MudTextField @bind-Value="_releaseName"
+                          Label="Release 名称"
+                          Required="true"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense" />
+
+            <MudSelect T="string" Label="命名空间" @bind-Value="_namespace" Variant="Variant.Outlined" Margin="Margin.Dense">
+                @foreach (var namespaceName in _namespaces)
+                {
+                    <MudSelectItem T="string" Value="@namespaceName">@namespaceName</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudCheckBox T="bool" @bind-Value="_createNamespace" Label="命名空间不存在时自动创建（--create-namespace）" />
+            <MudCheckBox T="bool" @bind-Value="_wait" Label="等待资源就绪（--wait，最长 5 分钟）" />
+
+            <div>
+                <MudText Typo="Typo.body2" Class="mb-1">Values（YAML，可编辑）</MudText>
+                <textarea class="yaml-textarea" style="height:200px;width:100%;" value="@_valuesYaml" @oninput="OnValuesInput"></textarea>
+            </div>
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="() => Dialog.Cancel()">取消</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@_submitting"
+                   OnClick="SubmitAsync">
+            安装
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    private byte[]? _packageContent;
+
+    private string _fileName = "";
+
+    private HelmChartPackageViewModel? _package;
+
+    private List<string> _namespaces = new();
+
+    private string _releaseName = "";
+
+    private string? _namespace;
+
+    private string _valuesYaml = "";
+
+    private bool _createNamespace;
+
+    private bool _wait;
+
+    private bool _submitting;
+
+    private int MaxPackageMegabytes => (int)(HelmOptions.MaxPackageBytes / 1024 / 1024);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _namespaces = await HelmService.GetNamespacesAsync(ClusterId);
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载命名空间列表");
+        }
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null)
+        {
+            return;
+        }
+        if (file.Size > HelmOptions.MaxPackageBytes)
+        {
+            Snackbar.Add($"chart 包超过 {MaxPackageMegabytes} MB 限制", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            using var buffer = new MemoryStream();
+            await using (var source = file.OpenReadStream(HelmOptions.MaxPackageBytes))
+            {
+                await source.CopyToAsync(buffer);
+            }
+            _packageContent = buffer.ToArray();
+            _fileName = file.Name;
+            _package = HelmService.ParseChartPackage(_packageContent);
+            _releaseName = _package.SuggestedReleaseName;
+            _valuesYaml = _package.ValuesYaml;
+        }
+        catch (Exception ex)
+        {
+            _packageContent = null;
+            _package = null;
+            await ExHandler.HandleAsync(ex, "解析 chart 包");
+        }
+    }
+
+    private void OnValuesInput(ChangeEventArgs e) => _valuesYaml = e.Value?.ToString() ?? "";
+
+    private async Task SubmitAsync()
+    {
+        if (_packageContent is null)
+        {
+            Snackbar.Add("请先选择 chart 包", Severity.Warning);
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(_releaseName))
+        {
+            Snackbar.Add("请填写 Release 名称", Severity.Warning);
+            return;
+        }
+        if (string.IsNullOrEmpty(_namespace))
+        {
+            Snackbar.Add("请选择命名空间", Severity.Warning);
+            return;
+        }
+
+        _submitting = true;
+        try
+        {
+            await HelmService.InstallAsync(new HelmInstallRequest(
+                ClusterId,
+                _namespace,
+                _releaseName.Trim(),
+                _packageContent,
+                _valuesYaml,
+                _createNamespace,
+                _wait));
+            Snackbar.Add($"已安装 {_releaseName.Trim()}", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "安装 Chart 包");
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+}

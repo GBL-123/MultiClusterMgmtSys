@@ -49,6 +49,9 @@
         <MudNavLink Href="/events" Icon="@Icons.Material.Filled.EventNote" Match="NavLinkMatch.Prefix">
             事件管理
         </MudNavLink>
+        <MudNavLink Href="/helm" Icon="@Icons.Material.Filled.Apps" Match="NavLinkMatch.Prefix">
+            应用管理
+        </MudNavLink>
         <AuthorizeView Roles="Admin">
             <Authorized>
                 <MudNavLink Href="/accounts" Icon="@Icons.Material.Filled.ManageAccounts" Match="NavLinkMatch.Prefix">

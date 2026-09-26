@@ -51,6 +51,7 @@ public class ArchitectureTests
             typeof(IAuditLogRepository),
             typeof(IAppSettingRepository),
             typeof(IAccountQueryRepository),
+            typeof(IHelmReleaseOwnershipRepository),
         };
 
         var violations = new List<string>();

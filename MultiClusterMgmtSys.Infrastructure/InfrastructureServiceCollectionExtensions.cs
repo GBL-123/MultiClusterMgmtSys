@@ -6,8 +6,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MultiClusterMgmtSys.Application.Abstractions;
+using MultiClusterMgmtSys.Application.Common.Helm;
 using MultiClusterMgmtSys.Application.Identity;
 using MultiClusterMgmtSys.Application.Services.Identity;
+using MultiClusterMgmtSys.Infrastructure.Helm;
 using MultiClusterMgmtSys.Infrastructure.Identity;
 using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using MultiClusterMgmtSys.Infrastructure.Persistence;
@@ -56,6 +58,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IAppSettingRepository, AppSettingRepository>();
         services.AddScoped<IAccountQueryRepository, AccountQueryRepository>();
+        services.AddScoped<IHelmReleaseOwnershipRepository, HelmReleaseOwnershipRepository>();
 
         services.AddIdentityCore<ApplicationUser>(options =>
             {
@@ -72,6 +75,14 @@ public static class InfrastructureServiceCollectionExtensions
             .AddSignInManager()
             .AddErrorDescriber<ChineseIdentityErrorDescriber>();
         services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
+
+        services.AddSingleton(HelmOptions.FromValues(
+            configuration["Helm:CliPath"],
+            configuration["Helm:MaxPackageBytes"]));
+
+        services.AddSingleton<IProcessExecutor, ProcessExecutor>();
+        services.AddSingleton<IHelmCliRunner, HelmCliRunner>();
+        services.AddHostedService<HelmTempCleanupHostedService>();
 
         services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(
             config => new k8s.Kubernetes(config));

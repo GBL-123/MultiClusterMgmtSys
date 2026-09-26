@@ -41,6 +41,7 @@ using MultiClusterMgmtSys.Infrastructure.Persistence;
 using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using MultiClusterMgmtSys.Infrastructure.Templates;
 using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Application.Common.Helm;
 using MultiClusterMgmtSys.Application.Abstractions;
 using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using MultiClusterMgmtSys.Infrastructure.Templates;
@@ -162,6 +163,24 @@ public static class BunitServiceExtensions
         ctx.AddClientCache();
         ctx.Services.AddScoped<PodService>();
         return (harness, k8s);
+    }
+
+    public static (ServiceHarness Harness, FakeHelmCliRunner Runner, Mock<IKubernetes> K8s) AddHelmStack(this BunitContext ctx, string actor = "admin", int? userId = null)
+    {
+        var harness = ctx.AddClusterStack(actor);
+        ctx.AddGroupAndSyncStack(harness, actor);
+        var k8s = new Mock<IKubernetes>();
+        ctx.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8s));
+        ctx.AddClientCache();
+        var roles = actor == "admin" ? new[] { "Admin" } : Array.Empty<string>();
+        ctx.Services.AddScoped(_ => TestHttpContext.ForIdentity(actor, userId, roles).Object);
+        ctx.Services.AddSingleton(new HelmOptions());
+        var runner = new FakeHelmCliRunner();
+        ctx.Services.AddScoped<IHelmCliRunner>(_ => runner);
+        ctx.Services.AddScoped(_ => harness.OwnershipRepo);
+        ctx.Services.AddScoped<IHelmReleaseOwnershipRepository>(_ => harness.OwnershipRepo);
+        ctx.Services.AddScoped<HelmService>();
+        return (harness, runner, k8s);
     }
 
     public static (ServiceHarness Harness, Mock<IKubernetes> K8s) AddDashboardStack(this BunitContext ctx, string actor = "admin")

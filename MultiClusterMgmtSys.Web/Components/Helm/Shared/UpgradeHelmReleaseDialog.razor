@@ -1,0 +1,187 @@
+@using MultiClusterMgmtSys.Application.Common.Helm
+@using MultiClusterMgmtSys.Application.Requests
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Application.ViewModels
+
+@inject HelmService HelmService
+@inject HelmOptions HelmOptions
+@inject ISnackbar Snackbar
+@inject ExceptionPresenter ExHandler
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">升级 @ReleaseName</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3" Class="pt-2">
+            <MudText Typo="Typo.body2">当前版本:<span class="font-mono ml-1">@ChartName @ChartVersion</span></MudText>
+
+            <div>
+                <InputFile OnChange="OnFileSelected" accept=".tgz" style="width:100%;" />
+                <MudText Typo="Typo.caption" Class="mud-text-secondary mt-1">选择新版本 .tgz chart 包（最大 @MaxPackageMegabytes MB）</MudText>
+                @if (!string.IsNullOrEmpty(_fileName))
+                {
+                    <MudText Typo="Typo.body2" Class="mt-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Class="mr-1" />@_fileName
+                    </MudText>
+                }
+            </div>
+
+            @if (_package is not null)
+            {
+                <MudText Typo="Typo.body2">新版本:<span class="font-mono ml-1">@_package.Name @_package.Version</span></MudText>
+                @foreach (var warning in _package.Warnings)
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true">@warning</MudAlert>
+                }
+            }
+
+            <MudSwitch T="bool"
+                       Value="_reuseValues"
+                       ValueChanged="OnReuseValuesChanged"
+                       Color="Color.Primary"
+                       Label="沿用现存 values（--reuse-values）" />
+
+            @if (!_reuseValues)
+            {
+                <div>
+                    <MudText Typo="Typo.body2" Class="mb-1">Values（YAML，可编辑）</MudText>
+                    <textarea class="yaml-textarea" style="height:200px;width:100%;" value="@_valuesYaml" @oninput="OnValuesInput"></textarea>
+                </div>
+            }
+
+            <MudCheckBox T="bool" @bind-Value="_wait" Label="等待资源就绪（--wait，最长 5 分钟）" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="() => Dialog.Cancel()">取消</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@_submitting"
+                   OnClick="SubmitAsync">
+            升级
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    [Parameter]
+    public string Namespace { get; set; } = "";
+
+    [Parameter]
+    public string ReleaseName { get; set; } = "";
+
+    [Parameter]
+    public string ChartName { get; set; } = "";
+
+    [Parameter]
+    public string ChartVersion { get; set; } = "";
+
+    private byte[]? _packageContent;
+
+    private string _fileName = "";
+
+    private HelmChartPackageViewModel? _package;
+
+    private bool _reuseValues = true;
+
+    private bool _valuesLoaded;
+
+    private string _valuesYaml = "";
+
+    private bool _wait;
+
+    private bool _submitting;
+
+    private int MaxPackageMegabytes => (int)(HelmOptions.MaxPackageBytes / 1024 / 1024);
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null)
+        {
+            return;
+        }
+        if (file.Size > HelmOptions.MaxPackageBytes)
+        {
+            Snackbar.Add($"chart 包超过 {MaxPackageMegabytes} MB 限制", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            using var buffer = new MemoryStream();
+            await using (var source = file.OpenReadStream(HelmOptions.MaxPackageBytes))
+            {
+                await source.CopyToAsync(buffer);
+            }
+            _packageContent = buffer.ToArray();
+            _fileName = file.Name;
+            _package = HelmService.ParseChartPackage(_packageContent);
+        }
+        catch (Exception ex)
+        {
+            _packageContent = null;
+            _package = null;
+            await ExHandler.HandleAsync(ex, "解析 chart 包");
+        }
+    }
+
+    private async Task OnReuseValuesChanged(bool reuseValues)
+    {
+        _reuseValues = reuseValues;
+        if (reuseValues || _valuesLoaded)
+        {
+            return;
+        }
+        try
+        {
+            _valuesYaml = await HelmService.GetReleaseValuesAsync(new HelmReleaseKeyRequest(ClusterId, ReleaseName, Namespace));
+            _valuesLoaded = true;
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载现存 values");
+        }
+    }
+
+    private void OnValuesInput(ChangeEventArgs e) => _valuesYaml = e.Value?.ToString() ?? "";
+
+    private async Task SubmitAsync()
+    {
+        if (_packageContent is null)
+        {
+            Snackbar.Add("请先选择新版本 chart 包", Severity.Warning);
+            return;
+        }
+
+        _submitting = true;
+        try
+        {
+            await HelmService.UpgradeAsync(new HelmUpgradeRequest(
+                ClusterId,
+                Namespace,
+                ReleaseName,
+                _packageContent,
+                _valuesYaml,
+                _reuseValues,
+                _wait));
+            Snackbar.Add($"已升级 {ReleaseName}", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "升级 Release");
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+}

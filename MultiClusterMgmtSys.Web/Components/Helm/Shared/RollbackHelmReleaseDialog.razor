@@ -1,0 +1,110 @@
+@using MultiClusterMgmtSys.Application.Requests
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Application.ViewModels
+
+@inject HelmService HelmService
+@inject ISnackbar Snackbar
+@inject ExceptionPresenter ExHandler
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">回滚 @ReleaseName</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3" Class="pt-2">
+            @if (_loading)
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+            }
+            else
+            {
+                <MudText Typo="Typo.body2">选择要回滚到的历史版本:</MudText>
+                <MudSelect T="int" Label="Revision" @bind-Value="_selectedRevision" Variant="Variant.Outlined" Margin="Margin.Dense">
+                    @foreach (var item in _history)
+                    {
+                        <MudSelectItem T="int" Value="@item.Revision">
+                            revision @item.Revision · @item.StatusText · @(item.UpdatedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—")
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            }
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="() => Dialog.Cancel()">取消</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@(_loading || _submitting || _history.Count == 0)"
+                   OnClick="SubmitAsync">
+            回滚
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    [Parameter]
+    public string Namespace { get; set; } = "";
+
+    [Parameter]
+    public string ReleaseName { get; set; } = "";
+
+    [Parameter]
+    public int? Revision { get; set; }
+
+    private List<HelmReleaseHistoryItemViewModel> _history = new();
+
+    private int _selectedRevision;
+
+    private bool _loading;
+
+    private bool _submitting;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        try
+        {
+            _history = await HelmService.GetReleaseHistoryAsync(new HelmReleaseKeyRequest(ClusterId, ReleaseName, Namespace));
+            _selectedRevision = Revision ?? _history.LastOrDefault()?.Revision ?? 0;
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载 Release 历史");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (_selectedRevision <= 0)
+        {
+            Snackbar.Add("请选择要回滚到的版本", Severity.Warning);
+            return;
+        }
+
+        _submitting = true;
+        try
+        {
+            await HelmService.RollbackAsync(new HelmRollbackRequest(ClusterId, Namespace, ReleaseName, _selectedRevision));
+            Snackbar.Add($"已回滚 {ReleaseName} 到 revision {_selectedRevision}", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "回滚 Release");
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+}

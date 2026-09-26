@@ -30,5 +30,8 @@ public enum AuditCategory
     Service = 7,
 
     /// <summary>命名空间(Namespace)。</summary>
-    Namespace = 8
+    Namespace = 8,
+
+    /// <summary>Helm 应用管理(release 安装/升级/回滚/卸载)。</summary>
+    Helm = 9
 }

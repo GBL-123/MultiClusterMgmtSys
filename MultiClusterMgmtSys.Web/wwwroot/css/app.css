@@ -230,7 +230,8 @@ html, body {
 .events-table,
 .workloads-table,
 .namespaces-table,
-.pods-table {
+.pods-table,
+.helm-table {
     display: flex;
     flex-direction: column;
     flex: 1 1 auto;
@@ -246,7 +247,8 @@ html, body {
     .events-table .mud-table-container,
     .workloads-table .mud-table-container,
     .namespaces-table .mud-table-container,
-    .pods-table .mud-table-container {
+    .pods-table .mud-table-container,
+    .helm-table .mud-table-container {
         flex: 1 1 auto;
     }
 
@@ -259,7 +261,8 @@ html, body {
     .events-table .mud-table-pagination,
     .workloads-table .mud-table-pagination,
     .namespaces-table .mud-table-pagination,
-    .pods-table .mud-table-pagination {
+    .pods-table .mud-table-pagination,
+    .helm-table .mud-table-pagination {
         overflow: visible;
     }
 

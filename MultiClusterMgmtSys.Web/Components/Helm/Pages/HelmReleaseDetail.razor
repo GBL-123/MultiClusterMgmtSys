@@ -1,0 +1,312 @@
+@attribute [Authorize]
+@page "/helm/releases/{ClusterId:int}/{Namespace}/{Name}"
+
+@using MultiClusterMgmtSys.Application.Requests
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Application.ViewModels
+@using MultiClusterMgmtSys.Domain.Exceptions
+@using MultiClusterMgmtSys.Web.Components.Helm.Shared
+
+@inject HelmService HelmService
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+@inject ExceptionPresenter ExHandler
+
+<PageTitle>Release 详情: @Name</PageTitle>
+
+<MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else if (_detail is null)
+    {
+        <MudCard Class="pa-4">
+            <MudCardContent>
+                <MudText Align="Align.Center" Class="mud-text-secondary">Release 不存在或已被删除</MudText>
+                <div class="d-flex justify-center mt-4">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.ArrowBack"
+                               OnClick="@(() => NavigationManager.NavigateTo($"/helm/{ClusterId}"))">
+                        返回应用管理
+                    </MudButton>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    }
+    else
+    {
+        <MudPaper Class="pa-4">
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                               OnClick="@(() => NavigationManager.NavigateTo($"/helm/{ClusterId}"))" />
+                <MudText Typo="Typo.h5">@_detail.Name</MudText>
+                <MudChip T="string" Size="Size.Small" Class="font-mono ml-2">@_detail.Namespace</MudChip>
+                <div class="ml-2">
+                    <StatusBadge Text="@_detail.StatusText" CssClass="@_detail.StatusCssClass" Raw="@_detail.Status" />
+                </div>
+                <MudSpacer />
+                @if (_detail.CanOperate)
+                {
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Inherit"
+                               StartIcon="@Icons.Material.Filled.Upgrade"
+                               OnClick="OpenUpgradeDialog">
+                        升级
+                    </MudButton>
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Inherit"
+                               StartIcon="@Icons.Material.Filled.History"
+                               OnClick="OpenRollbackDialog">
+                        回滚
+                    </MudButton>
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Error"
+                               StartIcon="@Icons.Material.Filled.DeleteOutline"
+                               OnClick="OpenUninstallDialog">
+                        卸载
+                    </MudButton>
+                }
+            </MudStack>
+        </MudPaper>
+
+        <MudTabs @bind-ActivePanelIndex="_activeTabIndex"
+                 Class="detail-tabs"
+                 Elevation="0"
+                 Rounded="true"
+                 TabPanelsClass="detail-tabs-panels">
+            <MudTabPanel Text="概览">
+                <MudCard Class="pa-4">
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.body2">Chart:<span class="font-mono ml-1">@_detail.ChartName @_detail.ChartVersion</span></MudText>
+                        @if (!string.IsNullOrEmpty(_detail.AppVersion))
+                        {
+                            <MudText Typo="Typo.body2">appVersion:<span class="font-mono ml-1">@_detail.AppVersion</span></MudText>
+                        }
+                        <MudText Typo="Typo.body2">Revision:<span class="font-mono ml-1">@_detail.Revision</span></MudText>
+                        <MudText Typo="Typo.body2">状态描述:@_detail.Description</MudText>
+                        <MudText Typo="Typo.body2">
+                            最后部署:<span class="font-mono ml-1">@(_detail.LastDeployedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—")</span>
+                        </MudText>
+                        @if (!string.IsNullOrWhiteSpace(_detail.Notes))
+                        {
+                            <MudDivider Class="my-2" />
+                            <MudText Typo="Typo.body2">NOTES</MudText>
+                            <pre class="font-mono" style="white-space:pre-wrap; margin:0;">@_detail.Notes</pre>
+                        }
+                    </MudStack>
+                </MudCard>
+            </MudTabPanel>
+            <MudTabPanel Text="Values">
+                <MudCard Class="pa-4 yaml-card">
+                    @if (string.IsNullOrWhiteSpace(_values))
+                    {
+                        <div class="empty-state">[ 无用户提供的 values ]</div>
+                    }
+                    else
+                    {
+                        <textarea class="yaml-textarea" readonly value="@_values"></textarea>
+                    }
+                </MudCard>
+            </MudTabPanel>
+            <MudTabPanel Text="Manifest">
+                <MudCard Class="pa-4 yaml-card">
+                    @if (string.IsNullOrWhiteSpace(_manifest))
+                    {
+                        <div class="empty-state">[ 暂无 manifest ]</div>
+                    }
+                    else
+                    {
+                        <textarea class="yaml-textarea" readonly value="@_manifest"></textarea>
+                    }
+                </MudCard>
+            </MudTabPanel>
+            <MudTabPanel Text="历史">
+                <MudTable T="HelmReleaseHistoryItemViewModel" Items="@_history" Hover="true" Dense="true">
+                    <HeaderContent>
+                        <MudTh>Revision</MudTh>
+                        <MudTh>状态</MudTh>
+                        <MudTh>Chart</MudTh>
+                        <MudTh>描述</MudTh>
+                        <MudTh>时间</MudTh>
+                        <MudTh>操作</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Revision"><span class="font-mono">@context.Revision</span></MudTd>
+                        <MudTd DataLabel="状态">
+                            <StatusBadge Text="@context.StatusText" CssClass="@context.StatusCssClass" Raw="@context.Status" />
+                        </MudTd>
+                        <MudTd DataLabel="Chart"><span class="font-mono">@context.Chart</span></MudTd>
+                        <MudTd DataLabel="描述">@context.Description</MudTd>
+                        <MudTd DataLabel="时间">
+                            <span class="font-mono">@(context.UpdatedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—")</span>
+                        </MudTd>
+                        <MudTd DataLabel="操作">
+                            @if (_detail.CanOperate && context.Revision != _detail.Revision)
+                            {
+                                <TooltipIconButton Text="回滚到此版本"
+                                                   Icon="@Icons.Material.Filled.History"
+                                                   OnClick="@(() => OpenRollbackTo(context.Revision))" />
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <div class="empty-state">[ 暂无历史 ]</div>
+                    </NoRecordsContent>
+                </MudTable>
+            </MudTabPanel>
+        </MudTabs>
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    [Parameter]
+    public string Namespace { get; set; } = "";
+
+    [Parameter]
+    public string Name { get; set; } = "";
+
+    private HelmReleaseDetailViewModel? _detail;
+
+    private List<HelmReleaseHistoryItemViewModel> _history = new();
+
+    private string _values = "";
+
+    private string _manifest = "";
+
+    private bool _loading;
+
+    private int _activeTabIndex;
+
+    private (int ClusterId, string Namespace, string Name)? _loadedKey;
+
+    /// <summary>当前路由参数(集群/命名空间/名称)构成的加载键:参数变化即重新加载。</summary>
+    private (int ClusterId, string Namespace, string Name) CurrentKey => (ClusterId, Namespace, Name);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedKey == CurrentKey && _detail is not null)
+        {
+            return;
+        }
+        _loadedKey = CurrentKey;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            var key = new HelmReleaseKeyRequest(ClusterId, Name, Namespace);
+            _detail = await HelmService.GetReleaseDetailAsync(key);
+            _history = await HelmService.GetReleaseHistoryAsync(key);
+            _values = await HelmService.GetReleaseValuesAsync(key);
+            _manifest = await HelmService.GetReleaseManifestAsync(key);
+        }
+        catch (NotFoundException)
+        {
+            _detail = null;
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载 Release 详情");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OpenUpgradeDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            { "ClusterId", ClusterId },
+            { "Namespace", Namespace },
+            { "ReleaseName", Name },
+            { "ChartName", _detail?.ChartName ?? "" },
+            { "ChartVersion", _detail?.ChartVersion ?? "" }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<UpgradeHelmReleaseDialog>("升级 Release", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await ReloadAsync();
+        }
+    }
+
+    private async Task OpenRollbackDialog()
+    {
+        await OpenRollbackDialogAsync(null);
+    }
+
+    private async Task OpenRollbackTo(int revision)
+    {
+        await OpenRollbackDialogAsync(revision);
+    }
+
+    private async Task OpenRollbackDialogAsync(int? revision)
+    {
+        var parameters = new DialogParameters
+        {
+            { "ClusterId", ClusterId },
+            { "Namespace", Namespace },
+            { "ReleaseName", Name }
+        };
+        if (revision.HasValue)
+        {
+            parameters.Add("Revision", revision.Value);
+        }
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<RollbackHelmReleaseDialog>("回滚 Release", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await ReloadAsync();
+        }
+    }
+
+    private async Task OpenUninstallDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            { "ClusterId", ClusterId },
+            { "Namespace", Namespace },
+            { "ReleaseName", Name }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<UninstallHelmReleaseDialog>("卸载 Release", parameters, options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            NavigationManager.NavigateTo($"/helm/{ClusterId}");
+        }
+    }
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        try
+        {
+            var key = new HelmReleaseKeyRequest(ClusterId, Name, Namespace);
+            _detail = await HelmService.GetReleaseDetailAsync(key);
+            _history = await HelmService.GetReleaseHistoryAsync(key);
+            _values = await HelmService.GetReleaseValuesAsync(key);
+            _manifest = await HelmService.GetReleaseManifestAsync(key);
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "刷新 Release 详情");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

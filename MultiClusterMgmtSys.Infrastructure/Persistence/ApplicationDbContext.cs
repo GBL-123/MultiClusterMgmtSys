@@ -32,6 +32,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     /// <summary>审计日志表:记录用户关键操作,CreatedAt 建有索引以支撑按时间排序分页。</summary>
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
+    /// <summary>Helm release 归属记录表:(ClusterId, Namespace, ReleaseName) 唯一,随所属集群级联删除。</summary>
+    public DbSet<HelmReleaseOwnership> HelmReleaseOwnerships => Set<HelmReleaseOwnership>();
+
     /// <summary>应用设置表:持久化键值对配置,Key 唯一。</summary>
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
 
@@ -88,6 +91,19 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.Entity<ClusterHealthSnapshot>(entity =>
         {
             entity.HasIndex(e => new { e.ClusterId, e.CapturedAt });
+
+            entity.HasOne(e => e.Cluster)
+                  .WithMany()
+                  .HasForeignKey(e => e.ClusterId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<HelmReleaseOwnership>(entity =>
+        {
+            entity.Property(e => e.Namespace).IsRequired();
+            entity.Property(e => e.ReleaseName).IsRequired();
+            entity.Property(e => e.OwnerUserName).IsRequired();
+            entity.HasIndex(e => new { e.ClusterId, e.Namespace, e.ReleaseName }).IsUnique();
 
             entity.HasOne(e => e.Cluster)
                   .WithMany()

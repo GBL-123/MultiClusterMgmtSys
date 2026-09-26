@@ -146,7 +146,7 @@ public class WorkloadServiceTests : IDisposable
     public async Task CreateDeploymentFromYamlAsync_missing_namespace_throws_validation()
     {
         var clusterId = await SeedAsync();
-        var yaml = DeploymentYaml.Replace("  namespace: app\n", "");
+        var yaml = DeploymentYaml.Replace("  namespace: app", "");
 
         var ex = await Assert.ThrowsAsync<ValidationException>(
             () => _service.CreateDeploymentFromYamlAsync(new WorkloadCreateRequest(clusterId, yaml)));

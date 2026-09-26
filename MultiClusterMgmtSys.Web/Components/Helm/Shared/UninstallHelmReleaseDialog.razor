@@ -1,0 +1,65 @@
+@using MultiClusterMgmtSys.Application.Requests
+@using MultiClusterMgmtSys.Application.Services
+
+@inject HelmService HelmService
+@inject ISnackbar Snackbar
+@inject ExceptionPresenter ExHandler
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">卸载 @ReleaseName</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudStack Spacing="3" Class="pt-2">
+            <MudText Class="mud-dialog-content-text">确认卸载 Release「@ReleaseName」（命名空间 @Namespace）？此操作不可撤销。</MudText>
+            <MudCheckBox T="bool" @bind-Value="_keepHistory" Label="保留 release 历史（--keep-history）" />
+        </MudStack>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="() => Dialog.Cancel()">取消</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Error"
+                   StartIcon="@Icons.Material.Filled.DeleteOutline"
+                   Disabled="@_submitting"
+                   OnClick="SubmitAsync">
+            卸载
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    [Parameter]
+    public string Namespace { get; set; } = "";
+
+    [Parameter]
+    public string ReleaseName { get; set; } = "";
+
+    private bool _keepHistory;
+
+    private bool _submitting;
+
+    private async Task SubmitAsync()
+    {
+        _submitting = true;
+        try
+        {
+            await HelmService.UninstallAsync(new HelmUninstallRequest(ClusterId, Namespace, ReleaseName, _keepHistory));
+            Snackbar.Add($"已卸载 {ReleaseName}", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "卸载 Release");
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+}
