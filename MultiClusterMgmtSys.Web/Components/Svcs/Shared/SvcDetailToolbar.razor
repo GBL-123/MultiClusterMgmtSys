@@ -30,22 +30,21 @@
             }
             刷新
         </MudButton>
-        <AuthorizeView Roles="Admin">
-            <Authorized>
-                <MudButton Variant="Variant.Outlined"
-                           Color="Color.Warning"
-                           StartIcon="@Icons.Material.Filled.Code"
-                           OnClick="OnEditYaml">
-                    编辑 YAML
-                </MudButton>
-                <MudButton Variant="Variant.Outlined"
-                           Color="Color.Error"
-                           StartIcon="@Icons.Material.Filled.DeleteOutline"
-                           OnClick="OnDelete">
-                    删除
-                </MudButton>
-            </Authorized>
-        </AuthorizeView>
+        @if (CanOperate)
+        {
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Warning"
+                       StartIcon="@Icons.Material.Filled.Code"
+                       OnClick="OnEditYaml">
+                编辑 YAML
+            </MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Error"
+                       StartIcon="@Icons.Material.Filled.DeleteOutline"
+                       OnClick="OnDelete">
+                删除
+            </MudButton>
+        }
     </MudStack>
 </MudPaper>
 
@@ -64,6 +63,9 @@
 
     [Parameter]
     public bool Processing { get; set; }
+
+    [Parameter]
+    public bool CanOperate { get; set; }
 
     [Parameter]
     public EventCallback OnRefresh { get; set; }

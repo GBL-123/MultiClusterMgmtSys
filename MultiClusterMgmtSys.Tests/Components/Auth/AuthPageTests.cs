@@ -1,14 +1,9 @@
 ﻿using Bunit;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using MudBlazor;
-using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Web.Components.Common;
-using MultiClusterMgmtSys.Domain.Entities;
 using MultiClusterMgmtSys.Infrastructure.Persistence;
-using MultiClusterMgmtSys.Application.Requests;
 using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
@@ -85,4 +80,3 @@ public class AuthPageTests
         }
     }
 }
-

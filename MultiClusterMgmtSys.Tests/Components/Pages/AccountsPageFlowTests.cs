@@ -1,11 +1,8 @@
 using Bunit;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.AspNetCore.Identity;
 using MudBlazor;
-using MultiClusterMgmtSys.Infrastructure.Persistence;
-using MultiClusterMgmtSys.Domain.Entities;
 using MultiClusterMgmtSys.Infrastructure.Persistence;
 using MultiClusterMgmtSys.Application.Requests;
 using MultiClusterMgmtSys.Application.Services;

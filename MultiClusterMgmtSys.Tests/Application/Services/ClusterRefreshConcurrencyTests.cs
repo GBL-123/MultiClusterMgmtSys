@@ -2,8 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using k8s;
-using k8s.Autorest;
-using k8s.Models;
 using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;

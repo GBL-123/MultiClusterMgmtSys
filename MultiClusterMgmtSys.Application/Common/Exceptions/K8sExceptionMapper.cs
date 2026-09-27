@@ -1,7 +1,5 @@
-using System.Net;
 using k8s;
 using k8s.Autorest;
-using k8s.Exceptions;
 using MultiClusterMgmtSys.Domain.Exceptions;
 
 namespace MultiClusterMgmtSys.Application.Common.Exceptions;

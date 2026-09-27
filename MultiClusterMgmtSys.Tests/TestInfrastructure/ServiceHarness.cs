@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using MultiClusterMgmtSys.Infrastructure.Persistence;
-using MultiClusterMgmtSys.Infrastructure.Persistence;
 using MultiClusterMgmtSys.Application.Services;
 
 namespace MultiClusterMgmtSys.Tests.TestInfrastructure;

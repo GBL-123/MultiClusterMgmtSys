@@ -12,6 +12,9 @@ public class ClusterCreateRequest
     /// <summary>集群显示名称(必填,用于列表展示与模糊搜索)。</summary>
     public string Name { get; set; } = "";
 
+    /// <summary>集群备注说明,可空;保存时去除首尾空白,空白视为无备注。</summary>
+    public string? Remark { get; set; }
+
     /// <summary>所属分组的 Id;null = 不分组(未分组集群)。</summary>
     public int? GroupId { get; set; }
 

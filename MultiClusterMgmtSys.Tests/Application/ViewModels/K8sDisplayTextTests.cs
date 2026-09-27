@@ -1,6 +1,5 @@
 using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Application.Enums;
-using MultiClusterMgmtSys.Application.ViewModels;
 using MultiClusterMgmtSys.Application.ViewModels.Mappings;
 
 namespace MultiClusterMgmtSys.Tests.Application.ViewModels;

@@ -1,5 +1,4 @@
 using Bunit;
-using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
 using MultiClusterMgmtSys.Application.ViewModels;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
@@ -14,7 +13,8 @@ public class SvcListTableTests
         string type = "ClusterIP",
         string clusterIP = "10.96.0.10",
         List<SvcPortViewModel>? ports = null,
-        string externalEntry = "—")
+        string externalEntry = "—",
+        bool canOperate = true)
         => new()
         {
             Name = name,
@@ -23,7 +23,8 @@ public class SvcListTableTests
             ClusterIP = clusterIP,
             Ports = ports ?? [],
             ExternalEntry = externalEntry,
-            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            CanOperate = canOperate
         };
 
     private static SvcPortViewModel Port(int port, string? targetPort = null, string protocol = "TCP", int? nodePort = null)
@@ -113,7 +114,7 @@ public class SvcListTableTests
     }
 
     [Fact]
-    public async Task Admin_buttons_disappear_when_role_downgraded()
+    public async Task Mutating_buttons_follow_can_operate_projection()
     {
         await using var ctx = new BunitHost();
         var auth = ctx.AddAuthorization();
@@ -122,16 +123,14 @@ public class SvcListTableTests
 
         var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Svcs.Shared.SvcListTable>(
             parameters => parameters
-                .Add(p => p.Items, [Item("web")]));
+                .Add(p => p.Items, [Item("web"), Item("locked", canOperate: false)]));
 
-        var adminIcons = cut.FindComponents<MudTooltip>().Count(t => t.Instance.Text is "编辑 YAML" or "删除");
+        // CanOperate 行渲染编辑/删除,非 CanOperate 行只保留详情(角色变化不再影响按钮,归属由服务端投影)
+        Assert.Equal(2, cut.FindComponents<MudTooltip>().Count(t => t.Instance.Text is "编辑 YAML" or "删除"));
 
         auth.SetRoles("Member");
         cut.Render();
-        var memberIcons = cut.FindComponents<MudTooltip>().Count(t => t.Instance.Text is "编辑 YAML" or "删除");
-
-        Assert.Equal(2, adminIcons);
-        Assert.Equal(0, memberIcons);
+        Assert.Equal(2, cut.FindComponents<MudTooltip>().Count(t => t.Instance.Text is "编辑 YAML" or "删除"));
     }
 
     [Fact]

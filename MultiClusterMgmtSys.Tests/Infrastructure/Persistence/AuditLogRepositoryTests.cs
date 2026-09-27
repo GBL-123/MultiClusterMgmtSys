@@ -1,6 +1,5 @@
 using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Infrastructure.Persistence;
-using MultiClusterMgmtSys.Infrastructure.Persistence;
 using MultiClusterMgmtSys.Application.Requests;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 

@@ -1,5 +1,4 @@
 using Bunit;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using k8s;
 using k8s.Models;
@@ -189,4 +188,3 @@ public class SvcsPageTests
         yamlEdit.WaitForState(() => yamlEdit.Markup.Contains("不存在或已被删除") || yamlEdit.Markup.Contains("不可达"));
     }
 }
-

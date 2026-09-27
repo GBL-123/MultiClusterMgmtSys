@@ -29,16 +29,15 @@
             }
             刷新
         </MudButton>
-        <AuthorizeView Roles="Admin">
-            <Authorized>
-                <MudButton Variant="Variant.Outlined"
-                           Color="Color.Warning"
-                           StartIcon="@Icons.Material.Filled.Code"
-                           OnClick="OnEditYaml">
-                    编辑 YAML
-                </MudButton>
-            </Authorized>
-        </AuthorizeView>
+        @if (Detail?.CanOperate == true)
+        {
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Warning"
+                       StartIcon="@Icons.Material.Filled.Code"
+                       OnClick="OnEditYaml">
+                编辑 YAML
+            </MudButton>
+        }
     </MudStack>
 </MudPaper>
 

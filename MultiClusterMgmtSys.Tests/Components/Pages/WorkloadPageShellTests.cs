@@ -1,6 +1,5 @@
 using Bunit;
 using k8s;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using k8s.Models;
 using Moq;

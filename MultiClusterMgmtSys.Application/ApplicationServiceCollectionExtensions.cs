@@ -1,5 +1,5 @@
-using Microsoft.Extensions.DependencyInjection;
 using MultiClusterMgmtSys.Application.Abstractions;
+using MultiClusterMgmtSys.Application.Common.Ownership;
 using MultiClusterMgmtSys.Application.Services;
 
 namespace MultiClusterMgmtSys.Application;
@@ -30,6 +30,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ClusterSyncSettingService>();
         services.AddScoped<DashboardService>();
         services.AddScoped<HelmService>();
+        services.AddScoped<ResourceOwnershipGuard>();
         services.AddSingleton<IYamlValidator, YamlValidator>();
         return services;
     }

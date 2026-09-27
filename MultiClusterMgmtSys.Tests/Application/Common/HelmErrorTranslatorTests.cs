@@ -1,4 +1,3 @@
-using MultiClusterMgmtSys.Application.Abstractions;
 using MultiClusterMgmtSys.Application.Common.Helm;
 using MultiClusterMgmtSys.Domain.Exceptions;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;

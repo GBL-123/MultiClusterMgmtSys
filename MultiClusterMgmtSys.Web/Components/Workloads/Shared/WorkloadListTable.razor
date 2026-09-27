@@ -32,31 +32,30 @@
         <MudTd DataLabel="创建时间"><span class="font-mono">@(context.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</span></MudTd>
         <MudTd DataLabel="操作">
             <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
-                <AuthorizeView Roles="Admin">
-                    <Authorized Context="authContext">
-                        @if (Kind.SupportsScale())
-                        {
-                            <TooltipIconButton Text="扩缩容"
-                                               Icon="@Icons.Material.Filled.OpenInFull"
-                                               Color="Color.Primary"
-                                               OnClick="@(() => OnScale.InvokeAsync((context.Namespace, context.Name)))" />
-                        }
-                        @if (Kind.SupportsRestart())
-                        {
-                            <TooltipIconButton Text="重启"
-                                               Icon="@Icons.Material.Filled.Autorenew"
-                                               OnClick="@(() => OnRestart.InvokeAsync((context.Namespace, context.Name)))" />
-                        }
-                        <MudMenu Icon="@Icons.Material.Filled.MoreVert"
-                                 Color="Color.Inherit"
-                                 Size="Size.Small"
-                                 Dense="true">
-                            <MudMenuItem OnClick="@(() => OnDelete.InvokeAsync((context.Namespace, context.Name)))">
-                                删除
-                            </MudMenuItem>
-                        </MudMenu>
-                    </Authorized>
-                </AuthorizeView>
+                @if (context.CanOperate)
+                {
+                    @if (Kind.SupportsScale())
+                    {
+                        <TooltipIconButton Text="扩缩容"
+                                           Icon="@Icons.Material.Filled.OpenInFull"
+                                           Color="Color.Primary"
+                                           OnClick="@(() => OnScale.InvokeAsync((context.Namespace, context.Name)))" />
+                    }
+                    @if (Kind.SupportsRestart())
+                    {
+                        <TooltipIconButton Text="重启"
+                                           Icon="@Icons.Material.Filled.Autorenew"
+                                           OnClick="@(() => OnRestart.InvokeAsync((context.Namespace, context.Name)))" />
+                    }
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                             Color="Color.Inherit"
+                             Size="Size.Small"
+                             Dense="true">
+                        <MudMenuItem OnClick="@(() => OnDelete.InvokeAsync((context.Namespace, context.Name)))">
+                            删除
+                        </MudMenuItem>
+                    </MudMenu>
+                }
             </MudStack>
         </MudTd>
     </RowTemplate>

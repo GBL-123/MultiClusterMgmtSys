@@ -1,10 +1,6 @@
 ﻿using Bunit;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
-using System.Threading;
-using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Dialogs;
@@ -57,5 +53,3 @@ public class EditGroupDialogTests
         auth.SetRoles("Admin");
     }
 }
-
-

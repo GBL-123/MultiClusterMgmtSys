@@ -1,7 +1,4 @@
 ﻿using Bunit;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -10,8 +7,6 @@ using MudBlazor;
 using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Infrastructure.Persistence;
 using MultiClusterMgmtSys.Application.Identity;
-using MultiClusterMgmtSys.Infrastructure.Persistence;
-using MultiClusterMgmtSys.Application.Requests;
 using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
@@ -348,5 +343,3 @@ public class ResetPasswordDialogTests
         }
     }
 }
-
-

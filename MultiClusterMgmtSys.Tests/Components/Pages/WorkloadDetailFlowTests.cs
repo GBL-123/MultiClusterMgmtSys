@@ -1,5 +1,4 @@
 using Bunit;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using k8s;
 using k8s.Models;
@@ -7,7 +6,6 @@ using Moq;
 using MudBlazor;
 using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Web.Components.Common;
-using MultiClusterMgmtSys.Application.Requests;
 using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 

@@ -1,10 +1,12 @@
 using k8s;
+using k8s.Autorest;
 using k8s.Models;
 using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Application.Enums;
 using MultiClusterMgmtSys.Application.Abstractions;
 using MultiClusterMgmtSys.Domain.Exceptions;
 using MultiClusterMgmtSys.Application.Common.Exceptions;
+using MultiClusterMgmtSys.Application.Common.Ownership;
 using MultiClusterMgmtSys.Domain.Entities;
 using MultiClusterMgmtSys.Application.Requests;
 using MultiClusterMgmtSys.Application.ViewModels;
@@ -16,14 +18,25 @@ namespace MultiClusterMgmtSys.Application.Services;
 /// <summary>
 /// apps/v1 工作负载管理服务。方法按类型显式展开:
 /// 扩缩容仅提供 Deployment/StatefulSet/ReplicaSet 版本,滚动重启仅提供 Deployment/StatefulSet/DaemonSet 版本(design D3/D4)。
+/// 写操作经 <see cref="ResourceOwnershipGuard"/> 服务端强制归属(Admin 穿透、创建者本人、无主 fail-closed),
+/// 读路径投影 CanOperate;创建时校验命名空间黑名单并盖章归属(契约见 k8s-resource-ownership)。
 /// </summary>
-public class WorkloadService(IClusterRepository repo, AuditService auditService, ILogger<WorkloadService> logger, IClusterClientCache clientCache)
+public class WorkloadService(
+    IClusterRepository repo,
+    ResourceOwnershipGuard guard,
+    AuditService auditService,
+    IClusterClientCache clientCache,
+    ILogger<WorkloadService> logger)
 {
     private const string RestartedAtAnnotation = "kubectl.kubernetes.io/restartedAt";
 
     private readonly IClusterRepository _repo = repo;
 
+    private readonly ResourceOwnershipGuard _guard = guard;
+
     private readonly AuditService _auditService = auditService;
+
+    private readonly IClusterClientCache _clientCache = clientCache;
 
     private readonly ILogger<WorkloadService> _logger = logger;
 
@@ -32,7 +45,7 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
     {
         var entity = await _repo.GetByIdAsync(clusterId)
             ?? throw new NotFoundException($"集群 {clusterId} 不存在");
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
         try
         {
             var nsList = await client.CoreV1.ListNamespaceAsync();
@@ -49,15 +62,15 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
     public async Task<List<WorkloadListViewModel>> ListDeploymentsAsync(WorkloadQueryRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
         try
         {
             var list = request.Namespace is null
                 ? await client.AppsV1.ListDeploymentForAllNamespacesAsync()
                 : await client.AppsV1.ListNamespacedDeploymentAsync(request.Namespace);
-            return list.Items.Select(d => d.ToWorkloadListViewModel()).ToList();
+            return await ProjectListAsync(entity.Id, list.Items, item => item.ToWorkloadListViewModel());
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "ListDeployments failed clusterId={ClusterId} ns={Namespace}", request.ClusterId, request.Namespace);
             throw K8sExceptionMapper.Translate(ex, "加载部署列表");
@@ -68,15 +81,15 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
     public async Task<List<WorkloadListViewModel>> ListStatefulSetsAsync(WorkloadQueryRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
         try
         {
             var list = request.Namespace is null
                 ? await client.AppsV1.ListStatefulSetForAllNamespacesAsync()
                 : await client.AppsV1.ListNamespacedStatefulSetAsync(request.Namespace);
-            return list.Items.Select(s => s.ToWorkloadListViewModel()).ToList();
+            return await ProjectListAsync(entity.Id, list.Items, item => item.ToWorkloadListViewModel());
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "ListStatefulSets failed clusterId={ClusterId} ns={Namespace}", request.ClusterId, request.Namespace);
             throw K8sExceptionMapper.Translate(ex, "加载有状态应用列表");
@@ -87,15 +100,15 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
     public async Task<List<WorkloadListViewModel>> ListDaemonSetsAsync(WorkloadQueryRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
         try
         {
             var list = request.Namespace is null
                 ? await client.AppsV1.ListDaemonSetForAllNamespacesAsync()
                 : await client.AppsV1.ListNamespacedDaemonSetAsync(request.Namespace);
-            return list.Items.Select(d => d.ToWorkloadListViewModel()).ToList();
+            return await ProjectListAsync(entity.Id, list.Items, item => item.ToWorkloadListViewModel());
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "ListDaemonSets failed clusterId={ClusterId} ns={Namespace}", request.ClusterId, request.Namespace);
             throw K8sExceptionMapper.Translate(ex, "加载守护进程列表");
@@ -106,15 +119,15 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
     public async Task<List<WorkloadListViewModel>> ListReplicaSetsAsync(WorkloadQueryRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
         try
         {
             var list = request.Namespace is null
                 ? await client.AppsV1.ListReplicaSetForAllNamespacesAsync()
                 : await client.AppsV1.ListNamespacedReplicaSetAsync(request.Namespace);
-            return list.Items.Select(r => r.ToWorkloadListViewModel()).ToList();
+            return await ProjectListAsync(entity.Id, list.Items, item => item.ToWorkloadListViewModel());
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "ListReplicaSets failed clusterId={ClusterId} ns={Namespace}", request.ClusterId, request.Namespace);
             throw K8sExceptionMapper.Translate(ex, "加载副本集列表");
@@ -126,18 +139,20 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
     {
         var entity = await _repo.GetByIdAsync(request.ClusterId);
         if (entity is null) return null;
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
+        V1Deployment dep;
         try
         {
-            var dep = await client.AppsV1.ReadNamespacedDeploymentAsync(request.Name, request.Namespace);
-            return dep.ToWorkloadDetailViewModel();
+            dep = await client.AppsV1.ReadNamespacedDeploymentAsync(request.Name, request.Namespace);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "ReadDeployment failed clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
             throw K8sExceptionMapper.Translate(ex, "加载部署详情");
         }
+
+        return await ProjectDetailAsync(entity.Id, dep.Metadata, dep.ToWorkloadDetailViewModel());
     }
 
     /// <summary>读取单个 StatefulSet 详情;集群不存在返回 null,K8s 失败经翻译后抛业务异常。</summary>
@@ -145,18 +160,20 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
     {
         var entity = await _repo.GetByIdAsync(request.ClusterId);
         if (entity is null) return null;
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
+        V1StatefulSet sts;
         try
         {
-            var sts = await client.AppsV1.ReadNamespacedStatefulSetAsync(request.Name, request.Namespace);
-            return sts.ToWorkloadDetailViewModel();
+            sts = await client.AppsV1.ReadNamespacedStatefulSetAsync(request.Name, request.Namespace);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "ReadStatefulSet failed clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
             throw K8sExceptionMapper.Translate(ex, "加载有状态应用详情");
         }
+
+        return await ProjectDetailAsync(entity.Id, sts.Metadata, sts.ToWorkloadDetailViewModel());
     }
 
     /// <summary>读取单个 DaemonSet 详情;集群不存在返回 null,K8s 失败经翻译后抛业务异常。</summary>
@@ -164,18 +181,20 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
     {
         var entity = await _repo.GetByIdAsync(request.ClusterId);
         if (entity is null) return null;
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
+        V1DaemonSet ds;
         try
         {
-            var ds = await client.AppsV1.ReadNamespacedDaemonSetAsync(request.Name, request.Namespace);
-            return ds.ToWorkloadDetailViewModel();
+            ds = await client.AppsV1.ReadNamespacedDaemonSetAsync(request.Name, request.Namespace);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "ReadDaemonSet failed clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
             throw K8sExceptionMapper.Translate(ex, "加载守护进程详情");
         }
+
+        return await ProjectDetailAsync(entity.Id, ds.Metadata, ds.ToWorkloadDetailViewModel());
     }
 
     /// <summary>读取单个 ReplicaSet 详情;集群不存在返回 null,K8s 失败经翻译后抛业务异常。</summary>
@@ -183,32 +202,36 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
     {
         var entity = await _repo.GetByIdAsync(request.ClusterId);
         if (entity is null) return null;
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
+        V1ReplicaSet rs;
         try
         {
-            var rs = await client.AppsV1.ReadNamespacedReplicaSetAsync(request.Name, request.Namespace);
-            return rs.ToWorkloadDetailViewModel();
+            rs = await client.AppsV1.ReadNamespacedReplicaSetAsync(request.Name, request.Namespace);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "ReadReplicaSet failed clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
             throw K8sExceptionMapper.Translate(ex, "加载副本集详情");
         }
+
+        return await ProjectDetailAsync(entity.Id, rs.Metadata, rs.ToWorkloadDetailViewModel());
     }
 
-    /// <summary>以 YAML 创建 Deployment,命名空间取自 YAML 的 metadata.namespace;YAML 非法或未指定命名空间抛 <see cref="ValidationException"/>,成功后写创建审计。</summary>
+    /// <summary>以 YAML 创建 Deployment:强制登录身份、校验命名空间黑名单并盖章归属;YAML 非法或未指定命名空间抛 <see cref="ValidationException"/>,成功后写创建审计。</summary>
     public async Task CreateDeploymentFromYamlAsync(WorkloadCreateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var client = clientCache.GetOrCreate(entity);
+        var identity = _guard.RequireCreator();
+        var client = _clientCache.GetOrCreate(entity);
         var body = DeserializeOrThrow<V1Deployment>(request.Yaml, "创建部署", request.ClusterId);
         var ns = RequireNamespace(body.Metadata?.NamespaceProperty);
+        PrepareForCreation(ns, identity, body.Metadata);
         try
         {
             await client.AppsV1.CreateNamespacedDeploymentAsync(body, ns);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "CreateDeployment failed clusterId={ClusterId} ns={Namespace}", request.ClusterId, ns);
             throw K8sExceptionMapper.Translate(ex, "创建部署");
@@ -216,18 +239,20 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
         await _auditService.LogAsync(AuditCategory.Workload, AuditAction.Create, AuditTarget(WorkloadKind.Deployment, ns, body.Metadata?.Name, entity.Name));
     }
 
-    /// <summary>以 YAML 创建 StatefulSet,命名空间取自 YAML 的 metadata.namespace;YAML 非法或未指定命名空间抛 <see cref="ValidationException"/>,成功后写创建审计。</summary>
+    /// <summary>以 YAML 创建 StatefulSet:强制登录身份、校验命名空间黑名单并盖章归属;YAML 非法或未指定命名空间抛 <see cref="ValidationException"/>,成功后写创建审计。</summary>
     public async Task CreateStatefulSetFromYamlAsync(WorkloadCreateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var client = clientCache.GetOrCreate(entity);
+        var identity = _guard.RequireCreator();
+        var client = _clientCache.GetOrCreate(entity);
         var body = DeserializeOrThrow<V1StatefulSet>(request.Yaml, "创建有状态应用", request.ClusterId);
         var ns = RequireNamespace(body.Metadata?.NamespaceProperty);
+        PrepareForCreation(ns, identity, body.Metadata);
         try
         {
             await client.AppsV1.CreateNamespacedStatefulSetAsync(body, ns);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "CreateStatefulSet failed clusterId={ClusterId} ns={Namespace}", request.ClusterId, ns);
             throw K8sExceptionMapper.Translate(ex, "创建有状态应用");
@@ -235,18 +260,20 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
         await _auditService.LogAsync(AuditCategory.Workload, AuditAction.Create, AuditTarget(WorkloadKind.StatefulSet, ns, body.Metadata?.Name, entity.Name));
     }
 
-    /// <summary>以 YAML 创建 DaemonSet,命名空间取自 YAML 的 metadata.namespace;YAML 非法或未指定命名空间抛 <see cref="ValidationException"/>,成功后写创建审计。</summary>
+    /// <summary>以 YAML 创建 DaemonSet:强制登录身份、校验命名空间黑名单并盖章归属;YAML 非法或未指定命名空间抛 <see cref="ValidationException"/>,成功后写创建审计。</summary>
     public async Task CreateDaemonSetFromYamlAsync(WorkloadCreateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var client = clientCache.GetOrCreate(entity);
+        var identity = _guard.RequireCreator();
+        var client = _clientCache.GetOrCreate(entity);
         var body = DeserializeOrThrow<V1DaemonSet>(request.Yaml, "创建守护进程", request.ClusterId);
         var ns = RequireNamespace(body.Metadata?.NamespaceProperty);
+        PrepareForCreation(ns, identity, body.Metadata);
         try
         {
             await client.AppsV1.CreateNamespacedDaemonSetAsync(body, ns);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "CreateDaemonSet failed clusterId={ClusterId} ns={Namespace}", request.ClusterId, ns);
             throw K8sExceptionMapper.Translate(ex, "创建守护进程");
@@ -254,18 +281,20 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
         await _auditService.LogAsync(AuditCategory.Workload, AuditAction.Create, AuditTarget(WorkloadKind.DaemonSet, ns, body.Metadata?.Name, entity.Name));
     }
 
-    /// <summary>以 YAML 创建 ReplicaSet,命名空间取自 YAML 的 metadata.namespace;YAML 非法或未指定命名空间抛 <see cref="ValidationException"/>,成功后写创建审计。</summary>
+    /// <summary>以 YAML 创建 ReplicaSet:强制登录身份、校验命名空间黑名单并盖章归属;YAML 非法或未指定命名空间抛 <see cref="ValidationException"/>,成功后写创建审计。</summary>
     public async Task CreateReplicaSetFromYamlAsync(WorkloadCreateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var client = clientCache.GetOrCreate(entity);
+        var identity = _guard.RequireCreator();
+        var client = _clientCache.GetOrCreate(entity);
         var body = DeserializeOrThrow<V1ReplicaSet>(request.Yaml, "创建副本集", request.ClusterId);
         var ns = RequireNamespace(body.Metadata?.NamespaceProperty);
+        PrepareForCreation(ns, identity, body.Metadata);
         try
         {
             await client.AppsV1.CreateNamespacedReplicaSetAsync(body, ns);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "CreateReplicaSet failed clusterId={ClusterId} ns={Namespace}", request.ClusterId, ns);
             throw K8sExceptionMapper.Translate(ex, "创建副本集");
@@ -273,20 +302,23 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
         await _auditService.LogAsync(AuditCategory.Workload, AuditAction.Create, AuditTarget(WorkloadKind.ReplicaSet, ns, body.Metadata?.Name, entity.Name));
     }
 
-    /// <summary>以 YAML 更新 Deployment:读取服务器最新对象,仅以提交的 spec 覆盖(metadata/status 保持服务器侧,携带最新 resourceVersion);YAML 非法抛 <see cref="ValidationException"/>,成功后写更新审计。</summary>
+    /// <summary>以 YAML 更新 Deployment:先读最新对象完成归属判定(Admin 穿透/创建者本人),仅以提交的 spec 覆盖(元数据保持服务器侧);YAML 非法抛 <see cref="ValidationException"/>,成功后写更新审计。</summary>
     public async Task UpdateDeploymentFromYamlAsync(WorkloadUpdateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
         var deserialized = DeserializeOrThrow<V1Deployment>(request.Yaml, "保存部署", request.ClusterId);
+        var existing = await ReadForOwnershipOrThrowAsync(() => client.AppsV1.ReadNamespacedDeploymentAsync(request.Name, request.Namespace),
+            request.ClusterId, request.Namespace, request.Name, "加载部署详情");
+        await _guard.RequireOperateAsync(request.ClusterId, request.Namespace, request.Name, existing.Metadata);
+
+        // 方案 A:读最新对象,仅覆盖 spec(metadata/status 以服务器为准),携带最新 resourceVersion 替换(design D5)
+        existing.Spec = deserialized.Spec;
         try
         {
-            // 方案 A:读最新对象,仅覆盖 spec(metadata/status 以服务器为准),携带最新 resourceVersion 替换(design D5)
-            var existing = await client.AppsV1.ReadNamespacedDeploymentAsync(request.Name, request.Namespace);
-            existing.Spec = deserialized.Spec;
             await client.AppsV1.ReplaceNamespacedDeploymentAsync(existing, request.Name, request.Namespace);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "ReplaceDeployment failed clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
@@ -295,19 +327,22 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
         await _auditService.LogAsync(AuditCategory.Workload, AuditAction.Update, AuditTarget(WorkloadKind.Deployment, request.Namespace, request.Name, entity.Name));
     }
 
-    /// <summary>以 YAML 更新 StatefulSet:读取服务器最新对象,仅以提交的 spec 覆盖(metadata/status 保持服务器侧);YAML 非法抛 <see cref="ValidationException"/>,成功后写更新审计。</summary>
+    /// <summary>以 YAML 更新 StatefulSet:先读最新对象完成归属判定,仅以提交的 spec 覆盖(元数据保持服务器侧);YAML 非法抛 <see cref="ValidationException"/>,成功后写更新审计。</summary>
     public async Task UpdateStatefulSetFromYamlAsync(WorkloadUpdateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
         var deserialized = DeserializeOrThrow<V1StatefulSet>(request.Yaml, "保存有状态应用", request.ClusterId);
+        var existing = await ReadForOwnershipOrThrowAsync(() => client.AppsV1.ReadNamespacedStatefulSetAsync(request.Name, request.Namespace),
+            request.ClusterId, request.Namespace, request.Name, "加载有状态应用详情");
+        await _guard.RequireOperateAsync(request.ClusterId, request.Namespace, request.Name, existing.Metadata);
+
+        existing.Spec = deserialized.Spec;
         try
         {
-            var existing = await client.AppsV1.ReadNamespacedStatefulSetAsync(request.Name, request.Namespace);
-            existing.Spec = deserialized.Spec;
             await client.AppsV1.ReplaceNamespacedStatefulSetAsync(existing, request.Name, request.Namespace);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "ReplaceStatefulSet failed clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
@@ -316,19 +351,22 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
         await _auditService.LogAsync(AuditCategory.Workload, AuditAction.Update, AuditTarget(WorkloadKind.StatefulSet, request.Namespace, request.Name, entity.Name));
     }
 
-    /// <summary>以 YAML 更新 DaemonSet:读取服务器最新对象,仅以提交的 spec 覆盖(metadata/status 保持服务器侧);YAML 非法抛 <see cref="ValidationException"/>,成功后写更新审计。</summary>
+    /// <summary>以 YAML 更新 DaemonSet:先读最新对象完成归属判定,仅以提交的 spec 覆盖(元数据保持服务器侧);YAML 非法抛 <see cref="ValidationException"/>,成功后写更新审计。</summary>
     public async Task UpdateDaemonSetFromYamlAsync(WorkloadUpdateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
         var deserialized = DeserializeOrThrow<V1DaemonSet>(request.Yaml, "保存守护进程", request.ClusterId);
+        var existing = await ReadForOwnershipOrThrowAsync(() => client.AppsV1.ReadNamespacedDaemonSetAsync(request.Name, request.Namespace),
+            request.ClusterId, request.Namespace, request.Name, "加载守护进程详情");
+        await _guard.RequireOperateAsync(request.ClusterId, request.Namespace, request.Name, existing.Metadata);
+
+        existing.Spec = deserialized.Spec;
         try
         {
-            var existing = await client.AppsV1.ReadNamespacedDaemonSetAsync(request.Name, request.Namespace);
-            existing.Spec = deserialized.Spec;
             await client.AppsV1.ReplaceNamespacedDaemonSetAsync(existing, request.Name, request.Namespace);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "ReplaceDaemonSet failed clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
@@ -337,19 +375,22 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
         await _auditService.LogAsync(AuditCategory.Workload, AuditAction.Update, AuditTarget(WorkloadKind.DaemonSet, request.Namespace, request.Name, entity.Name));
     }
 
-    /// <summary>以 YAML 更新 ReplicaSet:读取服务器最新对象,仅以提交的 spec 覆盖(metadata/status 保持服务器侧);YAML 非法抛 <see cref="ValidationException"/>,成功后写更新审计。</summary>
+    /// <summary>以 YAML 更新 ReplicaSet:先读最新对象完成归属判定,仅以提交的 spec 覆盖(元数据保持服务器侧);YAML 非法抛 <see cref="ValidationException"/>,成功后写更新审计。</summary>
     public async Task UpdateReplicaSetFromYamlAsync(WorkloadUpdateRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
         var deserialized = DeserializeOrThrow<V1ReplicaSet>(request.Yaml, "保存副本集", request.ClusterId);
+        var existing = await ReadForOwnershipOrThrowAsync(() => client.AppsV1.ReadNamespacedReplicaSetAsync(request.Name, request.Namespace),
+            request.ClusterId, request.Namespace, request.Name, "加载副本集详情");
+        await _guard.RequireOperateAsync(request.ClusterId, request.Namespace, request.Name, existing.Metadata);
+
+        existing.Spec = deserialized.Spec;
         try
         {
-            var existing = await client.AppsV1.ReadNamespacedReplicaSetAsync(request.Name, request.Namespace);
-            existing.Spec = deserialized.Spec;
             await client.AppsV1.ReplaceNamespacedReplicaSetAsync(existing, request.Name, request.Namespace);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "ReplaceReplicaSet failed clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
@@ -358,16 +399,19 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
         await _auditService.LogAsync(AuditCategory.Workload, AuditAction.Update, AuditTarget(WorkloadKind.ReplicaSet, request.Namespace, request.Name, entity.Name));
     }
 
-    /// <summary>删除指定 Deployment,成功后写删除审计;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
+    /// <summary>删除指定 Deployment:先读对象完成归属判定,成功后写删除审计;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
     public async Task DeleteDeploymentAsync(WorkloadKeyRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
+        var existing = await ReadForOwnershipOrThrowAsync(() => client.AppsV1.ReadNamespacedDeploymentAsync(request.Name, request.Namespace),
+            request.ClusterId, request.Namespace, request.Name, "加载部署详情");
+        await _guard.RequireOperateAsync(request.ClusterId, request.Namespace, request.Name, existing.Metadata);
         try
         {
             await client.AppsV1.DeleteNamespacedDeploymentAsync(request.Name, request.Namespace);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "DeleteDeployment failed clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
@@ -376,16 +420,19 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
         await _auditService.LogAsync(AuditCategory.Workload, AuditAction.Delete, AuditTarget(WorkloadKind.Deployment, request.Namespace, request.Name, entity.Name));
     }
 
-    /// <summary>删除指定 StatefulSet,成功后写删除审计;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
+    /// <summary>删除指定 StatefulSet:先读对象完成归属判定,成功后写删除审计;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
     public async Task DeleteStatefulSetAsync(WorkloadKeyRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
+        var existing = await ReadForOwnershipOrThrowAsync(() => client.AppsV1.ReadNamespacedStatefulSetAsync(request.Name, request.Namespace),
+            request.ClusterId, request.Namespace, request.Name, "加载有状态应用详情");
+        await _guard.RequireOperateAsync(request.ClusterId, request.Namespace, request.Name, existing.Metadata);
         try
         {
             await client.AppsV1.DeleteNamespacedStatefulSetAsync(request.Name, request.Namespace);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "DeleteStatefulSet failed clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
@@ -394,16 +441,19 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
         await _auditService.LogAsync(AuditCategory.Workload, AuditAction.Delete, AuditTarget(WorkloadKind.StatefulSet, request.Namespace, request.Name, entity.Name));
     }
 
-    /// <summary>删除指定 DaemonSet,成功后写删除审计;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
+    /// <summary>删除指定 DaemonSet:先读对象完成归属判定,成功后写删除审计;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
     public async Task DeleteDaemonSetAsync(WorkloadKeyRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
+        var existing = await ReadForOwnershipOrThrowAsync(() => client.AppsV1.ReadNamespacedDaemonSetAsync(request.Name, request.Namespace),
+            request.ClusterId, request.Namespace, request.Name, "加载守护进程详情");
+        await _guard.RequireOperateAsync(request.ClusterId, request.Namespace, request.Name, existing.Metadata);
         try
         {
             await client.AppsV1.DeleteNamespacedDaemonSetAsync(request.Name, request.Namespace);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "DeleteDaemonSet failed clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
@@ -412,16 +462,19 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
         await _auditService.LogAsync(AuditCategory.Workload, AuditAction.Delete, AuditTarget(WorkloadKind.DaemonSet, request.Namespace, request.Name, entity.Name));
     }
 
-    /// <summary>删除指定 ReplicaSet,成功后写删除审计;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
+    /// <summary>删除指定 ReplicaSet:先读对象完成归属判定,成功后写删除审计;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
     public async Task DeleteReplicaSetAsync(WorkloadKeyRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
+        var existing = await ReadForOwnershipOrThrowAsync(() => client.AppsV1.ReadNamespacedReplicaSetAsync(request.Name, request.Namespace),
+            request.ClusterId, request.Namespace, request.Name, "加载副本集详情");
+        await _guard.RequireOperateAsync(request.ClusterId, request.Namespace, request.Name, existing.Metadata);
         try
         {
             await client.AppsV1.DeleteNamespacedReplicaSetAsync(request.Name, request.Namespace);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "DeleteReplicaSet failed clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
@@ -430,11 +483,14 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
         await _auditService.LogAsync(AuditCategory.Workload, AuditAction.Delete, AuditTarget(WorkloadKind.ReplicaSet, request.Namespace, request.Name, entity.Name));
     }
 
-    /// <summary>扩缩容 Deployment:经 Scale 子资源读取后改写 replicas 再替换,成功后写扩缩容审计;K8s 失败经翻译后抛业务异常。</summary>
+    /// <summary>扩缩容 Deployment:先读对象完成归属判定,经 Scale 子资源读取后改写 replicas 再替换,成功后写扩缩容审计;K8s 失败经翻译后抛业务异常。</summary>
     public async Task ScaleDeploymentAsync(WorkloadScaleRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
+        var existing = await ReadForOwnershipOrThrowAsync(() => client.AppsV1.ReadNamespacedDeploymentAsync(request.Name, request.Namespace),
+            request.ClusterId, request.Namespace, request.Name, "加载部署详情");
+        await _guard.RequireOperateAsync(request.ClusterId, request.Namespace, request.Name, existing.Metadata);
         try
         {
             var scale = await client.AppsV1.ReadNamespacedDeploymentScaleAsync(request.Name, request.Namespace);
@@ -442,7 +498,7 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
             scale.Spec.Replicas = request.Replicas;
             await client.AppsV1.ReplaceNamespacedDeploymentScaleAsync(scale, request.Name, request.Namespace);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "ScaleDeployment failed clusterId={ClusterId} ns={Namespace} name={Name} replicas={Replicas}",
                 request.ClusterId, request.Namespace, request.Name, request.Replicas);
@@ -451,11 +507,14 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
         await _auditService.LogAsync(AuditCategory.Workload, AuditAction.Scale, ScaleTarget(WorkloadKind.Deployment, request, entity.Name));
     }
 
-    /// <summary>扩缩容 StatefulSet:经 Scale 子资源读取后改写 replicas 再替换,成功后写扩缩容审计;K8s 失败经翻译后抛业务异常。</summary>
+    /// <summary>扩缩容 StatefulSet:先读对象完成归属判定,经 Scale 子资源读取后改写 replicas 再替换,成功后写扩缩容审计;K8s 失败经翻译后抛业务异常。</summary>
     public async Task ScaleStatefulSetAsync(WorkloadScaleRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
+        var existing = await ReadForOwnershipOrThrowAsync(() => client.AppsV1.ReadNamespacedStatefulSetAsync(request.Name, request.Namespace),
+            request.ClusterId, request.Namespace, request.Name, "加载有状态应用详情");
+        await _guard.RequireOperateAsync(request.ClusterId, request.Namespace, request.Name, existing.Metadata);
         try
         {
             var scale = await client.AppsV1.ReadNamespacedStatefulSetScaleAsync(request.Name, request.Namespace);
@@ -463,7 +522,7 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
             scale.Spec.Replicas = request.Replicas;
             await client.AppsV1.ReplaceNamespacedStatefulSetScaleAsync(scale, request.Name, request.Namespace);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "ScaleStatefulSet failed clusterId={ClusterId} ns={Namespace} name={Name} replicas={Replicas}",
                 request.ClusterId, request.Namespace, request.Name, request.Replicas);
@@ -472,11 +531,14 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
         await _auditService.LogAsync(AuditCategory.Workload, AuditAction.Scale, ScaleTarget(WorkloadKind.StatefulSet, request, entity.Name));
     }
 
-    /// <summary>扩缩容 ReplicaSet:经 Scale 子资源读取后改写 replicas 再替换,成功后写扩缩容审计;K8s 失败经翻译后抛业务异常。</summary>
+    /// <summary>扩缩容 ReplicaSet:先读对象完成归属判定,经 Scale 子资源读取后改写 replicas 再替换,成功后写扩缩容审计;K8s 失败经翻译后抛业务异常。</summary>
     public async Task ScaleReplicaSetAsync(WorkloadScaleRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
+        var existing = await ReadForOwnershipOrThrowAsync(() => client.AppsV1.ReadNamespacedReplicaSetAsync(request.Name, request.Namespace),
+            request.ClusterId, request.Namespace, request.Name, "加载副本集详情");
+        await _guard.RequireOperateAsync(request.ClusterId, request.Namespace, request.Name, existing.Metadata);
         try
         {
             var scale = await client.AppsV1.ReadNamespacedReplicaSetScaleAsync(request.Name, request.Namespace);
@@ -484,7 +546,7 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
             scale.Spec.Replicas = request.Replicas;
             await client.AppsV1.ReplaceNamespacedReplicaSetScaleAsync(scale, request.Name, request.Namespace);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "ScaleReplicaSet failed clusterId={ClusterId} ns={Namespace} name={Name} replicas={Replicas}",
                 request.ClusterId, request.Namespace, request.Name, request.Replicas);
@@ -493,17 +555,20 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
         await _auditService.LogAsync(AuditCategory.Workload, AuditAction.Scale, ScaleTarget(WorkloadKind.ReplicaSet, request, entity.Name));
     }
 
-    /// <summary>滚动重启 Deployment:以 StrategicMerge Patch 给 Pod 模板打 restartedAt 注解触发滚动重建,成功后写重启审计。</summary>
+    /// <summary>滚动重启 Deployment:先读对象完成归属判定,以 StrategicMerge Patch 打 restartedAt 注解触发滚动重建,成功后写重启审计。</summary>
     public async Task RestartDeploymentAsync(WorkloadKeyRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
+        var existing = await ReadForOwnershipOrThrowAsync(() => client.AppsV1.ReadNamespacedDeploymentAsync(request.Name, request.Namespace),
+            request.ClusterId, request.Namespace, request.Name, "加载部署详情");
+        await _guard.RequireOperateAsync(request.ClusterId, request.Namespace, request.Name, existing.Metadata);
         var patch = new V1Patch(BuildRestartPatchJson(), V1Patch.PatchType.StrategicMergePatch);
         try
         {
             await client.AppsV1.PatchNamespacedDeploymentAsync(patch, request.Name, request.Namespace);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "RestartDeployment failed clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
@@ -512,17 +577,20 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
         await _auditService.LogAsync(AuditCategory.Workload, AuditAction.Restart, AuditTarget(WorkloadKind.Deployment, request.Namespace, request.Name, entity.Name));
     }
 
-    /// <summary>滚动重启 StatefulSet:以 StrategicMerge Patch 给 Pod 模板打 restartedAt 注解触发滚动重建,成功后写重启审计。</summary>
+    /// <summary>滚动重启 StatefulSet:先读对象完成归属判定,以 StrategicMerge Patch 打 restartedAt 注解触发滚动重建,成功后写重启审计。</summary>
     public async Task RestartStatefulSetAsync(WorkloadKeyRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
+        var existing = await ReadForOwnershipOrThrowAsync(() => client.AppsV1.ReadNamespacedStatefulSetAsync(request.Name, request.Namespace),
+            request.ClusterId, request.Namespace, request.Name, "加载有状态应用详情");
+        await _guard.RequireOperateAsync(request.ClusterId, request.Namespace, request.Name, existing.Metadata);
         var patch = new V1Patch(BuildRestartPatchJson(), V1Patch.PatchType.StrategicMergePatch);
         try
         {
             await client.AppsV1.PatchNamespacedStatefulSetAsync(patch, request.Name, request.Namespace);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "RestartStatefulSet failed clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
@@ -531,17 +599,20 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
         await _auditService.LogAsync(AuditCategory.Workload, AuditAction.Restart, AuditTarget(WorkloadKind.StatefulSet, request.Namespace, request.Name, entity.Name));
     }
 
-    /// <summary>滚动重启 DaemonSet:以 StrategicMerge Patch 给 Pod 模板打 restartedAt 注解触发滚动重建,成功后写重启审计。</summary>
+    /// <summary>滚动重启 DaemonSet:先读对象完成归属判定,以 StrategicMerge Patch 打 restartedAt 注解触发滚动重建,成功后写重启审计。</summary>
     public async Task RestartDaemonSetAsync(WorkloadKeyRequest request)
     {
         var entity = await RequireClusterAsync(request.ClusterId);
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
+        var existing = await ReadForOwnershipOrThrowAsync(() => client.AppsV1.ReadNamespacedDaemonSetAsync(request.Name, request.Namespace),
+            request.ClusterId, request.Namespace, request.Name, "加载守护进程详情");
+        await _guard.RequireOperateAsync(request.ClusterId, request.Namespace, request.Name, existing.Metadata);
         var patch = new V1Patch(BuildRestartPatchJson(), V1Patch.PatchType.StrategicMergePatch);
         try
         {
             await client.AppsV1.PatchNamespacedDaemonSetAsync(patch, request.Name, request.Namespace);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "RestartDaemonSet failed clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
@@ -553,6 +624,79 @@ public class WorkloadService(IClusterRepository repo, AuditService auditService,
     private async Task<ClusterInfo> RequireClusterAsync(int clusterId)
         => await _repo.GetByIdAsync(clusterId)
             ?? throw new NotFoundException($"集群 {clusterId} 不存在");
+
+    /// <summary>创建前收拢:命名空间黑名单(Admin 不受限)+ 归属盖章(无条件覆盖用户 YAML 的归属元数据)。</summary>
+    /// <param name="namespaceName">目标命名空间(RequireNamespace 校验后必非空)。</param>
+    /// <param name="identity">创建者身份(账号 Id + 用户名)。</param>
+    /// <param name="metadata">待创建对象的元数据。</param>
+    private void PrepareForCreation(string namespaceName, (int UserId, string UserName) identity, V1ObjectMeta? metadata)
+    {
+        if (metadata is null)
+        {
+            throw new ValidationException("YAML 未指定 metadata");
+        }
+
+        ResourceOwnershipPolicy.EnsureCreationTargetNamespaceAllowed(namespaceName, _guard.IsAdmin());
+        ResourceOwnershipStamp.Stamp(metadata, identity.UserId, identity.UserName);
+    }
+
+    /// <summary>为归属判定读取对象;读失败按加载语义翻译后上抛。</summary>
+    /// <param name="read">读取调用。</param>
+    /// <param name="clusterId">集群 Id(日志)。</param>
+    /// <param name="namespaceName">命名空间(日志)。</param>
+    /// <param name="name">名称(日志)。</param>
+    /// <param name="operation">读失败时的中文名称。</param>
+    private async Task<T> ReadForOwnershipOrThrowAsync<T>(Func<Task<T>> read, int clusterId, string? namespaceName, string? name, string operation)
+    {
+        try
+        {
+            return await read()
+                ?? throw new NotFoundException($"{operation}:资源不存在或已被删除");
+        }
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
+        {
+            _logger.LogWarning(ex, "Read failed for ownership check clusterId={ClusterId} ns={Namespace} name={Name}",
+                clusterId, namespaceName, name);
+            throw K8sExceptionMapper.Translate(ex, operation);
+        }
+    }
+
+    /// <summary>列表归属投影:Admin 短路,其余经创建者 label 与 Helm 托管索引判定(fail-closed)。</summary>
+    /// <typeparam name="TItem">K8s 对象类型。</typeparam>
+    /// <param name="clusterId">集群 Id。</param>
+    /// <param name="items">对象列表。</param>
+    /// <param name="map">对象 → 列表 ViewModel 的映射。</param>
+    private async Task<List<WorkloadListViewModel>> ProjectListAsync<TItem>(
+        int clusterId,
+        IEnumerable<TItem> items,
+        Func<TItem, WorkloadListViewModel> map)
+        where TItem : IKubernetesObject<V1ObjectMeta>
+    {
+        var isAdmin = _guard.IsAdmin();
+        var userId = _guard.TryGetUserId();
+        var helmIndex = await _guard.GetHelmOwnershipIndexAsync(clusterId);
+        return [.. items.Select(item => MapWithOwnership(item, map, isAdmin, userId, helmIndex))];
+    }
+
+    private static WorkloadListViewModel MapWithOwnership<TItem>(
+        TItem item,
+        Func<TItem, WorkloadListViewModel> map,
+        bool isAdmin,
+        int? userId,
+        IReadOnlyDictionary<(string Namespace, string ReleaseName), HelmReleaseOwnership> helmIndex)
+        where TItem : IKubernetesObject<V1ObjectMeta>
+    {
+        var viewModel = map(item);
+        viewModel.CanOperate = isAdmin || ResourceOwnershipPolicy.CanOperateForIndex(item.Metadata, userId, helmIndex);
+        return viewModel;
+    }
+
+    /// <summary>详情归属投影:把当前用户的 CanOperate 写入详情 ViewModel。</summary>
+    private async Task<WorkloadDetailViewModel> ProjectDetailAsync(int clusterId, V1ObjectMeta? metadata, WorkloadDetailViewModel viewModel)
+    {
+        viewModel.CanOperate = await _guard.CanOperateAsync(clusterId, metadata);
+        return viewModel;
+    }
 
     private T DeserializeOrThrow<T>(string yaml, string operation, int clusterId) where T : class
     {

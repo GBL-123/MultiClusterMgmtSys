@@ -1,5 +1,4 @@
 using Bunit;
-using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
 using MultiClusterMgmtSys.Application.ViewModels;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
@@ -8,14 +7,15 @@ namespace MultiClusterMgmtSys.Tests.Components.Configmaps;
 
 public class ConfigMapListTableTests
 {
-    private static ConfigMapListViewModel Item(string name, string ns = "app", int keys = 2)
+    private static ConfigMapListViewModel Item(string name, string ns = "app", int keys = 2, bool canOperate = true)
         => new()
         {
             Name = name,
             Namespace = ns,
             DataKeyCount = keys,
             DataKeyPreview = "k1, k2",
-            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+            CanOperate = canOperate
         };
 
     [Fact]
@@ -51,7 +51,7 @@ public class ConfigMapListTableTests
     }
 
     [Fact]
-    public async Task Admin_buttons_disappear_when_role_downgraded()
+    public async Task Mutating_buttons_follow_can_operate_projection()
     {
         await using var ctx = new BunitHost();
         var auth = ctx.AddAuthorization();
@@ -60,17 +60,15 @@ public class ConfigMapListTableTests
 
         var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Configmaps.Shared.ConfigMapListTable>(
             parameters => parameters
-                .Add(p => p.Items, [Item("cm")])
+                .Add(p => p.Items, [Item("owned"), Item("unowned", canOperate: false)])
                 .Add(p => p.OnNavigateDetail, _ => Task.CompletedTask));
 
-        var adminIcons = cut.FindComponents<MudTooltip>().Count(t => t.Instance.Text is "编辑 YAML" or "删除");
+        // CanOperate 行渲染编辑/删除,非 CanOperate 行只保留详情(角色变化不再影响按钮,归属由服务端投影)
+        Assert.Equal(2, cut.FindComponents<MudTooltip>().Count(t => t.Instance.Text is "编辑 YAML" or "删除"));
 
         auth.SetRoles("Member");
         cut.Render();
-        var memberIcons = cut.FindComponents<MudTooltip>().Count(t => t.Instance.Text is "编辑 YAML" or "删除");
-
-        Assert.Equal(2, adminIcons);
-        Assert.Equal(0, memberIcons);
+        Assert.Equal(2, cut.FindComponents<MudTooltip>().Count(t => t.Instance.Text is "编辑 YAML" or "删除"));
     }
 
     [Fact]

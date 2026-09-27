@@ -5,8 +5,6 @@ using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Domain.Exceptions;
 using MultiClusterMgmtSys.Infrastructure.Persistence;
 using MultiClusterMgmtSys.Application.Identity;
-using MultiClusterMgmtSys.Domain.Entities;
-using MultiClusterMgmtSys.Infrastructure.Persistence;
 using MultiClusterMgmtSys.Application.Requests;
 using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;

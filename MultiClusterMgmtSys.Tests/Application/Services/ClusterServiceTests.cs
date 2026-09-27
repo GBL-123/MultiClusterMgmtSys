@@ -1,26 +1,14 @@
 using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using Microsoft.EntityFrameworkCore;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using Microsoft.Extensions.Logging.Abstractions;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using Moq;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using k8s;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using k8s.Models;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using MultiClusterMgmtSys.Domain.Enums;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using MultiClusterMgmtSys.Domain.Exceptions;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Persistence;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using MultiClusterMgmtSys.Application.Models;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using MultiClusterMgmtSys.Application.Requests;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using MultiClusterMgmtSys.Application.Services;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Application.Services;
@@ -42,8 +30,8 @@ public class ClusterServiceTests : IDisposable
 
     public void Dispose() => _harness.Dispose();
 
-    private Task<int> SeedAsync(string name, ClusterStatus status = ClusterStatus.Unknown, string? version = null)
-        => _harness.ClusterRepo.AddAsync(TestData.NewCluster(name, status: status, version: version)).ContinueWith(t => t.Result.Id);
+    private Task<int> SeedAsync(string name, ClusterStatus status = ClusterStatus.Unknown, string? version = null, string? remark = null)
+        => _harness.ClusterRepo.AddAsync(TestData.NewCluster(name, status: status, version: version, remark: remark)).ContinueWith(t => t.Result.Id);
 
     [Fact]
     public async Task GetPagedAsync_version_all_sentinel_maps_to_no_filter()
@@ -134,12 +122,13 @@ public class ClusterServiceTests : IDisposable
     [Fact]
     public async Task GetClusterForEditAsync_maps_edit_fields()
     {
-        var id = await SeedAsync("editable", version: null);
+        var id = await SeedAsync("editable", version: null, remark: "生产集群");
 
         var edit = await _service.GetClusterForEditAsync(id);
 
         Assert.NotNull(edit);
         Assert.Equal("editable", edit!.Name);
+        Assert.Equal("生产集群", edit.Remark);
         Assert.Equal(ConnectionType.Token, edit.ConnectionType);
     }
 
@@ -205,6 +194,39 @@ public class ClusterServiceTests : IDisposable
         Assert.Equal("10.1.1.1", endpoints[0].Value);
         Assert.Equal("管理口", endpoints[0].Note);
         Assert.Equal("k8s.example.com", endpoints[1].Value);
+    }
+
+    [Fact]
+    public async Task Remark_roundtrips_through_add_and_update()
+    {
+        _k8s.SetupGetVersion("v1.30.2");
+        _k8s.SetupListNodes();
+
+        var vm = await _service.AddClusterAsync(new ClusterCreateRequest
+        {
+            Name = "remarked",
+            ConnectionType = ConnectionType.Token,
+            ApiServer = "https://remark:6443",
+            Token = "tok",
+            Remark = "  生产环境  "
+        });
+
+        var entity = await _harness.ClusterRepo.GetByIdAsync(vm.Id);
+        Assert.Equal("生产环境", entity!.Remark);
+
+        await _service.UpdateClusterAsync(new ClusterUpdateRequest
+        {
+            Id = vm.Id,
+            Name = "remarked",
+            ConnectionType = ConnectionType.Token,
+            ApiServer = entity.ApiServer,
+            Token = entity.Token,
+            SkipTlsVerify = entity.SkipTlsVerify,
+            Remark = "  "
+        });
+
+        var cleared = await _harness.ClusterRepo.GetByIdAsync(vm.Id);
+        Assert.Null(cleared!.Remark);
     }
 
     [Fact]

@@ -11,7 +11,8 @@ public static class TestData
         ClusterStatus status = ClusterStatus.Online,
         string? version = "1.29.0",
         int nodeCount = 3,
-        DateTime? createdAt = null)
+        DateTime? createdAt = null,
+        string? remark = null)
     {
         var now = createdAt ?? new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         return new ClusterInfo
@@ -25,6 +26,7 @@ public static class TestData
             Version = version,
             NodeCount = nodeCount,
             GroupId = groupId,
+            Remark = remark,
             CreatedAt = now,
             LastCheckedAt = now
         };

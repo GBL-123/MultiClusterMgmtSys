@@ -1,10 +1,7 @@
 using Bunit;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
-using k8s.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
-using Moq;
 using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Application.Identity;
 using MultiClusterMgmtSys.Infrastructure.Persistence;

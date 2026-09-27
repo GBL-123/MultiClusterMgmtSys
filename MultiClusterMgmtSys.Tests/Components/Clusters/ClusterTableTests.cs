@@ -1,5 +1,4 @@
 using Bunit;
-using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
 using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
@@ -16,7 +15,7 @@ public class ClusterTableTests
         auth.SetAuthorized("admin");
         auth.SetRoles("Admin");
         var harness = ctx.AddClusterStack();
-        await harness.ClusterRepo.AddAsync(TestData.NewCluster("prod-1", status: ClusterStatus.Online));
+        await harness.ClusterRepo.AddAsync(TestData.NewCluster("prod-1", status: ClusterStatus.Online, remark: "生产集群"));
         await harness.ClusterRepo.AddAsync(TestData.NewCluster("down-1", status: ClusterStatus.Offline));
 
         var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Clusters.Shared.ClusterTable>(
@@ -32,6 +31,7 @@ public class ClusterTableTests
         Assert.Contains("在线", cut.Markup);
         Assert.Contains("离线", cut.Markup);
         Assert.Contains("prod-1", cut.Markup);
+        Assert.Contains("生产集群", cut.Markup);
     }
 
     [Fact]

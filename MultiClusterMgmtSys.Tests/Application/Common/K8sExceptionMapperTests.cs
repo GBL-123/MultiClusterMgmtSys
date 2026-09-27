@@ -1,7 +1,6 @@
 using System.Net;
 using k8s;
 using k8s.Autorest;
-using k8s.Models;
 using MultiClusterMgmtSys.Domain.Exceptions;
 using MultiClusterMgmtSys.Application.Common.Exceptions;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;

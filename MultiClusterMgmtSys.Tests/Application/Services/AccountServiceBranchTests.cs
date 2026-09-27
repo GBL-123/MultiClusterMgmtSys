@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using MultiClusterMgmtSys.Application.Identity;
 using MultiClusterMgmtSys.Infrastructure.Persistence;

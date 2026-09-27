@@ -1,5 +1,4 @@
 using Bunit;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using k8s;
 using k8s.Models;
@@ -7,7 +6,6 @@ using Moq;
 using MudBlazor;
 using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Web.Components.Common;
-using MultiClusterMgmtSys.Application.Requests;
 using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
@@ -82,6 +80,11 @@ public class ConfigMapsPageFlowTests
 
             provider.WaitForState(() => provider.Markup.Contains("确认删除"), TimeSpan.FromSeconds(5));
 
+            k8s.SetupReadConfigMap("target-cm", "app", new V1ConfigMap
+            {
+                Metadata = new V1ObjectMeta { Name = "target-cm", NamespaceProperty = "app" },
+                Data = new Dictionary<string, string> { ["k"] = "v" }
+            });
             k8s.SetupDeleteConfigMap("target-cm", "app");
 
             var confirm = provider.FindComponents<MudButton>().First(b => b.Markup.Contains("删除"));

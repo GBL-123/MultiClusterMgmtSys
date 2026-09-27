@@ -1,4 +1,3 @@
-using MultiClusterMgmtSys.Application.Abstractions;
 
 namespace MultiClusterMgmtSys.Tests.TestInfrastructure;
 

@@ -13,6 +13,9 @@ public class ClusterEditViewModel
     /// <summary>集群名称。</summary>
     public string Name { get; set; } = "";
 
+    /// <summary>集群备注说明;未填写为 null。</summary>
+    public string? Remark { get; set; }
+
     /// <summary>所属分组主键;未分组为 null。</summary>
     public int? GroupId { get; set; }
 

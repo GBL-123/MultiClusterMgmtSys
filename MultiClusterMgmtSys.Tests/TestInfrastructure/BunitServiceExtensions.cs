@@ -1,55 +1,16 @@
 using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using MultiClusterMgmtSys.Infrastructure.Templates;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using Bunit;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Templates;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using Microsoft.AspNetCore.Components.Authorization;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Templates;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using Microsoft.AspNetCore.Hosting;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Templates;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using Microsoft.Extensions.Configuration;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Templates;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using Microsoft.Extensions.DependencyInjection;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Templates;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using Microsoft.Extensions.Logging.Abstractions;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Templates;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using Moq;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Templates;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MudBlazor;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Templates;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using MultiClusterMgmtSys.Web.Components.Common;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Templates;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using MultiClusterMgmtSys.Infrastructure.Persistence;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Templates;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
+using MultiClusterMgmtSys.Application.Common.Ownership;
 using MultiClusterMgmtSys.Application.Common.Helm;
-using MultiClusterMgmtSys.Application.Abstractions;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Templates;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using MultiClusterMgmtSys.Application.Services;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Templates;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using k8s;
 
 namespace MultiClusterMgmtSys.Tests.TestInfrastructure;
@@ -80,6 +41,10 @@ public static class BunitServiceExtensions
         ctx.Services.AddScoped<IClusterRepository>(_ => harness.ClusterRepo);
         ctx.Services.AddScoped<IClusterHealthRepository>(_ => harness.ClusterHealthRepo);
         ctx.Services.AddScoped(_ => harness.Audit);
+        ctx.Services.AddScoped(_ => harness.OwnershipRepo);
+        ctx.Services.AddScoped<IHelmReleaseOwnershipRepository>(_ => harness.OwnershipRepo);
+        ctx.Services.AddScoped(_ => TestHttpContext.ForIdentity(actor, 7, roles).Object);
+        ctx.Services.AddScoped<ResourceOwnershipGuard>();
         ctx.Services.AddSingleton<IYamlValidator, YamlValidator>();
         ctx.Services.AddScoped<ClusterNodeService>();
         ctx.Services.AddScoped<ClusterService>();
@@ -116,17 +81,24 @@ public static class BunitServiceExtensions
         ctx.Services.AddScoped<GroupService>();
         ctx.Services.AddScoped<ClusterSyncSettingService>();
         ctx.Services.AddScoped<ClusterSelectionState>();
-        ctx.Services.AddScoped(_ => TestHttpContext.For(actor).Object);
+        var roles = actor == "admin" ? new[] { "Admin" } : Array.Empty<string>();
+        ctx.Services.AddScoped(_ => TestHttpContext.ForIdentity(actor, 7, roles).Object);
         ctx.Services.AddScoped<RedirectManager>();
     }
 
     public static void AddWorkloadServices(this BunitContext ctx, Mock<IKubernetes> k8s, ServiceHarness harness, string actor = "admin")
     {
+        var roles = actor == "admin" ? new[] { "Admin" } : Array.Empty<string>();
         ctx.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8s));
         ctx.AddClientCache();
         ctx.Services.AddScoped<WorkloadService>();
+        ctx.Services.AddScoped<ConfigMapService>();
+        ctx.Services.AddScoped<SvcService>();
         ctx.Services.AddScoped(_ => harness.Audit);
-        ctx.Services.AddScoped(_ => TestHttpContext.For(actor).Object);
+        ctx.Services.AddScoped(_ => TestHttpContext.ForIdentity(actor, 7, roles).Object);
+        ctx.Services.AddScoped(_ => harness.OwnershipRepo);
+        ctx.Services.AddScoped<IHelmReleaseOwnershipRepository>(_ => harness.OwnershipRepo);
+        ctx.Services.AddScoped<ResourceOwnershipGuard>();
         ctx.Services.AddScoped<RedirectManager>();
         ctx.Services.AddScoped<ClusterSelectionState>();
     }

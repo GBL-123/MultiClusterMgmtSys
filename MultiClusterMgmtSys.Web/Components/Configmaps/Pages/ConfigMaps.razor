@@ -73,17 +73,13 @@
                                    Disabled="@_loading">
                             刷新
                         </MudButton>
-                        <AuthorizeView Roles="Admin">
-                            <Authorized>
-                                <MudButton Variant="Variant.Filled"
-                                           Color="Color.Primary"
-                                           StartIcon="@Icons.Material.Filled.Add"
-                                           OnClick="OpenCreateDialog"
-                                           Disabled="@(!_cluster.IsReachable)">
-                                    新建 ConfigMap
-                                </MudButton>
-                            </Authorized>
-                        </AuthorizeView>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="OpenCreateDialog"
+                                   Disabled="@(!_cluster.IsReachable)">
+                            新建 ConfigMap
+                        </MudButton>
                     </MudStack>
 
                     @if (_cluster.IsReachable)

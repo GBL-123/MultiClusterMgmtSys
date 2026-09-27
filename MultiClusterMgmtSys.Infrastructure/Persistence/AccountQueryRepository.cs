@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using MultiClusterMgmtSys.Application.Abstractions;
 using MultiClusterMgmtSys.Application.Identity;
 using MultiClusterMgmtSys.Application.Requests;
-using MultiClusterMgmtSys.Infrastructure.Persistence;
 
 namespace MultiClusterMgmtSys.Infrastructure.Persistence;
 

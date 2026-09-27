@@ -1,6 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
+﻿using Microsoft.Extensions.Logging.Abstractions;
 using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Domain.Exceptions;
 using MultiClusterMgmtSys.Infrastructure.Persistence;
@@ -141,4 +139,3 @@ public class GroupServiceTests : IDisposable
         Assert.Equal(1, await _service.GetUngroupedClusterCountAsync());
     }
 }
-

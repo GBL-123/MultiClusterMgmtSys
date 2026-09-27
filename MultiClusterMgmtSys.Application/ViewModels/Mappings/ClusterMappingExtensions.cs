@@ -16,6 +16,7 @@ public static class ClusterMappingExtensions
         {
             Id = e.Id,
             Name = e.Name,
+            Remark = e.Remark,
             Status = e.Status,
             StatusText = e.Status switch
             {
@@ -81,6 +82,7 @@ public static class ClusterMappingExtensions
         {
             Id = e.Id,
             Name = e.Name,
+            Remark = e.Remark,
             GroupId = e.GroupId,
             ApiServer = e.ApiServer,
             ConnectionType = e.ConnectionType,

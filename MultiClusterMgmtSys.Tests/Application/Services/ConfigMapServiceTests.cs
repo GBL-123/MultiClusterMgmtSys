@@ -1,8 +1,10 @@
 ﻿using k8s;
 using k8s.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Application.Common.Ownership;
 using MultiClusterMgmtSys.Domain.Exceptions;
 using MultiClusterMgmtSys.Application.Requests;
 using MultiClusterMgmtSys.Application.Services;
@@ -18,9 +20,19 @@ public class ConfigMapServiceTests : IDisposable
 
     public ConfigMapServiceTests()
     {
-        _service = new ConfigMapService(
-            _harness.ClusterRepo, _harness.Audit, NullLogger<ConfigMapService>.Instance, K8sMocks.Cache(_k8s));
+        _service = NewService(_harness, _k8s, TestHttpContext.ForIdentity("admin", 7, "Admin").Object);
     }
+
+    internal static ConfigMapService NewService(
+        ServiceHarness harness,
+        Mock<IKubernetes> k8s,
+        IHttpContextAccessor accessor)
+        => new(
+            harness.ClusterRepo,
+            new ResourceOwnershipGuard(harness.OwnershipRepo, accessor, NullLogger<ResourceOwnershipGuard>.Instance),
+            harness.Audit,
+            K8sMocks.Cache(k8s),
+            NullLogger<ConfigMapService>.Instance);
 
     public void Dispose() => _harness.Dispose();
 
@@ -151,6 +163,7 @@ public class ConfigMapServiceTests : IDisposable
     public async Task DeleteConfigMapAsync_audits_on_success()
     {
         var clusterId = await SeedClusterAsync();
+        _k8s.SetupReadConfigMap("cm", "default", NewConfigMap("cm", "default"));
         _k8s.SetupDeleteConfigMap("cm", "default");
 
         await _service.DeleteConfigMapAsync(new ConfigMapKeyRequest(clusterId, "cm", "default"));
@@ -164,6 +177,7 @@ public class ConfigMapServiceTests : IDisposable
     public async Task DeleteConfigMapAsync_k8s_error_translated()
     {
         var clusterId = await SeedClusterAsync();
+        _k8s.SetupReadConfigMap("cm", "default", NewConfigMap("cm", "default"));
         _k8s.SetupDeleteConfigMapThrows("cm", "default", K8sMocks.K8sError(409));
 
         await Assert.ThrowsAsync<ConflictException>(
@@ -275,5 +289,3 @@ public class ConfigMapServiceTests : IDisposable
             () => _service.CreateConfigMapFromYamlAsync(new ConfigMapCreateRequest(clusterId, ValidYaml)));
     }
 }
-
-

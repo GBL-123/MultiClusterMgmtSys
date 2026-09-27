@@ -40,6 +40,13 @@
                 }
             </MudSelect>
 
+            <MudTextField @bind-Value="_Remark"
+                          Label="备注"
+                          Lines="2"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Class="mb-3" />
+
             <MudTextField @bind-Value="_ApiServer"
                           Label="API Server 地址"
                           Required="@(_connectionType == ConnectionType.Token)"
@@ -155,6 +162,8 @@
 
     private string _Name = "";
 
+    private string? _Remark = "";
+
     private int? _GroupId;
 
     private string _ApiServer = "";
@@ -198,6 +207,7 @@
                 _Name = _editVm.Name;
                 _GroupId = _editVm.GroupId;
                 _ApiServer = _editVm.ApiServer ?? "";
+                _Remark = _editVm.Remark ?? "";
                 _connectionType = _editVm.ConnectionType;
                 _originalConnectionType = _editVm.ConnectionType;
                 _SkipTlsVerify = _editVm.SkipTlsVerify;
@@ -234,6 +244,7 @@
                 {
                     Id = ClusterId!.Value,
                     Name = _Name,
+                    Remark = string.IsNullOrWhiteSpace(_Remark) ? null : _Remark.Trim(),
                     GroupId = _GroupId,
                     ConnectionType = _connectionType,
                     ApiServer = string.IsNullOrWhiteSpace(_ApiServer) ? null : _ApiServer,
@@ -254,6 +265,7 @@
                 var request = new ClusterCreateRequest
                 {
                     Name = _Name,
+                    Remark = string.IsNullOrWhiteSpace(_Remark) ? null : _Remark.Trim(),
                     GroupId = _GroupId,
                     ConnectionType = _connectionType,
                     ApiServer = string.IsNullOrWhiteSpace(_ApiServer) ? null : _ApiServer,

@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Application.Enums;
 using MultiClusterMgmtSys.Infrastructure.Persistence;
-using MultiClusterMgmtSys.Infrastructure.Persistence;
 using MultiClusterMgmtSys.Application.Models;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 

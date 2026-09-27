@@ -4,7 +4,6 @@ using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Application.Abstractions;
 using MultiClusterMgmtSys.Domain.Exceptions;
 using MultiClusterMgmtSys.Application.Common.Exceptions;
-using MultiClusterMgmtSys.Domain.Entities;
 using MultiClusterMgmtSys.Application.Requests;
 using MultiClusterMgmtSys.Application.ViewModels;
 using MultiClusterMgmtSys.Application.ViewModels.Mappings;

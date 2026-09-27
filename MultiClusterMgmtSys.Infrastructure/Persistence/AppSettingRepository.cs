@@ -1,6 +1,5 @@
 using MultiClusterMgmtSys.Application.Abstractions;
 using Microsoft.EntityFrameworkCore;
-using MultiClusterMgmtSys.Infrastructure.Persistence;
 using MultiClusterMgmtSys.Domain.Entities;
 
 namespace MultiClusterMgmtSys.Infrastructure.Persistence;

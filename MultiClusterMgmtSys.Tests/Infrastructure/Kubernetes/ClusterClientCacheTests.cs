@@ -1,22 +1,11 @@
 ﻿using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using System.Net;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using Microsoft.Extensions.Logging.Abstractions;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using Moq;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using k8s;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using k8s.Models;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using MultiClusterMgmtSys.Domain.Enums;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using MultiClusterMgmtSys.Application.Common.Exceptions;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using MultiClusterMgmtSys.Domain.Entities;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using MultiClusterMgmtSys.Application.Services;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Infrastructure.Kubernetes;

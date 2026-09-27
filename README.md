@@ -1,6 +1,6 @@
 ﻿# MultiClusterMgmtSys
 
-基于 .NET 10 + Blazor 的 Kubernetes 多集群管理平台，统一管理多个集群的节点、工作负载、Service、ConfigMap、命名空间与事件，内置账号权限体系、操作审计与集群状态定时同步。
+基于 .NET 10 + Blazor 的 Kubernetes 多集群管理平台，统一管理多个集群的节点、工作负载、Service、ConfigMap、命名空间、事件与 Helm 应用，内置账号权限体系、操作审计与集群状态定时同步。
 
 界面为中文，使用 MudBlazor 组件库（Swiss Industrial Print 工业印刷风格设计系统，浅色主题），数据存储采用 SQLite（零依赖，开箱即用）。
 
@@ -12,6 +12,8 @@
 - **工作负载管理**：Deployment / StatefulSet / DaemonSet / ReplicaSet 统一列表与详情（副本就绪、滚动三态、条件），YAML 在线编辑、新建、删除、扩缩容与滚动重启（能力矩阵按类型裁剪）
 - **Service 管理**：ClusterIP / NodePort / LoadBalancer / ExternalName 四类 Service 的列表与详情、端口表、后端 EndpointSlice（旧集群自动回退 legacy Endpoints），YAML 在线编辑、新建、删除
 - **ConfigMap 管理**：按集群浏览 ConfigMap，YAML 只读查看与在线编辑、新建、删除
+- **Helm 应用管理**：上传 chart 包（.tgz）安装 / 升级 / 回滚 / 卸载 Helm Release，列表、详情、版本历史、values 与 manifest 查看；操作按安装者归属判定（Admin 任意、成员限本人安装的 Release）
+- **资源归属与自助管理**：Member 可自行创建并管理自己的工作负载 / ConfigMap / Service——归属以标签 / 注解记录在 K8s 对象上、随对象生灭，服务端强制判定；Helm 安装产生的资源与 Helm 归属记账互通，存量资源仅 Admin 可操作
 - **命名空间管理**：按集群浏览命名空间（状态、标签数、创建时间），YAML 新建、删除，详情含标签 / 注解 / YAML 只读查看
 - **事件管理**：按集群浏览 K8s 事件，命名空间 / 级别 / 关键词筛选与对象类型分类，时间以相对形式展示（如「5 分钟前」）
 - **审计日志**：登录 / 注册及所有增删改操作自动记录（操作人、类别、动作、目标），Admin 可查全量，普通用户仅见本人记录
@@ -36,7 +38,7 @@
 
 ```pwsh
 dotnet build MultiClusterMgmtSys.slnx
-dotnet test MultiClusterMgmtSys.Tests           # 727 个单元测试（xunit.v3 + Moq + bUnit，MTP 运行器）
+dotnet test MultiClusterMgmtSys.Tests           # 962 个单元测试（xunit.v3 + Moq + bUnit，MTP 运行器）
 ./coverage.ps1                                  # 一键 UT + 覆盖率报告（四程序集合并行覆盖门禁 75%）
 dotnet run --project MultiClusterMgmtSys.Web          # http://localhost:5021
 dotnet run --project MultiClusterMgmtSys.Web --launch-profile https   # https://localhost:7081
@@ -104,7 +106,7 @@ Logging__File__Path="/data/logs/app-.log"
 │   ├── appsettings.json               # 连接串、Serilog 日志路径等配置
 │   ├── Components/                    # Razor 组件（Pages/Shared/Layout + 按功能分目录）
 │   │   ├── Clusters/  Nodes/  Workloads/  Svcs/  Configmaps/  Namespaces/  Events/   # 各功能页与共享组件
-│   │   ├── AuditLogs/  Account/  Profile/  Auth/
+│   │   ├── Helm/  Dashboard/  Pods/  AuditLogs/  Account/  Profile/  Auth/
 │   │   └── Common/                    # 共享组件与服务（ThemeManager、ExceptionPresenter 等）
 │   ├── Endpoints/                     # 额外 endpoint（Identity 退出等）
 │   └── wwwroot/                       # 静态资源、自托管字体与新建对话框的 YAML 模板（templates/）

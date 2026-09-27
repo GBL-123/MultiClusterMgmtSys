@@ -14,6 +14,9 @@ public class ClusterViewModel
     /// <summary>集群名称。</summary>
     public string Name { get; set; } = "";
 
+    /// <summary>集群备注说明;未填写为 null。</summary>
+    public string? Remark { get; set; }
+
     /// <summary>集群状态枚举(<see cref="ClusterStatus"/>),徽标配色依据。</summary>
     public ClusterStatus Status { get; set; }
 

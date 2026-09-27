@@ -1,5 +1,4 @@
 using Bunit;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using k8s;
 using k8s.Models;
@@ -7,7 +6,6 @@ using Moq;
 using MudBlazor;
 using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Web.Components.Common;
-using MultiClusterMgmtSys.Application.Requests;
 using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
@@ -114,6 +112,11 @@ public class PageFilterFlowTests
 
         provider.WaitForState(() => provider.Markup.Contains("确认删除"), TimeSpan.FromSeconds(5));
 
+        k8s.SetupReadService("doomed-svc", "app", new V1Service
+        {
+            Metadata = new V1ObjectMeta { Name = "doomed-svc", NamespaceProperty = "app" },
+            Spec = new V1ServiceSpec { Type = "ClusterIP", ClusterIP = "10.96.0.3" }
+        });
         k8s.SetupDeleteService("doomed-svc", "app");
 
         var confirm = provider.FindComponents<MudButton>().First(b => b.Markup.Contains("删除"));

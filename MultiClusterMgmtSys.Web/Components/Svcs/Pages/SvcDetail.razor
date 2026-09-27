@@ -43,6 +43,7 @@
                           Type="@_detail.Type"
                           ClusterIP="@_detail.ClusterIP"
                           Processing="@_loading"
+                          CanOperate="@_detail.CanOperate"
                           OnRefresh="LoadAsync"
                           OnEditYaml="@(() => NavigationManager.NavigateTo($"/services/{ClusterId}/{Namespace}/{Name}/yaml"))"
                           OnDelete="DeleteAsync" />

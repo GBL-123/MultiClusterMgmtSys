@@ -1,5 +1,4 @@
 using Bunit;
-using MultiClusterMgmtSys.Application.Abstractions;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Components.Pages;

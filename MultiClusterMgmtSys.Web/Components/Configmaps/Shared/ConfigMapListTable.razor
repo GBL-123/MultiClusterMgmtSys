@@ -37,17 +37,16 @@
                                    Icon="@Icons.Material.Filled.Visibility"
                                    Color="Color.Primary"
                                    OnClick="@(() => OnNavigateDetail.InvokeAsync((context.Namespace, context.Name)))" />
-                <AuthorizeView Roles="Admin">
-                    <Authorized Context="authContext">
-                        <TooltipIconButton Text="编辑 YAML"
-                                           Icon="@Icons.Material.Filled.Code"
-                                           OnClick="@(() => OnNavigateEditYaml.InvokeAsync((context.Namespace, context.Name)))" />
-                        <TooltipIconButton Text="删除"
-                                           Icon="@Icons.Material.Filled.DeleteOutline"
-                                           Color="Color.Error"
-                                           OnClick="@(() => OnDelete.InvokeAsync((context.Namespace, context.Name)))" />
-                    </Authorized>
-                </AuthorizeView>
+                @if (context.CanOperate)
+                {
+                    <TooltipIconButton Text="编辑 YAML"
+                                       Icon="@Icons.Material.Filled.Code"
+                                       OnClick="@(() => OnNavigateEditYaml.InvokeAsync((context.Namespace, context.Name)))" />
+                    <TooltipIconButton Text="删除"
+                                       Icon="@Icons.Material.Filled.DeleteOutline"
+                                       Color="Color.Error"
+                                       OnClick="@(() => OnDelete.InvokeAsync((context.Namespace, context.Name)))" />
+                }
             </div>
         </MudTd>
     </RowTemplate>

@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Identity;
 using MultiClusterMgmtSys.Application.Services.Identity;
 
 namespace MultiClusterMgmtSys.Tests.Application.Services.Identity;

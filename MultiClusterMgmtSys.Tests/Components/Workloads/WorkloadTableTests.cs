@@ -1,5 +1,4 @@
 using Bunit;
-using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
 using MultiClusterMgmtSys.Application.Enums;
 using MultiClusterMgmtSys.Application.ViewModels;
@@ -10,7 +9,7 @@ namespace MultiClusterMgmtSys.Tests.Components.Workloads;
 public class WorkloadListTableTests
 {
     private static WorkloadListViewModel Item(
-        string name, WorkloadRolloutState state, string ns = "app", int desired = 3, int ready = 3)
+        string name, WorkloadRolloutState state, string ns = "app", int desired = 3, int ready = 3, bool canOperate = true)
         => new()
         {
             Name = name,
@@ -18,7 +17,8 @@ public class WorkloadListTableTests
             Kind = WorkloadKind.Deployment,
             DesiredCount = desired,
             ReadyCount = ready,
-            RolloutState = state
+            RolloutState = state,
+            CanOperate = canOperate
         };
 
     [Fact]

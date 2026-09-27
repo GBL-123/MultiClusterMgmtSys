@@ -1,7 +1,5 @@
 ﻿using Bunit;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.Components.Authorization;
-using Moq;
 using MudBlazor;
 using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Application.ViewModels;
@@ -126,4 +124,3 @@ public class ClusterSelectSidebarTests
         Assert.Contains("暂无集群", cut.Markup);
     }
 }
-

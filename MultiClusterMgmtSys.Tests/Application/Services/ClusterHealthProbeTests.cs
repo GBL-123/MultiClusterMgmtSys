@@ -5,7 +5,6 @@ using Moq;
 using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Domain.Entities;
 using MultiClusterMgmtSys.Domain.Enums;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Application.Services;

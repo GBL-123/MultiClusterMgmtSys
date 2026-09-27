@@ -1,4 +1,3 @@
-using MultiClusterMgmtSys.Domain.Entities;
 using MultiClusterMgmtSys.Domain.Exceptions;
 
 namespace MultiClusterMgmtSys.Application.Abstractions;

@@ -3,11 +3,11 @@ using k8s.Models;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Application.Common.Ownership;
 using MultiClusterMgmtSys.Domain.Exceptions;
 using MultiClusterMgmtSys.Application.Requests;
 using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
-using Xunit;
 
 namespace MultiClusterMgmtSys.Tests.Application.Services;
 
@@ -20,7 +20,11 @@ public class WorkloadServiceErrorTests : IDisposable
     public WorkloadServiceErrorTests()
     {
         _service = new WorkloadService(
-            _harness.ClusterRepo, _harness.Audit, NullLogger<WorkloadService>.Instance, K8sMocks.Cache(_k8s));
+            _harness.ClusterRepo,
+            new ResourceOwnershipGuard(_harness.OwnershipRepo, TestHttpContext.ForIdentity("admin", 7, "Admin").Object, NullLogger<ResourceOwnershipGuard>.Instance),
+            _harness.Audit,
+            K8sMocks.Cache(_k8s),
+            NullLogger<WorkloadService>.Instance);
     }
 
     public void Dispose() => _harness.Dispose();
@@ -209,6 +213,7 @@ public class WorkloadServiceErrorTests : IDisposable
     public async Task ScaleStatefulSetAsync_k8s_error_translated()
     {
         var clusterId = await SeedAsync();
+        _k8s.SetupReadStatefulSet("sts-1", "app", new V1StatefulSet { Metadata = new V1ObjectMeta { Name = "sts-1", NamespaceProperty = "app" } });
         _k8s.SetupReadStatefulSetScale("sts-1", "app", currentReplicas: 2);
 
         var request = new WorkloadScaleRequest(clusterId, "sts-1", "app", Replicas: 3);
@@ -221,6 +226,7 @@ public class WorkloadServiceErrorTests : IDisposable
     public async Task ScaleReplicaSetAsync_k8s_error_translated()
     {
         var clusterId = await SeedAsync();
+        _k8s.SetupReadReplicaSet("rs-1", "app");
         _k8s.SetupReadReplicaSetScale("rs-1", "app", currentReplicas: 2);
 
         var request = new WorkloadScaleRequest(clusterId, "rs-1", "app", Replicas: 3);
@@ -233,6 +239,7 @@ public class WorkloadServiceErrorTests : IDisposable
     public async Task DeleteStatefulSetAsync_k8s_error_translated()
     {
         var clusterId = await SeedAsync();
+        _k8s.SetupReadStatefulSet("sts-1", "app", new V1StatefulSet { Metadata = new V1ObjectMeta { Name = "sts-1", NamespaceProperty = "app" } });
         _k8s.SetupDeleteStatefulSetThrows("sts-1", "app", K8sMocks.K8sError(403));
 
         await Assert.ThrowsAsync<PermissionException>(
@@ -243,6 +250,7 @@ public class WorkloadServiceErrorTests : IDisposable
     public async Task DeleteDaemonSetAsync_k8s_error_translated()
     {
         var clusterId = await SeedAsync();
+        _k8s.SetupReadDaemonSet("ds-1", "app");
         _k8s.SetupDeleteDaemonSetThrows("ds-1", "app", K8sMocks.K8sError(404));
 
         await Assert.ThrowsAsync<NotFoundException>(
@@ -253,6 +261,7 @@ public class WorkloadServiceErrorTests : IDisposable
     public async Task DeleteReplicaSetAsync_k8s_error_translated()
     {
         var clusterId = await SeedAsync();
+        _k8s.SetupReadReplicaSet("rs-1", "app");
         _k8s.SetupDeleteReplicaSetThrows("rs-1", "app", K8sMocks.K8sError(409));
 
         await Assert.ThrowsAsync<ConflictException>(
@@ -260,9 +269,20 @@ public class WorkloadServiceErrorTests : IDisposable
     }
 
     [Fact]
+    public async Task Ownership_read_missing_translated()
+    {
+        var clusterId = await SeedAsync();
+        _k8s.SetupReadStatefulSetThrows("ghost", "app", K8sMocks.K8sError(404));
+
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => _service.DeleteStatefulSetAsync(new WorkloadKeyRequest(clusterId, "ghost", "app")));
+    }
+
+    [Fact]
     public async Task RestartDaemonSetAsync_k8s_error_translated()
     {
         var clusterId = await SeedAsync();
+        _k8s.SetupReadDaemonSet("ds-1", "app");
         _k8s.SetupPatchDaemonSetThrows("ds-1", "app", K8sMocks.K8sError(404));
 
         await Assert.ThrowsAsync<NotFoundException>(

@@ -3,8 +3,6 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using MultiClusterMgmtSys.Application.Abstractions;
 using MultiClusterMgmtSys.Application.Common.Helm;
 using MultiClusterMgmtSys.Application.Identity;

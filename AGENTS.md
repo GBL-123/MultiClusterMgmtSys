@@ -2,9 +2,9 @@
 
 Repo-specific guidance for OpenCode agents working in `MultiClusterMgmtSys`.
 
-## Current state (2026-09-23)
+## Current state (2026-09-27)
 
-`dotnet build MultiClusterMgmtSys.slnx` 0 错误;`dotnet test MultiClusterMgmtSys.Tests` 770/770 green(xunit.v3 + MTP,see Testing conventions);`./coverage.ps1` 四程序集合并行覆盖率 **78.2%**(门禁 75%)。最近归档的 change:`restyle-reconnect-modal`(重连弹窗与 404/错误兜底页工业风统一,新增 `fallback-pages` 契约)、`clean-architecture-split`(四项目分层重构:Domain/Application/Infrastructure/Web)、`pod-logs`、`pod-management`、`event-management`、`k8s-client-cache`、`display-humanization` 等;`openspec/changes/add-cluster-dashboard/` 为当前待实现 change(全局集群看板,见 Architecture notes 的「全局集群看板」条)。
+`dotnet build MultiClusterMgmtSys.slnx` 0 错误;`dotnet test MultiClusterMgmtSys.Tests` 963/963 green(xunit.v3 + MTP,see Testing conventions);`./coverage.ps1` 四程序集合并行覆盖率 **76.7%**(门禁 75%)。最近归档的 change:`restyle-reconnect-modal`(重连弹窗与 404/错误兜底页工业风统一,新增 `fallback-pages` 契约)、`clean-architecture-split`(四项目分层重构:Domain/Application/Infrastructure/Web)、`pod-logs`、`pod-management`、`event-management`、`k8s-client-cache`、`display-humanization` 等;`openspec/changes/` 下尚有三个未归档 change(均已实现,契约以各自 delta spec 为准,归档后才进主 specs):`add-cluster-dashboard`(全局集群看板)、`add-helm-management`(Helm 应用管理,36/37 仅手工验收待走查)、`add-member-resource-ownership`(Member 自建资源归属,20/21 仅 5.3 手工验收待走查;三条均见 Architecture notes 对应条目)。
 
 ## Coverage 工具链 (覆盖率口径见 `openspec/specs/unit-testing`)
 
@@ -45,8 +45,8 @@ Domain <-- Application <-- Infrastructure <-- Web
 
 ```pwsh
 dotnet build MultiClusterMgmtSys.slnx       # 0 errors
-dotnet test MultiClusterMgmtSys.Tests       # 727 tests, all green (MTP)
-./coverage.ps1                              # 一键 UT + 覆盖率报告:727 tests 全绿 + 四程序集合并行覆盖门禁 75% → coverage/coverage.cobertura.xml + coverage/report/index.html(-Threshold 可调阈值,低于阈值 exit 1)
+dotnet test MultiClusterMgmtSys.Tests       # 963 tests, all green (MTP)
+./coverage.ps1                              # 一键 UT + 覆盖率报告:963 tests 全绿 + 四程序集合并行覆盖门禁 75% → coverage/coverage.cobertura.xml + coverage/report/index.html(-Threshold 可调阈值,低于阈值 exit 1)
 dotnet run  --project MultiClusterMgmtSys.Web                                    # http://localhost:5021
 dotnet run  --project MultiClusterMgmtSys.Web --launch-profile https             # https://localhost:7081
 ```
@@ -66,8 +66,8 @@ Build gotcha: if `dotnet build` fails with MSB3021/MSB3026/MSB3027 (exe locked),
 - **bUnit 只测"接线契约"**:`FindComponent<T>()` 取 MudBlazor 组件实例、触发公开事件/参数,断言自己组件的状态/渲染分支/自有 CSS 类(`.status-badge`/`.empty-state` 等);**禁止断言 `.mud-*` 内部 DOM**。bUnit 测试需要 `TimeProvider.System` + `JSRuntimeMode.Loose` + MudServices(BunitHost 已配);事件回调必须经 `cut.InvokeAsync(...)` 调度到 Dispatcher;异步数据(MudTable ServerData)用 `cut.WaitForState(...)` 等待;并行执行下依赖后台刷新完成的测试需有界等待(轮询 + `Task.Delay`,勿用固定次数紧循环)。
 - **bUnit 2.x API**:`BunitContext`(不是 `TestContext`,也与 xunit.v3 的 `Xunit.TestContext` 撞名)、`Render<T>()`(不是 `RenderComponent`)、`AddAuthorization()` + `SetAuthorized(name)`/`SetRoles("Admin")`;创建过 MudBlazor 组件的 ctx 用 `await using var ctx = ...` 释放 —— MudBlazor 的 KeyInterceptor/PointerEventsNone 服务仅实现 `IAsyncDisposable`,同步 `Dispose()` 会在测试逻辑已通过后抛异常;此类测试方法签名用 `async Task`。`BunitContext` 的 Services 在**首次 GetService 后冻结**,所有服务必须在首渲染前注册;对话框测试用 `ctx.Render<MudDialogProvider>()` + `ShowAsync<T>()` 流程;登录页级联 `HttpContext` 用 `AddCascadingValue(new DefaultHttpContext())`(按类型);需要 RendererInfo 的组件在**注册完服务后**调 `ctx.Renderer.SetRendererInfo(new RendererInfo("bunit", true))`。
 - **bUnit 交互硬坑(实测)**:① MudMenu 弹层由 JS 渲染,bUnit 中点击后菜单项不出现——菜单驱动的删除/批量改角色无法端到端驱动,改测直接按钮或退到服务层;② DOM `.Click()` 触发含 `await DialogService.ShowAsync(...).Result` 的处理器后,页面续体在调度队列里,需 `await provider.InvokeAsync(() => { })` 冲刷再轮询服务/审计落库,直接 `await dialogReference.Result` 可能死锁;③ 依赖 `MudForm.ValidateAsync()` 的对话框提交流(EditGroupDialog/AccountEditDialog 等)在 bUnit 下不稳定,项目实践改为渲染断言 + 服务层覆盖提交逻辑;④ 全量刷新(「刷新全部」)的互斥锁 `ClusterService.syncGate` 是**静态**信号量,并行执行时本轮可能仍在等锁——bUnit 只能断言进度行以「已完成 / 总数」形态渲染与按钮禁用态,具体进度数值由服务层测试覆盖。
-- **页面测试依赖栈**:`BunitServiceExtensions` 提供 `AddClusterStack`、`AddGroupAndSyncStack`、`AddWorkloadServices`、`AddNamespaceStack`、`AddEventStack`、`AddDashboardStack`(K8s 服务统一经 `IClusterClientCache`,各栈内部已配 `AddClientCache`;YAML 模板用 `AddYamlTemplates`),一次性注册页面所需服务(仍受"首次 GetService 后冻结"约束,必须在首渲染前调用);仓库以端口类型注册(`IClusterRepository` 等)。
-- **MTP runner gotchas**(xunit.v3 + MTP v2,由根 `global.json` `test.runner` 启用):不要传 VSTest 时代参数 —— `--nologo` 会被测试应用拒绝(exit 5,且误导性报告为 "Zero tests ran",见 dotnet/sdk#55309);零执行测试 = exit 8;过滤用 MTP/xunit 语法(`--filter-class`/`--filter-trait`/`--filter-method`),不是 VSTest 的 `--filter` 表达式;排查并行干扰可用 `--parallel none`。测试数量基线:770。
+- **页面测试依赖栈**:`BunitServiceExtensions` 提供 `AddClusterStack`、`AddGroupAndSyncStack`、`AddWorkloadServices`、`AddNamespaceStack`、`AddEventStack`、`AddPodStack`、`AddHelmStack`、`AddDashboardStack`(K8s 服务统一经 `IClusterClientCache`,各栈内部已配 `AddClientCache`;YAML 模板用 `AddYamlTemplates`),一次性注册页面所需服务(仍受"首次 GetService 后冻结"约束,必须在首渲染前调用);仓库以端口类型注册(`IClusterRepository` 等)。
+- **MTP runner gotchas**(xunit.v3 + MTP v2,由根 `global.json` `test.runner` 启用):不要传 VSTest 时代参数 —— `--nologo` 会被测试应用拒绝(exit 5,且误导性报告为 "Zero tests ran",见 dotnet/sdk#55309);零执行测试 = exit 8;过滤用 MTP/xunit 语法(`--filter-class`/`--filter-trait`/`--filter-method`),不是 VSTest 的 `--filter` 表达式;排查并行干扰可用 `--parallel none`。测试数量基线:963。
 - `MultiClusterMgmtSys.Web` csproj `WarningsAsErrors` 含 `MUD0002`(MudBlazor 分析器)——组件 API 误用(如给无 `Value` 参数的组件 `@bind-Value`)会直接编译失败,不要用 `NoWarn` 绕过。
 - 验证:`dotnet build` 0 错误 + `dotnet test` 全绿。
 
@@ -91,6 +91,7 @@ Build gotcha: if `dotnet build` fails with MSB3021/MSB3026/MSB3027 (exe locked),
 - **`ClusterHealthSnapshot` 是只追加表**(契约 `cluster-scheduled-sync`):后台同步每次**成功**探测一个集群即追加一行节点就绪统计(总数/就绪/未就绪),不覆盖、不修改;探测失败与停机取消均不写。因此「每集群最新一行」即该集群最近一次成功探测的结果——看板据此计算舰队规模,集群离线时主档 `NodeCount` 虽被置 0,规模仍取快照的最后已知值而不缩水。目前**无保留策略**(7 集群 / 5 分钟间隔约 2000 行/天,SQLite 无感)。
 - **`add-cluster-dashboard` 引入建表变更**:升级到该版本必须删除 `MultiClusterMgmtSys.Web/db/` 下的库文件后重启重建(`EnsureCreated` 不会为既有库补建新表),已登记的集群与凭据需重新录入。
 - **`HelmReleaseOwnership` 是归属记账表**(契约 `helm-release-management`):安装成功写入、系统内卸载删除、随集群级联;(ClusterId, Namespace, ReleaseName) 唯一。它只用于「Admin 可操作任意 release、成员仅可操作自己安装的」服务端判定——界面不展示安装者列,追溯走审计日志;无记录或当前 revision 小于安装时 revision(系统外重装)视为无主,仅 Admin 可操作。**`add-helm-management` 引入建表变更**:升级到该版本同样必须删除 `MultiClusterMgmtSys.Web/db/` 下的库文件后重启重建。
+- **`ClusterInfo.Remark` 集群备注列**(2026-09-27 加,无 openspec change):列表页「备注」列 + 编辑对话框字段,服务层 trim/空白置 null;升级同样需删除 `MultiClusterMgmtSys.Web/db/` 下的库文件后重启重建(`EnsureCreated` 不会为既有库补列)。
 
 ## Folder / namespace gotchas
 
@@ -108,6 +109,7 @@ Build gotcha: if `dotnet build` fails with MSB3021/MSB3026/MSB3027 (exe locked),
 - **全局集群看板**(契约 `cluster-dashboard`):`Web/Components/Dashboard/`(命名空间 `.Web.Components.Dashboard`,路由 `/dashboard`,**登录后默认落地页**)+ `DashboardService`。数据**全部读自 SQLite**(集群主档 + 节点健康快照 + 审计 + 同步设置),**不发起任何 K8s 调用**——集群全部离线时看板仍可用,`[刷新全部]` 复用 `ClusterService.RefreshAllClustersStatusAsync` 并带进度。新鲜度以**生效同步间隔 × 2** 为过期阈值(停用/从未同步各自表达,不误报为过期);「最近操作」复用审计可见范围(Admin 全站 / 非 Admin 仅本人,标题随之切换)。看板是聚合视图,**不**用 `MudTable`、不接 `ClusterSelectSidebar`、不提供管理操作——与集群列表页的分工是「健康视角」对「管理视角」。
 - **全量刷新有界并发 + 停机取消**:`ClusterService.RefreshAllClustersStatusAsync` 三段式(取数 → `Parallel.ForEachAsync` 最多 4 个并发探测 → 串行 `UpdateAsync` + 状态翻转审计),进度用 `Interlocked`,`CancellationToken` 由 `ClusterSyncBackgroundService`(`Infrastructure/Sync`)透传;`ProbeAsync` 用 `catch (OperationCanceledException) when (token.IsCancellationRequested)` 区分停机取消与探测失败——取消不置 `Offline`、不写审计(契约 `cluster-scheduled-sync`)。探测**成功**时额外解析当轮 `ListNodeAsync` 结果的节点就绪统计并追加一条 `ClusterHealthSnapshot`(复用既有调用,**不新增 K8s 请求**);探测失败与停机取消均不写快照;快照落库失败只记警告,不把可达集群误判为离线。
 - **Helm 应用管理**(契约 `helm-release-management` / `helm-cli-runtime`):`Web/Components/Helm/`(命名空间 `.Web.Components.Helm`,路由 `/helm` 与 `/helm/releases/{clusterId}/{ns}/{name}`)+ `HelmService`。经 helm CLI 子进程读写 release(安装/升级/回滚/卸载与列表/详情/历史/values/manifest),chart 来源为上传 `.tgz` 即传即用(临时文件,操作结束删除);权限:列表全员可见、操作按归属——Admin 任意、成员仅本人安装的、无主仅 Admin(归属存 `HelmReleaseOwnership` 表,界面不展示安装者列,追溯走审计);Helm CLI 调用**不经** `IClusterClientCache`、**不适用** 10s 超时契约(走 helm `--timeout` 与进程级上限,见两个契约的边界条款)。
+- **Member 自建资源归属**(契约 `k8s-resource-ownership`):原生 K8s 资源(四类工作负载 + ConfigMap + Service)的对象级归属——载体是 **label `mcms.ms/owner-uid`(账号 Id)+ 注解 `mcms.ms/owner-name`(用户名快照)**,**无数据库表**(与 Helm 归属表的差异:Helm 读不到 label 才用表)。规则:创建成功服务端**无条件覆盖**盖章(防伪造,Admin 建的同样盖);变更判定 Admin 穿透 / owner-uid 匹配 / 无主 fail-closed(存量资源与系统外创建 = 仅 Admin,无认领/转让);Member 创建目标命名空间禁 `kube-` 前缀(`default` 允许,Admin 不受限);对象带 `meta.helm.sh/release-*` 注解时归属改查 `HelmReleaseOwnership` 表(Helm 互通,资源页只按 uid 判、不做 revision 比对)。强制点在服务层 `Application/Common/Ownership/ResourceOwnershipGuard`(scoped,`AddApplicationServices` 注册):读路径投影 `CanOperate` 进 ViewModel(列表不展示创建者列),写路径 `RequireOperateAsync` 拒绝即 LogWarning + `PermissionException`(不写审计);scale/restart/delete 先 GET 一次对象再判定。UI 不再用 `AuthorizeView Roles="Admin"` 遮挡这三族写操作——按钮一律按 `CanOperate` 条件渲染;编辑页(`EditConfigMapYaml`/`EditSvcYaml`/四个 workload yaml edit 页)页面属性为 `[Authorize]`,真正的门在服务层。身份读取统一 `IHttpContextAccessor`(仓库既有口径,与 Helm/审计/账号一致)。
 - **YAML 模板**:`IYamlTemplateService`(接口在 `Application/Abstractions`,实现 `Infrastructure/Templates/YamlTemplateService.cs`,singleton)从 Web `wwwroot/templates/{category}/{name}.yaml` 读取新建对话框的初始 YAML(workload/configmap/service/namespace 四类);文件缺失或读取失败时回退内置最小骨架且只记日志、不抛异常。
 - **Exception handling**: services throw `BusinessException` subclasses (中文 `UserMessage`,位于 `Domain/Exceptions`);K8s 调用点 catch → `K8sExceptionMapper.Translate(ex, "操作")` 再抛;UI catch → `await ExHandler.HandleAsync(ex, "操作")`,不直出 `ex.Message`。详见下方 "Exception handling" 节。
 - Pipeline extras: `UseForwardedHeaders` trusting **all** proxies (required by prod nginx TLS termination — keep), `UseStatusCodePagesWithReExecute("/not-found")`, `MapStaticAssets()`, dev-only `UseMigrationsEndPoint` + `AddDatabaseDeveloperPageExceptionFilter`.
@@ -162,7 +164,7 @@ Build gotcha: if `dotnet build` fails with MSB3021/MSB3026/MSB3027 (exe locked),
 - `_Imports.razor` is the source of implied `@using`s; check it before adding `@using` to pages.
 - `BlazorDisableThrowNavigationException` is enabled in the Web csproj — leave it on.
 - Prefer MudBlazor components over raw HTML/CSS. Documented exceptions only: (1) full-height YAML textareas (`yaml-textarea`), (2) `ReconnectModal.razor` raw buttons whose ids are Blazor framework JS contract, (3) Blazor built-in `InputFile`, (4) design-system display spans (`.status-badge`/`.brand-mark`/`.role-badge`/`.empty-state`/mono hint rows) — see ui-theme spec. Inline action controls inside a clickable row (`OnRowClick`/`@onclick`) must be wrapped in a `<span @onclick:stopPropagation="true">` (or `<div>`) — `@onclick` + `@onclick:stopPropagation` on the same MudBlazor component is a Razor error (RZ10010).
-- Admin-only actions (create/rename/delete/batch/cluster delete/endpoints/IP notes/命名空间新建与删除) are gated via `<AuthorizeView Roles="Admin"><Authorized>`; view and filter actions are role-agnostic.
+- Admin-only actions (create/rename/delete/batch/cluster delete/endpoints/IP notes/命名空间新建与删除) are gated via `<AuthorizeView Roles="Admin"><Authorized>`; view and filter actions are role-agnostic. **例外**:工作负载/ConfigMap/Service 的写操作已改由服务端归属强制(见 "Member 自建资源归属"),UI 按 `CanOperate` 条件渲染。
 - Commit messages are short Chinese one-liners (e.g. `修改项目结构`, `重设计前端UI为工业印刷风格`) — match that style when asked to commit.
 
 ## Service contracts

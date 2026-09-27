@@ -33,4 +33,7 @@ public class SvcListViewModel
 
     /// <summary>创建时间;null 表示 API 未返回。</summary>
     public DateTime? CreatedAt { get; set; } = null;
+
+    /// <summary>当前用户是否可操作该资源(Admin 或创建者本人,fail-closed;契约见 k8s-resource-ownership)。</summary>
+    public bool CanOperate { get; set; }
 }

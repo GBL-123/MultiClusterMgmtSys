@@ -5,7 +5,6 @@ using k8s;
 using k8s.Models;
 using Moq;
 using MultiClusterMgmtSys.Domain.Enums;
-using MultiClusterMgmtSys.Web.Components.Pods.Pages;
 using MultiClusterMgmtSys.Web.Components.Pods.Shared;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 

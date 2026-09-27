@@ -1,62 +1,17 @@
 ﻿using MultiClusterMgmtSys.Infrastructure.Sync;
 using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Sync;
 using Bunit;
-using MultiClusterMgmtSys.Infrastructure.Sync;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Sync;
-using Microsoft.AspNetCore.Components.Authorization;
-using MultiClusterMgmtSys.Infrastructure.Sync;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Sync;
 using Microsoft.Extensions.Configuration;
-using MultiClusterMgmtSys.Infrastructure.Sync;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Sync;
 using Microsoft.Extensions.DependencyInjection;
-using MultiClusterMgmtSys.Infrastructure.Sync;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Sync;
 using Microsoft.Extensions.Logging.Abstractions;
-using MultiClusterMgmtSys.Infrastructure.Sync;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Sync;
 using k8s;
-using MultiClusterMgmtSys.Infrastructure.Sync;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Sync;
 using k8s.Models;
-using MultiClusterMgmtSys.Infrastructure.Sync;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Sync;
 using Moq;
-using MultiClusterMgmtSys.Infrastructure.Sync;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Sync;
 using MudBlazor;
-using MultiClusterMgmtSys.Infrastructure.Sync;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Sync;
 using MultiClusterMgmtSys.Domain.Enums;
-using MultiClusterMgmtSys.Infrastructure.Sync;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Sync;
 using MultiClusterMgmtSys.Web.Components.Common;
-using MultiClusterMgmtSys.Infrastructure.Sync;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Sync;
-using MultiClusterMgmtSys.Application.Requests;
-using MultiClusterMgmtSys.Infrastructure.Sync;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Sync;
 using MultiClusterMgmtSys.Application.Services;
-using MultiClusterMgmtSys.Infrastructure.Sync;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Sync;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
-using MultiClusterMgmtSys.Infrastructure.Sync;
-using MultiClusterMgmtSys.Infrastructure.Kubernetes;
-using MultiClusterMgmtSys.Infrastructure.Sync;
 using MultiClusterMgmtSys.Application.ViewModels.Mappings;
 
 namespace MultiClusterMgmtSys.Tests.Components.Pages;
@@ -167,7 +122,7 @@ public class DetailDialogExtraTests
         ctx.AddGroupAndSyncStack(harness);
         var k8s = SetupCore(ctx, harness);
         var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("svc-create"));
-        ctx.Services.AddScoped(_ => TestHttpContext.For("admin", "Admin").Object);
+        ctx.Services.AddScoped(_ => TestHttpContext.ForIdentity("admin", 7, "Admin").Object);
         var yamlTemplate = new Mock<IYamlTemplateService>();
         yamlTemplate.Setup(s => s.GetTemplateAsync(It.IsAny<string>(), It.IsAny<string>()))
             .ReturnsAsync("apiVersion: v1\nkind: Service\nmetadata:\n  name: new-svc\n  namespace: app\nspec:\n  type: ClusterIP\n  ports:\n    - port: 80\n");
@@ -291,4 +246,3 @@ public class DetailDialogExtraTests
         await background.StopAsync(CancellationToken.None);
     }
 }
-

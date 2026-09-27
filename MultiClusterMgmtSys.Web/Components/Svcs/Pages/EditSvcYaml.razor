@@ -1,16 +1,12 @@
-@attribute [Authorize(Roles="Admin")]
+@attribute [Authorize]
 @page "/services/{ClusterId:int}/{Namespace}/{Name}/yaml"
 
 @using MultiClusterMgmtSys.Domain.Exceptions
 @using MultiClusterMgmtSys.Application.Abstractions
 @using MultiClusterMgmtSys.Application.Requests
-@using MultiClusterMgmtSys.Application.Abstractions
 @using MultiClusterMgmtSys.Application.Services
-@using MultiClusterMgmtSys.Application.Abstractions
 @using MultiClusterMgmtSys.Application.ViewModels
-@using MultiClusterMgmtSys.Application.Abstractions
 @using MultiClusterMgmtSys.Web.Components.Svcs.Shared
-@using MultiClusterMgmtSys.Application.Abstractions
 
 @inject SvcService SvcService
 @inject IYamlValidator YamlValidator

@@ -1,16 +1,8 @@
 using MultiClusterMgmtSys.Infrastructure.Templates;
 using k8s;
-using MultiClusterMgmtSys.Infrastructure.Templates;
-using k8s.Models;
-using MultiClusterMgmtSys.Infrastructure.Templates;
 using Microsoft.AspNetCore.Hosting;
-using MultiClusterMgmtSys.Infrastructure.Templates;
 using Microsoft.Extensions.Logging.Abstractions;
-using MultiClusterMgmtSys.Infrastructure.Templates;
 using Moq;
-using MultiClusterMgmtSys.Infrastructure.Templates;
-using MultiClusterMgmtSys.Application.Services;
-using MultiClusterMgmtSys.Infrastructure.Templates;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Infrastructure.Templates;

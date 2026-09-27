@@ -1,9 +1,10 @@
 using k8s.Models;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using k8s;
 using MultiClusterMgmtSys.Domain.Enums;
+using MultiClusterMgmtSys.Application.Common.Ownership;
 using MultiClusterMgmtSys.Domain.Exceptions;
 using MultiClusterMgmtSys.Application.Requests;
 using MultiClusterMgmtSys.Application.Services;
@@ -20,9 +21,19 @@ public class SvcServiceTests : IDisposable
 
     public SvcServiceTests()
     {
-        _service = new SvcService(
-            _harness.ClusterRepo, _harness.Audit, NullLogger<SvcService>.Instance, K8sMocks.Cache(_k8s));
+        _service = NewTestService(_harness, _k8s, TestHttpContext.ForIdentity("admin", 7, "Admin").Object);
     }
+
+    internal static SvcService NewTestService(
+        ServiceHarness harness,
+        Mock<IKubernetes> k8s,
+        IHttpContextAccessor accessor)
+        => new(
+            harness.ClusterRepo,
+            new ResourceOwnershipGuard(harness.OwnershipRepo, accessor, NullLogger<ResourceOwnershipGuard>.Instance),
+            harness.Audit,
+            K8sMocks.Cache(k8s),
+            NullLogger<SvcService>.Instance);
 
     public void Dispose() => _harness.Dispose();
 
@@ -40,6 +51,9 @@ public class SvcServiceTests : IDisposable
                 Ports = [new V1ServicePort { Port = 80, Protocol = "TCP" }]
             }
         };
+
+    private static V1Service NewSvcObject()
+        => NewService(name: "svc-a", ns: "app");
 
     private const string ServiceYaml = """
         apiVersion: v1
@@ -184,6 +198,7 @@ public class SvcServiceTests : IDisposable
     public async Task DeleteSvcAsync_success_audits()
     {
         var clusterId = await SeedAsync();
+        _k8s.SetupReadService("svc-a", "app", NewSvcObject());
         _k8s.SetupDeleteService("svc-a", "app");
 
         await _service.DeleteSvcAsync(new SvcKeyRequest(clusterId, "svc-a", "app"));
@@ -197,6 +212,7 @@ public class SvcServiceTests : IDisposable
     public async Task DeleteSvcAsync_k8s_error_translated()
     {
         var clusterId = await SeedAsync();
+        _k8s.SetupReadService("svc-a", "app", NewSvcObject());
         _k8s.SetupDeleteServiceThrows("svc-a", "app", K8sMocks.K8sError(409));
 
         await Assert.ThrowsAsync<ConflictException>(
@@ -288,6 +304,3 @@ public class SvcServiceTests : IDisposable
         Assert.Equal(AuditAction.Update, _harness.Db.AuditLogs.Single().Action);
     }
 }
-
-
-

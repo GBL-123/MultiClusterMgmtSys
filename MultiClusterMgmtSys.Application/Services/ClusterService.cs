@@ -104,6 +104,7 @@ public class ClusterService(IClusterRepository repo, ClusterNodeService nodeServ
         var entity = new ClusterInfo
         {
             Name = request.Name,
+            Remark = string.IsNullOrWhiteSpace(request.Remark) ? null : request.Remark.Trim(),
             GroupId = request.GroupId,
             ApiServer = request.ApiServer,
             ConnectionType = request.ConnectionType,
@@ -142,6 +143,7 @@ public class ClusterService(IClusterRepository repo, ClusterNodeService nodeServ
             || entity.SkipTlsVerify != request.SkipTlsVerify;
 
         entity.Name = request.Name;
+        entity.Remark = string.IsNullOrWhiteSpace(request.Remark) ? null : request.Remark.Trim();
         entity.GroupId = request.GroupId;
         entity.ApiServer = request.ApiServer;
         entity.ConnectionType = request.ConnectionType;

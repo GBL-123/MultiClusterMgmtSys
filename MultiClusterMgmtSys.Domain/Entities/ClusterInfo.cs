@@ -15,6 +15,9 @@ public class ClusterInfo
     /// <summary>集群名称,必填,页面以此为主要标识。</summary>
     public string Name { get; set; } = "";
 
+    /// <summary>管理员维护的备注说明,可空;列表页单独成列展示。</summary>
+    public string? Remark { get; set; }
+
     /// <summary>API Server 地址(Token 直连方式使用),可空。</summary>
     public string? ApiServer { get; set; }
 

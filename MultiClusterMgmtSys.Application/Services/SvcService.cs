@@ -5,7 +5,7 @@ using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Application.Abstractions;
 using MultiClusterMgmtSys.Domain.Exceptions;
 using MultiClusterMgmtSys.Application.Common.Exceptions;
-using MultiClusterMgmtSys.Domain.Entities;
+using MultiClusterMgmtSys.Application.Common.Ownership;
 using MultiClusterMgmtSys.Application.Requests;
 using MultiClusterMgmtSys.Application.ViewModels;
 using MultiClusterMgmtSys.Application.ViewModels.Mappings;
@@ -15,12 +15,23 @@ namespace MultiClusterMgmtSys.Application.Services;
 /// <summary>
 /// Service(服务)管理服务:基于所选集群的凭据实时读写 k8s Service。
 /// 支持按命名空间查询、详情、后端地址(EndpointSlice,老集群回退传统 Endpoints)、YAML 创建/更新与删除,成功后写审计。
+/// 写操作经 <see cref="ResourceOwnershipGuard"/> 服务端强制归属(Admin 穿透、创建者本人、无主 fail-closed),
+/// 读路径投影 CanOperate;创建时校验命名空间黑名单并盖章归属(契约见 k8s-resource-ownership)。
 /// </summary>
-public class SvcService(IClusterRepository repo, AuditService auditService, ILogger<SvcService> logger, IClusterClientCache clientCache)
+public class SvcService(
+    IClusterRepository repo,
+    ResourceOwnershipGuard guard,
+    AuditService auditService,
+    IClusterClientCache clientCache,
+    ILogger<SvcService> logger)
 {
     private readonly IClusterRepository _repo = repo;
 
+    private readonly ResourceOwnershipGuard _guard = guard;
+
     private readonly AuditService _auditService = auditService;
+
+    private readonly IClusterClientCache _clientCache = clientCache;
 
     private readonly ILogger<SvcService> _logger = logger;
 
@@ -29,7 +40,7 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
     {
         var entity = await _repo.GetByIdAsync(clusterId)
             ?? throw new NotFoundException($"集群 {clusterId} 不存在");
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
         try
         {
             var nsList = await client.CoreV1.ListNamespaceAsync();
@@ -47,15 +58,23 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
     {
         var entity = await _repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
         try
         {
             var list = request.Namespace is null
                 ? await client.CoreV1.ListServiceForAllNamespacesAsync()
                 : await client.CoreV1.ListNamespacedServiceAsync(request.Namespace);
-            return list.Items.Select(s => s.ToSvcListViewModel()).ToList();
+            var isAdmin = _guard.IsAdmin();
+            var userId = _guard.TryGetUserId();
+            var helmIndex = await _guard.GetHelmOwnershipIndexAsync(entity.Id);
+            return list.Items.Select(s =>
+            {
+                var vm = s.ToSvcListViewModel();
+                vm.CanOperate = isAdmin || ResourceOwnershipPolicy.CanOperateForIndex(s.Metadata, userId, helmIndex);
+                return vm;
+            }).ToList();
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "ListServices failed clusterId={ClusterId} ns={Namespace}", request.ClusterId, request.Namespace);
             throw K8sExceptionMapper.Translate(ex, "加载服务列表");
@@ -67,18 +86,22 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
     {
         var entity = await _repo.GetByIdAsync(request.ClusterId);
         if (entity is null) return null;
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
+        V1Service svc;
         try
         {
-            var svc = await client.CoreV1.ReadNamespacedServiceAsync(request.Name, request.Namespace);
-            return svc.ToSvcDetailViewModel();
+            svc = await client.CoreV1.ReadNamespacedServiceAsync(request.Name, request.Namespace);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "ReadService failed clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
             throw K8sExceptionMapper.Translate(ex, "加载服务详情");
         }
+
+        var vm = svc.ToSvcDetailViewModel();
+        vm.CanOperate = await _guard.CanOperateAsync(entity.Id, svc.Metadata);
+        return vm;
     }
 
     /// <summary>查询服务后端地址列表:优先 EndpointSlice,其 API 不可用(404)时回退传统 Endpoints;集群不存在返回空列表,其他 K8s 失败经翻译后抛业务异常。</summary>
@@ -130,17 +153,29 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
         }
     }
 
-    /// <summary>删除指定服务,成功后写删除审计;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
+    /// <summary>删除指定服务:先读对象完成归属判定,成功后写删除审计;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
     public async Task DeleteSvcAsync(SvcKeyRequest request)
     {
         var entity = await _repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
+        V1Service existing;
+        try
+        {
+            existing = await client.CoreV1.ReadNamespacedServiceAsync(request.Name, request.Namespace);
+        }
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
+        {
+            _logger.LogWarning(ex, "ReadService failed for ownership check clusterId={ClusterId} ns={Namespace} name={Name}",
+                request.ClusterId, request.Namespace, request.Name);
+            throw K8sExceptionMapper.Translate(ex, "加载服务详情");
+        }
+        await _guard.RequireOperateAsync(request.ClusterId, request.Namespace, request.Name, existing.Metadata);
         try
         {
             await client.CoreV1.DeleteNamespacedServiceAsync(request.Name, request.Namespace);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "DeleteService failed clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
@@ -149,12 +184,12 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
         await _auditService.LogAsync(AuditCategory.Service, AuditAction.Delete, $"服务: {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
     }
 
-    /// <summary>以 YAML 更新服务:先校验 clusterIP/clusterIPs/ipFamilies 等不可变字段未被改动,再以服务器最新对象(补齐 resourceVersion/uid)替换提交;YAML 非法或改动不可变字段抛 <see cref="ValidationException"/>,成功后写更新审计。</summary>
+    /// <summary>以 YAML 更新服务:先读对象完成归属判定,再校验 clusterIP/clusterIPs/ipFamilies 等不可变字段未被改动(归属元数据保持服务器侧提交),以服务器最新对象(补齐 resourceVersion/uid)替换提交;YAML 非法或改动不可变字段抛 <see cref="ValidationException"/>,成功后写更新审计。</summary>
     public async Task UpdateSvcFromYamlAsync(SvcUpdateRequest request)
     {
         var entity = await _repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
-        var client = clientCache.GetOrCreate(entity);
+        var client = _clientCache.GetOrCreate(entity);
         V1Service deserialized;
         try
         {
@@ -171,13 +206,13 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
         {
             existing = await client.CoreV1.ReadNamespacedServiceAsync(request.Name, request.Namespace);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "ReadService failed for update clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
             throw K8sExceptionMapper.Translate(ex, "加载服务详情");
         }
-
+        await _guard.RequireOperateAsync(request.ClusterId, request.Namespace, request.Name, existing.Metadata);
         GuardImmutableFields(deserialized.Spec, existing.Spec);
 
         deserialized.Metadata.Name = request.Name;
@@ -189,7 +224,7 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
         {
             await client.CoreV1.ReplaceNamespacedServiceAsync(deserialized, request.Name, request.Namespace);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "ReplaceService failed clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
@@ -198,12 +233,13 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
         await _auditService.LogAsync(AuditCategory.Service, AuditAction.Update, $"服务: {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
     }
 
-    /// <summary>以 YAML 创建服务,命名空间取自 YAML 的 metadata.namespace;YAML 非法或未指定命名空间抛 <see cref="ValidationException"/>,成功后写创建审计。</summary>
+    /// <summary>以 YAML 创建服务:强制登录身份、校验命名空间黑名单并盖章归属,命名空间取自 YAML 的 metadata.namespace;YAML 非法或未指定命名空间抛 <see cref="ValidationException"/>,成功后写创建审计。</summary>
     public async Task CreateSvcFromYamlAsync(SvcCreateRequest request)
     {
         var entity = await _repo.GetByIdAsync(request.ClusterId)
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
-        var client = clientCache.GetOrCreate(entity);
+        var identity = _guard.RequireCreator();
+        var client = _clientCache.GetOrCreate(entity);
         V1Service body;
         try
         {
@@ -217,16 +253,29 @@ public class SvcService(IClusterRepository repo, AuditService auditService, ILog
         var ns = body.Metadata?.NamespaceProperty;
         if (string.IsNullOrWhiteSpace(ns))
             throw new ValidationException("YAML 未指定 metadata.namespace");
+        PrepareForCreation(ns, identity, body.Metadata);
         try
         {
             await client.CoreV1.CreateNamespacedServiceAsync(body, ns);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
             _logger.LogWarning(ex, "CreateService failed clusterId={ClusterId} ns={Namespace}", request.ClusterId, ns);
             throw K8sExceptionMapper.Translate(ex, "创建服务");
         }
         await _auditService.LogAsync(AuditCategory.Service, AuditAction.Create, $"服务: {ns}/{body.Metadata?.Name ?? "未知"} @ 集群 {entity.Name}");
+    }
+
+    /// <summary>创建前收拢:命名空间黑名单(Admin 不受限)+ 归属盖章(无条件覆盖用户 YAML 的归属元数据)。</summary>
+    private void PrepareForCreation(string namespaceName, (int UserId, string UserName) identity, V1ObjectMeta? metadata)
+    {
+        if (metadata is null)
+        {
+            throw new ValidationException("YAML 未指定 metadata");
+        }
+
+        ResourceOwnershipPolicy.EnsureCreationTargetNamespaceAllowed(namespaceName, _guard.IsAdmin());
+        ResourceOwnershipStamp.Stamp(metadata, identity.UserId, identity.UserName);
     }
 
     private static void GuardImmutableFields(V1ServiceSpec? incoming, V1ServiceSpec? existing)

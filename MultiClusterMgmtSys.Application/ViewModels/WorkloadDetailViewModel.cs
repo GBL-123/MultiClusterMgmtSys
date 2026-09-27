@@ -79,4 +79,7 @@ public class WorkloadDetailViewModel
 
     /// <summary>资源原始 YAML 文本,用于详情页 YAML 视图。</summary>
     public string Yaml { get; set; } = "";
+
+    /// <summary>当前用户是否可操作该资源(Admin 或创建者本人,fail-closed;契约见 k8s-resource-ownership)。</summary>
+    public bool CanOperate { get; set; }
 }
