@@ -1101,6 +1101,28 @@ html .dashboard-title {
         border-bottom-right-radius: 3px;
     }
 
+/* 骨架空态:KPI 带下方仍接「暂无集群」提示行,带子取消底缘圆角,由板面收底 */
+
+.dashboard-stat-bar.is-skeleton {
+    border-radius: 0;
+}
+
+.dashboard-stat-bar.is-skeleton .dashboard-stat:first-child {
+    border-bottom-left-radius: 0;
+}
+
+.dashboard-stat-bar.is-skeleton .dashboard-stat:last-child {
+    border-bottom-right-radius: 0;
+}
+
+.dashboard-empty {
+    padding: 16px 16px 20px;
+}
+
+.dashboard-empty .empty-state {
+    width: 100%;
+}
+
 .dashboard-stat-head {
     display: flex;
     align-items: baseline;

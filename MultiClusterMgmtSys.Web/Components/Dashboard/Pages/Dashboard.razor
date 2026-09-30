@@ -51,9 +51,20 @@
             </MudStack>
         </div>
 
-        @if (_model is { HasClusters: true })
+        @if (_model is not null)
         {
-            <DashboardStatBar Model="@_model" />
+            <DashboardStatBar Model="@_model" Skeleton="@(!_model.HasClusters)" />
+        }
+
+        @if (_model is not null && !_model.HasClusters)
+        {
+            <div class="dashboard-empty">
+                <div class="empty-state">
+                    <span>[ 暂无集群 ]</span>
+                    <MudText Typo="Typo.caption" Class="font-mono">// 先登记集群,看板才会有数据</MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/clusters">前往集群管理</MudButton>
+                </div>
+            </div>
         }
     </MudPaper>
 
@@ -61,17 +72,7 @@
     {
         <MudText Class="font-mono mud-text-secondary">// 正在加载...</MudText>
     }
-    else if (!_model.HasClusters)
-    {
-        <MudPaper Class="pa-4">
-            <div class="empty-state">
-                <span>[ 暂无集群 ]</span>
-                <MudText Typo="Typo.caption" Class="font-mono">// 先登记集群,看板才会有数据</MudText>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/clusters">前往集群管理</MudButton>
-            </div>
-        </MudPaper>
-    }
-    else
+    else if (_model.HasClusters)
     {
         <div class="dashboard-metrics">
             <DashboardGroupHealthCard Items="@_model.GroupHealth" />

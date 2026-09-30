@@ -28,10 +28,22 @@ public class DashboardPageTests
         var cut = ctx.Render<Dashboard>();
         cut.WaitForState(() => cut.FindAll(".empty-state").Count > 0, TimeSpan.FromSeconds(5));
 
+        // 板面骨架空态:墨线 + KPI 带(— 占位,非零值)与提示行同卡
+        Assert.Single(cut.FindAll(".dashboard-stat-bar"));
         Assert.Contains("暂无集群", cut.Find(".empty-state").TextContent);
-        Assert.Empty(cut.FindAll(".dashboard-stat-bar"));
+        Assert.Contains("前往集群管理", cut.Find(".empty-state").TextContent);
+
+        var values = cut.FindAll(".dashboard-stat-value").Select(v => v.TextContent.Trim()).ToList();
+        Assert.Equal(new[] { "—", "—", "—", "—", "—" }, values);
+
+        var cta = cut.Find(".empty-state a[href='/clusters']");
+        Assert.Contains("前往集群管理", cta.TextContent);
+
+        // 无集群时不展示新鲜度/过期告警等误导内容(契约:无集群空态)
         Assert.Empty(cut.FindAll(".dashboard-freshness"));
         Assert.Empty(cut.FindAll(".dashboard-stale-banner"));
+        Assert.Empty(cut.FindAll(".dashboard-metrics"));
+        Assert.Empty(cut.FindAll(".dashboard-lists"));
     }
 
     [Fact]
