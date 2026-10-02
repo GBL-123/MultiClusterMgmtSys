@@ -18,8 +18,13 @@
 
         <MudList T="string">
             <MudListItem Icon="@Icons.Material.Filled.ViewModule"
-                         Text="全部集群"
-                         OnClick="@(() => OnGroupSelected.InvokeAsync(null))" />
+                         OnClick="@(() => OnGroupSelected.InvokeAsync(null))">
+                <MudStack Row="true" AlignItems="AlignItems.Center">
+                    <MudText>全部集群</MudText>
+                    <MudSpacer />
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text">@TotalCount</MudChip>
+                </MudStack>
+            </MudListItem>
             <MudListItem Icon="@Icons.Material.Filled.FolderOpen"
                          OnClick="@(() => OnGroupSelected.InvokeAsync(0))">
                 <MudStack Row="true" AlignItems="AlignItems.Center">
@@ -79,4 +84,6 @@
 
     [Parameter]
     public int UngroupedCount { get; set; }
+
+    private int TotalCount => UngroupedCount + Groups.Sum(g => g.ClusterCount);
 }

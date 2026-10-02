@@ -329,6 +329,7 @@
         if (result is not null && !result.Canceled)
         {
             await RefreshVersionsIfNeeded();
+            await LoadSidebarAndVersionsAsync();
             await _tableComponent?.ReloadDataAsync();
         }
     }

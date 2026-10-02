@@ -302,6 +302,7 @@ public class GroupSidebarTests
         Assert.Contains("prod", cut.Markup);
         Assert.Contains("dev", cut.Markup);
         Assert.Contains("4", cut.Markup);
+        Assert.Contains("8", cut.Markup);
     }
 
     [Fact]
