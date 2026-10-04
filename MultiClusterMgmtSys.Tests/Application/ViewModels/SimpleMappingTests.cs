@@ -51,6 +51,8 @@ public class AuditLogMappingTests
     [InlineData(AuditCategory.Workload, "工作负载")]
     [InlineData(AuditCategory.Service, "服务")]
     [InlineData(AuditCategory.Namespace, "命名空间")]
+    [InlineData(AuditCategory.Secret, "密钥")]
+    [InlineData(AuditCategory.Storage, "存储")]
     public void Category_display_names_are_chinese(AuditCategory category, string expected)
     {
         Assert.Equal(expected, category.ToDisplayName());
@@ -67,6 +69,7 @@ public class AuditLogMappingTests
     [InlineData(AuditAction.Rename, "重命名")]
     [InlineData(AuditAction.Scale, "扩缩容")]
     [InlineData(AuditAction.Restart, "重启")]
+    [InlineData(AuditAction.View, "查看明文")]
     public void Action_display_names_are_chinese(AuditAction action, string expected)
     {
         Assert.Equal(expected, action.ToDisplayName());

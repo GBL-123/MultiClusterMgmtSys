@@ -1,0 +1,54 @@
+@using MultiClusterMgmtSys.Application.ViewModels
+
+<MudTable T="StorageVolumeListViewModel"
+          Items="@Items"
+          Hover="true"
+          FixedHeader="true"
+          Loading="Loading"
+          Class="volumes-table">
+    <HeaderContent>
+        <MudTh><MudTableSortLabel T="StorageVolumeListViewModel" SortBy="@(x => x.Name)" SortLabel="Name">名称</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="StorageVolumeListViewModel" SortBy="@(x => x.Phase)" SortLabel="Phase">状态</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="StorageVolumeListViewModel" SortBy="@(x => x.Capacity)" SortLabel="Capacity">容量</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="StorageVolumeListViewModel" SortBy="@(x => x.ReclaimPolicy)" SortLabel="ReclaimPolicy">回收策略</MudTableSortLabel></MudTh>
+        <MudTh>绑定声明</MudTh>
+        <MudTh><MudTableSortLabel T="StorageVolumeListViewModel" SortBy="@(x => x.StorageClassName)" SortLabel="StorageClassName">存储类</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="StorageVolumeListViewModel" SortBy="@(x => x.CreatedAt)" SortLabel="CreatedAt">创建时间</MudTableSortLabel></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="名称">
+            <MudText Class="font-mono link-primary"
+                     @onclick="() => OnNavigateDetail.InvokeAsync(context.Name)">
+                @context.Name
+            </MudText>
+        </MudTd>
+        <MudTd DataLabel="状态">
+            <StatusBadge Text="@context.PhaseText" CssClass="@context.PhaseCssClass" Raw="@context.Phase" />
+        </MudTd>
+        <MudTd DataLabel="容量"><span class="font-mono">@(string.IsNullOrEmpty(context.Capacity) ? "—" : context.Capacity)</span></MudTd>
+        <MudTd DataLabel="回收策略"><span class="font-mono">@(string.IsNullOrEmpty(context.ReclaimPolicy) ? "—" : context.ReclaimPolicy)</span></MudTd>
+        <MudTd DataLabel="绑定声明"><span class="font-mono">@(context.BoundClaim ?? "—")</span></MudTd>
+        <MudTd DataLabel="存储类"><span class="font-mono">@(string.IsNullOrEmpty(context.StorageClassName) ? "—" : context.StorageClassName)</span></MudTd>
+        <MudTd DataLabel="创建时间"><span class="font-mono">@(context.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</span></MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager RowsPerPageString="每页条数：" InfoFormat="共 {all_items} 条" />
+    </PagerContent>
+    <LoadingContent>
+        <MudText Class="pa-4 font-mono mud-text-secondary">// 正在加载...</MudText>
+    </LoadingContent>
+    <NoRecordsContent>
+        <div class="empty-state">[ 暂无持久卷 ]</div>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<StorageVolumeListViewModel> Items { get; set; } = new List<StorageVolumeListViewModel>();
+
+    [Parameter]
+    public bool Loading { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnNavigateDetail { get; set; }
+}

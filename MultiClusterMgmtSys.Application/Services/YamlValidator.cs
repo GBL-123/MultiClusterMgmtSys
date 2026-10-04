@@ -1,6 +1,7 @@
 using k8s;
 using k8s.Models;
 using MultiClusterMgmtSys.Application.Abstractions;
+using MultiClusterMgmtSys.Application.Common.Secrets;
 using MultiClusterMgmtSys.Application.Enums;
 
 namespace MultiClusterMgmtSys.Application.Services;
@@ -18,6 +19,14 @@ public class YamlValidator : IYamlValidator
     /// <summary>校验 Service YAML 语法;语法错误抛解析异常。</summary>
     /// <param name="yaml">YAML 文本。</param>
     public void ValidateService(string yaml) => KubernetesYaml.Deserialize<V1Service>(yaml);
+
+    /// <summary>校验 Secret YAML 语法;经 <see cref="SecretYamlBody"/> 字符串形态反序列化(占位符值同样可通过),语法错误抛解析异常。</summary>
+    /// <param name="yaml">YAML 文本。</param>
+    public void ValidateSecret(string yaml) => KubernetesYaml.Deserialize<SecretYamlBody>(yaml);
+
+    /// <summary>校验持久卷声明 YAML 语法;语法错误抛解析异常。</summary>
+    /// <param name="yaml">YAML 文本。</param>
+    public void ValidatePersistentVolumeClaim(string yaml) => KubernetesYaml.Deserialize<V1PersistentVolumeClaim>(yaml);
 
     /// <summary>校验命名空间 YAML 语法并返回 metadata.name(可能为空);语法错误抛解析异常。</summary>
     /// <param name="yaml">YAML 文本。</param>

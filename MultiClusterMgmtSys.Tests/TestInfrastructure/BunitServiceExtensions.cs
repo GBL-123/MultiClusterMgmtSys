@@ -165,4 +165,28 @@ public static class BunitServiceExtensions
         ctx.Services.AddScoped<DashboardService>();
         return (harness, k8s);
     }
+
+    public static (ServiceHarness Harness, Mock<IKubernetes> K8s) AddSecretStack(this BunitContext ctx, string actor = "admin")
+    {
+        var harness = ctx.AddClusterStack(actor);
+        ctx.AddGroupAndSyncStack(harness, actor);
+        var k8s = new Mock<IKubernetes>();
+        ctx.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8s));
+        ctx.AddClientCache();
+        ctx.Services.AddScoped<SecretService>();
+        ctx.AddYamlTemplates();
+        return (harness, k8s);
+    }
+
+    public static (ServiceHarness Harness, Mock<IKubernetes> K8s) AddStorageStack(this BunitContext ctx, string actor = "admin")
+    {
+        var harness = ctx.AddClusterStack(actor);
+        ctx.AddGroupAndSyncStack(harness, actor);
+        var k8s = new Mock<IKubernetes>();
+        ctx.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8s));
+        ctx.AddClientCache();
+        ctx.Services.AddScoped<StorageService>();
+        ctx.AddYamlTemplates();
+        return (harness, k8s);
+    }
 }

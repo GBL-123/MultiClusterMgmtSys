@@ -1,0 +1,44 @@
+@using MultiClusterMgmtSys.Application.ViewModels
+
+<MudTable T="StorageClassListViewModel"
+          Items="@Items"
+          Hover="true"
+          FixedHeader="true"
+          Loading="Loading"
+          Class="classes-table">
+    <HeaderContent>
+        <MudTh><MudTableSortLabel T="StorageClassListViewModel" SortBy="@(x => x.Name)" SortLabel="Name">名称</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="StorageClassListViewModel" SortBy="@(x => x.Provisioner)" SortLabel="Provisioner">制备器</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="StorageClassListViewModel" SortBy="@(x => x.ReclaimPolicy)" SortLabel="ReclaimPolicy">回收策略</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel T="StorageClassListViewModel" SortBy="@(x => x.VolumeBindingMode)" SortLabel="VolumeBindingMode">绑定模式</MudTableSortLabel></MudTh>
+        <MudTh>允许扩展</MudTh>
+        <MudTh><MudTableSortLabel T="StorageClassListViewModel" SortBy="@(x => x.CreatedAt)" SortLabel="CreatedAt">创建时间</MudTableSortLabel></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="名称"><span class="font-mono font-weight-medium">@context.Name</span></MudTd>
+        <MudTd DataLabel="制备器"><span class="font-mono">@context.Provisioner</span></MudTd>
+        <MudTd DataLabel="回收策略"><span class="font-mono">@context.ReclaimPolicy</span></MudTd>
+        <MudTd DataLabel="绑定模式"><span class="font-mono">@context.VolumeBindingMode</span></MudTd>
+        <MudTd DataLabel="允许扩展">
+            <span class="font-mono">@(context.AllowVolumeExpansion.HasValue ? (context.AllowVolumeExpansion.Value ? "是" : "否") : "—")</span>
+        </MudTd>
+        <MudTd DataLabel="创建时间"><span class="font-mono">@(context.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</span></MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager RowsPerPageString="每页条数：" InfoFormat="共 {all_items} 条" />
+    </PagerContent>
+    <LoadingContent>
+        <MudText Class="pa-4 font-mono mud-text-secondary">// 正在加载...</MudText>
+    </LoadingContent>
+    <NoRecordsContent>
+        <div class="empty-state">[ 暂无存储类 ]</div>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<StorageClassListViewModel> Items { get; set; } = new List<StorageClassListViewModel>();
+
+    [Parameter]
+    public bool Loading { get; set; }
+}

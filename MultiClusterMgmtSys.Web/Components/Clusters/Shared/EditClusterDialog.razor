@@ -40,18 +40,18 @@
                 }
             </MudSelect>
 
-            <MudTextField @bind-Value="_Remark"
-                          Label="备注"
-                          Lines="2"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
-                          Class="mb-3" />
-
             <MudTextField @bind-Value="_ApiServer"
                           Label="API Server 地址"
                           Required="@(_connectionType == ConnectionType.Token)"
                           RequiredError="Token 模式必填"
                           HelperText="@(_connectionType == ConnectionType.Token ? "Token 模式必填" : "可选，留空则从 kubeconfig 中解析")"
+                          Variant="Variant.Outlined"
+                          Margin="Margin.Dense"
+                          Class="mb-3" />
+
+            <MudTextField @bind-Value="_Remark"
+                          Label="备注"
+                          Lines="2"
                           Variant="Variant.Outlined"
                           Margin="Margin.Dense"
                           Class="mb-3" />

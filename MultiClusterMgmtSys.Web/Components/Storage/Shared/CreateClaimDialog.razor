@@ -1,0 +1,85 @@
+@using MultiClusterMgmtSys.Application.Abstractions
+@using MultiClusterMgmtSys.Domain.Exceptions
+@using MultiClusterMgmtSys.Application.Requests
+@using MultiClusterMgmtSys.Application.Services
+
+@inject StorageService StorageService
+@inject IYamlValidator YamlValidator
+@inject IYamlTemplateService YamlTemplateService
+@inject ISnackbar Snackbar
+@inject ExceptionPresenter ExHandler
+
+<MudDialog>
+    <DialogContent>
+        <MudTextField T="string"
+                      @bind-Value="_yamlContent"
+                      Label="YAML"
+                      Lines="25"
+                      Variant="Variant.Outlined"
+                      Margin="Margin.Dense"
+                      Style="font-family: monospace;" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Variant="Variant.Text" Disabled="_saving">取消</MudButton>
+        <MudButton OnClick="Submit" Color="Color.Primary" Variant="Variant.Filled" Disabled="_saving"
+                   StartIcon="@(_saving ? null : Icons.Material.Filled.Save)">
+            @if (_saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            创建
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    private string _yamlContent = "";
+
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _yamlContent = await YamlTemplateService.GetTemplateAsync("pvc", "default");
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task Submit()
+    {
+        try
+        {
+            YamlValidator.ValidatePersistentVolumeClaim(_yamlContent);
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(new ValidationException($"YAML 格式错误:{ex.Message}"), "创建持久卷声明");
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            await StorageService.CreateClaimFromYamlAsync(new StorageClaimCreateRequest(ClusterId, _yamlContent));
+            Snackbar.Add("创建成功", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (ConflictException)
+        {
+            Snackbar.Add("同名持久卷声明已存在", Severity.Warning);
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "创建持久卷声明");
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

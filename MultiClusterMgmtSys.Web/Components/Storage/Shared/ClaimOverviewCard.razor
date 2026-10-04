@@ -1,0 +1,52 @@
+@using MultiClusterMgmtSys.Application.ViewModels
+
+<MudCard Class="pa-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">基本信息</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <StatusBadge Text="@Claim.PhaseText" CssClass="@Claim.PhaseCssClass" Raw="@Claim.Phase" />
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudGrid Spacing="3">
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">名称</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono font-weight-medium">@Claim.Name</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">命名空间</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@Claim.Namespace</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">请求容量</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(Claim.Capacity) ? "—" : Claim.Capacity)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">访问模式</MudText>
+                @if (Claim.AccessModes.Count == 0)
+                {
+                    <MudText Typo="Typo.body1">—</MudText>
+                }
+                else
+                {
+                    <MudText Typo="Typo.body1" Class="font-mono">@string.Join(", ", Claim.AccessModes)</MudText>
+                }
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">存储类</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(Claim.StorageClass) ? "—" : Claim.StorageClass)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">创建时间</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(Claim.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public StorageClaimDetailViewModel Claim { get; set; } = default!;
+}

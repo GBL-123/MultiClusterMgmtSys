@@ -226,6 +226,10 @@ html, body {
 .audit-logs-table,
 .nodes-table,
 .configmaps-table,
+.secrets-table,
+.claims-table,
+.volumes-table,
+.classes-table,
 .services-table,
 .events-table,
 .workloads-table,
@@ -243,6 +247,10 @@ html, body {
     .audit-logs-table .mud-table-container,
     .nodes-table .mud-table-container,
     .configmaps-table .mud-table-container,
+    .secrets-table .mud-table-container,
+    .claims-table .mud-table-container,
+    .volumes-table .mud-table-container,
+    .classes-table .mud-table-container,
     .services-table .mud-table-container,
     .events-table .mud-table-container,
     .workloads-table .mud-table-container,
@@ -257,6 +265,10 @@ html, body {
     .audit-logs-table .mud-table-pagination,
     .nodes-table .mud-table-pagination,
     .configmaps-table .mud-table-pagination,
+    .secrets-table .mud-table-pagination,
+    .claims-table .mud-table-pagination,
+    .volumes-table .mud-table-pagination,
+    .classes-table .mud-table-pagination,
     .services-table .mud-table-pagination,
     .events-table .mud-table-pagination,
     .workloads-table .mud-table-pagination,
@@ -696,6 +708,33 @@ a:focus-visible {
 .credential-fill .credential-viewer {
     flex: 1 1 auto;
     min-height: 320px;
+}
+
+/* Secret 键值:掩码行、揭示明文与二进制 base64 截断 */
+.secret-masked-value {
+    color: #6E675C;
+    letter-spacing: 3px;
+}
+
+.secret-revealed-value {
+    overflow: auto;
+    border: 1px solid #E2DED5;
+    border-radius: 3px;
+    padding: 8px;
+    background: #FCFBF7;
+    color: #111111;
+    font-size: 12.5px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 40vh;
+}
+
+.secret-base64-cell {
+    max-width: 360px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 /* ---------- 11. Scrollbars: slim graphite ---------- */

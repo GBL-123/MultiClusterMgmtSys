@@ -1,0 +1,42 @@
+@using MultiClusterMgmtSys.Application.ViewModels
+
+<MudCard Class="pa-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">挂载此卷的 Pod</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (Pods.Count == 0)
+        {
+            <MudText Align="Align.Center" Class="mud-text-secondary">无 Pod 挂载此卷</MudText>
+        }
+        else
+        {
+            <MudTable T="StorageMountedPodViewModel"
+                      Items="@Pods"
+                      Dense="true"
+                      Hover="true"
+                      Striped="true"
+                      Elevation="0">
+                <HeaderContent>
+                    <MudTh>名称</MudTh>
+                    <MudTh>状态</MudTh>
+                    <MudTh>开始时间</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="名称"><span class="font-mono">@context.Name</span></MudTd>
+                    <MudTd DataLabel="状态">
+                        <StatusBadge Text="@context.PhaseText" CssClass="@context.PhaseCssClass" Raw="@context.Phase" />
+                    </MudTd>
+                    <MudTd DataLabel="开始时间"><span class="font-mono">@(context.StartedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</span></MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<StorageMountedPodViewModel> Pods { get; set; } = [];
+}

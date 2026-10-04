@@ -363,4 +363,45 @@ public static class K8sDisplayText
             _ => "offline"
         };
     }
+
+    /// <summary>持久卷(PV)phase 中文展示名;未登记值回退原文(契约:未登记回退原文)。</summary>
+    /// <param name="phase">PV phase 原始值(Available/Bound/Released/Failed)。</param>
+    public static string PvPhaseText(string? phase) => phase switch
+    {
+        "Available" => "可用",
+        "Bound" => "已绑定",
+        "Released" => "已释放",
+        "Failed" => "失败",
+        _ => phase ?? ""
+    };
+
+    /// <summary>持久卷(PV)phase 对应的状态徽章 CSS 类:Bound/Available 在线色系,Released/Pending 未知色系,其余离线色系。</summary>
+    /// <param name="phase">PV phase 原始值。</param>
+    public static string PvPhaseCssClass(string? phase) => phase switch
+    {
+        "Available" or "Bound" => "online",
+        "Released" => "unknown",
+        "Lost" or "Failed" => "offline",
+        _ => "unknown"
+    };
+
+    /// <summary>持久卷声明(PVC)phase 中文展示名;未登记值回退原文(契约:未登记回退原文)。</summary>
+    /// <param name="phase">PVC phase 原始值(Bound/Pending/Lost)。</param>
+    public static string PvcPhaseText(string? phase) => phase switch
+    {
+        "Bound" => "已绑定",
+        "Pending" => "等待中",
+        "Lost" => "丢失",
+        _ => phase ?? ""
+    };
+
+    /// <summary>持久卷声明(PVC)phase 对应的状态徽章 CSS 类:Bound 在线色系,Pending 未知色系,其余离线色系。</summary>
+    /// <param name="phase">PVC phase 原始值。</param>
+    public static string PvcPhaseCssClass(string? phase) => phase switch
+    {
+        "Bound" => "online",
+        "Pending" => "unknown",
+        "Lost" => "offline",
+        _ => "unknown"
+    };
 }

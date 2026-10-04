@@ -45,5 +45,8 @@ public enum AuditAction
     Rollback = 12,
 
     /// <summary>Helm release 卸载。</summary>
-    Uninstall = 13
+    Uninstall = 13,
+
+    /// <summary>Secret key 明文揭示(只读操作的审计例外)。</summary>
+    View = 14
 }

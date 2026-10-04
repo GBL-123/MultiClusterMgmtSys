@@ -233,4 +233,29 @@ public class K8sDisplayTextTests
     [InlineData("New", "New")]
     public void Pod_condition_type_maps_known_values(string type, string expected)
         => Assert.Equal(expected, K8sDisplayText.PodConditionTypeText(type));
+
+    [Theory]
+    [InlineData("Available", "可用", "online")]
+    [InlineData("Bound", "已绑定", "online")]
+    [InlineData("Released", "已释放", "unknown")]
+    [InlineData("Failed", "失败", "offline")]
+    [InlineData("Pending", "Pending", "unknown")]
+    [InlineData(null, "", "unknown")]
+    public void Pv_phase_helpers_map_known_values_and_fallback(string? phase, string expectedText, string expectedClass)
+    {
+        Assert.Equal(expectedText, K8sDisplayText.PvPhaseText(phase));
+        Assert.Equal(expectedClass, K8sDisplayText.PvPhaseCssClass(phase));
+    }
+
+    [Theory]
+    [InlineData("Bound", "已绑定", "online")]
+    [InlineData("Pending", "等待中", "unknown")]
+    [InlineData("Lost", "丢失", "offline")]
+    [InlineData("Maintenance", "Maintenance", "unknown")]
+    [InlineData(null, "", "unknown")]
+    public void Pvc_phase_helpers_map_known_values_and_fallback(string? phase, string expectedText, string expectedClass)
+    {
+        Assert.Equal(expectedText, K8sDisplayText.PvcPhaseText(phase));
+        Assert.Equal(expectedClass, K8sDisplayText.PvcPhaseCssClass(phase));
+    }
 }

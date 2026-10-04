@@ -33,5 +33,11 @@ public enum AuditCategory
     Namespace = 8,
 
     /// <summary>Helm 应用管理(release 安装/升级/回滚/卸载)。</summary>
-    Helm = 9
+    Helm = 9,
+
+    /// <summary>Secret 敏感配置(创建/修改/删除/查看明文)。</summary>
+    Secret = 10,
+
+    /// <summary>存储管理(PVC 创建/删除)。</summary>
+    Storage = 11
 }

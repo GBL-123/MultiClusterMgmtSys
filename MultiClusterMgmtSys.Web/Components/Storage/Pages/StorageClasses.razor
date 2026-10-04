@@ -1,0 +1,212 @@
+﻿@attribute [Authorize]
+@page "/storage/classes"
+@page "/storage/classes/{ClusterId:int}"
+
+@using MultiClusterMgmtSys.Domain.Enums
+@using MultiClusterMgmtSys.Application.Enums
+@using MultiClusterMgmtSys.Application.Models
+@using MultiClusterMgmtSys.Application.Requests
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Application.ViewModels
+@using MultiClusterMgmtSys.Web.Components.Storage.Shared
+@using MultiClusterMgmtSys.Web.Components.Common
+
+@inject ClusterService ClusterService
+@inject StorageService StorageService
+@inject ClusterSelectionState ClusterSelection
+@inject NavigationManager NavigationManager
+@inject ExceptionPresenter ExHandler
+
+<PageTitle>存储类</PageTitle>
+
+<MudStack Row="true" Spacing="3" Class="d-flex flex-auto">
+    <ClusterSelectSidebar Clusters="@_clusters"
+                          SelectedClusterId="@EffectiveClusterId"
+                          OnClusterSelected="SelectCluster" />
+
+    <MudStack Class="flex-auto">
+        @if (!EffectiveClusterId.HasValue)
+        {
+            <div class="d-flex flex-column align-center justify-center" style="min-height:60vh;">
+                <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Large" Class="mud-text-secondary mb-4" />
+                <MudText Typo="Typo.h6" Class="mud-text-secondary">请从左侧选择一个集群</MudText>
+            </div>
+        }
+        else if (_loading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+        }
+        else if (_cluster is null)
+        {
+            <MudCard Class="pa-8" Elevation="2">
+                <MudCardContent>
+                    <MudText Align="Align.Center" Class="mud-text-secondary">未找到该集群</MudText>
+                    <div class="d-flex justify-center mt-4">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.ArrowBack"
+                                   OnClick="@(() => NavigationManager.NavigateTo("/clusters"))">
+                            返回集群列表
+                        </MudButton>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        }
+        else
+        {
+            <MudPaper Class="pa-4">
+                <MudStack Row="true" AlignItems="AlignItems.Center">
+                    <MudText Typo="Typo.h5">存储类</MudText>
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="GetClusterStatusColor(_cluster.Status)"
+                             Variant="Variant.Filled"
+                             Class="ml-2">
+                        @_cluster.Name · @_cluster.StatusText
+                    </MudChip>
+                    <MudSpacer />
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Inherit"
+                               StartIcon="@Icons.Material.Filled.Refresh"
+                               OnClick="@(() => LoadAsync(EffectiveClusterId!.Value))"
+                               Disabled="@_loading">
+                        刷新
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+
+            @if (!_cluster.IsReachable)
+            {
+                <MudCard Elevation="1">
+                    <MudCardContent>
+                        <MudText Align="Align.Center" Class="mud-text-secondary">集群不可达，无法获取存储类</MudText>
+                    </MudCardContent>
+                </MudCard>
+            }
+            else
+            {
+                <VolumeClassesTable Items="@_classes" Loading="@_loading" />
+            }
+        }
+    </MudStack>
+</MudStack>
+
+@code {
+    [Parameter]
+    public int? ClusterId { get; set; }
+
+
+    private List<ClusterViewModel> _clusters = new();
+
+    private ClusterDetailViewModel? _cluster;
+
+    private List<StorageClassListViewModel> _classes = new();
+
+    private bool _loading;
+
+    private int? _previousClusterId;
+
+    private bool _hasInitialized;
+
+    /// <summary>
+    /// 当前生效的集群上下文:URL 参数存在时用 URL 参数,
+    /// 否则用会话级记忆的选择(回到列表页时原位恢复)。
+    /// </summary>
+    private int? EffectiveClusterId => ClusterId ?? ClusterSelection.SelectedClusterId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClustersAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (ClusterId.HasValue)
+        {
+            ClusterSelection.Set(ClusterId.Value);
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ClusterId == _previousClusterId && _hasInitialized)
+        {
+            return;
+        }
+        _hasInitialized = true;
+        _previousClusterId = ClusterId;
+
+        if (EffectiveClusterId.HasValue)
+        {
+            await LoadAsync(EffectiveClusterId.Value);
+        }
+        else
+        {
+            _cluster = null;
+            _classes = new();
+            _loading = false;
+        }
+    }
+
+    private async Task LoadClustersAsync()
+    {
+        try
+        {
+            var request = new ClusterQueryRequest { Page = 1, PageSize = 1000, SortBy = ClusterSortField.Name, SortDescending = false };
+            var result = await ClusterService.GetPagedAsync(request);
+            _clusters = result.Items;
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载集群列表");
+        }
+    }
+
+    private async Task LoadAsync(int id)
+    {
+        _loading = true;
+        try
+        {
+            _cluster = await ClusterService.GetClusterDetailAsync(id);
+            if (_cluster is not null)
+            {
+                ClusterSelection.Set(id);
+            }
+            if (_cluster is not null && _cluster.IsReachable)
+            {
+                try
+                {
+                    _classes = await StorageService.ListStorageClassesAsync(new StorageClassQueryRequest(id));
+                }
+                catch (Exception ex)
+                {
+                    await ExHandler.HandleAsync(ex, "加载存储类列表");
+                }
+            }
+            else
+            {
+                _classes = new();
+            }
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载集群详情");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void SelectCluster(int id)
+    {
+        NavigationManager.NavigateTo($"/storage/classes/{id}");
+    }
+
+    private static Color GetClusterStatusColor(ClusterStatus status) => status switch
+    {
+        ClusterStatus.Online => Color.Success,
+        ClusterStatus.Offline => Color.Error,
+        _ => Color.Default
+    };
+}

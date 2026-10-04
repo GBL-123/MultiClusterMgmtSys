@@ -1,0 +1,49 @@
+@using MultiClusterMgmtSys.Application.ViewModels
+
+<MudCard Class="pa-4">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">基本信息</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            <StatusBadge Text="@Volume.PhaseText" CssClass="@Volume.PhaseCssClass" Raw="@Volume.Phase" />
+        </CardHeaderActions>
+    </MudCardHeader>
+    <MudCardContent>
+        <MudGrid Spacing="3">
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">名称</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono font-weight-medium">@Volume.Name</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">容量</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(Volume.Capacity) ? "—" : Volume.Capacity)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">回收策略</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(Volume.ReclaimPolicy) ? "—" : Volume.ReclaimPolicy)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">绑定的声明</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(Volume.BoundClaim ?? "—")</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">存储类</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(string.IsNullOrEmpty(Volume.StorageClassName) ? "—" : Volume.StorageClassName)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">来源</MudText>
+                <MudText Typo="Typo.body1">@(Volume.SourceText ?? "—")</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="4">
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">创建时间</MudText>
+                <MudText Typo="Typo.body1" Class="font-mono">@(Volume.CreatedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</MudText>
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public StorageVolumeDetailViewModel Volume { get; set; } = default!;
+}

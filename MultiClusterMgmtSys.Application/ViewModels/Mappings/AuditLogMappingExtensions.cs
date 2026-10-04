@@ -37,6 +37,8 @@ public static class AuditLogMappingExtensions
             AuditCategory.Service => "服务",
             AuditCategory.Namespace => "命名空间",
             AuditCategory.Helm => "Helm",
+            AuditCategory.Secret => "密钥",
+            AuditCategory.Storage => "存储",
             _ => category.ToString()
         };
     }
@@ -60,6 +62,7 @@ public static class AuditLogMappingExtensions
             AuditAction.Upgrade => "升级",
             AuditAction.Rollback => "回滚",
             AuditAction.Uninstall => "卸载",
+            AuditAction.View => "查看明文",
             _ => action.ToString()
         };
     }

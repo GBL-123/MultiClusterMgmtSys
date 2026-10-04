@@ -1,0 +1,107 @@
+@attribute [Authorize]
+@page "/storage/volumes/{ClusterId:int}/{Name}"
+
+@using MultiClusterMgmtSys.Application.Requests
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Application.ViewModels
+@using MultiClusterMgmtSys.Web.Components.Storage.Shared
+
+@inject StorageService StorageService
+@inject ClusterSelectionState ClusterSelection
+@inject NavigationManager NavigationManager
+@inject ExceptionPresenter ExHandler
+
+<PageTitle>持久卷详情: @Name</PageTitle>
+
+<MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else if (_volume is null)
+    {
+        <MudCard Class="pa-4" Elevation="2">
+            <MudCardContent>
+                <MudText Align="Align.Center" Class="mud-text-secondary">未找到该持久卷</MudText>
+                <MudText Align="Align.Center" Class="mud-text-secondary" Typo="Typo.body2">集群不存在、集群离线或持久卷已移除</MudText>
+                <div class="d-flex justify-center mt-4">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.ArrowBack"
+                               OnClick="@(() => NavigationManager.NavigateTo($"/storage/volumes/{ClusterId}"))">
+                        返回持久卷列表
+                    </MudButton>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    }
+    else
+    {
+        <MudStack Spacing="3">
+            <div class="d-flex align-center">
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Inherit"
+                           StartIcon="@Icons.Material.Filled.ArrowBack"
+                           OnClick="@(() => NavigationManager.NavigateTo($"/storage/volumes/{ClusterId}"))">
+                    返回持久卷列表
+                </MudButton>
+            </div>
+            <VolumeDetailCard Volume="@_volume" />
+            <StorageYamlViewCard Yaml="@_volume.Yaml" />
+        </MudStack>
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    [Parameter]
+    public string Name { get; set; } = "";
+
+
+    private StorageVolumeDetailViewModel? _volume;
+
+    private bool _loading;
+
+    private int _previousClusterId;
+
+    private string _previousName = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        ClusterSelection.Set(ClusterId);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (ClusterId != _previousClusterId || Name != _previousName)
+        {
+            _previousClusterId = ClusterId;
+            _previousName = Name;
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _volume = await StorageService.GetVolumeDetailAsync(new StorageVolumeKeyRequest(ClusterId, Name));
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载持久卷详情");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

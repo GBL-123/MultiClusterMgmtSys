@@ -1,3 +1,4 @@
+using MultiClusterMgmtSys.Application.Common.Secrets;
 using MultiClusterMgmtSys.Application.Enums;
 
 namespace MultiClusterMgmtSys.Application.Abstractions;
@@ -15,6 +16,14 @@ public interface IYamlValidator
     /// <summary>校验 Service YAML 语法;语法错误抛解析异常(携带原始错误消息)。</summary>
     /// <param name="yaml">YAML 文本。</param>
     void ValidateService(string yaml);
+
+    /// <summary>校验 Secret YAML 语法(经字符串形态的 <see cref="SecretYamlBody"/>,占位符值同样可通过);语法错误抛解析异常。</summary>
+    /// <param name="yaml">YAML 文本。</param>
+    void ValidateSecret(string yaml);
+
+    /// <summary>校验持久卷声明 YAML 语法;语法错误抛解析异常(携带原始错误消息)。</summary>
+    /// <param name="yaml">YAML 文本。</param>
+    void ValidatePersistentVolumeClaim(string yaml);
 
     /// <summary>校验命名空间 YAML 语法并返回 metadata.name(可能为空);语法错误抛解析异常。</summary>
     /// <param name="yaml">YAML 文本。</param>

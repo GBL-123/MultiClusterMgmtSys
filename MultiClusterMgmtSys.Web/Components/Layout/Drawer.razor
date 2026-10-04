@@ -20,6 +20,22 @@
         <MudNavLink Href="/configmaps" Icon="@Icons.Material.Filled.Settings" Match="NavLinkMatch.Prefix">
             配置管理
         </MudNavLink>
+        <MudNavLink Href="/secrets" Icon="@Icons.Material.Filled.Key" Match="NavLinkMatch.Prefix">
+            密钥管理
+        </MudNavLink>
+        <MudNavGroup Title="存储管理"
+                     Icon="@Icons.Material.Filled.DiscFull"
+                     Expanded="@_storageExpanded">
+            <MudNavLink Href="/storage/claims" Icon="@Icons.Material.Filled.Save" Match="NavLinkMatch.Prefix">
+                持久卷声明
+            </MudNavLink>
+            <MudNavLink Href="/storage/volumes" Icon="@Icons.Material.Filled.Inventory2" Match="NavLinkMatch.Prefix">
+                持久卷
+            </MudNavLink>
+            <MudNavLink Href="/storage/classes" Icon="@Icons.Material.Filled.Category" Match="NavLinkMatch.Prefix">
+                存储类
+            </MudNavLink>
+        </MudNavGroup>
         <MudNavGroup Title="工作负载管理"
                      Icon="@Icons.Material.Filled.Widgets"
                      Expanded="@_workloadsExpanded">
@@ -76,9 +92,12 @@
 
     private bool _networkExpanded;
 
+    private bool _storageExpanded;
+
     protected override void OnInitialized()
     {
         _workloadsExpanded = NavigationManager.Uri.Contains("/workloads", StringComparison.OrdinalIgnoreCase);
         _networkExpanded = NavigationManager.Uri.Contains("/services", StringComparison.OrdinalIgnoreCase);
+        _storageExpanded = NavigationManager.Uri.Contains("/storage", StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -1,0 +1,134 @@
+@attribute [Authorize]
+@page "/storage/claims/{ClusterId:int}/{Namespace}/{Name}"
+
+@using MultiClusterMgmtSys.Application.Requests
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Application.ViewModels
+@using MultiClusterMgmtSys.Web.Components.Storage.Shared
+
+@inject StorageService StorageService
+@inject ClusterSelectionState ClusterSelection
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager NavigationManager
+@inject ExceptionPresenter ExHandler
+
+<PageTitle>持久卷声明详情: @Name</PageTitle>
+
+<MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-4" />
+    }
+    else if (_detail is null)
+    {
+        <MudCard Class="pa-4" Elevation="2">
+            <MudCardContent>
+                <MudText Align="Align.Center" Class="mud-text-secondary">持久卷声明不存在或已被删除</MudText>
+                <div class="d-flex justify-center mt-4">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.ArrowBack"
+                               OnClick="@(() => NavigationManager.NavigateTo($"/storage/claims/{ClusterId}"))">
+                        返回列表
+                    </MudButton>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    }
+    else
+    {
+        <ClaimDetailToolbar ClusterId="@ClusterId"
+                            Name="@_detail.Name"
+                            Detail="@_detail"
+                            Processing="@_loading"
+                            OnRefresh="LoadAsync"
+                            OnDelete="DeleteClaim" />
+
+        <MudTabs @bind-ActivePanelIndex="_activeTabIndex"
+                 Class="detail-tabs"
+                 Elevation="0"
+                 Rounded="false"
+                 TabPanelsClass="detail-tabs-panels">
+            <MudTabPanel Text="基本信息">
+                <MudStack Spacing="3">
+                    <ClaimOverviewCard Claim="@_detail" />
+                    <ClaimMountedPodsCard Pods="@_detail.MountedPods" />
+                </MudStack>
+            </MudTabPanel>
+            <MudTabPanel Text="YAML">
+                <StorageYamlViewCard Yaml="@_detail.Yaml" />
+            </MudTabPanel>
+        </MudTabs>
+    }
+</MudStack>
+
+@code {
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    [Parameter]
+    public string Namespace { get; set; } = "";
+
+    [Parameter]
+    public string Name { get; set; } = "";
+
+
+    private StorageClaimDetailViewModel? _detail;
+
+    private bool _loading = true;
+
+    private int _activeTabIndex;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ClusterSelection.Set(ClusterId);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _detail = await StorageService.GetClaimDetailAsync(new StorageClaimKeyRequest(ClusterId, Name, Namespace));
+            if (_detail is null)
+            {
+                Snackbar.Add("持久卷声明不存在或已被删除", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载持久卷声明详情");
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task DeleteClaim()
+    {
+        var parameters = new DialogParameters
+        {
+            { "Message", $"确认删除持久卷声明「{_detail!.Name}」？此操作不可撤销。" }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("确认删除", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            try
+            {
+                await StorageService.DeleteClaimAsync(new StorageClaimKeyRequest(ClusterId, Name, Namespace));
+                Snackbar.Add("删除成功", Severity.Success);
+                NavigationManager.NavigateTo($"/storage/claims/{ClusterId}");
+            }
+            catch (Exception ex)
+            {
+                await ExHandler.HandleAsync(ex, "删除持久卷声明");
+            }
+        }
+    }
+}
