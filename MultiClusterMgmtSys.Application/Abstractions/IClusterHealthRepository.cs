@@ -15,4 +15,14 @@ public interface IClusterHealthRepository
     /// <summary>查询每个集群最近一条快照(同一集群内按采集时间倒序、再按 Id 倒序取首条);无任何快照的集群不出现在结果中,无副作用。</summary>
     /// <returns>集群 Id 到该集群最新一条快照的映射。</returns>
     Task<Dictionary<int, ClusterHealthSnapshot>> GetLatestPerClusterAsync();
+
+    /// <summary>查询采集时间不早于给定时刻的全部快照,按采集时间升序、Id 升序排列(趋势曲线的数据源);无副作用。</summary>
+    /// <param name="capturedFromUtc">窗口起点(UTC,含)。</param>
+    /// <returns>窗口内的快照列表(可能为空)。</returns>
+    Task<IReadOnlyList<ClusterHealthSnapshot>> GetWindowAsync(DateTime capturedFromUtc);
+
+    /// <summary>删除采集时间早于给定时刻的全部快照(保留策略的过期清理),返回删除行数。</summary>
+    /// <param name="capturedBeforeUtc">窗口终点(UTC,不含)。</param>
+    /// <returns>被删除的快照条数。</returns>
+    Task<int> DeleteCapturedBeforeAsync(DateTime capturedBeforeUtc);
 }

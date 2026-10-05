@@ -224,6 +224,7 @@ public class DetailDialogExtraTests
         services.AddScoped(_ => harness.Audit);
         services.AddScoped(_ => TestHttpContext.For("admin", "Admin").Object);
         services.AddScoped<ClusterNodeService>();
+        services.AddSingleton(_ => RetentionStubs.For(harness.ClusterHealthRepo));
         services.AddScoped<ClusterService>();
         services.AddScoped<ClusterSyncSettingService>();
         services.AddScoped<ClusterSyncBackgroundService>();

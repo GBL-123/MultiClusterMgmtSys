@@ -29,6 +29,9 @@ public class DashboardService(
 
     private const string UnprobedVersionLabel = "未探测";
 
+    /// <summary>节点就绪趋势的统计窗口(小时)。</summary>
+    public const int TrendWindowHours = 24;
+
     /// <summary>
     /// 读取并聚合看板数据:状态计数、需要关注清单、分组健康、版本分布、舰队规模、数据新鲜度与最近操作。
     /// </summary>
@@ -62,6 +65,68 @@ public class DashboardService(
             model.TotalClusters, model.AttentionItems.Count, model.Freshness.State);
         return model;
     }
+
+    /// <summary>
+    /// 构建节点就绪趋势:窗口内按采集时间逐条推进的舰队合计阶梯序列;
+    /// 同一秒内的快照事件按秒聚合并保留最后一个事件后的合计,每秒至多产出一个点。
+    /// 任一时刻的值 = 各集群在该时刻之前最近一条快照的就绪数与未就绪数之和;
+    /// 集群写入新快照时,曲线自该时刻起改用新值。从未在该窗口内写入快照的集群不参与。
+    /// </summary>
+    /// <returns>按采集时间升序的趋势点序列;窗口无快照时为空列表。</returns>
+    public async Task<IReadOnlyList<DashboardTrendPointViewModel>> GetNodeReadinessTrendAsync()
+    {
+        logger.LogInformation("GetNodeReadinessTrend start");
+
+        var from = AsUtc(DateTime.UtcNow).AddHours(-TrendWindowHours);
+        var rows = await healthRepo.GetWindowAsync(from);
+        var points = BuildTrendPoints(rows);
+
+        logger.LogInformation("GetNodeReadinessTrend done points={PointCount} rows={RowCount}",
+            points.Count, rows.Count);
+        return points;
+    }
+
+    /// <summary>逐快照事件推进舰队合计:维护每集群当前值,每读入一条快照写出一个合计点;同秒事件聚合保留最后合计。</summary>
+    /// <param name="rows">窗口内按采集时间升序排列的快照。</param>
+    /// <returns>趋势点序列,每秒至多一个点。</returns>
+    private static List<DashboardTrendPointViewModel> BuildTrendPoints(IReadOnlyList<ClusterHealthSnapshot> rows)
+    {
+        var latest = new Dictionary<int, ClusterHealthSnapshot>();
+        var points = new List<DashboardTrendPointViewModel>(rows.Count);
+        foreach (var row in rows)
+        {
+            latest[row.ClusterId] = row;
+            var point = new DashboardTrendPointViewModel(
+                AsUtc(row.CapturedAt),
+                latest.Values.Sum(s => s.ReadyNodes),
+                latest.Values.Sum(s => s.NotReadyNodes));
+            if (points.Count > 0 && SameBucket(points[^1].CapturedAtUtc, point.CapturedAtUtc))
+            {
+                // 同秒事件合并保留最后:24 小时尺度下桶内中间态瞬时宽度为零,
+                // 聚合后阶梯视觉无损,且时间轴 tooltip 不再多列同秒条目。
+                points[^1] = point;
+            }
+            else
+            {
+                points.Add(point);
+            }
+        }
+
+        return points;
+    }
+
+    /// <summary>判断两个时间点是否落在同一秒(按 UTC tick 取秒级桶)。</summary>
+    /// <param name="left">先前趋势点时间。</param>
+    /// <param name="right">当前趋势点时间。</param>
+    /// <returns>同一秒为 <c>true</c>,否则 <c>false</c>。</returns>
+    private static bool SameBucket(DateTime left, DateTime right) =>
+        BucketOf(left) == BucketOf(right);
+
+    /// <summary>把时间点折算为秒级桶值(UTC tick 对秒取整)。</summary>
+    /// <param name="value">时间点。</param>
+    /// <returns>桶值。</returns>
+    private static long BucketOf(DateTime value) =>
+        value.Ticks - value.Ticks % TimeSpan.TicksPerSecond;
 
     /// <summary>
     /// 构建「需要关注」清单:状态为离线的集群(最近一次探测失败)与从未被探测过的集群。

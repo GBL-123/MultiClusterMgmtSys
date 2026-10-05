@@ -12,6 +12,8 @@ public class K8sExceptionMapperTests
     [Theory]
     [InlineData(404, typeof(NotFoundException))]
     [InlineData(409, typeof(ConflictException))]
+    [InlineData(429, typeof(ConflictException))]
+    [InlineData(429, typeof(ConflictException))]
     [InlineData(403, typeof(PermissionException))]
     [InlineData(401, typeof(PermissionException))]
     public void Translate_maps_status_code_to_business_exception(int code, Type expected)
@@ -21,6 +23,16 @@ public class K8sExceptionMapperTests
         Assert.IsType(expected, translated);
         Assert.IsAssignableFrom<BusinessException>(translated);
     }
+
+    [Fact]
+    public void Translate_429_maps_to_chinese_conflict_message()
+    {
+        var translated = K8sExceptionMapper.Translate(K8sMocks.K8sError(429), "克隆资源");
+
+        var business = Assert.IsType<ConflictException>(translated);
+        Assert.Equal("请求过于频繁,请稍后重试", business.UserMessage);
+    }
+
 
     [Fact]
     public void Translate_404_uses_chinese_user_message()

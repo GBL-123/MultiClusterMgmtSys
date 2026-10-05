@@ -1,0 +1,105 @@
+@using MultiClusterMgmtSys.Application.Enums
+@using MultiClusterMgmtSys.Application.Requests
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Application.ViewModels
+@using MultiClusterMgmtSys.Domain.Exceptions
+
+@inject ClusterCompareService CompareService
+@inject ISnackbar Snackbar
+@inject ExceptionPresenter ExHandler
+
+<MudStack Spacing="2">
+    <MudText Typo="Typo.body2">
+        将把源集群 <span class="font-mono">@Pair.SourceClusterName</span> 的
+        <span class="font-mono">@Pair.Namespace/@Pair.Name</span>
+        克隆到对照集群 <span class="font-mono">@Pair.TargetClusterName</span>。
+    </MudText>
+
+    @if (!string.IsNullOrEmpty(_previewFailed))
+    {
+        <MudText Typo="Typo.body2" Class="mud-text-error">@_previewFailed</MudText>
+    }
+    else if (string.IsNullOrEmpty(_preview))
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+    else
+    {
+        <MudText Typo="Typo.caption" Class="mud-text-secondary">以下为剥离服务端字段后的 YAML(克隆时以此为准):</MudText>
+        <pre class="compare-plain compare-preview">@_preview</pre>
+    }
+
+    <MudText Typo="Typo.body2" Class="mud-text-warning">@_confirmMessage</MudText>
+</MudStack>
+
+<MudDialogActions>
+    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Disabled="@_running" OnClick="Cancel">取消</MudButton>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.ContentCopy"
+               Disabled="@(_running || !string.IsNullOrEmpty(_previewFailed) || string.IsNullOrEmpty(_preview))"
+               OnClick="CloneAsync">
+        确认克隆
+    </MudButton>
+</MudDialogActions>
+
+@code {
+    [Parameter]
+    public ComparePairViewModel Pair { get; set; } = default!;
+
+    [Parameter]
+    public ComparePairQueryRequest Query { get; set; } = default!;
+
+    [CascadingParameter]
+    private IMudDialogInstance Dialog { get; set; } = default!;
+
+    private string _preview = "";
+
+    private string _previewFailed = "";
+
+    private string _confirmMessage = "";
+
+    private bool _running;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _preview = await CompareService.GetClonePreviewAsync(
+                new CompareCloneRequest(Query.SourceClusterId, Query.TargetClusterId, Query.Kind, Query.Namespace, Query.Name));
+        }
+        catch (BusinessException ex)
+        {
+            _previewFailed = ex.UserMessage;
+        }
+        catch (Exception ex)
+        {
+            _previewFailed = "加载预览失败,请稍后重试";
+            await ExHandler.HandleAsync(ex, "克隆预览");
+        }
+    }
+
+    private void Cancel() => Dialog.Cancel();
+
+    private async Task CloneAsync()
+    {
+        try
+        {
+            _running = true;
+            await CompareService.CloneAsync(
+                new CompareCloneRequest(Query.SourceClusterId, Query.TargetClusterId, Query.Kind, Query.Namespace, Query.Name));
+            Snackbar.Add($"已克隆到 {Pair.TargetClusterName}", Severity.Success);
+            Dialog.Close(DialogResult.Ok(true));
+        }
+        catch (BusinessException ex)
+        {
+            _confirmMessage = ex.UserMessage;
+            _running = false;
+        }
+        catch (Exception ex)
+        {
+            _running = false;
+            await ExHandler.HandleAsync(ex, "克隆资源");
+        }
+    }
+}

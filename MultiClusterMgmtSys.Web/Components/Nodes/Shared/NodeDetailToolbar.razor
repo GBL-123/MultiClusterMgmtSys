@@ -9,6 +9,37 @@
         </MudButton>
         <MudText Typo="Typo.h4" Class="flex-auto ml-2 font-grotesk">@Node.Name</MudText>
         <StatusBadge Text="@Node.StatusText" CssClass="@Node.StatusCssClass" Raw="@Node.Status" />
+        @if (Node.Unschedulable)
+        {
+            <StatusBadge Text="已封锁" CssClass="unknown" Raw="Unschedulable" />
+        }
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <div class="d-flex" style="gap: 4px;">
+                    @if (Node.Unschedulable)
+                    {
+                        <TooltipIconButton Text="解封"
+                                           Icon="@Icons.Material.Filled.LockOpen"
+                                           Color="Color.Primary"
+                                           Disabled="@MaintenanceDisabled"
+                                           OnClick="@(() => OnUncordonNode.InvokeAsync())" />
+                    }
+                    else
+                    {
+                        <TooltipIconButton Text="封锁"
+                                           Icon="@Icons.Material.Filled.Block"
+                                           Color="Color.Primary"
+                                           Disabled="@MaintenanceDisabled"
+                                           OnClick="@(() => OnCordonNode.InvokeAsync())" />
+                    }
+                    <TooltipIconButton Text="排空"
+                                       Icon="@Icons.Material.Filled.SwapHoriz"
+                                       Color="Color.Error"
+                                       Disabled="@MaintenanceDisabled"
+                                       OnClick="@(() => OnDrainNode.InvokeAsync())" />
+                </div>
+            </Authorized>
+        </AuthorizeView>
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Refresh"
@@ -31,8 +62,20 @@
     public bool Processing { get; set; }
 
     [Parameter]
+    public bool MaintenanceDisabled { get; set; }
+
+    [Parameter]
     public EventCallback OnBack { get; set; }
 
     [Parameter]
     public EventCallback OnRefresh { get; set; }
+
+    [Parameter]
+    public EventCallback OnCordonNode { get; set; }
+
+    [Parameter]
+    public EventCallback OnUncordonNode { get; set; }
+
+    [Parameter]
+    public EventCallback OnDrainNode { get; set; }
 }

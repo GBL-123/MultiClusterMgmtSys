@@ -1,6 +1,7 @@
 using k8s;
 using k8s.Models;
 using System.Globalization;
+using Microsoft.AspNetCore.Http;
 using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Application.Abstractions;
 using MultiClusterMgmtSys.Domain.Exceptions;
@@ -16,13 +17,15 @@ namespace MultiClusterMgmtSys.Application.Services;
 /// 与 <see cref="ClusterService"/> 解耦，后者负责集群 CRUD 与连通性探测。
 /// 节点 IP 备注（<see cref="NodeIpRemark"/>）在读取时合并进地址数据。
 /// </summary>
-public class ClusterNodeService(IClusterRepository repo, AuditService auditService, ILogger<ClusterNodeService> logger, IClusterClientCache clientCache)
+public class ClusterNodeService(IClusterRepository repo, AuditService auditService, ILogger<ClusterNodeService> logger, IClusterClientCache clientCache, IHttpContextAccessor httpContextAccessor)
 {
     private readonly IClusterRepository _repo = repo;
 
     private readonly AuditService _auditService = auditService;
 
     private readonly ILogger<ClusterNodeService> _logger = logger;
+
+    private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
     private static readonly string[] _IpAddressTypes = ["InternalIP", "ExternalIP"];
 
@@ -149,7 +152,235 @@ public class ClusterNodeService(IClusterRepository repo, AuditService auditServi
         await _auditService.LogAsync(AuditCategory.Node, AuditAction.Update, $"节点: {request.NodeName} @ 集群 {entity.Name}");
     }
 
+    /// <summary>封锁节点:PATCH <c>spec.unschedulable=true</c>,此后调度器不再向该节点派发新 Pod,存量 Pod 不受影响;仅管理员可用,成功后写审计。K8s 调用失败经翻译后抛业务异常。</summary>
+    public async Task CordonAsync(NodeMaintenanceRequest request)
+        => await SetNodeSchedulableAsync(request, true, AuditAction.Cordon, "封锁节点");
+
+    /// <summary>解封节点:PATCH <c>spec.unschedulable=false</c>,节点恢复参与调度;仅管理员可用,成功后写审计。K8s 调用失败经翻译后抛业务异常。</summary>
+    public async Task UncordonAsync(NodeMaintenanceRequest request)
+        => await SetNodeSchedulableAsync(request, false, AuditAction.Uncordon, "解封节点");
+
+    /// <summary>排空预检:列出该节点全部 Pod 并按归属分类(控制器托管可迁移/DaemonSet 自动跳过/无控制器裸 Pod),供强确认界面展示;仅管理员可用。K8s 调用失败经翻译后抛业务异常。</summary>
+    public async Task<NodeDrainPreflightViewModel> GetNodeDrainPreflightAsync(NodeDrainRequest request)
+    {
+        EnsureMaintenanceAllowed();
+        _logger.LogInformation("NodeDrainPreflight clusterId={ClusterId} node={NodeName}", request.ClusterId, request.NodeName);
+        var entity = await _repo.GetByIdAsync(request.ClusterId);
+        if (entity is null)
+        {
+            _logger.LogWarning("Cluster {ClusterId} not found", request.ClusterId);
+            throw new NotFoundException($"集群 {request.ClusterId} 不存在");
+        }
+
+        var client = clientCache.GetOrCreate(entity);
+        IList<V1Pod> podItems;
+        try
+        {
+            var podList = await client.CoreV1.ListPodForAllNamespacesAsync(
+                fieldSelector: $"spec.nodeName={request.NodeName}");
+            podItems = podList.Items;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "NodeDrainPreflight list pods failed clusterId={ClusterId} node={NodeName}", request.ClusterId, request.NodeName);
+            throw K8sExceptionMapper.Translate(ex, "排空预检");
+        }
+
+        var result = ClassifyNodePods(request.NodeName, podItems);
+        _logger.LogInformation(
+            "NodeDrainPreflight done clusterId={ClusterId} node={NodeName} migratable={Migratable} daemonSet={DaemonSet} bare={Bare}",
+            request.ClusterId, request.NodeName, result.MigratablePods.Count, result.DaemonSetPods.Count, result.BarePods.Count);
+        return result;
+    }
+
+    /// <summary>排空节点:先封锁自身(已封锁则不再重复封锁与审计),再逐个对控制器托管 Pod 发起 policy/v1 Eviction 尽力迁移;DaemonSet Pod 跳过、裸 Pod 默认不驱逐,429(PDB)与其他失败计入阻塞不中断,不等待 Pod 清零即返回汇总(成功/跳过/阻塞计数与阻塞清单)并写排空审计。仅管理员可用,无取消回滚。K8s 调用失败经翻译后抛业务异常。</summary>
+    public async Task<NodeDrainReportViewModel> DrainNodeAsync(NodeDrainRequest request, IProgress<NodeDrainProgress>? progress = null)
+    {
+        EnsureMaintenanceAllowed();
+        _logger.LogInformation("DrainNode clusterId={ClusterId} node={NodeName}", request.ClusterId, request.NodeName);
+        var entity = await _repo.GetByIdAsync(request.ClusterId);
+        if (entity is null)
+        {
+            _logger.LogWarning("Cluster {ClusterId} not found", request.ClusterId);
+            throw new NotFoundException($"集群 {request.ClusterId} 不存在");
+        }
+
+        var client = clientCache.GetOrCreate(entity);
+        V1Node node;
+        try
+        {
+            node = await client.CoreV1.ReadNodeAsync(request.NodeName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "DrainNode read node failed clusterId={ClusterId} node={NodeName}", request.ClusterId, request.NodeName);
+            throw K8sExceptionMapper.Translate(ex, "排空节点");
+        }
+
+        if ((node.Spec?.Unschedulable ?? false) == false)
+        {
+            await PatchNodeSchedulableAsync(client, request.NodeName, unschedulable: true, "封锁节点");
+            await _auditService.LogAsync(AuditCategory.Node, AuditAction.Cordon, $"节点: {request.NodeName} @ 集群 {entity.Name}");
+        }
+
+        IList<V1Pod> podItems;
+        try
+        {
+            var podList = await client.CoreV1.ListPodForAllNamespacesAsync(
+                fieldSelector: $"spec.nodeName={request.NodeName}");
+            podItems = podList.Items;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "DrainNode list pods failed clusterId={ClusterId} node={NodeName}", request.ClusterId, request.NodeName);
+            throw K8sExceptionMapper.Translate(ex, "排空节点");
+        }
+
+        var classification = ClassifyNodePods(request.NodeName, podItems);
+        var targets = classification.MigratablePods;
+        var total = targets.Count;
+        var evicted = 0;
+        var skipped = classification.DaemonSetPods.Count;
+        var blocked = 0;
+        var blockedPods = new List<DrainPodViewModel>();
+        var completed = 0;
+        foreach (var target in targets)
+        {
+            var eviction = new V1Eviction
+            {
+                Metadata = new V1ObjectMeta { Name = target.Name, NamespaceProperty = target.Namespace }
+            };
+            try
+            {
+                await client.CoreV1.CreateNamespacedPodEvictionWithHttpMessagesAsync(
+                    eviction, target.Name, target.Namespace,
+                    null, null, null, null, null, CancellationToken.None);
+                evicted++;
+            }
+            catch (KubernetesException kex) when (kex.Status?.Code == 429)
+            {
+                blocked++;
+                blockedPods.Add(target);
+                _logger.LogWarning("DrainNode pod blocked by disruption budget clusterId={ClusterId} pod={Ns}/{Name}",
+                    request.ClusterId, target.Namespace, target.Name);
+            }
+            catch (Exception ex)
+            {
+                blocked++;
+                blockedPods.Add(target);
+                _logger.LogWarning(ex, "DrainNode pod eviction failed clusterId={ClusterId} pod={Ns}/{Name}",
+                    request.ClusterId, target.Namespace, target.Name);
+            }
+
+            completed++;
+            progress?.Report(new NodeDrainProgress(completed, total));
+        }
+
+        var report = new NodeDrainReportViewModel
+        {
+            Evicted = evicted,
+            Skipped = skipped,
+            Blocked = blocked,
+            BlockedPods = blockedPods
+        };
+        _logger.LogInformation(
+            "DrainNode done clusterId={ClusterId} node={NodeName} evicted={Evicted} skipped={Skipped} blocked={Blocked}",
+            request.ClusterId, request.NodeName, evicted, skipped, blocked);
+        await _auditService.LogAsync(
+            AuditCategory.Node, AuditAction.Drain,
+            $"节点: {request.NodeName} @ 集群 {entity.Name}（成功 {evicted}/跳过 {skipped}/阻塞 {blocked}）");
+        return report;
+    }
     // ---- Private k8s helpers ----
+
+    private static NodeDrainPreflightViewModel ClassifyNodePods(string nodeName, IEnumerable<V1Pod> pods)
+    {
+        var migratable = new List<DrainPodViewModel>();
+        var daemonSet = new List<DrainPodViewModel>();
+        var bare = new List<DrainPodViewModel>();
+        foreach (var pod in pods)
+        {
+            var metadata = pod.Metadata;
+            if (metadata is null)
+            {
+                continue;
+            }
+
+            var vm = new DrainPodViewModel
+            {
+                Name = metadata.Name ?? "",
+                Namespace = metadata.NamespaceProperty ?? "",
+                OwnerKind = metadata.OwnerReferences?
+                    .Select(o => o.Kind)
+                    .FirstOrDefault(kind => kind is not null)
+            };
+            var owners = metadata.OwnerReferences ?? Enumerable.Empty<V1OwnerReference>();
+            if (owners.Any(o => o.Kind == "DaemonSet"))
+            {
+                daemonSet.Add(vm);
+            }
+            else if (owners.Any())
+            {
+                migratable.Add(vm);
+            }
+            else
+            {
+                bare.Add(vm);
+            }
+        }
+
+        return new NodeDrainPreflightViewModel
+        {
+            NodeName = nodeName,
+            MigratablePods = migratable.OrderBy(p => p.Namespace).ThenBy(p => p.Name, StringComparer.Ordinal).ToList(),
+            DaemonSetPods = daemonSet.OrderBy(p => p.Namespace).ThenBy(p => p.Name, StringComparer.Ordinal).ToList(),
+            BarePods = bare.OrderBy(p => p.Namespace).ThenBy(p => p.Name, StringComparer.Ordinal).ToList()
+        };
+    }
+
+    private void EnsureMaintenanceAllowed()
+    {
+        var user = _httpContextAccessor.HttpContext?.User;
+        if (user?.IsInRole("Admin") == true)
+        {
+            return;
+        }
+
+        _logger.LogWarning("Node maintenance denied user={User}", user?.Identity?.Name ?? "(anonymous)");
+        throw new PermissionException("节点维护操作仅管理员可用");
+    }
+
+    private async Task SetNodeSchedulableAsync(NodeMaintenanceRequest request, bool unschedulable, AuditAction action, string operation)
+    {
+        EnsureMaintenanceAllowed();
+        _logger.LogInformation("{Operation} clusterId={ClusterId} node={NodeName}", operation, request.ClusterId, request.NodeName);
+        var entity = await _repo.GetByIdAsync(request.ClusterId);
+        if (entity is null)
+        {
+            _logger.LogWarning("Cluster {ClusterId} not found", request.ClusterId);
+            throw new NotFoundException($"集群 {request.ClusterId} 不存在");
+        }
+
+        var client = clientCache.GetOrCreate(entity);
+        await PatchNodeSchedulableAsync(client, request.NodeName, unschedulable, operation);
+        _logger.LogInformation("{Operation} done clusterId={ClusterId} node={NodeName}", operation, request.ClusterId, request.NodeName);
+        await _auditService.LogAsync(AuditCategory.Node, action, $"节点: {request.NodeName} @ 集群 {entity.Name}");
+    }
+
+    private static async Task PatchNodeSchedulableAsync(IKubernetes client, string nodeName, bool unschedulable, string operation)
+    {
+        var patch = new V1Patch(
+            KubernetesJson.Serialize(new V1Node { Spec = new V1NodeSpec { Unschedulable = unschedulable } }),
+            V1Patch.PatchType.StrategicMergePatch);
+        try
+        {
+            await client.CoreV1.PatchNodeAsync(patch, nodeName);
+        }
+        catch (Exception ex)
+        {
+            throw K8sExceptionMapper.Translate(ex, operation);
+        }
+    }
 
     private static Dictionary<(string NodeName, string Address), string?> BuildRemarkLookup(ClusterInfo cluster)
     {

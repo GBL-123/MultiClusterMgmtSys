@@ -34,4 +34,29 @@ public class ClusterHealthRepository(ApplicationDbContext db) : IClusterHealthRe
 
         return latest.ToDictionary(s => s.ClusterId);
     }
+
+    /// <summary>查询采集时间不早于给定时刻的全部快照,按采集时间升序、Id 升序排列,无跟踪查询。</summary>
+    /// <param name="capturedFromUtc">窗口起点(UTC,含)。</param>
+    /// <returns>窗口内的快照列表(可能为空)。</returns>
+    public async Task<IReadOnlyList<ClusterHealthSnapshot>> GetWindowAsync(DateTime capturedFromUtc)
+    {
+        var rows = await _db.ClusterHealthSnapshots
+            .AsNoTracking()
+            .Where(s => s.CapturedAt >= capturedFromUtc)
+            .OrderBy(s => s.CapturedAt)
+            .ThenBy(s => s.Id)
+            .ToListAsync();
+
+        return rows;
+    }
+
+    /// <summary>删除采集时间早于给定时刻的全部快照并立即保存(单条 ExecuteDelete SQL)。</summary>
+    /// <param name="capturedBeforeUtc">窗口终点(UTC,不含)。</param>
+    /// <returns>被删除的快照条数。</returns>
+    public async Task<int> DeleteCapturedBeforeAsync(DateTime capturedBeforeUtc)
+    {
+        return await _db.ClusterHealthSnapshots
+            .Where(s => s.CapturedAt < capturedBeforeUtc)
+            .ExecuteDeleteAsync();
+    }
 }

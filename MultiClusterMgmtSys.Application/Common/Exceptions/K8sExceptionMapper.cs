@@ -6,7 +6,7 @@ namespace MultiClusterMgmtSys.Application.Common.Exceptions;
 
 /// <summary>
 /// 将 Kubernetes 客户端异常翻译为业务异常。
-/// 仅按明确状态码(400/401/403/404/409)映射;超时/连接失败映射为集群不可达;
+/// 仅按明确状态码(400/401/403/404/409/429)映射;超时/连接失败映射为集群不可达;
 /// 5xx 与未知状态原样返回,交由上层按系统异常处理。
 /// </summary>
 public static class K8sExceptionMapper
@@ -43,6 +43,7 @@ public static class K8sExceptionMapper
     {
         404 => new NotFoundException($"{operation}:资源不存在或已被删除"),
         409 => new ConflictException("资源已被他人修改,请刷新后重试"),
+        429 => new ConflictException("请求过于频繁,请稍后重试"),
         403 => new PermissionException("没有权限执行该操作"),
         401 => new PermissionException("认证失效,请重新登录"),
         400 => new ValidationException(FirstNonEmpty(apiMessage, $"{operation}:请求参数不合法")),

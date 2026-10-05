@@ -2,6 +2,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using MultiClusterMgmtSys.Application.Enums;
 using MultiClusterMgmtSys.Application.Services;
+using MultiClusterMgmtSys.Application.ViewModels;
+using MultiClusterMgmtSys.Domain.Entities;
 using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Infrastructure.Persistence;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
@@ -61,6 +63,19 @@ public class DashboardServiceTests : IDisposable
         var group = _harness.Db.ClusterGroups.Add(TestData.NewGroup(name)).Entity;
         await _harness.Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         return group.Id;
+    }
+
+    private async Task SeedSnapshotAsync(int clusterId, DateTime capturedAtUtc, int ready, int notReady)
+    {
+        var captured = DateTime.SpecifyKind(capturedAtUtc, DateTimeKind.Utc);
+        await _harness.ClusterHealthRepo.AddAsync(new ClusterHealthSnapshot
+        {
+            ClusterId = clusterId,
+            CapturedAt = captured,
+            TotalNodes = ready + notReady,
+            ReadyNodes = ready,
+            NotReadyNodes = notReady
+        });
     }
 
     [Fact]
@@ -302,5 +317,64 @@ public class DashboardServiceTests : IDisposable
 
         Assert.Single(model.RecentActivity);
         Assert.Equal("member", model.RecentActivity[0].UserName);
+    }
+
+    [Fact]
+    public async Task GetNodeReadinessTrend_advances_fleet_totals_per_snapshot_event()
+    {
+        var baseTime = DateTime.UtcNow.AddHours(-5);
+        var alpha = await SeedClusterAsync("alpha");
+        var beta = await SeedClusterAsync("beta");
+        await SeedSnapshotAsync(beta, baseTime.AddHours(-2), 4, 0);
+        await SeedSnapshotAsync(alpha, baseTime.AddHours(-1), 6, 2);
+        await SeedSnapshotAsync(alpha, baseTime, 5, 3);
+
+        var points = await _service.GetNodeReadinessTrendAsync();
+
+        Assert.Equal(3, points.Count);
+        Assert.Equal(new DashboardTrendPointViewModel(baseTime.AddHours(-2), 4, 0), points[0]);
+        Assert.Equal(new DashboardTrendPointViewModel(baseTime.AddHours(-1), 10, 2), points[1]);
+        Assert.Equal(new DashboardTrendPointViewModel(baseTime, 9, 3), points[2]);
+    }
+
+    [Fact]
+    public async Task GetNodeReadinessTrend_aggregates_same_second_events_keeping_last()
+    {
+        var baseTime = DateTime.UtcNow.AddHours(-5);
+        var alpha = await SeedClusterAsync("alpha-second");
+        var beta = await SeedClusterAsync("beta-second");
+        await SeedSnapshotAsync(alpha, baseTime.AddHours(-2), 4, 0);
+        await SeedSnapshotAsync(beta, baseTime.AddHours(-1), 3, 1);
+        await SeedSnapshotAsync(alpha, baseTime.AddHours(-1).AddMilliseconds(250), 5, 3);
+
+        var points = await _service.GetNodeReadinessTrendAsync();
+
+        Assert.Equal(2, points.Count);
+        Assert.Equal(new DashboardTrendPointViewModel(baseTime.AddHours(-2), 4, 0), points[0]);
+        Assert.Equal(new DashboardTrendPointViewModel(baseTime.AddHours(-1).AddMilliseconds(250), 8, 4), points[1]);
+    }
+
+    [Fact]
+    public async Task GetNodeReadinessTrend_excludes_snapshots_outside_window()
+    {
+        var clusterId = await SeedClusterAsync("old-cluster");
+        await SeedSnapshotAsync(clusterId, DateTime.UtcNow.AddHours(-25), 8, 0);
+        await SeedSnapshotAsync(clusterId, DateTime.UtcNow.AddHours(-1), 6, 2);
+
+        var points = await _service.GetNodeReadinessTrendAsync();
+
+        var point = Assert.Single(points);
+        Assert.Equal(6, point.ReadyNodes);
+        Assert.Equal(2, point.NotReadyNodes);
+    }
+
+    [Fact]
+    public async Task GetNodeReadinessTrend_returns_empty_list_without_window_snapshots()
+    {
+        await SeedClusterAsync("no-snapshots");
+
+        var points = await _service.GetNodeReadinessTrendAsync();
+
+        Assert.Empty(points);
     }
 }

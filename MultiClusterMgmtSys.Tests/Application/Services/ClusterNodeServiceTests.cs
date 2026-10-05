@@ -1,11 +1,13 @@
 using k8s.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using k8s;
 using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Domain.Exceptions;
 using MultiClusterMgmtSys.Application.Requests;
+using MultiClusterMgmtSys.Application.ViewModels;
 using MultiClusterMgmtSys.Application.Services;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
@@ -15,15 +17,18 @@ public class ClusterNodeServiceTests : IDisposable
 {
     private readonly ServiceHarness _harness = new("admin", "Admin");
     private readonly Mock<IKubernetes> _k8s = K8sMocks.Create();
+    private readonly Mock<IHttpContextAccessor> _accessor = TestHttpContext.For("admin", "Admin");
     private readonly ClusterNodeService _service;
 
     public ClusterNodeServiceTests()
     {
-        _service = new ClusterNodeService(
-            _harness.ClusterRepo, _harness.Audit, NullLogger<ClusterNodeService>.Instance, K8sMocks.Cache(_k8s));
+        _service = NewService();
     }
 
     public void Dispose() => _harness.Dispose();
+
+    private ClusterNodeService NewService() => new(
+        _harness.ClusterRepo, _harness.Audit, NullLogger<ClusterNodeService>.Instance, K8sMocks.Cache(_k8s), _accessor.Object);
 
     [Fact]
     public async Task GetClusterNodesAsync_missing_cluster_throws_not_found()
@@ -345,6 +350,257 @@ public class ClusterNodeServiceTests : IDisposable
 
         var reloaded = await _harness.ClusterRepo.GetByIdAsync(cluster.Id);
         Assert.Empty(reloaded!.NodeIpRemarks);
+    }
+
+    [Fact]
+    public async Task CordonAsync_member_denied_without_k8s_call_or_audit()
+    {
+        _accessor.SetupGet(a => a.HttpContext).Returns(TestHttpContext.For("member").Object.HttpContext);
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("maint-member"));
+        var request = new NodeMaintenanceRequest(cluster.Id, "n1");
+
+        var ex = await Assert.ThrowsAsync<PermissionException>(() => _service.CordonAsync(request));
+
+        Assert.Equal("节点维护操作仅管理员可用", ex.UserMessage);
+        _k8s.VerifyNodePatched("n1", Times.Never());
+        Assert.Empty(await _harness.Db.AuditLogs.ToListAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task CordonAsync_patches_unschedulable_true_and_writes_audit()
+    {
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("cordon-ok"));
+        _k8s.SetupPatchNode("n1");
+        var request = new NodeMaintenanceRequest(cluster.Id, "n1");
+
+        await _service.CordonAsync(request);
+
+        var audit = await _harness.Db.AuditLogs.SingleAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(AuditCategory.Node, audit.Category);
+        Assert.Equal(AuditAction.Cordon, audit.Action);
+        Assert.Contains("n1", audit.Target);
+        Assert.Contains(cluster.Name, audit.Target);
+    }
+
+    [Fact]
+    public async Task UncordonAsync_patches_unschedulable_false_and_writes_audit()
+    {
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("uncordon-ok"));
+        _k8s.SetupPatchNode("n1");
+        var request = new NodeMaintenanceRequest(cluster.Id, "n1");
+
+        await _service.UncordonAsync(request);
+
+        var audit = await _harness.Db.AuditLogs.SingleAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(AuditCategory.Node, audit.Category);
+        Assert.Equal(AuditAction.Uncordon, audit.Action);
+        Assert.Contains("n1", audit.Target);
+    }
+
+    [Fact]
+    public async Task SetNodeSchedulable_missing_cluster_throws_not_found()
+    {
+        var request = new NodeMaintenanceRequest(999, "n1");
+
+        await Assert.ThrowsAsync<NotFoundException>(() => _service.CordonAsync(request));
+    }
+
+    [Fact]
+    public async Task CordonAsync_k8s_404_translated_to_not_found()
+    {
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("cordon-404"));
+        _k8s.SetupPatchNodeThrows("n1", K8sMocks.K8sError(404));
+
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => _service.CordonAsync(new NodeMaintenanceRequest(cluster.Id, "n1")));
+    }
+
+    [Fact]
+    public async Task UncordonAsync_k8s_403_translated_to_permission()
+    {
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("uncordon-403"));
+        _k8s.SetupPatchNodeThrows("n1", K8sMocks.K8sError(403));
+
+        await Assert.ThrowsAsync<PermissionException>(
+            () => _service.UncordonAsync(new NodeMaintenanceRequest(cluster.Id, "n1")));
+    }
+
+    [Fact]
+    public async Task DrainPreflight_classifies_pods_by_owner()
+    {
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("drain-cls"));
+        _k8s.SetupListPods(
+            DrainPod("web-abc", "app", "ReplicaSet"),
+            DrainPod("kube-proxy-zzz", "kube-system", "DaemonSet"),
+            DrainPod("ad-hoc", "default", null));
+
+        var preflight = await _service.GetNodeDrainPreflightAsync(new NodeDrainRequest(cluster.Id, "n1"));
+
+        Assert.Equal(1, preflight.MigratablePods.Count);
+        Assert.Equal("web-abc", preflight.MigratablePods[0].Name);
+        Assert.Equal("app", preflight.MigratablePods[0].Namespace);
+        Assert.Equal("ReplicaSet", preflight.MigratablePods[0].OwnerKind);
+        Assert.Equal("kube-proxy-zzz", preflight.DaemonSetPods.Single().Name);
+        Assert.Equal("ad-hoc", preflight.BarePods.Single().Name);
+    }
+
+    [Fact]
+    public async Task DrainPreflight_k8s_error_translated_and_no_audit()
+    {
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("drain-err"));
+        _k8s.SetupListPodsThrows(K8sMocks.K8sError(403));
+
+        await Assert.ThrowsAsync<PermissionException>(
+            () => _service.GetNodeDrainPreflightAsync(new NodeDrainRequest(cluster.Id, "n1")));
+        Assert.Empty(await _harness.Db.AuditLogs.ToListAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task DrainPreflight_member_denied()
+    {
+        _accessor.SetupGet(a => a.HttpContext).Returns(TestHttpContext.For("member").Object.HttpContext);
+
+        await Assert.ThrowsAsync<PermissionException>(
+            () => _service.GetNodeDrainPreflightAsync(new NodeDrainRequest(999, "n1")));
+    }
+
+    [Fact]
+    public async Task DrainNode_evicts_migratable_skips_daemonset_and_bare()
+    {
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("drain-ok"));
+        _k8s.SetupReadNode("n1", RawNode("n1", unschedulable: false));
+        _k8s.SetupListPods(
+            DrainPod("web-a", "app", "ReplicaSet"),
+            DrainPod("web-b", "app", "ReplicaSet"),
+            DrainPod("ds-1", "kube-system", "DaemonSet"),
+            DrainPod("bare-1", "default", null));
+        _k8s.SetupPatchNode("n1");
+        _k8s.SetupEvictPod("app", "web-a");
+        _k8s.SetupEvictPod("app", "web-b");
+
+        var report = await _service.DrainNodeAsync(new NodeDrainRequest(cluster.Id, "n1"));
+
+        Assert.Equal(2, report.Evicted);
+        Assert.Equal(1, report.Skipped);
+        Assert.Equal(0, report.Blocked);
+        _k8s.VerifyPodEvicted("app", "web-a", Times.Once());
+        _k8s.VerifyPodEvicted("app", "web-b", Times.Once());
+        _k8s.VerifyNodePatched("n1", Times.Once());
+        var audits = await _harness.Db.AuditLogs.ToListAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(2, audits.Count);
+        var drain = audits.Single(a => a.Action == AuditAction.Drain);
+        Assert.Equal(AuditCategory.Node, drain.Category);
+        Assert.Contains("成功 2/跳过 1/阻塞 0", drain.Target);
+        Assert.Contains(cluster.Name, drain.Target);
+    }
+
+    [Fact]
+    public async Task DrainNode_already_cordoned_does_not_repeat_cordon_audit()
+    {
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("drain-cordoned"));
+        _k8s.SetupReadNode("n1", RawNode("n1", unschedulable: true));
+        _k8s.SetupListPods(DrainPod("web-a", "app", "ReplicaSet"));
+        _k8s.SetupEvictPod("app", "web-a");
+
+        var report = await _service.DrainNodeAsync(new NodeDrainRequest(cluster.Id, "n1"));
+
+        Assert.Equal(1, report.Evicted);
+        _k8s.VerifyNodePatched("n1", Times.Never());
+        var audits = await _harness.Db.AuditLogs.ToListAsync(TestContext.Current.CancellationToken);
+        var drain = audits.Single();
+        Assert.Equal(AuditAction.Drain, drain.Action);
+    }
+
+    [Fact]
+    public async Task DrainNode_429_blocks_and_continues()
+    {
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("drain-pdb"));
+        _k8s.SetupReadNode("n1", RawNode("n1", unschedulable: true));
+        _k8s.SetupListPods(
+            DrainPod("quota-1", "app", "StatefulSet"),
+            DrainPod("free-1", "app", "ReplicaSet"));
+        _k8s.SetupEvictPodBlocked("app", "quota-1");
+        _k8s.SetupEvictPod("app", "free-1");
+
+        var report = await _service.DrainNodeAsync(new NodeDrainRequest(cluster.Id, "n1"));
+
+        Assert.Equal(1, report.Evicted);
+        Assert.Equal(1, report.Blocked);
+        var blocked = report.BlockedPods.Single();
+        Assert.Equal("quota-1", blocked.Name);
+        Assert.Equal("app", blocked.Namespace);
+        var audits = await _harness.Db.AuditLogs.ToListAsync(TestContext.Current.CancellationToken);
+        var drain = audits.Single();
+        Assert.Contains("成功 1/跳过 0/阻塞 1", drain.Target);
+    }
+
+    [Fact]
+    public async Task DrainNode_member_denied_no_k8s_mutation()
+    {
+        _accessor.SetupGet(a => a.HttpContext).Returns(TestHttpContext.For("member").Object.HttpContext);
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("drain-member"));
+
+        await Assert.ThrowsAsync<PermissionException>(
+            () => _service.DrainNodeAsync(new NodeDrainRequest(cluster.Id, "n1")));
+        _k8s.VerifyNodePatched("n1", Times.Never());
+        _k8s.VerifyPodEvictionNever();
+    }
+
+    [Fact]
+    public async Task DrainNode_missing_cluster_throws_not_found()
+    {
+        _k8s.SetupListPods();
+
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => _service.DrainNodeAsync(new NodeDrainRequest(999, "n1")));
+    }
+
+    [Fact]
+    public async Task DrainNode_reports_progress_sequence()
+    {
+        var cluster = await _harness.ClusterRepo.AddAsync(TestData.NewCluster("drain-progress"));
+        _k8s.SetupReadNode("n1", RawNode("n1", unschedulable: true));
+        _k8s.SetupListPods(
+            DrainPod("p-1", "app", "ReplicaSet"),
+            DrainPod("p-2", "app", "ReplicaSet"),
+            DrainPod("p-3", "app", "ReplicaSet"));
+        _k8s.SetupEvictPod("app", "p-1");
+        _k8s.SetupEvictPod("app", "p-2");
+        _k8s.SetupEvictPod("app", "p-3");
+        var reports = new List<NodeDrainProgress>();
+
+        await _service.DrainNodeAsync(new NodeDrainRequest(cluster.Id, "n1"),
+            new DrainNodeProgressRecorder(p => reports.Add(p)));
+
+        Assert.Equal(
+            [new NodeDrainProgress(1, 3), new NodeDrainProgress(2, 3), new NodeDrainProgress(3, 3)],
+            reports);
+    }
+
+    private static V1Pod DrainPod(string name, string ns, string? ownerKind)
+    {
+        var pod = new V1Pod
+        {
+            Metadata = new V1ObjectMeta { Name = name, NamespaceProperty = ns }
+        };
+        if (ownerKind is not null)
+        {
+            pod.Metadata.OwnerReferences = [new V1OwnerReference { Kind = ownerKind, Name = "owner", Uid = "uid", ApiVersion = "v1" }];
+        }
+
+        return pod;
+    }
+
+    private static V1Node RawNode(string name, bool unschedulable)
+        => new()
+        {
+            Metadata = new V1ObjectMeta { Name = name },
+            Spec = new V1NodeSpec { Unschedulable = unschedulable }
+        };
+
+    private sealed class DrainNodeProgressRecorder(Action<NodeDrainProgress> onReport) : IProgress<NodeDrainProgress>
+    {
+        public void Report(NodeDrainProgress value) => onReport(value);
     }
 
     private async Task<int> SeedAsyncWithRemark()

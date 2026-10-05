@@ -14,6 +14,17 @@ RUN cd /tmp \
  && tar -xzf "helm-${HELM_VERSION}-linux-${TARGETARCH}.tar.gz" \
  && cp "linux-${TARGETARCH}/helm" /helm
 
+# 图表 bundle 构建阶段:vite + echarts 独立 node 环境,产物 (wwwroot/js/dashboard-trend.js)
+# 在 build 阶段于 dotnet build 之前拷入 wwwroot,随静态资产一起发布。
+FROM node:22-alpine AS charts
+WORKDIR /charts
+COPY ["MultiClusterMgmtSys.Web/package.json", "MultiClusterMgmtSys.Web/package-lock.json", "./"]
+# npm install 而非 npm ci:package-lock.json 不入库(.gitignore),fresh clone 无锁文件
+RUN npm install --no-audit --no-fund
+COPY ["MultiClusterMgmtSys.Web/vite.config.mjs", "./"]
+COPY ["MultiClusterMgmtSys.Web/Assets/Scripts/", "./Assets/Scripts/"]
+RUN npm run build
+
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
 # SQLite 数据目录 + Serilog 日志目录：需以非 root 用户可写
@@ -34,13 +45,15 @@ COPY ["MultiClusterMgmtSys.Infrastructure/MultiClusterMgmtSys.Infrastructure.csp
 COPY ["MultiClusterMgmtSys.Web/MultiClusterMgmtSys.Web.csproj", "MultiClusterMgmtSys.Web/"]
 RUN dotnet restore "./MultiClusterMgmtSys.Web/MultiClusterMgmtSys.Web.csproj"
 COPY . .
+# 拷入 vite 产物(须在 dotnet build 前,使静态资产清点可见),并跳过宿主 vite target(本镜像无 node)
+COPY --from=charts /charts/wwwroot/js ./MultiClusterMgmtSys.Web/wwwroot/js/
 WORKDIR "/src/MultiClusterMgmtSys.Web"
-RUN dotnet build "./MultiClusterMgmtSys.Web.csproj" -c $BUILD_CONFIGURATION -o /app/build
+RUN dotnet build "./MultiClusterMgmtSys.Web.csproj" -c $BUILD_CONFIGURATION -o /app/build -p:SkipVite=true
 
 # 此阶段用于发布要复制到最终阶段的服务项目
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./MultiClusterMgmtSys.Web.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "./MultiClusterMgmtSys.Web.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false -p:SkipVite=true
 
 # 此阶段在生产中使用，或在常规模式下从 VS 运行时使用(在不使用调试配置时为默认值)
 FROM base AS final

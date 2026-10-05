@@ -206,6 +206,49 @@ public class DashboardPageTests
     }
 
     [Fact]
+    public async Task Dashboard_shows_trend_card_between_metrics_and_lists()
+    {
+        await using var ctx = new BunitHost();
+        AuthorizeAdmin(ctx);
+        var (harness, _) = ctx.AddDashboardStack();
+        var cluster = TestData.NewCluster("trend-a", status: ClusterStatus.Online);
+        await harness.ClusterRepo.AddAsync(cluster);
+        var baseTime = DateTime.UtcNow;
+        await harness.ClusterHealthRepo.AddAsync(TestData.NewSnapshot(
+            cluster.Id, baseTime.AddMinutes(-3), totalNodes: 5, readyNodes: 3, notReadyNodes: 2));
+        await harness.ClusterHealthRepo.AddAsync(TestData.NewSnapshot(
+            cluster.Id, baseTime, totalNodes: 5, readyNodes: 5, notReadyNodes: 0));
+
+        var cut = ctx.Render<Dashboard>();
+        cut.WaitForState(() => cut.FindAll(".dashboard-trend-chart").Count > 0, TimeSpan.FromSeconds(5));
+
+        Assert.Contains("// 节点就绪趋势", cut.Markup);
+        Assert.Contains("近 24 小时", cut.Markup);
+        Assert.Equal(1, cut.FindAll(".dashboard-trends").Count);
+        Assert.Single(cut.FindAll(".dashboard-trend-chart"));
+
+        // 趋势卡位于指标行与清单行之间
+        var root = cut.Find(".dashboard-page");
+        Assert.True(root.QuerySelectorAll(".dashboard-metrics + .dashboard-trends + .dashboard-lists").Length > 0);
+    }
+
+    [Fact]
+    public async Task Dashboard_trends_row_is_absent_without_snapshots()
+    {
+        await using var ctx = new BunitHost();
+        AuthorizeAdmin(ctx);
+        var (harness, _) = ctx.AddDashboardStack();
+        await harness.ClusterRepo.AddAsync(TestData.NewCluster("no-snap", status: ClusterStatus.Online));
+
+        var cut = ctx.Render<Dashboard>();
+        cut.WaitForState(() => cut.FindAll(".dashboard-stat-bar").Count > 0, TimeSpan.FromSeconds(5));
+
+        // 快照库为空:趋势卡存在但渲染空态,不出现 SVG 折线
+        Assert.Contains("暂无趋势数据", cut.Markup);
+        Assert.Empty(cut.FindAll(".dashboard-trend-chart"));
+    }
+
+    [Fact]
     public async Task Drawer_lists_dashboard_entry_before_cluster_management()
     {
         await using var ctx = new BunitHost();

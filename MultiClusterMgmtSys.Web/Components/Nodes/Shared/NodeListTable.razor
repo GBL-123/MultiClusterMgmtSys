@@ -13,13 +13,24 @@
         <MudTh><MudTableSortLabel T="ClusterNodeViewModel" SortBy="@(x => x.KubeletVersion)" SortLabel="KubeletVersion">Kubelet 版本</MudTableSortLabel></MudTh>
         <MudTh><MudTableSortLabel T="ClusterNodeViewModel" SortBy="@(x => x.OsImage)" SortLabel="OsImage">操作系统</MudTableSortLabel></MudTh>
         <MudTh><MudTableSortLabel T="ClusterNodeViewModel" SortBy="@(x => x.IpAddresses.Count > 0 ? x.IpAddresses[0].Address : "")" SortLabel="IpAddresses">IP 地址</MudTableSortLabel></MudTh>
+        <AuthorizeView Roles="Admin">
+            <Authorized Context="authContext">
+                <MudTh>维护</MudTh>
+            </Authorized>
+        </AuthorizeView>
     </HeaderContent>
     <RowTemplate>
         <MudTd DataLabel="名称">
-            <MudText Class="font-mono link-primary"
-                     @onclick="() => OnNavigateNode.InvokeAsync(context.Name)">
-                @context.Name
-            </MudText>
+            <div class="d-flex align-center" style="gap: 8px;">
+                <MudText Class="font-mono link-primary"
+                         @onclick="() => OnNavigateNode.InvokeAsync(context.Name)">
+                    @context.Name
+                </MudText>
+                @if (context.Unschedulable)
+                {
+                    <StatusBadge Text="已封锁" CssClass="unknown" Raw="Unschedulable" />
+                }
+            </div>
         </MudTd>
         <MudTd DataLabel="状态">
             <StatusBadge Text="@context.StatusText" CssClass="@context.StatusCssClass" Raw="@context.Status" />
@@ -57,6 +68,35 @@
                 </div>
             }
         </MudTd>
+        <AuthorizeView Roles="Admin">
+            <Authorized Context="authContext">
+                <MudTd DataLabel="维护">
+                    <div class="d-flex" style="gap: 4px;">
+                        @if (context.Unschedulable)
+                        {
+                            <TooltipIconButton Text="解封"
+                                               Icon="@Icons.Material.Filled.LockOpen"
+                                               Color="Color.Primary"
+                                               Disabled="@MaintenanceDisabled"
+                                               OnClick="@(() => OnUncordon.InvokeAsync(context.Name))" />
+                        }
+                        else
+                        {
+                            <TooltipIconButton Text="封锁"
+                                               Icon="@Icons.Material.Filled.Block"
+                                               Color="Color.Primary"
+                                               Disabled="@MaintenanceDisabled"
+                                               OnClick="@(() => OnCordon.InvokeAsync(context.Name))" />
+                        }
+                        <TooltipIconButton Text="排空"
+                                           Icon="@Icons.Material.Filled.SwapHoriz"
+                                           Color="Color.Error"
+                                           Disabled="@MaintenanceDisabled"
+                                           OnClick="@(() => OnDrain.InvokeAsync(context.Name))" />
+                    </div>
+                </MudTd>
+            </Authorized>
+        </AuthorizeView>
     </RowTemplate>
     <PagerContent>
         <MudTablePager RowsPerPageString="每页条数：" InfoFormat="共 {all_items} 条" />
@@ -81,4 +121,16 @@
 
     [Parameter]
     public EventCallback<string> OnNavigateNode { get; set; }
+
+    [Parameter]
+    public bool MaintenanceDisabled { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnCordon { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnUncordon { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnDrain { get; set; }
 }

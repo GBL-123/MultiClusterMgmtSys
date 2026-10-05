@@ -47,6 +47,7 @@ public static class BunitServiceExtensions
         ctx.Services.AddScoped<ResourceOwnershipGuard>();
         ctx.Services.AddSingleton<IYamlValidator, YamlValidator>();
         ctx.Services.AddScoped<ClusterNodeService>();
+        ctx.Services.AddSingleton(_ => RetentionStubs.For(harness.ClusterHealthRepo));
         ctx.Services.AddScoped<ClusterService>();
         ctx.Services.AddScoped<ExceptionPresenter>();
         ctx.Services.AddSingleton(NullLoggerFactory.Instance);
@@ -187,6 +188,18 @@ public static class BunitServiceExtensions
         ctx.AddClientCache();
         ctx.Services.AddScoped<StorageService>();
         ctx.AddYamlTemplates();
+        return (harness, k8s);
+    }
+
+    public static (ServiceHarness Harness, Mock<IKubernetes> K8s) AddCompareStack(this BunitContext ctx, string actor = "admin")
+    {
+        var harness = ctx.AddClusterStack(actor);
+        var k8s = new Mock<IKubernetes>();
+        ctx.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8s));
+        ctx.AddClientCache();
+        ctx.Services.AddScoped<WorkloadService>();
+        ctx.Services.AddScoped<ConfigMapService>();
+        ctx.Services.AddScoped<ClusterCompareService>();
         return (harness, k8s);
     }
 }

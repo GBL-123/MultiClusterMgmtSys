@@ -17,7 +17,14 @@ namespace MultiClusterMgmtSys.Application.Services;
 /// 探测失败按优雅降级处理(状态置 Offline),不向调用方抛 K8s 异常;
 /// 探测成功时顺带采集节点就绪统计并追加一条健康快照,采集复用当轮节点列表结果,不额外调用 K8s。
 /// </summary>
-public class ClusterService(IClusterRepository repo, ClusterNodeService nodeService, AuditService auditService, ILogger<ClusterService> logger, IClusterClientCache clientCache, IClusterHealthRepository healthRepo)
+public class ClusterService(
+    IClusterRepository repo,
+    ClusterNodeService nodeService,
+    AuditService auditService,
+    ILogger<ClusterService> logger,
+    IClusterClientCache clientCache,
+    IClusterHealthRepository healthRepo,
+    SnapshotRetentionService snapshotRetention)
 {
     private static readonly SemaphoreSlim _syncGate = new(1, 1);
 
@@ -30,6 +37,8 @@ public class ClusterService(IClusterRepository repo, ClusterNodeService nodeServ
     private readonly AuditService _auditService = auditService;
 
     private readonly ILogger<ClusterService> _logger = logger;
+
+    private readonly SnapshotRetentionService _snapshotRetention = snapshotRetention;
 
     /// <summary>分页查询集群列表,支持分组/名称/状态/版本/创建时间范围过滤与排序;版本筛选走哨兵语义(见 <see cref="VersionFilterSentinel"/>)。</summary>
     public async Task<PagedResult<ClusterViewModel>> GetPagedAsync(ClusterQueryRequest request)
@@ -239,6 +248,11 @@ public class ClusterService(IClusterRepository repo, ClusterNodeService nodeServ
 
             await PersistProbedAsync(entities, previousStatuses, source);
             _logger.LogInformation("RefreshAllClustersStatus done succeeded={Succeeded} of {Total}", succeeded, total);
+
+            // 保留清理挂在每轮成功收尾(契约 cluster-scheduled-sync「快照保留清理」):手动与定时两条路径都经过此处;
+            // 失败仅告警,不影响本轮结果。
+            await _snapshotRetention.CleanupIfDueAsync();
+
             return succeeded;
         }
         finally

@@ -11,6 +11,7 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager NavigationManager
 @inject ExceptionPresenter ExHandler
+@inject IDialogService DialogService
 
 <PageTitle>节点详情: @NodeName</PageTitle>
 
@@ -56,8 +57,12 @@
     {
         <NodeDetailToolbar Node="@_node"
                            Processing="@_loading"
+                           MaintenanceDisabled="@MaintenanceDisabled"
                            OnBack="@(() => NavigationManager.NavigateTo($"/nodes/{ClusterId}"))"
-                           OnRefresh="LoadAsync" />
+                           OnRefresh="LoadAsync"
+                           OnCordonNode="CordonNodeAsync"
+                           OnUncordonNode="UncordonNodeAsync"
+                           OnDrainNode="DrainNodeAsync" />
 
         <MudTabs @bind-ActivePanelIndex="_activeTabIndex"
                  Class="detail-tabs"
@@ -105,6 +110,8 @@
 
     private bool _loading;
 
+    private bool _maintaining;
+
     private int _activeTabIndex;
 
     private int _previousClusterId;
@@ -145,6 +152,77 @@
         finally
         {
             _loading = false;
+        }
+    }
+
+    /// <summary>
+    /// 维护入口禁用条件:集群不可达、页面刷新中或已有维护操作进行时一律禁用。
+    /// </summary>
+    private bool MaintenanceDisabled => !(_node?.IsReachable ?? false) || _loading || _maintaining;
+
+    private async Task CordonNodeAsync()
+    {
+        var parameters = new DialogParameters
+        {
+            { "Message", $"封锁后节点「{NodeName}」将不再接收新的 Pod 调度,已在运行的 Pod 不受影响。确定封锁吗？" },
+            { "ConfirmText", "封锁" },
+            { "ConfirmIcon", Icons.Material.Filled.Block }
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("确认封锁", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is not null && !result.Canceled)
+        {
+            await RunMaintenanceAsync(
+                () => ClusterNodeService.CordonAsync(new NodeMaintenanceRequest(ClusterId, NodeName)),
+                "封锁节点");
+        }
+    }
+
+    private async Task UncordonNodeAsync()
+    {
+        await RunMaintenanceAsync(
+            () => ClusterNodeService.UncordonAsync(new NodeMaintenanceRequest(ClusterId, NodeName)),
+            "解封节点");
+    }
+
+    private async Task DrainNodeAsync()
+    {
+        _maintaining = true;
+        try
+        {
+            var parameters = new DialogParameters
+            {
+                [nameof(NodeDrainDialog.ClusterId)] = ClusterId,
+                [nameof(NodeDrainDialog.NodeName)] = NodeName
+            };
+            var options = new DialogOptions { CloseButton = false };
+            await DialogService.ShowAsync<NodeDrainDialog>(
+                $"排空节点: {NodeName}", parameters, options);
+            await LoadAsync();
+        }
+        finally
+        {
+            _maintaining = false;
+        }
+    }
+
+    private async Task RunMaintenanceAsync(Func<Task> action, string operation)
+    {
+        _maintaining = true;
+        try
+        {
+            await action();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, operation);
+        }
+        finally
+        {
+            _maintaining = false;
         }
     }
 }

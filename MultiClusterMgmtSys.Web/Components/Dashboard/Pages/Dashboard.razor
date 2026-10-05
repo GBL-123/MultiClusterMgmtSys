@@ -80,6 +80,10 @@
             <DashboardNodeReadinessCard FleetSize="@_model.FleetSize" />
         </div>
 
+        <div class="dashboard-trends">
+            <DashboardNodeTrendCard Series="@_trend" />
+        </div>
+
         <div class="dashboard-lists">
             <DashboardAttentionList Items="@_model.AttentionItems" OnOpenCluster="OpenCluster" />
             <DashboardActivityCard Items="@_model.RecentActivity" SystemWide="@_model.RecentActivityIsSystemWide" />
@@ -89,6 +93,8 @@
 
 @code {
     private DashboardViewModel? _model;
+
+    private IReadOnlyList<DashboardTrendPointViewModel> _trend = [];
 
     private bool _isRefreshing;
 
@@ -106,6 +112,7 @@
         try
         {
             _model = await DashboardService.GetDashboardAsync();
+            _trend = await DashboardService.GetNodeReadinessTrendAsync();
         }
         catch (Exception ex)
         {

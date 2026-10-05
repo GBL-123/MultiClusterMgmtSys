@@ -112,6 +112,107 @@ public static class K8sMocks
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(ex);
 
+    public static void SetupPatchNode(this Mock<IKubernetes> mock, string nodeName, V1Node? returnBody = null)
+        => mock.Setup(x => x.CoreV1.PatchNodeWithHttpMessagesAsync(
+                It.IsAny<V1Patch>(),
+                It.Is<string>(n => n == nodeName),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HttpOperationResponse<V1Node> { Body = returnBody ?? new V1Node() });
+
+    public static void SetupPatchNodeThrows(this Mock<IKubernetes> mock, string nodeName, Exception ex)
+        => mock.Setup(x => x.CoreV1.PatchNodeWithHttpMessagesAsync(
+                It.IsAny<V1Patch>(),
+                It.Is<string>(n => n == nodeName),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(ex);
+
+    public static void VerifyNodePatched(this Mock<IKubernetes> mock, string nodeName, Times times)
+        => mock.Verify(x => x.CoreV1.PatchNodeWithHttpMessagesAsync(
+                It.IsAny<V1Patch>(),
+                It.Is<string>(n => n == nodeName),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()), times);
+
+    public static void SetupEvictPod(this Mock<IKubernetes> mock, string ns, string podName)
+        => mock.Setup(x => x.CoreV1.CreateNamespacedPodEvictionWithHttpMessagesAsync(
+                It.IsAny<V1Eviction>(),
+                It.Is<string>(n => n == podName),
+                It.Is<string>(n => n == ns),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HttpOperationResponse<V1Eviction> { Body = new V1Eviction() });
+
+    public static void SetupEvictPodBlocked(this Mock<IKubernetes> mock, string ns, string podName)
+        => mock.Setup(x => x.CoreV1.CreateNamespacedPodEvictionWithHttpMessagesAsync(
+                It.IsAny<V1Eviction>(),
+                It.Is<string>(n => n == podName),
+                It.Is<string>(n => n == ns),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(K8sError(429, "Cannot evict pod as it would violate the pod's disruption budget."));
+
+    public static void SetupEvictPodThrows(this Mock<IKubernetes> mock, string ns, string podName, Exception ex)
+        => mock.Setup(x => x.CoreV1.CreateNamespacedPodEvictionWithHttpMessagesAsync(
+                It.IsAny<V1Eviction>(),
+                It.Is<string>(n => n == podName),
+                It.Is<string>(n => n == ns),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(ex);
+
+    public static void VerifyPodEvicted(this Mock<IKubernetes> mock, string ns, string podName, Times times)
+        => mock.Verify(x => x.CoreV1.CreateNamespacedPodEvictionWithHttpMessagesAsync(
+                It.IsAny<V1Eviction>(),
+                It.Is<string>(n => n == podName),
+                It.Is<string>(n => n == ns),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()), times);
+
+    public static void VerifyPodEvictionNever(this Mock<IKubernetes> mock)
+        => mock.Verify(x => x.CoreV1.CreateNamespacedPodEvictionWithHttpMessagesAsync(
+                It.IsAny<V1Eviction>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+
     public static void SetupListNamespaces(this Mock<IKubernetes> mock, params string[] namespaces)
         => mock.Setup(x => x.CoreV1.ListNamespaceWithHttpMessagesAsync(
                 It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),

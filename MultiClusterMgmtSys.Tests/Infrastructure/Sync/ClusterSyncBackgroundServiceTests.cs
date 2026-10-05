@@ -37,6 +37,7 @@ public class ClusterSyncBackgroundServiceTests : IDisposable
         services.AddScoped<IClusterHealthRepository>(_ => _harness.ClusterHealthRepo);
         services.AddScoped(_ => _harness.Audit);
         services.AddScoped<ClusterNodeService>();
+        services.AddSingleton(_ => RetentionStubs.For(_harness.ClusterHealthRepo));
         services.AddScoped<ClusterService>();
         services.AddScoped<ClusterSyncSettingService>();
         services.AddSingleton<IHttpContextAccessor>(TestHttpContext.For("admin", "Admin").Object);

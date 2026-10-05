@@ -18,10 +18,10 @@ public class ClusterHealthProbeTests : IDisposable
     public ClusterHealthProbeTests()
     {
         var nodeService = new ClusterNodeService(
-            _harness.ClusterRepo, _harness.Audit, NullLogger<ClusterNodeService>.Instance, K8sMocks.Cache(_k8s));
+            _harness.ClusterRepo, _harness.Audit, NullLogger<ClusterNodeService>.Instance, K8sMocks.Cache(_k8s), TestHttpContext.For("admin", "Admin").Object);
         _service = new ClusterService(
             _harness.ClusterRepo, nodeService, _harness.Audit,
-            NullLogger<ClusterService>.Instance, K8sMocks.Cache(_k8s), _harness.ClusterHealthRepo);
+            NullLogger<ClusterService>.Instance, K8sMocks.Cache(_k8s), _harness.ClusterHealthRepo, RetentionStubs.For(_harness.ClusterHealthRepo));
     }
 
     public void Dispose() => _harness.Dispose();
@@ -155,10 +155,10 @@ public class ClusterHealthProbeTests : IDisposable
         failingRepo.Setup(r => r.AddAsync(It.IsAny<ClusterHealthSnapshot>()))
                    .ThrowsAsync(new InvalidOperationException("snapshot store down"));
         var nodeService = new ClusterNodeService(
-            _harness.ClusterRepo, _harness.Audit, NullLogger<ClusterNodeService>.Instance, K8sMocks.Cache(_k8s));
+            _harness.ClusterRepo, _harness.Audit, NullLogger<ClusterNodeService>.Instance, K8sMocks.Cache(_k8s), TestHttpContext.For("admin", "Admin").Object);
         var probe = new ClusterService(
             _harness.ClusterRepo, nodeService, _harness.Audit,
-            NullLogger<ClusterService>.Instance, K8sMocks.Cache(_k8s), failingRepo.Object);
+            NullLogger<ClusterService>.Instance, K8sMocks.Cache(_k8s), failingRepo.Object, RetentionStubs.For(failingRepo.Object));
         var id = await SeedAsync("snap-write-fail");
 
         var vm = await probe.RefreshClusterStatusAsync(id);

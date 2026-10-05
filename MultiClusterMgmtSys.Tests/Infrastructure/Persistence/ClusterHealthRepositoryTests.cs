@@ -1,120 +1,103 @@
+﻿using System;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using MultiClusterMgmtSys.Domain.Entities;
 using MultiClusterMgmtSys.Infrastructure.Persistence;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
+using Xunit;
 
 namespace MultiClusterMgmtSys.Tests.Infrastructure.Persistence;
 
-public class ClusterHealthRepositoryTests : IDisposable
+/// <summary>
+/// 集群健康快照仓储测试:窗口区间查询(边界含入)与过期快照删除。
+/// </summary>
+public sealed class ClusterHealthRepositoryTests : IDisposable
 {
-    private readonly ApplicationDbContext _db = SqliteDbFactory.CreateContext();
+    private static readonly DateTime Now = new(2026, 10, 5, 8, 0, 0, DateTimeKind.Utc);
+
+    private readonly ApplicationDbContext _db;
+
     private readonly ClusterHealthRepository _repo;
-    private readonly ClusterRepository _clusterRepo;
+
+    private readonly int _clusterId;
 
     public ClusterHealthRepositoryTests()
     {
+        _db = SqliteDbFactory.CreateContext();
         _repo = new ClusterHealthRepository(_db);
-        _clusterRepo = new ClusterRepository(_db);
+        var cluster = TestData.NewCluster("snap-cluster");
+        _db.Clusters.Add(cluster);
+        _db.SaveChanges();
+        _clusterId = cluster.Id;
     }
 
-    public void Dispose() => _db.Dispose();
-
-    private async Task<int> SeedClusterAsync(string name = "cluster-1")
+    public void Dispose()
     {
-        var added = await _clusterRepo.AddAsync(TestData.NewCluster(name));
-        return added.Id;
-    }
-
-    [Fact]
-    public async Task AddAsync_appends_snapshot_row()
-    {
-        var clusterId = await SeedClusterAsync();
-
-        await _repo.AddAsync(TestData.NewSnapshot(clusterId, totalNodes: 8, readyNodes: 6, notReadyNodes: 2));
-
-        var stored = Assert.Single(await _db.ClusterHealthSnapshots.ToListAsync(TestContext.Current.CancellationToken));
-        Assert.Equal(clusterId, stored.ClusterId);
-        Assert.Equal(8, stored.TotalNodes);
-        Assert.Equal(6, stored.ReadyNodes);
-        Assert.Equal(2, stored.NotReadyNodes);
+        _db.Dispose();
     }
 
     [Fact]
-    public async Task AddAsync_keeps_previous_rows_instead_of_overwriting()
+    public async Task GetWindowAsync_returns_rows_within_window_ordered()
     {
-        var clusterId = await SeedClusterAsync();
-        var first = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        await SeedSnapshotAsync(-30);
+        await SeedSnapshotAsync(-2);
+        await SeedSnapshotAsync(-1);
 
-        await _repo.AddAsync(TestData.NewSnapshot(clusterId, capturedAt: first, totalNodes: 8));
-        await _repo.AddAsync(TestData.NewSnapshot(clusterId, capturedAt: first.AddMinutes(5), totalNodes: 9));
+        var rows = await _repo.GetWindowAsync(Now.AddHours(-24));
 
-        Assert.Equal(2, await _db.ClusterHealthSnapshots.CountAsync(TestContext.Current.CancellationToken));
+        var times = rows.Select(r => r.CapturedAt).ToArray();
+        Assert.Equal([Now.AddHours(-2), Now.AddHours(-1)], times);
     }
 
     [Fact]
-    public async Task GetLatestPerClusterAsync_picks_newest_snapshot_per_cluster()
+    public async Task GetWindowAsync_boundary_is_inclusive()
     {
-        var clusterA = await SeedClusterAsync("a");
-        var clusterB = await SeedClusterAsync("b");
-        var first = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        await SeedSnapshotAsync(-25);
+        await SeedSnapshotAsync(-24);
 
-        await _repo.AddAsync(TestData.NewSnapshot(clusterA, capturedAt: first, totalNodes: 3, readyNodes: 3, notReadyNodes: 0));
-        await _repo.AddAsync(TestData.NewSnapshot(clusterA, capturedAt: first.AddMinutes(5), totalNodes: 5, readyNodes: 4, notReadyNodes: 1));
-        await _repo.AddAsync(TestData.NewSnapshot(clusterB, capturedAt: first, totalNodes: 7, readyNodes: 7, notReadyNodes: 0));
+        var rows = await _repo.GetWindowAsync(Now.AddDays(-1));
 
-        var latest = await _repo.GetLatestPerClusterAsync();
-
-        Assert.Equal(2, latest.Count);
-        Assert.Equal(5, latest[clusterA].TotalNodes);
-        Assert.Equal(1, latest[clusterA].NotReadyNodes);
-        Assert.Equal(7, latest[clusterB].TotalNodes);
+        Assert.Equal(Now.AddDays(-1), Assert.Single(rows).CapturedAt);
     }
 
     [Fact]
-    public async Task GetLatestPerClusterAsync_breaks_timestamp_ties_by_id()
+    public async Task DeleteCapturedBeforeAsync_deletes_strictly_older_rows()
     {
-        var clusterId = await SeedClusterAsync();
-        var sameMoment = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        await SeedSnapshotAsync(-91);
+        await SeedSnapshotAsync(-89);
+        await SeedSnapshotAsync(-10);
 
-        await _repo.AddAsync(TestData.NewSnapshot(clusterId, capturedAt: sameMoment, totalNodes: 3));
-        await _repo.AddAsync(TestData.NewSnapshot(clusterId, capturedAt: sameMoment, totalNodes: 9));
+        var deleted = await _repo.DeleteCapturedBeforeAsync(Now.AddHours(-90));
 
-        var latest = await _repo.GetLatestPerClusterAsync();
-
-        Assert.Equal(9, latest[clusterId].TotalNodes);
+        Assert.Equal(1, deleted);
+        var remaining = await _db.ClusterHealthSnapshots
+            .OrderBy(s => s.CapturedAt)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        Assert.Equal([Now.AddHours(-89), Now.AddHours(-10)], [.. remaining.Select(r => r.CapturedAt)]);
     }
 
     [Fact]
-    public async Task GetLatestPerClusterAsync_excludes_clusters_without_snapshots()
+    public async Task DeleteCapturedBeforeAsync_without_expired_rows_deletes_nothing()
     {
-        var withSnapshot = await SeedClusterAsync("with");
-        await SeedClusterAsync("without");
-        await _repo.AddAsync(TestData.NewSnapshot(withSnapshot));
+        await SeedSnapshotAsync(-1);
 
-        var latest = await _repo.GetLatestPerClusterAsync();
+        var deleted = await _repo.DeleteCapturedBeforeAsync(Now.AddHours(-90));
 
-        Assert.Single(latest);
-        Assert.True(latest.ContainsKey(withSnapshot));
+        Assert.Equal(0, deleted);
+        Assert.Equal(1, await _db.ClusterHealthSnapshots.CountAsync(TestContext.Current.CancellationToken));
     }
 
-    [Fact]
-    public async Task GetLatestPerClusterAsync_is_empty_when_no_snapshots_exist()
+    private async Task SeedSnapshotAsync(double hoursAgo)
     {
-        await SeedClusterAsync();
-
-        Assert.Empty(await _repo.GetLatestPerClusterAsync());
-    }
-
-    [Fact]
-    public async Task Deleting_cluster_cascades_its_snapshots()
-    {
-        var clusterId = await SeedClusterAsync();
-        var first = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        await _repo.AddAsync(TestData.NewSnapshot(clusterId, capturedAt: first));
-        await _repo.AddAsync(TestData.NewSnapshot(clusterId, capturedAt: first.AddMinutes(5)));
-        Assert.Equal(2, await _db.ClusterHealthSnapshots.CountAsync(TestContext.Current.CancellationToken));
-
-        await _clusterRepo.DeleteAsync(clusterId);
-
-        Assert.Equal(0, await _db.ClusterHealthSnapshots.CountAsync(TestContext.Current.CancellationToken));
+        _db.ClusterHealthSnapshots.Add(new ClusterHealthSnapshot
+        {
+            ClusterId = _clusterId,
+            CapturedAt = Now.AddHours(hoursAgo),
+            TotalNodes = 4,
+            ReadyNodes = 3,
+            NotReadyNodes = 1
+        });
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 }

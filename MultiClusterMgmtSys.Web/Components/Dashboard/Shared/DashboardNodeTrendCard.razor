@@ -1,0 +1,165 @@
+@using MultiClusterMgmtSys.Application.ViewModels
+@using MultiClusterMgmtSys.Application.Services
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@inject Microsoft.Extensions.Logging.ILogger<DashboardNodeTrendCard> Logger
+
+<MudPaper Class="dashboard-card">
+    <div class="dashboard-card-head">
+        <span class="dashboard-card-title">// 节点就绪趋势</span>
+        <div class="dashboard-trend-meta">
+            <div class="dashboard-trend-legend">
+                <span class="dashboard-trend-swatch is-online"></span>
+                <span>就绪</span>
+                <span class="dashboard-trend-swatch is-offline"></span>
+                <span>未就绪</span>
+            </div>
+            <span class="dashboard-trend-note font-mono">近 24 小时</span>
+        </div>
+    </div>
+
+    <div class="dashboard-card-body">
+        @if (Series is not { Count: > 0 })
+        {
+            <div class="empty-state is-compact">
+                <span>[ 暂无趋势数据 ]</span>
+            </div>
+        }
+        else if (_chartFailed)
+        {
+            <div class="empty-state is-compact">
+                <span>[ 图表组件加载失败 ]</span>
+            </div>
+        }
+        else
+        {
+            <div @ref="_chartEl" class="dashboard-trend-chart" role="img" aria-label="节点就绪趋势"></div>
+        }
+    </div>
+</MudPaper>
+
+@code {
+    [Parameter]
+
+    public IReadOnlyList<DashboardTrendPointViewModel> Series { get; set; } = [];
+
+    [Parameter]
+
+    public int WindowHours { get; set; } = DashboardService.TrendWindowHours;
+
+    [Parameter]
+
+    public DateTime? NowUtc { get; set; }
+
+    private ElementReference _chartEl;
+
+    private IJSObjectReference? _module;
+
+    private bool _needsUpdate;
+
+    private bool _chartFailed;
+
+    protected override void OnParametersSet()
+    {
+        if (Series is { Count: > 0 })
+        {
+            _needsUpdate = true;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Series is not { Count: > 0 })
+        {
+            return;
+        }
+
+        try
+        {
+            if (_module is null)
+            {
+                _module = await JS.InvokeAsync<IJSObjectReference?>("import", "/js/dashboard-trend.js");
+                if (_module is null)
+                {
+                    // 无 JS 环境(如 bUnit 宽松模式),保持静态占位,不视为失败。
+                    return;
+                }
+
+                await _module.InvokeVoidAsync("mount", _chartEl, BuildPayload());
+            }
+            else if (_needsUpdate)
+            {
+                await _module.InvokeVoidAsync("update", _chartEl, BuildPayload());
+            }
+
+            _needsUpdate = false;
+        }
+        catch (JSDisconnectedException)
+        {
+            // 电路断开时的清理路径,无需提示。
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "节点就绪趋势卡加载失败(import /js/dashboard-trend.js)。");
+            _chartFailed = true;
+            _needsUpdate = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private object BuildPayload()
+    {
+        var now = DateTime.SpecifyKind(NowUtc ?? DateTime.UtcNow, DateTimeKind.Utc);
+        var windowStart = now.AddHours(-WindowHours);
+        return new
+        {
+            windowStart = FormatIso(windowStart),
+            windowEnd = FormatIso(now),
+            series = new object[]
+            {
+                new
+                {
+                    name = "就绪",
+                    color = "#346538",
+                    points = Series.Select(static point => new
+                    {
+                        t = FormatIso(point.CapturedAtUtc),
+                        v = point.ReadyNodes
+                    }).ToArray()
+                },
+                new
+                {
+                    name = "未就绪",
+                    color = "#9F2F2D",
+                    points = Series.Select(static point => new
+                    {
+                        t = FormatIso(point.CapturedAtUtc),
+                        v = point.NotReadyNodes
+                    }).ToArray()
+                }
+            }
+        };
+    }
+
+    private static string FormatIso(DateTime value)
+        => value.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", System.Globalization.CultureInfo.InvariantCulture);
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_module is not null)
+            {
+                await _module.InvokeVoidAsync("dispose", _chartEl);
+                await _module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (Exception)
+        {
+            // 组件销毁阶段的清理失败无需打扰用户。
+        }
+    }
+}

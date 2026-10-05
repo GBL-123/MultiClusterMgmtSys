@@ -199,9 +199,9 @@ public class ClusterClientCacheTests : IDisposable
         K8sMocks.SetupListNodes(k8s);
         var (cache, count) = SingleClientCache(k8s.Object);
         var nodeService = new ClusterNodeService(
-            _harness.ClusterRepo, _harness.Audit, NullLogger<ClusterNodeService>.Instance, cache);
+            _harness.ClusterRepo, _harness.Audit, NullLogger<ClusterNodeService>.Instance, cache, TestHttpContext.For("admin", "Admin").Object);
         var service = new ClusterService(
-            _harness.ClusterRepo, nodeService, _harness.Audit, NullLogger<ClusterService>.Instance, cache, _harness.ClusterHealthRepo);
+            _harness.ClusterRepo, nodeService, _harness.Audit, NullLogger<ClusterService>.Instance, cache, _harness.ClusterHealthRepo, RetentionStubs.For(_harness.ClusterHealthRepo));
         var id = await SeedAsync("probe-reuse");
 
         await service.RefreshClusterStatusAsync(id);

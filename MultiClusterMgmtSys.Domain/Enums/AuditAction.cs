@@ -48,5 +48,14 @@ public enum AuditAction
     Uninstall = 13,
 
     /// <summary>Secret key 明文揭示(只读操作的审计例外)。</summary>
-    View = 14
+    View = 14,
+
+    /// <summary>节点封锁(标记为不可调度)。</summary>
+    Cordon = 15,
+
+    /// <summary>节点解封(恢复可调度)。</summary>
+    Uncordon = 16,
+
+    /// <summary>节点排空(逐 Pod 驱逐迁移)。</summary>
+    Drain = 17
 }

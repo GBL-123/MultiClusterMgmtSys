@@ -22,6 +22,10 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<PodService>();
         services.AddScoped<NamespaceService>();
         services.AddScoped<WorkloadService>();
+        services.AddScoped<SecretService>();
+        services.AddScoped<StorageService>();
+
+        services.AddScoped<ClusterCompareService>();
         services.AddScoped<ClusterService>();
         services.AddScoped<GroupService>();
         services.AddScoped<AuditService>();
@@ -30,6 +34,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<ClusterSyncSettingService>();
         services.AddScoped<DashboardService>();
         services.AddScoped<HelmService>();
+        services.AddSingleton<SnapshotRetentionService>();
         services.AddScoped<ResourceOwnershipGuard>();
         services.AddSingleton<IYamlValidator, YamlValidator>();
         return services;

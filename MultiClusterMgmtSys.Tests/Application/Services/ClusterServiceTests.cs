@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using k8s;
 using k8s.Models;
+using MultiClusterMgmtSys.Domain.Entities;
 using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Domain.Exceptions;
 using MultiClusterMgmtSys.Application.Models;
@@ -22,10 +23,10 @@ public class ClusterServiceTests : IDisposable
     public ClusterServiceTests()
     {
         var nodeService = new ClusterNodeService(
-            _harness.ClusterRepo, _harness.Audit, NullLogger<ClusterNodeService>.Instance, K8sMocks.Cache(_k8s));
+            _harness.ClusterRepo, _harness.Audit, NullLogger<ClusterNodeService>.Instance, K8sMocks.Cache(_k8s), TestHttpContext.For("admin", "Admin").Object);
         _service = new ClusterService(
             _harness.ClusterRepo, nodeService, _harness.Audit,
-            NullLogger<ClusterService>.Instance, K8sMocks.Cache(_k8s), _harness.ClusterHealthRepo);
+            NullLogger<ClusterService>.Instance, K8sMocks.Cache(_k8s), _harness.ClusterHealthRepo, RetentionStubs.For(_harness.ClusterHealthRepo));
     }
 
     public void Dispose() => _harness.Dispose();
@@ -353,11 +354,13 @@ public class ClusterServiceTests : IDisposable
         var probeService = new ClusterService(
             _harness.ClusterRepo,
             new ClusterNodeService(_harness.ClusterRepo, _harness.Audit, NullLogger<ClusterNodeService>.Instance,
-                new ClusterClientCache(config => { captured.Add(config); return _k8s.Object; }, NullLogger<ClusterClientCache>.Instance)),
+                new ClusterClientCache(config => { captured.Add(config); return _k8s.Object; }, NullLogger<ClusterClientCache>.Instance),
+                TestHttpContext.For("admin", "Admin").Object),
             _harness.Audit,
             NullLogger<ClusterService>.Instance,
             new ClusterClientCache(config => { captured.Add(config); return _k8s.Object; }, NullLogger<ClusterClientCache>.Instance),
-            _harness.ClusterHealthRepo);
+            _harness.ClusterHealthRepo,
+            RetentionStubs.For(_harness.ClusterHealthRepo));
 
         var tokenId = await SeedAsync("token-timeout");
         var kubeConfigCluster = TestData.NewCluster("kubeconfig-timeout");
@@ -384,6 +387,36 @@ public class ClusterServiceTests : IDisposable
         var audits = await _harness.Db.AuditLogs.ToListAsync(TestContext.Current.CancellationToken);
         Assert.Equal(2, audits.Count);
         Assert.All(audits, a => Assert.Contains("定时同步", a.Target));
+    }
+
+    [Fact]
+    public async Task RefreshAllClustersStatusAsync_success_round_runs_snapshot_retention_cleanup()
+    {
+        var clusterId = await SeedAsync("cleanup-cluster");
+        await _harness.ClusterHealthRepo.AddAsync(new ClusterHealthSnapshot
+        {
+            ClusterId = clusterId,
+            CapturedAt = DateTime.UtcNow.AddDays(-91),
+            TotalNodes = 4,
+            ReadyNodes = 2,
+            NotReadyNodes = 2
+        });
+        _k8s.SetupGetVersion("v1.30.2");
+        _k8s.SetupListNodes(BuildNode("n1", ready: true));
+
+        await _service.RefreshAllClustersStatusAsync(source: ClusterSyncSource.Scheduled);
+
+        var expired = await _harness.Db.ClusterHealthSnapshots
+            .Where(s => s.CapturedAt < DateTime.UtcNow.AddDays(-90))
+            .CountAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(0, expired);
+        var snapshots = await _harness.Db.ClusterHealthSnapshots
+            .Where(s => s.ClusterId == clusterId)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        var snapshot = Assert.Single(snapshots);
+        Assert.Equal(1, snapshot.TotalNodes);
+        Assert.Equal(1, snapshot.ReadyNodes);
+        Assert.Equal(0, snapshot.NotReadyNodes);
     }
 
     [Fact]

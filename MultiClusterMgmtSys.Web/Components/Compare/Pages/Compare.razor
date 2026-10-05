@@ -1,0 +1,242 @@
+@attribute [Authorize]
+@page "/compare"
+
+@using MultiClusterMgmtSys.Application.Enums
+@using MultiClusterMgmtSys.Application.Models
+@using MultiClusterMgmtSys.Application.Requests
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Application.ViewModels
+@using MultiClusterMgmtSys.Web.Components.Compare
+@using MultiClusterMgmtSys.Web.Components.Compare.Shared
+
+@inject ClusterService ClusterService
+@inject WorkloadService WorkloadService
+@inject ClusterCompareService CompareService
+@inject ISnackbar Snackbar
+@inject ExceptionPresenter ExHandler
+
+<PageTitle>跨集群对照</PageTitle>
+
+<MudStack Spacing="2" Class="flex-auto">
+    <MudPaper Class="pa-4 mb-2 compare-toolbar">
+        <MudStack Spacing="2">
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.h5">跨集群对照</MudText>
+            </MudStack>
+            <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
+            <MudSelect T="int?"
+                       Value="_sourceId"
+                        ValueChanged="@(async v => await OnSourceClusterChanged(v))"
+                        Label="源集群"
+                        Variant="Variant.Outlined"
+                        Margin="Margin.Dense"
+                        Style="width:200px;">
+                @foreach (var cluster in _clusters)
+                {
+                    <MudSelectItem Value="@((int?)cluster.Id)">@cluster.Name</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSelect T="int?"
+                       Value="_targetId"
+                       ValueChanged="@(v => { _targetId = v; })"
+                        Label="对照集群"
+                        Variant="Variant.Outlined"
+                        Margin="Margin.Dense"
+                        Style="width:200px;">
+                @foreach (var cluster in _clusters)
+                {
+                    <MudSelectItem Value="@((int?)cluster.Id)">@cluster.Name</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSelect T="CompareKind?"
+                       Value="_kind"
+                       ValueChanged="@(async v => await OnKindChanged(v))"
+                        Label="资源族"
+                        Variant="Variant.Outlined"
+                        Margin="Margin.Dense"
+                        Style="width:200px;">
+                @foreach (var kind in Enum.GetValues<CompareKind>())
+                {
+                    <MudSelectItem Value="@((CompareKind?)kind)">@(kind.ToDisplayText() + $" ({kind})")</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSelect T="string?"
+                       Value="_namespace"
+                       ValueChanged="@(async v => await OnNamespaceChanged(v))"
+                       Label="命名空间"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                        Disabled="@(!_sourceId.HasValue)"
+                        Style="width:200px;">
+                @foreach (var ns in _namespaces)
+                {
+                    <MudSelectItem Value="@ns">@ns</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSelect T="string?"
+                       Value="_resourceName"
+                       ValueChanged="@(v => { _resourceName = v; })"
+                       Label="资源名称"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense"
+                        Disabled="@(_names.Count == 0)"
+                        Style="width:200px;">
+                @foreach (var name in _names)
+                {
+                    <MudSelectItem Value="@name">@name</MudSelectItem>
+                }
+            </MudSelect>
+
+            <MudSpacer />
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.CompareArrows"
+                       Disabled="@(!_sourceId.HasValue || !_targetId.HasValue || !_kind.HasValue || string.IsNullOrEmpty(_namespace) || string.IsNullOrEmpty(_resourceName) || _comparing)"
+                       OnClick="CompareAsync">
+                对照
+            </MudButton>
+            </MudStack>
+        </MudStack>
+    </MudPaper>
+
+    @if (_pair is null)
+    {
+        <div class="empty-state">[ 选择要对照的资源后点击「对照」 ]</div>
+    }
+    else
+    {
+        <CompareDiffView Pair="@_pair" Rows="@_rows" OnCloned="HandleClonedAsync" />
+    }
+</MudStack>
+
+@code {
+    private List<ClusterViewModel> _clusters = [];
+
+    private List<string> _namespaces = [];
+
+    private List<string> _names = [];
+
+    private int? _sourceId;
+
+    private int? _targetId;
+
+    private CompareKind? _kind;
+
+    private string? _namespace;
+
+    private string? _resourceName;
+
+    private ComparePairViewModel? _pair;
+
+    private IReadOnlyList<CompareDiffRow> _rows = [];
+
+    private bool _comparing;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var request = new ClusterQueryRequest { Page = 1, PageSize = 1000, SortBy = ClusterSortField.Name, SortDescending = false };
+        try
+        {
+            var result = await ClusterService.GetPagedAsync(request);
+            _clusters = result.Items;
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载集群列表");
+        }
+    }
+
+    private async Task OnSourceClusterChanged(int? value)
+    {
+        _sourceId = value;
+        _namespaces = [];
+        _names = [];
+        _namespace = null;
+        _resourceName = null;
+        if (!value.HasValue)
+        {
+            return;
+        }
+
+        try
+        {
+            _namespaces = await WorkloadService.GetNamespacesAsync(value.Value);
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载命名空间");
+        }
+    }
+
+    private async Task OnNamespaceChanged(string? value)
+    {
+        _namespace = value;
+        _names = [];
+        _resourceName = null;
+        await LoadNamesAsync();
+    }
+
+    private async Task OnKindChanged(CompareKind? value)
+    {
+        _kind = value;
+        _names = [];
+        _resourceName = null;
+        await LoadNamesAsync();
+    }
+
+    private async Task LoadNamesAsync()
+    {
+        if (!_sourceId.HasValue || !_kind.HasValue || string.IsNullOrEmpty(_namespace))
+        {
+            return;
+        }
+
+        try
+        {
+            _names = await CompareService.GetSourceResourceNamesAsync(_sourceId.Value, _kind.Value, _namespace);
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载资源清单");
+        }
+    }
+
+    private async Task CompareAsync()
+    {
+        if (_sourceId == _targetId)
+        {
+            Snackbar.Add("请选择不同的集群进行对照", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            _comparing = true;
+            var request = new ComparePairQueryRequest(_sourceId!.Value, _targetId!.Value, _kind!.Value, _namespace!, _resourceName!);
+            _pair = await CompareService.GetPairAsync(request);
+            _rows = YamlDiff.Compute(
+                _pair.SourceExists ? _pair.SourceYaml : null,
+                _pair.TargetExists ? _pair.TargetYaml : null);
+            _pair.DifferenceCount = YamlDiff.CountChanges(_rows);
+        }
+        catch (Exception ex)
+        {
+            _pair = null;
+            await ExHandler.HandleAsync(ex, "对照资源");
+        }
+        finally
+        {
+            _comparing = false;
+        }
+    }
+
+    private async Task HandleClonedAsync()
+    {
+        await CompareAsync();
+    }
+}

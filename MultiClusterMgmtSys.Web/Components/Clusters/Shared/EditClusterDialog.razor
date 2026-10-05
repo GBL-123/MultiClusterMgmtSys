@@ -19,26 +19,27 @@
                 <MudToggleItem Value="@ConnectionType.Token">Token</MudToggleItem>
             </MudToggleGroup>
 
-            <MudTextField @bind-Value="_Name"
-                          Label="集群名称"
-                          Required="true"
-                          RequiredError="请输入集群名称"
-                          Immediate="true"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
-                          Class="mb-3" />
-
-            <MudSelect @bind-Value="_GroupId"
-                       Label="所属分组"
-                       Variant="Variant.Outlined"
-                       Margin="Margin.Dense"
-                       Class="mb-3">
-                <MudSelectItem Value="@((int?)null)">无分组</MudSelectItem>
-                @foreach (var group in _groups)
-                {
-                    <MudSelectItem Value="@((int?)group.Id)">@group.Name</MudSelectItem>
-                }
-            </MudSelect>
+            <MudStack Row="true" Spacing="3" Class="mb-3">
+                <MudTextField @bind-Value="_Name"
+                              Label="集群名称"
+                              Required="true"
+                              RequiredError="请输入集群名称"
+                              Immediate="true"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Style="flex:1 1 0; min-width:0;" />
+                <MudSelect @bind-Value="_GroupId"
+                           Label="所属分组"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Style="flex:1 1 0; min-width:0;">
+                    <MudSelectItem Value="@((int?)null)">无分组</MudSelectItem>
+                    @foreach (var group in _groups)
+                    {
+                        <MudSelectItem Value="@((int?)group.Id)">@group.Name</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudStack>
 
             <MudTextField @bind-Value="_ApiServer"
                           Label="API Server 地址"
@@ -51,7 +52,6 @@
 
             <MudTextField @bind-Value="_Remark"
                           Label="备注"
-                          Lines="2"
                           Variant="Variant.Outlined"
                           Margin="Margin.Dense"
                           Class="mb-3" />

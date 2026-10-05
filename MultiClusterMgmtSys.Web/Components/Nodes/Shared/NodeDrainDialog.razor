@@ -1,0 +1,197 @@
+@using MultiClusterMgmtSys.Application.Requests
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Application.ViewModels
+@using MultiClusterMgmtSys.Domain.Exceptions
+
+@inject ClusterNodeService ClusterNodeService
+@inject ExceptionPresenter ExHandler
+
+<MudDialog>
+    <DialogContent>
+        @switch (_phase)
+        {
+            case DrainPhase.PreflightLoading:
+                <MudText Class="font-mono mud-text-secondary">// 正在预检节点上的 Pod...</MudText>
+                break;
+            case DrainPhase.PreflightFailed:
+                <MudText Typo="Typo.body2">排空预检失败:</MudText>
+                <MudText Typo="Typo.body2">@_failedMessage</MudText>
+                break;
+            case DrainPhase.Confirm:
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">
+                    排空节点「@(Preflight?.NodeName ?? NodeName)」前将自动封锁该节点;DaemonSet Pod 随节点常驻会被跳过;裸 Pod(无控制器)驱逐后不会重建,默认不迁移。
+                </MudText>
+                @if (Preflight is { MigratablePods.Count: 0 })
+                {
+                    <div class="empty-state">[ 没有需要迁移的 Pod ]</div>
+                }
+                else
+                {
+                    <MudText Typo="Typo.subtitle2" Class="mt-2">迁移清单</MudText>
+                    <MudTable Items="@Preflight!.MigratablePods"
+                              Dense="true"
+                              Hover="true"
+                              Elevation="0">
+                        <HeaderContent>
+                            <MudTh>命名空间</MudTh>
+                            <MudTh>Pod</MudTh>
+                            <MudTh>属主</MudTh>
+                        </HeaderContent>
+                        <RowTemplate Context="pod">
+                            <MudTd DataLabel="命名空间"><span class="font-mono">@pod.Namespace</span></MudTd>
+                            <MudTd DataLabel="Pod"><span class="font-mono">@pod.Name</span></MudTd>
+                            <MudTd DataLabel="属主"><span class="font-mono">@(pod.OwnerKind ?? "—")</span></MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                }
+                @if (Preflight is { DaemonSetPods.Count: > 0 })
+                {
+                    <MudText Class="mt-2"><span class="status-badge unknown">跳过 DaemonSet Pod @Preflight.DaemonSetPods.Count 个</span></MudText>
+                    <MudText Typo="Typo.body2" Class="mt-2">跳过清单</MudText>
+                    @foreach (var pod in Preflight.DaemonSetPods)
+                    {
+                        <div class="font-mono">@pod.Namespace/@pod.Name</div>
+                    }
+                }
+                @if (Preflight is { BarePods.Count: > 0 })
+                {
+                    <MudText Typo="Typo.body2" Class="mt-2 mud-text-error">
+                        警告:@(Preflight.BarePods.Count) 个裸 Pod(无控制器)不会迁移,驱逐后需自行重建。
+                    </MudText>
+                    @foreach (var pod in Preflight.BarePods)
+                    {
+                        <div class="font-mono">@pod.Namespace/@pod.Name</div>
+                    }
+                }
+                break;
+            case DrainPhase.Running:
+                <MudText Typo="Typo.body2">正在迁移 @(Math.Min(_completed, _total)) / @_total 个 Pod...</MudText>
+                <MudProgressLinear Value="@(_total > 0 ? _completed * 100 / _total : 0)"
+                                   Color="Color.Primary"
+                                   Class="mt-2" />
+                break;
+            case DrainPhase.Done:
+                <MudText Typo="Typo.subtitle1">排空完成</MudText>
+                <MudText Typo="Typo.body2" Class="font-mono">成功 @_report!.Evicted / 跳过 @_report.Skipped / 阻塞 @_report.Blocked</MudText>
+                @if (_report.BlockedPods.Count > 0)
+                {
+                    <MudText Typo="Typo.body2" Class="mt-2">被策略阻塞的 Pod:</MudText>
+                    @foreach (var pod in _report.BlockedPods)
+                    {
+                        <div class="font-mono">@pod.Namespace/@pod.Name</div>
+                    }
+                }
+                <MudText Typo="Typo.body2" Class="mt-2 mud-text-secondary">节点保持封锁状态,可在维护完成后手动解封。</MudText>
+                break;
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()"
+                   Variant="Variant.Text"
+                   Disabled="@(_phase is DrainPhase.Running or DrainPhase.PreflightLoading)">
+            取消
+        </MudButton>
+        <MudButton OnClick="RunDrainAsync"
+                   Color="Color.Error"
+                   Variant="Variant.Filled"
+                   Disabled="@(_phase != DrainPhase.Confirm)">
+            开始排空
+        </MudButton>
+        <MudButton OnClick="CloseWithReport"
+                   Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Style="@CloseStyle">
+            关闭
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    [Parameter]
+    public string NodeName { get; set; } = "";
+
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
+
+    private enum DrainPhase
+    {
+        PreflightLoading,
+        PreflightFailed,
+        Confirm,
+        Running,
+        Done
+    }
+
+    private DrainPhase _phase = DrainPhase.PreflightLoading;
+
+    private NodeDrainPreflightViewModel? Preflight;
+
+    private NodeDrainReportViewModel? _report;
+
+    private string _failedMessage = "";
+
+    private int _completed;
+
+    private int _total;
+
+    private string CloseStyle => _phase == DrainPhase.Done ? "" : "display:none;";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Preflight = await ClusterNodeService.GetNodeDrainPreflightAsync(new NodeDrainRequest(ClusterId, NodeName));
+            _phase = DrainPhase.Confirm;
+        }
+        catch (BusinessException ex)
+        {
+            _failedMessage = ex.UserMessage;
+            _phase = DrainPhase.PreflightFailed;
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "排空预检");
+            _failedMessage = "排空预检失败,请稍后重试";
+            _phase = DrainPhase.PreflightFailed;
+        }
+    }
+
+    private async Task RunDrainAsync()
+    {
+        if (_phase != DrainPhase.Confirm)
+        {
+            return;
+        }
+        _phase = DrainPhase.Running;
+        var progress = new Progress<NodeDrainProgress>(p =>
+        {
+            _completed = p.Completed;
+            _total = p.Total;
+            _ = InvokeAsync(StateHasChanged);
+        });
+        try
+        {
+            _report = await ClusterNodeService.DrainNodeAsync(new NodeDrainRequest(ClusterId, NodeName), progress);
+            _phase = DrainPhase.Done;
+        }
+        catch (BusinessException ex)
+        {
+            _failedMessage = ex.UserMessage;
+            _phase = DrainPhase.PreflightFailed;
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "排空节点");
+            Dialog.Cancel();
+        }
+        StateHasChanged();
+    }
+
+    private void CloseWithReport()
+    {
+        Dialog.Close(DialogResult.Ok(_report));
+    }
+}

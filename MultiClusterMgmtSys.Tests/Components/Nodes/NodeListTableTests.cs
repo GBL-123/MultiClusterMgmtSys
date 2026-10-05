@@ -27,6 +27,9 @@ public class NodeListTableTests
     public async Task Renders_nodes_with_fields()
     {
         await using var ctx = new BunitHost();
+        var auth = ctx.AddAuthorization();
+        auth.SetAuthorized("admin");
+        auth.SetRoles("Admin");
 
         var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeListTable>(
             parameters => parameters
@@ -53,6 +56,9 @@ public class NodeListTableTests
     public async Task Ip_note_displayed_next_to_address()
     {
         await using var ctx = new BunitHost();
+        var auth = ctx.AddAuthorization();
+        auth.SetAuthorized("admin");
+        auth.SetRoles("Admin");
 
         var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeListTable>(
             parameters => parameters.Add(p => p.Nodes, [Node("n1", "Ready", note: "管理口")]));
@@ -65,6 +71,9 @@ public class NodeListTableTests
     public async Task Empty_state_varies_by_filter_active()
     {
         await using var ctx = new BunitHost();
+        var auth = ctx.AddAuthorization();
+        auth.SetAuthorized("admin");
+        auth.SetRoles("Admin");
 
         var idle = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeListTable>(
             parameters => parameters.Add(p => p.Nodes, Array.Empty<MultiClusterMgmtSys.Application.ViewModels.ClusterNodeViewModel>()));
@@ -81,6 +90,9 @@ public class NodeListTableTests
     public async Task Row_name_click_navigates_with_name()
     {
         await using var ctx = new BunitHost();
+        var auth = ctx.AddAuthorization();
+        auth.SetAuthorized("admin");
+        auth.SetRoles("Admin");
 
         string? navigated = null;
         var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeListTable>(
@@ -91,6 +103,114 @@ public class NodeListTableTests
         cut.FindAll(".link-primary").First(e => e.TextContent.Contains("click-node")).Click();
 
         Assert.Equal("click-node", navigated);
+    }
+
+    [Fact]
+    public async Task Admin_sees_maintenance_column_and_cordon_entry()
+    {
+        await using var ctx = new BunitHost();
+        var auth = ctx.AddAuthorization();
+        auth.SetAuthorized("admin");
+        auth.SetRoles("Admin");
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeListTable>(
+            parameters => parameters.Add(p => p.Nodes, [Node("maint-node", "Ready")]));
+
+        Assert.Contains("维护", cut.Markup);
+        var buttons = cut.FindComponents<MudBlazor.MudIconButton>().Select(b => b.Instance.UserAttributes["aria-label"].ToString()).ToHashSet();
+        Assert.Contains("封锁", buttons);
+        Assert.Contains("排空", buttons);
+        Assert.DoesNotContain("解封", buttons);
+    }
+
+    [Fact]
+    public async Task Unschedulable_row_shows_badge_and_uncordon_entry()
+    {
+        await using var ctx = new BunitHost();
+        var auth = ctx.AddAuthorization();
+        auth.SetAuthorized("admin");
+        auth.SetRoles("Admin");
+        var node = Node("sealed-node", "Ready");
+        node.Unschedulable = true;
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeListTable>(
+            parameters => parameters.Add(p => p.Nodes, [node]));
+
+        Assert.Contains("已封锁", cut.Markup);
+        Assert.Contains("Unschedulable", cut.Markup);
+        var buttons = cut.FindComponents<MudBlazor.MudIconButton>().Select(b => b.Instance.UserAttributes["aria-label"].ToString()).ToHashSet();
+        Assert.Contains("解封", buttons);
+        Assert.Contains("排空", buttons);
+        Assert.DoesNotContain("封锁", buttons);
+    }
+
+    [Fact]
+    public async Task Member_does_not_see_maintenance_column()
+    {
+        await using var ctx = new BunitHost();
+        var auth = ctx.AddAuthorization();
+        auth.SetAuthorized("member");
+        auth.SetRoles("Member");
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeListTable>(
+            parameters => parameters.Add(p => p.Nodes, [Node("member-node", "Ready")]));
+
+        Assert.DoesNotContain("维护", cut.Markup);
+        Assert.DoesNotContain("封锁", cut.Markup);
+        Assert.DoesNotContain("排空", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Maintenance_disabled_state_disables_all_entries()
+    {
+        await using var ctx = new BunitHost();
+        var auth = ctx.AddAuthorization();
+        auth.SetAuthorized("admin");
+        auth.SetRoles("Admin");
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeListTable>(
+            parameters => parameters
+                .Add(p => p.Nodes, [Node("busy-node", "Ready")])
+                .Add(p => p.MaintenanceDisabled, true));
+
+        static bool IsMaintenance(Bunit.IRenderedComponent<MudBlazor.MudIconButton> b) =>
+            b.Instance.UserAttributes.TryGetValue("aria-label", out var v) &&
+            v?.ToString() is "封锁" or "解封" or "排空";
+
+        var buttons = cut.FindComponents<MudBlazor.MudIconButton>()
+            .Where(IsMaintenance)
+            .ToList();
+        Assert.Equal(2, buttons.Count);
+        Assert.All(buttons, b => Assert.True(b.Instance.Disabled));
+    }
+
+    [Fact]
+    public async Task Maintenance_buttons_invoke_callbacks_with_node_name()
+    {
+        await using var ctx = new BunitHost();
+        var auth = ctx.AddAuthorization();
+        auth.SetAuthorized("admin");
+        auth.SetRoles("Admin");
+
+        string? cordoned = null;
+        var drained = false;
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Nodes.Shared.NodeListTable>(
+            parameters => parameters
+                .Add(p => p.Nodes, [Node("cb-node", "Ready")])
+                .Add(p => p.OnCordon, name => { cordoned = name; return Task.CompletedTask; })
+                .Add(p => p.OnDrain, async name =>
+                {
+                    await Task.CompletedTask;
+                    drained = true;
+                }));
+
+        var cordon = cut.FindComponents<MudBlazor.MudIconButton>().First(b => b.Instance.UserAttributes["aria-label"].ToString() == "封锁");
+        await cut.InvokeAsync(() => cordon.Instance.OnClick.InvokeAsync());
+        Assert.Equal("cb-node", cordoned);
+
+        var drain = cut.FindComponents<MudBlazor.MudIconButton>().First(b => b.Instance.UserAttributes["aria-label"].ToString() == "排空");
+        await cut.InvokeAsync(() => drain.Instance.OnClick.InvokeAsync());
+        Assert.True(drained);
     }
 }
 
