@@ -8,7 +8,7 @@
 
 ### Requirement: 归属载体与创建盖章
 
-系统 SHALL 以 label `mcms.ms/owner-uid`(值为创建者账号 Id)与注解 `mcms.ms/owner-name`(值为创建者用户名快照)记录资源的创建者。系统内创建成功时 SHALL 无条件写入这两项归属元数据(覆盖用户 YAML 中自带的同名/同键归属元数据,防止伪造);Admin 经系统创建的资源 SHALL 同样盖章。归属元数据随对象自身存续:对象被删除则归属消失,系统 SHALL NOT 维护任何独立的归属数据库结构。
+系统 SHALL 以 label `mcms.ms/owner-uid`(值为创建者账号 Id)与注解 `mcms.ms/owner-name`(值为创建者用户名快照)记录资源的创建者。受管资源 SHALL 覆盖工作负载(Deployment/StatefulSet/DaemonSet/ReplicaSet)、ConfigMap、Service、Secret 与 PersistentVolumeClaim。系统内创建成功时 SHALL 无条件写入这两项归属元数据(覆盖用户 YAML 中自带的同名/同键归属元数据,防止伪造);Admin 经系统创建的资源 SHALL 同样盖章。归属元数据随对象自身存续:对象被删除则归属消失,系统 SHALL NOT 维护任何独立的归属数据库结构。
 
 #### Scenario: Member 创建即盖章
 
@@ -29,6 +29,16 @@
 
 - **WHEN** 检查本 change 的 schema 影响
 - **THEN** 数据库无新增表、无字段变更,不需要删库重建
+
+#### Scenario: Secret 创建同样盖章
+
+- **WHEN** 用户经系统创建 Secret 成功
+- **THEN** 该 Secret 对象同样携带归属 label 与注解,归属判定与编辑占位符揭示等页面行为的准入均以此为准
+
+#### Scenario: PersistentVolumeClaim 创建同样盖章
+
+- **WHEN** 用户经系统创建 PVC 成功
+- **THEN** 该 PVC 对象同样携带归属 label 与注解,删除断言(仅归属者或 Admin)以此判定
 
 ### Requirement: 变更前归属判定
 

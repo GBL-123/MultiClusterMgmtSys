@@ -1,6 +1,6 @@
 ﻿# MultiClusterMgmtSys
 
-基于 .NET 10 + Blazor 的 Kubernetes 多集群管理平台，统一管理多个集群的节点、工作负载、Service、ConfigMap、命名空间、事件与 Helm 应用，内置账号权限体系、操作审计与集群状态定时同步。
+基于 .NET 10 + Blazor 的 Kubernetes 多集群管理平台，统一管理多个集群的节点、工作负载、Pod、Service、ConfigMap、Secret、存储卷、命名空间、事件与 Helm 应用，提供全局集群健康看板，内置账号权限体系、操作审计与集群状态定时同步。
 
 界面为中文，使用 MudBlazor 组件库（Swiss Industrial Print 工业印刷风格设计系统，浅色主题），数据存储采用 SQLite（零依赖，开箱即用）。
 
@@ -8,10 +8,14 @@
 
 - **集群管理**：接入多个 K8s 集群（kubeconfig / Token 两种连接方式），分组侧栏、分页筛选排序、状态探测与版本识别、批量操作；集群详情聚合节点、端点概览与管理员维护的 VIP / 域名端点
 - **集群状态定时同步**：后台定时服务周期性探测全部集群状态（间隔可配 1~1440 分钟），状态变更自动写入审计
-- **节点管理**：跨集群节点列表与详情（资源、条件、标签、注解、污点、地址、YAML 原文），支持按 IP 登记备注（如管理口 / 数据口）
+- **全局集群看板**：登录默认落地页，聚合舰队规模、分组健康、版本分布、节点就绪与最近操作，全部读自本地库（集群全部离线仍可用）；支持手动一键全量刷新与节点就绪健康趋势图
+- **节点管理**：跨集群节点列表与详情（资源、条件、标签、注解、污点、地址、YAML 原文），支持按 IP 登记备注（如管理口 / 数据口），提供封锁 / 解封 / 排空维护操作（仅管理员，排空走 Eviction API 尽力迁移并汇报计数）
 - **工作负载管理**：Deployment / StatefulSet / DaemonSet / ReplicaSet 统一列表与详情（副本就绪、滚动三态、条件），YAML 在线编辑、新建、删除、扩缩容与滚动重启（能力矩阵按类型裁剪）
+- **Pod 管理**：按集群 / 命名空间浏览 Pod 列表与详情（容器、状态、条件、QoS），在线查看容器日志
 - **Service 管理**：ClusterIP / NodePort / LoadBalancer / ExternalName 四类 Service 的列表与详情、端口表、后端 EndpointSlice（旧集群自动回退 legacy Endpoints），YAML 在线编辑、新建、删除
 - **ConfigMap 管理**：按集群浏览 ConfigMap，YAML 只读查看与在线编辑、新建、删除
+- **密钥管理**：Secret 列表 / 详情 / 新建 / 删除与 YAML 编辑，键值默认掩码、逐 key 查看明文且每次揭示写审计，非 UTF-8 二进制内容仅展示字节数
+- **存储管理**：PVC 列表 / 详情（含挂载此卷的 Pod）/ 新建 / 删除，PV 与 StorageClass 只读浏览
 - **Helm 应用管理**：上传 chart 包（.tgz）安装 / 升级 / 回滚 / 卸载 Helm Release，列表、详情、版本历史、values 与 manifest 查看；操作按安装者归属判定（Admin 任意、成员限本人安装的 Release）
 - **资源归属与自助管理**：Member 可自行创建并管理自己的工作负载 / ConfigMap / Service——归属以标签 / 注解记录在 K8s 对象上、随对象生灭，服务端强制判定；Helm 安装产生的资源与 Helm 归属记账互通，存量资源仅 Admin 可操作
 - **命名空间管理**：按集群浏览命名空间（状态、标签数、创建时间），YAML 新建、删除，详情含标签 / 注解 / YAML 只读查看
@@ -38,7 +42,7 @@
 
 ```pwsh
 dotnet build MultiClusterMgmtSys.slnx
-dotnet test MultiClusterMgmtSys.Tests           # 962 个单元测试（xunit.v3 + Moq + bUnit，MTP 运行器）
+dotnet test MultiClusterMgmtSys.Tests           # 1187 个单元测试（xunit.v3 + Moq + bUnit，MTP 运行器）
 ./coverage.ps1                                  # 一键 UT + 覆盖率报告（四程序集合并行覆盖门禁 75%）
 dotnet run --project MultiClusterMgmtSys.Web          # http://localhost:5021
 dotnet run --project MultiClusterMgmtSys.Web --launch-profile https   # https://localhost:7081
@@ -106,7 +110,7 @@ Logging__File__Path="/data/logs/app-.log"
 │   ├── appsettings.json               # 连接串、Serilog 日志路径等配置
 │   ├── Components/                    # Razor 组件（Pages/Shared/Layout + 按功能分目录）
 │   │   ├── Clusters/  Nodes/  Workloads/  Svcs/  Configmaps/  Namespaces/  Events/   # 各功能页与共享组件
-│   │   ├── Helm/  Dashboard/  Pods/  AuditLogs/  Account/  Profile/  Auth/
+│   │   ├── Helm/  Dashboard/  Pods/  Secrets/  Storage/  AuditLogs/  Account/  Profile/  Auth/
 │   │   └── Common/                    # 共享组件与服务（ThemeManager、ExceptionPresenter 等）
 │   ├── Endpoints/                     # 额外 endpoint（Identity 退出等）
 │   └── wwwroot/                       # 静态资源、自托管字体与新建对话框的 YAML 模板（templates/）
