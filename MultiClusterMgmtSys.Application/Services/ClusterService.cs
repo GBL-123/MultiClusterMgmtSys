@@ -127,7 +127,12 @@ public class ClusterService(
         await _repo.AddAsync(entity);
         _logger.LogInformation("AddCluster created id={ClusterId}", entity.Id);
         entity.ApplyEndpoints(request.Endpoints);
-        await ProbeAsync(entity);
+        var snapshot = await ProbeAsync(entity);
+        if (snapshot is not null)
+        {
+            await TryAppendHealthSnapshotAsync(snapshot);
+        }
+
         _logger.LogInformation("AddCluster probed id={ClusterId} status={Status}", entity.Id, entity.Status);
         await _repo.UpdateAsync(entity);
         await _auditService.LogAsync(AuditCategory.Cluster, AuditAction.Create, $"集群: {entity.Name}");
@@ -163,7 +168,11 @@ public class ClusterService(
         if (configChanged)
         {
             _logger.LogInformation("UpdateCluster id={ClusterId} config changed, probing", request.Id);
-            await ProbeAsync(entity);
+            var snapshot = await ProbeAsync(entity);
+            if (snapshot is not null)
+            {
+                await TryAppendHealthSnapshotAsync(snapshot);
+            }
         }
 
         await _repo.UpdateAsync(entity);
@@ -223,6 +232,7 @@ public class ClusterService(
             var total = entities.Count;
             var previousStatuses = entities.ToDictionary(e => e.Id, e => e.Status);
             var probedIds = new ConcurrentDictionary<int, byte>();
+            var pendingSnapshots = new ConcurrentBag<ClusterHealthSnapshot>();
             var succeeded = 0;
             var current = 0;
             progress?.Report((0, total));
@@ -234,7 +244,12 @@ public class ClusterService(
                     new ParallelOptions { MaxDegreeOfParallelism = MaxProbeConcurrency, CancellationToken = cancellationToken },
                     async (entity, token) =>
                     {
-                        await ProbeAsync(entity, token);
+                        var snapshot = await ProbeAsync(entity, token);
+                        if (snapshot is not null)
+                        {
+                            pendingSnapshots.Add(snapshot);
+                        }
+
                         probedIds.TryAdd(entity.Id, 0);
                         Interlocked.Increment(ref succeeded);
                         progress?.Report((Interlocked.Increment(ref current), total));
@@ -243,10 +258,12 @@ public class ClusterService(
             catch (OperationCanceledException)
             {
                 await PersistProbedAsync([.. entities.Where(e => probedIds.ContainsKey(e.Id))], previousStatuses, source);
+                await AppendSnapshotsAsync([.. pendingSnapshots]);
                 throw;
             }
 
             await PersistProbedAsync(entities, previousStatuses, source);
+            await AppendSnapshotsAsync([.. pendingSnapshots]);
             _logger.LogInformation("RefreshAllClustersStatus done succeeded={Succeeded} of {Total}", succeeded, total);
 
             // 保留清理挂在每轮成功收尾(契约 cluster-scheduled-sync「快照保留清理」):手动与定时两条路径都经过此处;
@@ -291,7 +308,12 @@ public class ClusterService(
         }
 
         var previousStatus = entity.Status;
-        await ProbeAsync(entity);
+        var snapshot = await ProbeAsync(entity);
+        if (snapshot is not null)
+        {
+            await TryAppendHealthSnapshotAsync(snapshot);
+        }
+
         _logger.LogInformation("RefreshClusterStatus id={ClusterId} status={Status}", id, entity.Status);
         await _repo.UpdateAsync(entity);
         return (entity, previousStatus);
@@ -299,7 +321,7 @@ public class ClusterService(
 
     // ---- Private k8s helpers ----
 
-    private async Task ProbeAsync(ClusterInfo cluster, CancellationToken cancellationToken = default)
+    private async Task<ClusterHealthSnapshot?> ProbeAsync(ClusterInfo cluster, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Probe cluster {ClusterName} id={ClusterId}", cluster.Name, cluster.Id);
         try
@@ -317,10 +339,11 @@ public class ClusterService(
 
             cluster.LastCheckedAt = DateTime.UtcNow;
 
-            await TryAppendHealthSnapshotAsync(cluster, nodeList.Items);
+            var snapshot = BuildHealthSnapshot(cluster.Id, nodeList.Items);
 
             _logger.LogInformation("Probe succeeded id={ClusterId} status={Status} version={Version} nodes={NodeCount}",
                 cluster.Id, cluster.Status, cluster.Version, cluster.NodeCount);
+            return snapshot;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -335,23 +358,34 @@ public class ClusterService(
             cluster.NodeCount = 0;
             cluster.LastCheckedAt = DateTime.UtcNow;
         }
+
+        return null;
     }
 
     /// <summary>
-    /// 探测成功后追加一条节点健康快照;写入失败仅记警告,不改变本轮探测结论——
+    /// 追加一条节点健康快照;写入失败仅记警告,不改变本轮探测结论——
     /// 本地落库异常不应把可达集群误判为离线,与审计写入的静默降级口径一致。
     /// </summary>
-    /// <param name="cluster">本轮探测成功的集群(已回写状态)。</param>
-    /// <param name="nodes">当轮节点列表调用返回的节点集合,复用其结果不额外调用 K8s。</param>
-    private async Task TryAppendHealthSnapshotAsync(ClusterInfo cluster, IList<V1Node> nodes)
+    /// <param name="snapshot">探测阶段构建好的健康快照(落库由调用方在无线程竞争的上下文执行)。</param>
+    private async Task TryAppendHealthSnapshotAsync(ClusterHealthSnapshot snapshot)
     {
         try
         {
-            await healthRepo.AddAsync(BuildHealthSnapshot(cluster.Id, nodes));
+            await healthRepo.AddAsync(snapshot);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Append cluster health snapshot failed id={ClusterId}", cluster.Id);
+            _logger.LogWarning(ex, "Append cluster health snapshot failed id={ClusterId}", snapshot.ClusterId);
+        }
+    }
+
+    /// <summary>串行追加整轮探测构建的健康快照,规避并行探测阶段并发写同一 DbContext。</summary>
+    /// <param name="snapshots">本轮探测成功构建的快照集合。</param>
+    private async Task AppendSnapshotsAsync(IReadOnlyCollection<ClusterHealthSnapshot> snapshots)
+    {
+        foreach (var snapshot in snapshots)
+        {
+            await TryAppendHealthSnapshotAsync(snapshot);
         }
     }
 

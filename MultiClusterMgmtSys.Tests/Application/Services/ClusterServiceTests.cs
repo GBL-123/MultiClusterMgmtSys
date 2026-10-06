@@ -420,6 +420,29 @@ public class ClusterServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task RefreshAllClustersStatusAsync_persists_snapshot_for_every_succeeded_cluster()
+    {
+        var alphaId = await SeedAsync("snap-alpha");
+        var betaId = await SeedAsync("snap-beta");
+        _k8s.SetupGetVersion("v1.30.2");
+        _k8s.SetupListNodes(BuildNode("n1", ready: true));
+
+        await _service.RefreshAllClustersStatusAsync(source: ClusterSyncSource.Scheduled);
+
+        var snapshots = await _harness.Db.ClusterHealthSnapshots
+            .ToListAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(2, snapshots.Count);
+        Assert.Single(snapshots, s => s.ClusterId == alphaId);
+        Assert.Single(snapshots, s => s.ClusterId == betaId);
+        Assert.All(snapshots, s =>
+        {
+            Assert.Equal(1, s.TotalNodes);
+            Assert.Equal(1, s.ReadyNodes);
+            Assert.Equal(0, s.NotReadyNodes);
+        });
+    }
+
+    [Fact]
     public async Task GetAvailableVersionsAsync_returns_distinct_sorted()
     {
         await SeedAsync("a", version: "1.30.0");

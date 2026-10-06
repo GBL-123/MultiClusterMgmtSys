@@ -7,21 +7,30 @@
 <MudPaper Class="pa-4 compare-card">
     @if (Pair!.SourceExists && Pair.TargetExists)
     {
-        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
-            <MudText Typo="Typo.body2" Class="compare-column-title">源:@Pair.SourceClusterName</MudText>
-            <MudText Typo="Typo.body2" Class="compare-column-title compare-column-title-right">对照:@Pair.TargetClusterName</MudText>
-            @if (Pair.CanClone)
-            {
-                <MudText Typo="Typo.body2" Class="compare-clone-hint">@CloneHint()</MudText>
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.ContentCopy"
-                           Disabled="@_cloning"
-                           OnClick="OpenCloneDialogAsync">
-                    克隆
-                </MudButton>
-            }
-            <MudSwitch T="bool" Value="_onlyChanged" ValueChanged="@(v => SetOnlyChanged(v))" Label="仅看差异" Color="Color.Primary" />
+        <MudStack Spacing="2" Class="mb-2">
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.body2" Class="compare-column-title">源:@Pair.SourceClusterName</MudText>
+                <MudText Typo="Typo.body2" Class="compare-column-title compare-column-title-right">对照:@Pair.TargetClusterName</MudText>
+                <MudSpacer />
+                @if (Pair.CanClone)
+                {
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.ContentCopy"
+                               Disabled="@_cloning"
+                               OnClick="OpenCloneDialogAsync">
+                        克隆
+                    </MudButton>
+                }
+            </MudStack>
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                @if (Pair.CanClone)
+                {
+                    <MudText Typo="Typo.body2" Class="compare-clone-hint">@CloneHint()</MudText>
+                }
+                <MudSpacer />
+                <MudSwitch T="bool" Value="_onlyChanged" ValueChanged="@(v => SetOnlyChanged(v))" Label="仅看差异" Color="Color.Primary" />
+            </MudStack>
         </MudStack>
         @if (Rows.Count(r => r.Kind != CompareDiffRowKind.Same) == 0)
         {

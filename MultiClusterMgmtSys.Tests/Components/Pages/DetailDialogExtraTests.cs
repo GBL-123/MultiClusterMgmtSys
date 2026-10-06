@@ -1,4 +1,4 @@
-﻿using MultiClusterMgmtSys.Infrastructure.Sync;
+using MultiClusterMgmtSys.Infrastructure.Sync;
 using MultiClusterMgmtSys.Infrastructure.Kubernetes;
 using Bunit;
 using Microsoft.Extensions.Configuration;
@@ -234,12 +234,16 @@ public class DetailDialogExtraTests
         using var cts = new CancellationTokenSource();
         await background.StartAsync(cts.Token);
 
-        for (var i = 0; i < 10; i++)
+        for (var i = 0; i < 20; i++)
         {
             await Task.Delay(50);
             var reloaded = await harness.ClusterRepo.GetByIdAsync(cluster.Id);
             if (reloaded!.Status == ClusterStatus.Offline) break;
         }
+
+        cts.Cancel();
+        await background.StopAsync(CancellationToken.None);
+        await Task.Delay(100);
 
         Assert.Equal(ClusterStatus.Offline, (await harness.ClusterRepo.GetByIdAsync(cluster.Id))!.Status);
 

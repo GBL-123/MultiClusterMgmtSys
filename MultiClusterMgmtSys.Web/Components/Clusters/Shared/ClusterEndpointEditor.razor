@@ -4,42 +4,53 @@
 <MudStack Spacing="2">
     @foreach (var row in Items)
     {
-        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" @key="row">
-            <MudSelect T="ClusterEndpointKind"
-                       Value="row.Kind"
-                       ValueChanged="@(k => row.Kind = k)"
-                       Label="类型"
-                       Variant="Variant.Outlined"
-                       Margin="Margin.Dense"
-                       Style="width:110px; flex-shrink:0;">
-                <MudSelectItem Value="@ClusterEndpointKind.Vip">VIP</MudSelectItem>
-                <MudSelectItem Value="@ClusterEndpointKind.Domain">域名</MudSelectItem>
-            </MudSelect>
+        <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="2" @key="row">
+            @* MudSelect/MudTextField 的 Style 落在其内层 div,行内 flex 项是外层根
+               (.mud-select/.mud-input-control 自带 flex-grow),控件自身 Style 不参与行内布局,
+               必须包一层 div 承载列宽,否则类型/排序列右侧会出现大段空隙 *@
+            <div style="flex:0 0 110px;">
+                <MudSelect T="ClusterEndpointKind"
+                           Value="row.Kind"
+                           ValueChanged="@(k => row.Kind = k)"
+                           Label="类型"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Style="width:110px; flex-shrink:0;">
+                    <MudSelectItem Value="@ClusterEndpointKind.Vip">VIP</MudSelectItem>
+                    <MudSelectItem Value="@ClusterEndpointKind.Domain">域名</MudSelectItem>
+                </MudSelect>
+            </div>
 
-            <MudTextField T="string"
-                          @bind-Value="row.Value"
-                          Label="地址"
-                          Required="true"
-                          RequiredError="请填写端点地址"
-                          MaxLength="256"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
-                          Style="flex:2;" />
+            <div style="flex:2 1 0;">
+                <MudTextField T="string"
+                              @bind-Value="row.Value"
+                              Label="地址"
+                              Required="true"
+                              RequiredError="请填写端点地址"
+                              MaxLength="256"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Style="flex:2;" />
+            </div>
 
-            <MudTextField T="string"
-                          @bind-Value="row.Note"
-                          Label="备注"
-                          MaxLength="64"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
-                          Style="flex:1;" />
+            <div style="flex:1 1 0;">
+                <MudTextField T="string"
+                              @bind-Value="row.Note"
+                              Label="备注"
+                              MaxLength="64"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Style="flex:1;" />
+            </div>
 
-            <MudTextField T="int"
-                          @bind-Value="row.SortOrder"
-                          Label="排序"
-                          Variant="Variant.Outlined"
-                          Margin="Margin.Dense"
-                          Style="width:80px; flex-shrink:0;" />
+            <div style="flex:0 0 80px;">
+                <MudTextField T="int"
+                              @bind-Value="row.SortOrder"
+                              Label="排序"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Style="width:80px; flex-shrink:0;" />
+            </div>
 
             <MudIconButton Icon="@Icons.Material.Filled.DeleteOutline"
                            Size="Size.Small"

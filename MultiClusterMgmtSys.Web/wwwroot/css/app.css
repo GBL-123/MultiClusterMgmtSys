@@ -1494,20 +1494,6 @@ html .dashboard-stat-note {
 
 .compare-clone-hint {
     color: #6E675C;
-    margin-left: 4px;
-}
-
-/*
- * 对照工具栏选择框:MudBlazor 9 会按所选值内容自适应 select 输入框宽度(mud-input-sizing-fixed),
- * 导致选值后框宽跳动、且固定外壳内留出空隙。此处强制输入框填满固定宽度的外壳并禁止 flex 收缩。
- */
-.compare-toolbar .mud-select {
-    flex: none;
-}
-
-.compare-toolbar .mud-select .mud-input,
-.compare-toolbar .mud-select .mud-input .mud-input-slot {
-    width: 100% !important;
 }
 
 .compare-columns {
@@ -1567,6 +1553,10 @@ html .dashboard-stat-note {
     padding: 1px 8px;
     white-space: pre;
     overflow-x: auto;
+}
+
+.compare-diff-row > span + span {
+    border-left: 1px solid #E2DED5;
 }
 
 .compare-diff-row > span.is-changed {

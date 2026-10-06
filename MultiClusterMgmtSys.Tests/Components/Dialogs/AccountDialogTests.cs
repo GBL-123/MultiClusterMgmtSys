@@ -1,4 +1,5 @@
 ﻿using Bunit;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -189,7 +190,7 @@ public class ChangePasswordDialogTests
     }
 
     [Fact]
-    public async Task Success_closes_dialog_with_ok()
+    public async Task Success_closes_dialog_and_force_navigates_to_logout()
     {
         var identity = TestIdentity.Create("admin", "Admin");
         var db = identity.Db;
@@ -214,6 +215,8 @@ public class ChangePasswordDialogTests
                 var result = await dialogReference.Result;
                 Assert.False(result.Canceled);
                 Assert.True((bool)result.Data!);
+                var nav = ctx.Services.GetRequiredService<NavigationManager>();
+                Assert.Contains("/api/logout", nav.Uri);
             }
             finally
             {

@@ -2,7 +2,6 @@
 @page "/compare"
 
 @using MultiClusterMgmtSys.Application.Enums
-@using MultiClusterMgmtSys.Application.Models
 @using MultiClusterMgmtSys.Application.Requests
 @using MultiClusterMgmtSys.Application.Services
 @using MultiClusterMgmtSys.Application.ViewModels
@@ -17,89 +16,92 @@
 
 <PageTitle>跨集群对照</PageTitle>
 
-<MudStack Spacing="2" Class="flex-auto">
-    <MudPaper Class="pa-4 mb-2 compare-toolbar">
-        <MudStack Spacing="2">
-            <MudStack Row="true" AlignItems="AlignItems.Center">
-                <MudText Typo="Typo.h5">跨集群对照</MudText>
-            </MudStack>
+<MudStack Class="flex-auto">
+    <MudPaper Class="pa-4">
+        <MudStack>
+            <MudText Typo="Typo.h5">跨集群对照</MudText>
             <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
-            <MudSelect T="int?"
-                       Value="_sourceId"
-                        ValueChanged="@(async v => await OnSourceClusterChanged(v))"
-                        Label="源集群"
-                        Variant="Variant.Outlined"
-                        Margin="Margin.Dense"
-                        Style="width:200px;">
-                @foreach (var cluster in _clusters)
-                {
-                    <MudSelectItem Value="@((int?)cluster.Id)">@cluster.Name</MudSelectItem>
-                }
-            </MudSelect>
+                <MudStack Row="true" Class="flex-auto">
+                    <MudSelect T="int?"
+                               Value="_sourceId"
+                               ValueChanged="@(async v => await OnSourceClusterChanged(v))"
+                               Label="源集群"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               Style="min-width:200px;">
+                        @foreach (var cluster in _clusters)
+                        {
+                            <MudSelectItem Value="@((int?)cluster.Id)">@cluster.Name</MudSelectItem>
+                        }
+                    </MudSelect>
 
-            <MudSelect T="int?"
-                       Value="_targetId"
-                       ValueChanged="@(v => { _targetId = v; })"
-                        Label="对照集群"
-                        Variant="Variant.Outlined"
-                        Margin="Margin.Dense"
-                        Style="width:200px;">
-                @foreach (var cluster in _clusters)
-                {
-                    <MudSelectItem Value="@((int?)cluster.Id)">@cluster.Name</MudSelectItem>
-                }
-            </MudSelect>
+                    <MudSelect T="int?"
+                               Value="_targetId"
+                               ValueChanged="@(v => { _targetId = v; })"
+                               Label="对照集群"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               Style="min-width:200px;">
+                        @foreach (var cluster in _clusters)
+                        {
+                            <MudSelectItem Value="@((int?)cluster.Id)">@cluster.Name</MudSelectItem>
+                        }
+                    </MudSelect>
 
-            <MudSelect T="CompareKind?"
-                       Value="_kind"
-                       ValueChanged="@(async v => await OnKindChanged(v))"
-                        Label="资源族"
-                        Variant="Variant.Outlined"
-                        Margin="Margin.Dense"
-                        Style="width:200px;">
-                @foreach (var kind in Enum.GetValues<CompareKind>())
-                {
-                    <MudSelectItem Value="@((CompareKind?)kind)">@(kind.ToDisplayText() + $" ({kind})")</MudSelectItem>
-                }
-            </MudSelect>
+                    <MudSelect T="CompareKind?"
+                               Value="_kind"
+                               ValueChanged="@(async v => await OnKindChanged(v))"
+                               Label="资源族"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               Style="min-width:200px;">
+                        @foreach (var kind in Enum.GetValues<CompareKind>())
+                        {
+                            <MudSelectItem Value="@((CompareKind?)kind)">@(kind.ToDisplayText() + $" ({kind})")</MudSelectItem>
+                        }
+                    </MudSelect>
 
-            <MudSelect T="string?"
-                       Value="_namespace"
-                       ValueChanged="@(async v => await OnNamespaceChanged(v))"
-                       Label="命名空间"
-                       Variant="Variant.Outlined"
-                       Margin="Margin.Dense"
-                        Disabled="@(!_sourceId.HasValue)"
-                        Style="width:200px;">
-                @foreach (var ns in _namespaces)
-                {
-                    <MudSelectItem Value="@ns">@ns</MudSelectItem>
-                }
-            </MudSelect>
+                </MudStack>
 
-            <MudSelect T="string?"
-                       Value="_resourceName"
-                       ValueChanged="@(v => { _resourceName = v; })"
-                       Label="资源名称"
-                       Variant="Variant.Outlined"
-                       Margin="Margin.Dense"
-                        Disabled="@(_names.Count == 0)"
-                        Style="width:200px;">
-                @foreach (var name in _names)
-                {
-                    <MudSelectItem Value="@name">@name</MudSelectItem>
-                }
-            </MudSelect>
+                <MudStack Row="true" Class="flex-auto">
+                    <MudSelect T="string?"
+                               Value="_namespace"
+                               ValueChanged="@(async v => await OnNamespaceChanged(v))"
+                               Label="命名空间"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                                Disabled="@(!_sourceId.HasValue)"
+                                Style="min-width:200px;">
+                        @foreach (var ns in _namespaces)
+                        {
+                            <MudSelectItem Value="@ns">@ns</MudSelectItem>
+                        }
+                    </MudSelect>
 
-            <MudSpacer />
+                    <MudSelect T="string?"
+                               Value="_resourceName"
+                               ValueChanged="@(v => { _resourceName = v; })"
+                               Label="资源名称"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                                Disabled="@(_names.Count == 0)"
+                                Style="min-width:200px;">
+                        @foreach (var name in _names)
+                        {
+                            <MudSelectItem Value="@name">@name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudStack>
 
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.CompareArrows"
-                       Disabled="@(!_sourceId.HasValue || !_targetId.HasValue || !_kind.HasValue || string.IsNullOrEmpty(_namespace) || string.IsNullOrEmpty(_resourceName) || _comparing)"
-                       OnClick="CompareAsync">
-                对照
-            </MudButton>
+                <MudSpacer />
+
+                <MudButton Variant="Variant.Filled"
+                            Color="Color.Primary"
+                            StartIcon="@Icons.Material.Filled.CompareArrows"
+                            Disabled="@(!_sourceId.HasValue || !_targetId.HasValue || !_kind.HasValue || string.IsNullOrEmpty(_namespace) || string.IsNullOrEmpty(_resourceName) || _comparing)"
+                            OnClick="CompareAsync">
+                    对照
+                </MudButton>
             </MudStack>
         </MudStack>
     </MudPaper>
