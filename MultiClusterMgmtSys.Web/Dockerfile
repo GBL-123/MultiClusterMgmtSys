@@ -19,8 +19,8 @@ RUN cd /tmp \
 FROM node:22-alpine AS charts
 WORKDIR /charts
 COPY ["MultiClusterMgmtSys.Web/package.json", "MultiClusterMgmtSys.Web/package-lock.json", "./"]
-# npm install 而非 npm ci:package-lock.json 不入库(.gitignore),fresh clone 无锁文件
-RUN npm install --no-audit --no-fund
+# npm ci:lock 文件已入库,按锁文件精确复装,构建可复现
+RUN npm ci --no-audit --no-fund
 COPY ["MultiClusterMgmtSys.Web/vite.config.mjs", "./"]
 COPY ["MultiClusterMgmtSys.Web/Assets/Scripts/", "./Assets/Scripts/"]
 RUN npm run build
