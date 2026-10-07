@@ -1,4 +1,4 @@
-namespace MultiClusterMgmtSys.Application.Services;
+namespace MultiClusterMgmtSys.Application.Common;
 
 /// <summary>
 /// 集群状态刷新来源常量,写入审计文案用于区分手动刷新与后台定时同步两条触发路径。

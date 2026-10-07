@@ -1,4 +1,5 @@
 using MultiClusterMgmtSys.Application.Services;
+using MultiClusterMgmtSys.Application.Common;
 
 namespace MultiClusterMgmtSys.Infrastructure.Sync;
 

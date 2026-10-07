@@ -4,8 +4,10 @@ namespace MultiClusterMgmtSys.Tests.TestInfrastructure;
 /// <summary>Helm CLI 运行器假实现:记录每次调用并按处理器返回结果,供 Helm 服务层单测使用;</summary>
 public sealed class FakeHelmCliRunner : IHelmCliRunner
 {
-    /// <summary>按顺序记录的调用(含参数表、集群与超时)。</summary>
+    /// <summary>按顺序记录的调用(含参数表、集群与超时);并行调用下线程安全。</summary>
     public List<HelmCliInvocation> Invocations { get; } = [];
+
+    private readonly object _invocationsGate = new();
 
     /// <summary>结果处理器;默认返回成功且无输出。</summary>
     public Func<HelmCliInvocation, HelmCliResult> Handler { get; set; } = _ => Succeeded();
@@ -13,7 +15,10 @@ public sealed class FakeHelmCliRunner : IHelmCliRunner
     /// <inheritdoc />
     public Task<HelmCliResult> RunAsync(HelmCliInvocation invocation, CancellationToken cancellationToken = default)
     {
-        Invocations.Add(invocation);
+        lock (_invocationsGate)
+        {
+            Invocations.Add(invocation);
+        }
         return Task.FromResult(Handler(invocation));
     }
 

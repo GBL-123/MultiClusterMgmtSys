@@ -78,6 +78,14 @@
                                Disabled="@(!_cluster.IsReachable)">
                         安装 Chart
                     </MudButton>
+                    <AuthorizeView Roles="Admin">
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Secondary"
+                                   StartIcon="@Icons.Material.Filled.RocketLaunch"
+                                   OnClick="OpenFleetDeployDialog">
+                            批量下发
+                        </MudButton>
+                    </AuthorizeView>
                 </MudStack>
             </MudPaper>
 
@@ -284,6 +292,17 @@
         if (result is not null && !result.Canceled)
         {
             await LoadAsync(EffectiveClusterId!.Value);
+        }
+    }
+
+    private async Task OpenFleetDeployDialog()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Large, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<FleetDeployHelmDialog>("批量下发 Chart 包", options);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && EffectiveClusterId.HasValue)
+        {
+            await LoadAsync(EffectiveClusterId.Value);
         }
     }
 

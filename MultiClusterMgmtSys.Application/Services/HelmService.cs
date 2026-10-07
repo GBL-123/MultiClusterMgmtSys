@@ -1,9 +1,11 @@
+using System.Collections.Concurrent;
 using System.Security.Claims;
 using System.Text;
 using k8s;
 using MultiClusterMgmtSys.Application.Abstractions;
 using MultiClusterMgmtSys.Application.Common.Exceptions;
 using MultiClusterMgmtSys.Application.Common.Helm;
+using MultiClusterMgmtSys.Application.Enums;
 using MultiClusterMgmtSys.Application.Requests;
 using MultiClusterMgmtSys.Application.ViewModels;
 using MultiClusterMgmtSys.Domain.Entities;
@@ -37,6 +39,8 @@ public class HelmService(
 
     private const int LogErrorMaxLength = 2000;
 
+    private const int MaxFleetConcurrency = 4;
+
     private readonly IClusterRepository _repo = repo;
 
     private readonly IHelmReleaseOwnershipRepository _ownershipRepo = ownershipRepo;
@@ -52,6 +56,8 @@ public class HelmService(
     private readonly AuditService _auditService = auditService;
 
     private readonly ILogger<HelmService> _logger = logger;
+
+    private readonly SemaphoreSlim _dbWriteGate = new(1, 1);
 
     /// <summary>列出集群全部命名空间的 release;集群不存在抛 <see cref="NotFoundException"/>,Helm 失败经翻译后抛业务异常。</summary>
     /// <param name="clusterId">集群 Id。</param>
@@ -305,6 +311,199 @@ public class HelmService(
             $"Helm: 卸载 {request.ReleaseName}(集群 {cluster.Name} / 命名空间 {request.Namespace})");
     }
 
+    /// <summary>批量多集群下发(仅 Admin):逐集群 helm status 预检后按「不存在安装 / 已存在升级」有界并发执行,逐集群隔离失败并即时写归属与审计。</summary>
+    /// <param name="request">批量下发请求(包内容、统一参数与目标集群)。</param>
+    /// <param name="progress">进度回调(已完成数, 总数),可空。</param>
+    /// <param name="cancellationToken">停机取消令牌;取消后已完成集群的归属与审计保持一致。</param>
+    /// <returns>逐集群结果行(与目标集群顺序一致)与成功/失败计数。</returns>
+    public async Task<HelmFleetDeployResultViewModel> DeployToFleetAsync(
+        HelmFleetDeployRequest request,
+        IProgress<(int Current, int Total)>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!IsAdmin())
+        {
+            _logger.LogWarning("Helm fleet deploy denied: non-admin attempted fleet deployment");
+            throw new PermissionException("仅管理员可以批量下发 Chart 包");
+        }
+
+        _logger.LogInformation(
+            "DeployHelmFleet ns={Namespace} name={Name} clusters={Clusters} wait={Wait}",
+            request.Namespace,
+            request.ReleaseName,
+            request.ClusterIds.Count,
+            request.Wait);
+        var userId = RequireCurrentUserId();
+        var userName = GetCurrentUserName();
+        ValidateNameAndNamespace(request.ReleaseName, request.Namespace);
+        ChartPackageLimits.EnsureWithinLimit(request.ChartPackage.LongLength, _options.MaxPackageBytes);
+        if (request.ClusterIds is not { Count: > 0 })
+        {
+            throw new ValidationException("请选择至少一个目标集群");
+        }
+
+        var allClusters = await _repo.GetAllForDashboardAsync();
+        var selectedIds = request.ClusterIds.Distinct().ToList();
+        var selectedIdSet = selectedIds.ToHashSet();
+        var clusters = allClusters.Where(cluster => selectedIdSet.Contains(cluster.Id)).ToList();
+        if (clusters.Count != selectedIdSet.Count)
+        {
+            var missing = selectedIdSet.Except(clusters.Select(cluster => cluster.Id)).ToList();
+            throw new NotFoundException($"目标集群不存在:{string.Join("、", missing)}");
+        }
+
+        var files = BuildWriteFiles(request.ChartPackage, request.ValuesYaml);
+        var timeout = BuildWriteTimeout(request.Wait);
+        var results = new ConcurrentDictionary<int, HelmFleetDeployItemViewModel>();
+        var total = clusters.Count;
+        var completed = 0;
+        var parallelOptions = new ParallelOptions
+        {
+            MaxDegreeOfParallelism = MaxFleetConcurrency,
+            CancellationToken = cancellationToken
+        };
+
+        await Parallel.ForEachAsync(clusters, parallelOptions, async (cluster, token) =>
+        {
+            var item = await DeployToClusterAsync(request, cluster, userId, userName, files, timeout, token);
+            results[cluster.Id] = item;
+            progress?.Report((Interlocked.Increment(ref completed), total));
+        });
+
+        var result = new HelmFleetDeployResultViewModel
+        {
+            Items = [.. clusters.Select(cluster => results[cluster.Id])]
+        };
+        _logger.LogInformation(
+            "DeployHelmFleet done success={Success} failure={Failure}",
+            result.SuccessCount,
+            result.FailureCount);
+        return result;
+    }
+
+    private async Task<HelmFleetDeployItemViewModel> DeployToClusterAsync(
+        HelmFleetDeployRequest request,
+        ClusterInfo cluster,
+        int userId,
+        string userName,
+        IReadOnlyList<HelmCliFile> files,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        var item = new HelmFleetDeployItemViewModel { ClusterId = cluster.Id, ClusterName = cluster.Name };
+        try
+        {
+            if (await FleetPreflightExistsAsync(request, cluster))
+            {
+                await RunAsync(
+                    HelmCommandBuilder.BuildUpgrade(
+                        request.ReleaseName,
+                        request.Namespace,
+                        includeValues: HasValues(request.ValuesYaml),
+                        reuseValues: false,
+                        wait: request.Wait,
+                        timeoutSeconds: WaitTimeoutSeconds),
+                    cluster,
+                    timeout,
+                    files,
+                    cancellationToken);
+                // 并行体内 DB 写(归属 upsert + 审计)落同一 scoped DbContext,串行化避免并发冲突丢写。
+                await _dbWriteGate.WaitAsync(cancellationToken);
+                try
+                {
+                    await _auditService.LogAsync(
+                        AuditCategory.Helm,
+                        AuditAction.Upgrade,
+                        $"Helm: 批量下发升级 {request.ReleaseName}(集群 {cluster.Name} / 命名空间 {request.Namespace})");
+                }
+                finally
+                {
+                    _dbWriteGate.Release();
+                }
+                item.Action = HelmFleetDeployAction.Upgrade;
+                item.Succeeded = true;
+            }
+            else
+            {
+                await RunAsync(
+                    HelmCommandBuilder.BuildInstall(
+                        request.ReleaseName,
+                        request.Namespace,
+                        includeValues: HasValues(request.ValuesYaml),
+                        createNamespace: request.CreateNamespace,
+                        wait: request.Wait,
+                        timeoutSeconds: WaitTimeoutSeconds),
+                    cluster,
+                    timeout,
+                    files,
+                    cancellationToken);
+                // 并行体内 DB 写(归属 upsert + 审计)落同一 scoped DbContext,串行化避免并发冲突丢写。
+                await _dbWriteGate.WaitAsync(cancellationToken);
+                try
+                {
+                    await TryUpsertOwnershipAsync(new HelmReleaseOwnership
+                    {
+                        ClusterId = cluster.Id,
+                        Namespace = request.Namespace,
+                        ReleaseName = request.ReleaseName,
+                        OwnerUserId = userId,
+                        OwnerUserName = userName,
+                        InstalledAt = DateTime.UtcNow,
+                        InstalledRevision = 1
+                    });
+                    await _auditService.LogAsync(
+                        AuditCategory.Helm,
+                        AuditAction.Install,
+                        $"Helm: 批量下发安装 {request.ReleaseName}(集群 {cluster.Name} / 命名空间 {request.Namespace})");
+                }
+                finally
+                {
+                    _dbWriteGate.Release();
+                }
+                item.Action = HelmFleetDeployAction.Install;
+                item.Succeeded = true;
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Helm fleet deploy failed clusterId={ClusterId} ns={Namespace} name={Name}",
+                cluster.Id,
+                request.Namespace,
+                request.ReleaseName);
+            item.Succeeded = false;
+            item.Message = ex is BusinessException business ? business.UserMessage : "下发失败,请稍后重试";
+        }
+        return item;
+    }
+
+    private async Task<bool> FleetPreflightExistsAsync(HelmFleetDeployRequest request, ClusterInfo cluster)
+    {
+        try
+        {
+            var result = await RunAsync(
+                HelmCommandBuilder.BuildStatus(request.ReleaseName, request.Namespace),
+                cluster,
+                _ReadTimeout);
+            var revision = HelmOutputParser.ParseStatus(result.StandardOutput).Revision;
+            _logger.LogInformation(
+                "Helm fleet preflight: release exists clusterId={ClusterId} revision={Revision}, upgrading",
+                cluster.Id,
+                revision);
+            return true;
+        }
+        catch (NotFoundException)
+        {
+            _logger.LogInformation("Helm fleet preflight: release missing clusterId={ClusterId}, installing", cluster.Id);
+            return false;
+        }
+    }
+
     private async Task<ClusterInfo> RequireClusterAsync(int clusterId)
         => await _repo.GetByIdAsync(clusterId)
             ?? throw new NotFoundException($"集群 {clusterId} 不存在");
@@ -313,7 +512,8 @@ public class HelmService(
         IReadOnlyList<string> arguments,
         ClusterInfo cluster,
         TimeSpan timeout,
-        IReadOnlyList<HelmCliFile>? files = null)
+        IReadOnlyList<HelmCliFile>? files = null,
+        CancellationToken cancellationToken = default)
     {
         var result = await _helmRunner.RunAsync(new HelmCliInvocation
         {
@@ -321,7 +521,7 @@ public class HelmService(
             Files = files ?? [],
             Cluster = cluster,
             Timeout = timeout
-        });
+        }, cancellationToken);
         if (!result.Succeeded)
         {
             _logger.LogWarning(

@@ -1,0 +1,341 @@
+@using MultiClusterMgmtSys.Application.Common.Helm
+@using MultiClusterMgmtSys.Application.Enums
+@using MultiClusterMgmtSys.Application.Requests
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Application.ViewModels
+@using MultiClusterMgmtSys.Domain.Enums
+
+@inject HelmService HelmService
+@inject ClusterService ClusterService
+@inject HelmOptions HelmOptions
+@inject ISnackbar Snackbar
+@inject ExceptionPresenter ExHandler
+
+<MudDialog>
+    <DialogContent>
+        @switch (_phase)
+        {
+            case FleetPhase.Form:
+                <MudStack Spacing="3" Class="pt-2">
+                    <div>
+                        <InputFile OnChange="OnFileSelected" accept=".tgz" style="width:100%;" />
+                        <MudText Typo="Typo.caption" Class="mud-text-secondary mt-1">选择打包好的 .tgz chart 包（最大 @MaxPackageMegabytes MB），统一应用到全部目标集群</MudText>
+                        @if (!string.IsNullOrEmpty(_fileName))
+                        {
+                            <MudText Typo="Typo.body2" Class="mt-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Class="mr-1" />@_fileName
+                            </MudText>
+                        }
+                    </div>
+
+                    @if (_package is not null)
+                    {
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.body2">Chart:<span class="font-mono ml-1">@_package.Name @_package.Version</span></MudText>
+                            @foreach (var warning in _package.Warnings)
+                            {
+                                <MudAlert Severity="Severity.Warning" Dense="true">@warning</MudAlert>
+                            }
+                        </MudStack>
+                    }
+
+                    <MudTextField @bind-Value="_releaseName"
+                                  Label="Release 名称"
+                                  Required="true"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense" />
+
+                    <MudTextField @bind-Value="_namespace"
+                                  Label="命名空间"
+                                  Required="true"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense" />
+
+                    <MudCheckBox T="bool" @bind-Value="_createNamespace" Label="命名空间不存在时自动创建（--create-namespace）" />
+                    <MudCheckBox T="bool" @bind-Value="_wait" Label="等待资源就绪（--wait，最长 5 分钟）" />
+
+                    <div>
+                        <MudText Typo="Typo.body2" Class="mb-1">统一 Values（YAML，应用到全部目标集群）</MudText>
+                        <textarea class="yaml-textarea" style="height:200px;width:100%;" value="@_valuesYaml" @oninput="OnValuesInput"></textarea>
+                    </div>
+
+                    <div>
+                        <MudText Typo="Typo.body2" Class="mb-1">目标集群（至少选择 1 个）</MudText>
+                        @if (_clusters.Count == 0)
+                        {
+                            <div class="empty-state">[ 暂无可选集群 ]</div>
+                        }
+                        else
+                        {
+                            <div class="d-flex flex-column" style="gap:6px;">
+                                @foreach (var cluster in _clusters)
+                                {
+                                    <div class="d-flex align-center" style="gap:8px;">
+                                        <MudCheckBox T="bool"
+                                                     Value="@(_selectedClusterIds.Contains(cluster.Id))"
+                                                     ValueChanged="@(value => ToggleCluster(cluster.Id, value))" />
+                                        <MudText Typo="Typo.body2" Class="font-mono">@cluster.Name</MudText>
+                                        <StatusBadge Text="@cluster.StatusText" CssClass="@StatusCssClass(cluster.Status)" />
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </MudStack>
+                break;
+            case FleetPhase.Running:
+                <MudText Typo="Typo.body2">正在下发到 @_total 个集群，已完成 @(Math.Min(_completed, _total)) / @_total ...</MudText>
+                <MudProgressLinear Value="@ProgressPercent"
+                                   Color="Color.Primary"
+                                   Class="mt-2" />
+                break;
+            case FleetPhase.Done:
+                <MudText Typo="Typo.subtitle1">批量下发完成</MudText>
+                <MudText Typo="Typo.body2" Class="font-mono">成功 @_result!.SuccessCount / 失败 @_result.FailureCount</MudText>
+                <MudTable T="HelmFleetDeployItemViewModel"
+                          Items="@_result.Items"
+                          Dense="true"
+                          Hover="true"
+                          Elevation="0"
+                          Class="mt-2">
+                    <HeaderContent>
+                        <MudTh>集群</MudTh>
+                        <MudTh>动作</MudTh>
+                        <MudTh>结果</MudTh>
+                        <MudTh>消息</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="集群"><span class="font-mono">@context.ClusterName</span></MudTd>
+                        <MudTd DataLabel="动作">@ActionText(context.Action)</MudTd>
+                        <MudTd DataLabel="结果">
+                            @if (context.Succeeded)
+                            {
+                                <span class="status-badge online">成功</span>
+                            }
+                            else
+                            {
+                                <span class="status-badge offline">失败</span>
+                            }
+                        </MudTd>
+                        <MudTd DataLabel="消息"><span class="font-mono">@(string.IsNullOrEmpty(context.Message) ? "—" : context.Message)</span></MudTd>
+                    </RowTemplate>
+                </MudTable>
+                break;
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text"
+                   OnClick="() => Dialog.Cancel()"
+                   Disabled="@(_phase == FleetPhase.Running)">
+            取消
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@_submitting"
+                   OnClick="SubmitAsync"
+                   Style="@(_phase == FleetPhase.Form ? "" : "display:none;")">
+            开始下发
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="CloseWithResult"
+                   Style="@(_phase == FleetPhase.Done ? "" : "display:none;")">
+            关闭
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
+
+    private enum FleetPhase
+    {
+        Form,
+        Running,
+        Done
+    }
+
+    private FleetPhase _phase = FleetPhase.Form;
+
+    private byte[]? _packageContent;
+
+    private string _fileName = "";
+
+    private HelmChartPackageViewModel? _package;
+
+    private List<ClusterViewModel> _clusters = new();
+
+    private readonly HashSet<int> _selectedClusterIds = [];
+
+    private string _releaseName = "";
+
+    private string _namespace = "";
+
+    private string _valuesYaml = "";
+
+    private bool _createNamespace;
+
+    private bool _wait;
+
+    private bool _submitting;
+
+    private int _completed;
+
+    private int _total;
+
+    private HelmFleetDeployResultViewModel? _result;
+
+    private int MaxPackageMegabytes => (int)(HelmOptions.MaxPackageBytes / 1024 / 1024);
+
+    private int ProgressPercent => _total > 0 ? Math.Min(_completed, _total) * 100 / _total : 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var request = new ClusterQueryRequest { Page = 1, PageSize = 1000, SortBy = ClusterSortField.Name, SortDescending = false };
+            _clusters = (await ClusterService.GetPagedAsync(request)).Items;
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载集群列表");
+        }
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null)
+        {
+            return;
+        }
+        if (file.Size > HelmOptions.MaxPackageBytes)
+        {
+            Snackbar.Add($"chart 包超过 {MaxPackageMegabytes} MB 限制", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            using var buffer = new MemoryStream();
+            await using (var source = file.OpenReadStream(HelmOptions.MaxPackageBytes))
+            {
+                await source.CopyToAsync(buffer);
+            }
+            _packageContent = buffer.ToArray();
+            _fileName = file.Name;
+            _package = HelmService.ParseChartPackage(_packageContent);
+            _releaseName = _package.SuggestedReleaseName;
+            _valuesYaml = _package.ValuesYaml;
+        }
+        catch (Exception ex)
+        {
+            _packageContent = null;
+            _package = null;
+            await ExHandler.HandleAsync(ex, "解析 chart 包");
+        }
+    }
+
+    private void OnValuesInput(ChangeEventArgs e) => _valuesYaml = e.Value?.ToString() ?? "";
+
+    private void ToggleCluster(int clusterId, bool selected)
+    {
+        if (selected)
+        {
+            _selectedClusterIds.Add(clusterId);
+        }
+        else
+        {
+            _selectedClusterIds.Remove(clusterId);
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (_packageContent is null)
+        {
+            Snackbar.Add("请先选择 chart 包", Severity.Warning);
+            return;
+        }
+        var releaseName = _releaseName.Trim();
+        var namespaceName = _namespace.Trim();
+        if (string.IsNullOrWhiteSpace(releaseName))
+        {
+            Snackbar.Add("请填写 Release 名称", Severity.Warning);
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(namespaceName))
+        {
+            Snackbar.Add("请填写命名空间", Severity.Warning);
+            return;
+        }
+        if (!HelmCommandBuilder.IsValidReleaseName(releaseName))
+        {
+            Snackbar.Add("Release 名称不合法:仅允许小写字母、数字与连字符,以字母或数字开头结尾且不超过 53 字符", Severity.Warning);
+            return;
+        }
+        if (!HelmCommandBuilder.IsValidNamespace(namespaceName))
+        {
+            Snackbar.Add("命名空间名称不合法", Severity.Warning);
+            return;
+        }
+        if (_selectedClusterIds.Count == 0)
+        {
+            Snackbar.Add("请选择至少一个目标集群", Severity.Warning);
+            return;
+        }
+
+        var clusterIds = _clusters
+            .Where(cluster => _selectedClusterIds.Contains(cluster.Id))
+            .Select(cluster => cluster.Id)
+            .ToList();
+        _submitting = true;
+        _phase = FleetPhase.Running;
+        var progress = new Progress<(int Current, int Total)>(p =>
+        {
+            _completed = p.Current;
+            _total = p.Total;
+            _ = InvokeAsync(StateHasChanged);
+        });
+        try
+        {
+            _result = await HelmService.DeployToFleetAsync(
+                new HelmFleetDeployRequest(
+                    namespaceName,
+                    releaseName,
+                    _packageContent,
+                    _valuesYaml,
+                    _createNamespace,
+                    _wait,
+                    clusterIds),
+                progress);
+            _phase = FleetPhase.Done;
+        }
+        catch (Exception ex)
+        {
+            _phase = FleetPhase.Form;
+            await ExHandler.HandleAsync(ex, "批量下发");
+        }
+        finally
+        {
+            _submitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseWithResult() => Dialog.Close(DialogResult.Ok(true));
+
+    private static string ActionText(HelmFleetDeployAction action) => action switch
+    {
+        HelmFleetDeployAction.Install => "安装",
+        _ => "升级"
+    };
+
+    private static string StatusCssClass(ClusterStatus status) => status switch
+    {
+        ClusterStatus.Online => "online",
+        ClusterStatus.Offline => "offline",
+        _ => "unknown"
+    };
+}

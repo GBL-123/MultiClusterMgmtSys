@@ -143,4 +143,40 @@ public class HelmPageTests
         Assert.Contains("命名空间", provider.Markup);
         Assert.Contains(".tgz", provider.Markup);
     }
+
+    [Fact]
+    public async Task Helm_page_toolbar_shows_fleet_deploy_entry_for_admin()
+    {
+        await using var ctx = new BunitHost();
+        AuthorizeAdmin(ctx);
+        var (harness, runner, k8s) = ctx.AddHelmStack();
+        var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("k8s-src"));
+        SetupOnlineCluster(k8s);
+        runner.Handler = _ => FakeHelmCliRunner.Succeeded(HelmFixtures.ReleaseListJson);
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Helm.Pages.Helm>(
+            parameters => parameters.Add(p => p.ClusterId, cluster.Id));
+
+        cut.WaitForState(() => cut.Markup.Contains("nginx"));
+        Assert.Contains("批量下发", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Helm_page_toolbar_hides_fleet_deploy_entry_for_member()
+    {
+        await using var ctx = new BunitHost();
+        var auth = ctx.AddAuthorization();
+        auth.SetAuthorized("alice");
+        var (harness, runner, k8s) = ctx.AddHelmStack(actor: "alice", userId: 7);
+        var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("k8s-src"));
+        SetupOnlineCluster(k8s);
+        runner.Handler = _ => FakeHelmCliRunner.Succeeded(HelmFixtures.ReleaseListJson);
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Helm.Pages.Helm>(
+            parameters => parameters.Add(p => p.ClusterId, cluster.Id));
+
+        cut.WaitForState(() => cut.Markup.Contains("nginx"));
+        Assert.Contains("安装 Chart", cut.Markup);
+        Assert.DoesNotContain("批量下发", cut.Markup);
+    }
 }

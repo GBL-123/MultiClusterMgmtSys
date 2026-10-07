@@ -10,6 +10,7 @@ using MultiClusterMgmtSys.Domain.Exceptions;
 using MultiClusterMgmtSys.Application.Models;
 using MultiClusterMgmtSys.Application.Requests;
 using MultiClusterMgmtSys.Application.Services;
+using MultiClusterMgmtSys.Application.Common;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
 namespace MultiClusterMgmtSys.Tests.Application.Services;
