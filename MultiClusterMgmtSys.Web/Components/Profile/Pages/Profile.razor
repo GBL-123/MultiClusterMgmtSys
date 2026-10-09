@@ -10,6 +10,7 @@
 @inject AccountService AccountSvc
 @inject AuditService AuditSvc
 @inject ClusterSyncSettingService SyncSettingSvc
+@inject AlertSettingService AlertSettingSvc
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
@@ -108,6 +109,33 @@
                     </MudText>
                 </MudCardContent>
             </MudCard>
+
+            <MudCard Class="pa-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">告警设置</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4" Class="flex-wrap">
+                        <MudNumericField @bind-Value="_alertOfflineThresholdMinutes"
+                                         Label="离线持续阈值(分钟)"
+                                         Min="1" Max="1440" Step="1"
+                                         Class="font-mono alert-threshold-field" />
+                        <MudSpacer />
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Save"
+                                   Disabled="@_savingAlert"
+                                   OnClick="SaveAlertSettingsAsync">
+                            保存
+                        </MudButton>
+                    </MudStack>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary mt-2">
+                        阈值范围 1~1440 分钟;集群离线持续超过该时长即开立「集群离线」告警,保存后下一轮评估生效。
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
         }
 
         <MudCard Class="pa-4">
@@ -178,6 +206,10 @@
 
     private bool _savingSync;
 
+    private int _alertOfflineThresholdMinutes = 10;
+
+    private bool _savingAlert;
+
     private string UserInitial => string.IsNullOrEmpty(_currentUserName) ? "?" : _currentUserName.Substring(0, 1).ToUpperInvariant();
 
     protected override async Task OnInitializedAsync()
@@ -208,6 +240,8 @@
                 var settings = await SyncSettingSvc.GetClusterSyncSettingsAsync();
                 _syncEnabled = settings.Enabled;
                 _syncIntervalMinutes = settings.IntervalMinutes;
+                var alertSettings = await AlertSettingSvc.GetAlertSettingsAsync();
+                _alertOfflineThresholdMinutes = alertSettings.OfflineThresholdMinutes;
             }
         }
         catch (Exception ex)
@@ -243,6 +277,24 @@
         finally
         {
             _savingSync = false;
+        }
+    }
+
+    private async Task SaveAlertSettingsAsync()
+    {
+        _savingAlert = true;
+        try
+        {
+            await AlertSettingSvc.UpdateAlertSettingsAsync(new AlertSettingsUpdateRequest(_alertOfflineThresholdMinutes));
+            Snackbar.Add("告警设置已保存,下一轮评估生效", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "保存告警设置");
+        }
+        finally
+        {
+            _savingAlert = false;
         }
     }
 }

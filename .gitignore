@@ -374,7 +374,6 @@ TestResults/
 coveragereport/
 coverage/
 
-/pictures
 
 # vite build output (source in Assets/Scripts; produced by csproj target / Docker charts stage)
 MultiClusterMgmtSys.Web/wwwroot/js/dashboard-trend.js

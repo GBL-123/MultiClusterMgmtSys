@@ -404,4 +404,25 @@ public static class K8sDisplayText
         "Lost" => "offline",
         _ => "unknown"
     };
+
+    /// <summary>拓扑节点的资源类型中文展示名;未登记 Kind 回退原文(契约:未登记回退原文)。</summary>
+    /// <param name="kind">资源原始 Kind(Pod/Service/ConfigMap/Secret/PersistentVolumeClaim/Deployment/StatefulSet/DaemonSet/Job/ReplicaSet/Node/Ingress/PersistentVolume)。</param>
+    public static string ResourceKindText(string kind) => kind switch
+    {
+        "Pod" => "Pod",
+        "Service" => "服务",
+        "ConfigMap" => "配置集",
+        "Secret" => "密钥",
+        "PersistentVolumeClaim" => "持久卷声明",
+        "Deployment" => "部署",
+        "StatefulSet" => "有状态应用",
+        "DaemonSet" => "守护进程",
+        "Job" => "Job",
+        "ReplicaSet" => "副本集",
+        "Node" => "节点",
+        "Ingress" => "Ingress",
+        "PersistentVolume" => "持久卷",
+        "Namespace" => "命名空间",
+        _ => kind
+    };
 }

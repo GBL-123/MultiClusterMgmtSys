@@ -1247,6 +1247,14 @@ public static class K8sMocks
                 Body = new V1DaemonSet { Metadata = new V1ObjectMeta { Name = name, NamespaceProperty = ns } }
             });
 
+    public static void SetupReadDaemonSetBody(this Mock<IKubernetes> mock, string name, string ns, V1DaemonSet ds)
+        => mock.Setup(x => x.AppsV1.ReadNamespacedDaemonSetWithHttpMessagesAsync(
+                It.Is<string>(n => n == name), It.Is<string>(n => n == ns),
+                It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HttpOperationResponse<V1DaemonSet> { Body = ds });
+
     public static void SetupCreateDaemonSet(this Mock<IKubernetes> mock, string ns)
         => mock.Setup(x => x.AppsV1.CreateNamespacedDaemonSetWithHttpMessagesAsync(
                 It.IsAny<V1DaemonSet>(), It.Is<string>(n => n == ns),
@@ -1630,6 +1638,53 @@ public static class K8sMocks
                 It.IsAny<string?>(), It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<int?>(),
                 It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<int?>(), It.IsAny<string?>(),
                 It.IsAny<int?>(), It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(ex);
+
+    public static void SetupReadReplicaSetBody(this Mock<IKubernetes> mock, string name, string ns, V1ReplicaSet rs)
+        => mock.Setup(x => x.AppsV1.ReadNamespacedReplicaSetWithHttpMessagesAsync(
+                It.Is<string>(n => n == name), It.Is<string>(n => n == ns),
+                It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HttpOperationResponse<V1ReplicaSet> { Body = rs });
+
+    public static void SetupListNamespacedIngresses(this Mock<IKubernetes> mock, string ns, params V1Ingress[] ingresses)
+        => mock.Setup(x => x.NetworkingV1.ListNamespacedIngressWithHttpMessagesAsync(
+                It.Is<string>(n => n == ns),
+                It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<int?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<bool?>(),
+                It.IsAny<int?>(), It.IsAny<bool?>(), It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HttpOperationResponse<V1IngressList>
+            {
+                Body = new V1IngressList { Items = ingresses.ToList() }
+            });
+
+    public static void SetupListNamespacedIngressesThrows(this Mock<IKubernetes> mock, string ns, Exception ex)
+        => mock.Setup(x => x.NetworkingV1.ListNamespacedIngressWithHttpMessagesAsync(
+                It.IsAny<string?>(),
+                It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<int?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<bool?>(),
+                It.IsAny<int?>(), It.IsAny<bool?>(), It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(ex);
+
+    public static void SetupReadJob(this Mock<IKubernetes> mock, string name, string ns, V1Job job)
+        => mock.Setup(x => x.BatchV1.ReadNamespacedJobWithHttpMessagesAsync(
+                It.Is<string>(n => n == name), It.Is<string>(n => n == ns),
+                It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HttpOperationResponse<V1Job> { Body = job });
+
+    public static void SetupReadJobThrows(this Mock<IKubernetes> mock, string name, string ns, Exception ex)
+        => mock.Setup(x => x.BatchV1.ReadNamespacedJobWithHttpMessagesAsync(
+                It.Is<string>(n => n == name), It.Is<string>(n => n == ns),
+                It.IsAny<bool?>(),
                 It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
                 It.IsAny<CancellationToken>()))
             .ThrowsAsync(ex);

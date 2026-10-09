@@ -34,13 +34,15 @@
     <None Include="wwwroot\js\show-password.js" />
     <!-- 由 vite 构建产出(见下方 BuildChartBundle target),产物不入 git -->
     <None Include="wwwroot\js\dashboard-trend.js" Condition="Exists('wwwroot\js\dashboard-trend.js')" />
+    <None Include="wwwroot\js\topology-graph.js" Condition="Exists('wwwroot\js\topology-graph.js')" />
   </ItemGroup>
 
-  <!-- 图表 bundle:vite 构建 eucharts 入口脚本到 wwwroot/js。
+  <!-- 图表 bundle:vite 构建 eucharts 入口脚本到 wwwroot/js(dashboard-trend + topology-graph,
+       两份配置各自产出单文件自托管 ES Module,见 vite.config.mjs / vite.topology.mjs)。
        前置条件:本目录已执行 npm install(node_modules 存在);Docker 走独立 node 阶段,传 -p:SkipVite=true 跳过。 -->
   <Target Name="BuildChartBundle" BeforeTargets="AssignTargetPaths" Condition="'$(SkipVite)' != 'true'"
-          Inputs="package.json;vite.config.mjs;Assets\Scripts\**"
-          Outputs="wwwroot\js\dashboard-trend.js">
+          Inputs="package.json;vite.config.mjs;vite.topology.mjs;Assets\Scripts\**"
+          Outputs="wwwroot\js\dashboard-trend.js;wwwroot\js\topology-graph.js">
     <Message Importance="high" Text="vite: 构建图表 bundle (npm run build)" Condition="Exists('node_modules\.bin\vite.cmd')" />
     <Exec Command="npm run build" WorkingDirectory="$(MSBuildProjectDirectory)" Condition="Exists('node_modules\.bin\vite.cmd')" ConsoleToMsBuild="false" />
     <Warning Code="MCMS001" Text="未找到 node_modules,跳过图表 bundle 构建(先执行: cd MultiClusterMgmtSys.Web &amp;&amp; npm install)" Condition="!Exists('node_modules\.bin\vite.cmd') and !Exists('node_modules/.bin/vite')" />

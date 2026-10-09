@@ -1,8 +1,7 @@
-using k8s;
-using k8s.Models;
 using Microsoft.Extensions.Logging;
 using MultiClusterMgmtSys.Application.Abstractions;
 using MultiClusterMgmtSys.Application.Common.Ownership;
+using MultiClusterMgmtSys.Application.Common.Yaml;
 using MultiClusterMgmtSys.Application.Enums;
 using MultiClusterMgmtSys.Application.Requests;
 using MultiClusterMgmtSys.Application.ViewModels;
@@ -191,7 +190,7 @@ public class ClusterCompareService
         }
     }
 
-    /// <summary>剥离服务器侧元数据(uid/resourceVersion/creationTimestamp/managedFields/status/系统归属盖章),使 YAML 可在目标集群作为新对象创建。</summary>
+    /// <summary>剥离服务器侧元数据(uid/resourceVersion/creationTimestamp/managedFields/status/归属盖章),使 YAML 可在目标集群作为新对象创建;剥离逻辑统一走 <see cref="ServerYamlSanitizer"/>。</summary>
     /// <param name="sourceYaml">源集群原始 YAML。</param>
     /// <param name="kind">资源族。</param>
     /// <param name="clusterName">源集群显示名(日志用)。</param>
@@ -201,45 +200,7 @@ public class ClusterCompareService
     {
         try
         {
-            switch (kind)
-            {
-                case CompareKind.ConfigMap:
-                {
-                    var body = KubernetesYaml.Deserialize<V1ConfigMap>(sourceYaml);
-                    StripCommon(body.Metadata);
-                    return KubernetesYaml.Serialize(body);
-                }
-                case CompareKind.Deployment:
-                {
-                    var body = KubernetesYaml.Deserialize<V1Deployment>(sourceYaml);
-                    StripCommon(body.Metadata);
-                    body.Status = null;
-                    return KubernetesYaml.Serialize(body);
-                }
-                case CompareKind.StatefulSet:
-                {
-                    var body = KubernetesYaml.Deserialize<V1StatefulSet>(sourceYaml);
-                    StripCommon(body.Metadata);
-                    body.Status = null;
-                    return KubernetesYaml.Serialize(body);
-                }
-                case CompareKind.DaemonSet:
-                {
-                    var body = KubernetesYaml.Deserialize<V1DaemonSet>(sourceYaml);
-                    StripCommon(body.Metadata);
-                    body.Status = null;
-                    return KubernetesYaml.Serialize(body);
-                }
-                case CompareKind.ReplicaSet:
-                {
-                    var body = KubernetesYaml.Deserialize<V1ReplicaSet>(sourceYaml);
-                    StripCommon(body.Metadata);
-                    body.Status = null;
-                    return KubernetesYaml.Serialize(body);
-                }
-                default:
-                    throw new ValidationException("暂不支持该资源族");
-            }
+            return ServerYamlSanitizer.Sanitize(sourceYaml, kind);
         }
         catch (ValidationException)
         {
@@ -250,22 +211,5 @@ public class ClusterCompareService
             _logger.LogWarning(ex, "StripServerMetadata failed cluster={Cluster} name={Name}", clusterName, name);
             return sourceYaml;
         }
-    }
-
-    /// <summary>清理通用归属与服务器字段:直属于 metadata 的服务器侧属性与归属盖章一并移除。</summary>
-    private static void StripCommon(V1ObjectMeta? metadata)
-    {
-        if (metadata is null)
-        {
-            return;
-        }
-
-        metadata.Uid = null;
-        metadata.ResourceVersion = null;
-        metadata.CreationTimestamp = null;
-        metadata.DeletionTimestamp = null;
-        metadata.ManagedFields = null;
-        metadata.Labels?.Remove(ResourceOwnershipKeys.OwnerUidLabel);
-        metadata.Annotations?.Remove(ResourceOwnershipKeys.OwnerNameAnnotation);
     }
 }

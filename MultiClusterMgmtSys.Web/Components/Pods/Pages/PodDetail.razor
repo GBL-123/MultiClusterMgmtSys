@@ -6,6 +6,7 @@
 @using MultiClusterMgmtSys.Application.Services
 @using MultiClusterMgmtSys.Application.ViewModels
 @using MultiClusterMgmtSys.Web.Components.Pods.Shared
+@using MultiClusterMgmtSys.Web.Components.Topology
 
 @inject PodService PodService
 @inject ClusterSelectionState ClusterSelection
@@ -269,6 +270,13 @@
                     </MudCardContent>
                 </MudCard>
             </MudTabPanel>
+            <MudTabPanel Text="拓扑">
+                <TopologyGraphCard ClusterId="@ClusterId"
+                                   Namespace="@Namespace"
+                                   Kind="Pod"
+                                   Name="@Name"
+                                   Active="@(_activeTabIndex == TopologyTabIndex)" />
+            </MudTabPanel>
         </MudTabs>
     }
 </MudStack>
@@ -312,6 +320,8 @@
     private static readonly int[] _TailLineOptions = [200, 500, 1000, 5000];
 
     private const int LogTabIndex = 2;
+
+    private const int TopologyTabIndex = 3;
 
     protected override async Task OnInitializedAsync()
     {

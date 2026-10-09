@@ -48,6 +48,8 @@ public class ProfilePageTests
             Assert.Contains("role-badge admin", cut.Markup);
             Assert.Contains("管理员", cut.Markup);
             Assert.Contains("定时同步", cut.Markup);
+            Assert.Contains("告警设置", cut.Markup);
+            Assert.Contains("离线持续阈值", cut.Markup);
         }
         finally
         {
@@ -86,6 +88,7 @@ public class ProfilePageTests
             Assert.Contains("role-badge member", cut.Markup);
             Assert.Contains("成员", cut.Markup);
             Assert.DoesNotContain("定时同步", cut.Markup);
+            Assert.DoesNotContain("告警设置", cut.Markup);
         }
         finally
         {

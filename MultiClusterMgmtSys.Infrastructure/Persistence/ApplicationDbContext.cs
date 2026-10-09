@@ -29,6 +29,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     /// <summary>集群节点健康快照表:每次成功探测追加一条,(ClusterId, CapturedAt) 建有索引,随所属集群级联删除。</summary>
     public DbSet<ClusterHealthSnapshot> ClusterHealthSnapshots => Set<ClusterHealthSnapshot>();
 
+    /// <summary>告警记录表:评估器开立与解析的告警状态机(open ≡ ResolvedAt 为空),随所属集群级联删除。</summary>
+    public DbSet<AlertRecord> AlertRecords => Set<AlertRecord>();
+
     /// <summary>审计日志表:记录用户关键操作,CreatedAt 建有索引以支撑按时间排序分页。</summary>
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
@@ -42,6 +45,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     /// 配置实体映射与库级约束:凭据列用 TEXT 且 SkipTlsVerify 默认 true;
     /// 端点、节点 IP 备注与节点健康快照随集群级联删除,分组删除时集群 GroupId 置空(SetNull);
     /// 节点 IP 备注按 (ClusterId, NodeName, Address) 唯一索引,节点健康快照按 (ClusterId, CapturedAt) 建索引,
+    /// 告警记录按 (ClusterId, RuleKind) 对未解析行建部分唯一索引(同键至多一条 open),随集群级联删除,
     /// 审计日志按 CreatedAt 建索引,应用设置按 Key 唯一索引,用户 CreatedAt 使用数据库默认值 CURRENT_TIMESTAMP。
     /// </summary>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -104,6 +108,22 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             entity.Property(e => e.ReleaseName).IsRequired();
             entity.Property(e => e.OwnerUserName).IsRequired();
             entity.HasIndex(e => new { e.ClusterId, e.Namespace, e.ReleaseName }).IsUnique();
+
+            entity.HasOne(e => e.Cluster)
+                  .WithMany()
+                  .HasForeignKey(e => e.ClusterId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AlertRecord>(entity =>
+        {
+            entity.Property(e => e.Detail).HasMaxLength(256);
+
+            // 同一集群同一规则至多一条 open 记录:部分唯一索引只约束未解析行,
+            // 解析后的历史记录不受限制;评估器是单写者,索引为纵深防御。
+            entity.HasIndex(e => new { e.ClusterId, e.RuleKind })
+                  .IsUnique()
+                  .HasFilter($"[{nameof(AlertRecord.ResolvedAt)}] IS NULL");
 
             entity.HasOne(e => e.Cluster)
                   .WithMany()

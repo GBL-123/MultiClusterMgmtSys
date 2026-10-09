@@ -81,6 +81,7 @@ public static class BunitServiceExtensions
         ctx.Services.AddScoped<IGroupRepository>(_ => new GroupRepository(harness.Db));
         ctx.Services.AddScoped<GroupService>();
         ctx.Services.AddScoped<ClusterSyncSettingService>();
+        ctx.Services.AddScoped<AlertSettingService>();
         ctx.Services.AddScoped<ClusterSelectionState>();
         var roles = actor == "admin" ? new[] { "Admin" } : Array.Empty<string>();
         ctx.Services.AddScoped(_ => TestHttpContext.ForIdentity(actor, 7, roles).Object);
@@ -200,6 +201,52 @@ public static class BunitServiceExtensions
         ctx.Services.AddScoped<WorkloadService>();
         ctx.Services.AddScoped<ConfigMapService>();
         ctx.Services.AddScoped<ClusterCompareService>();
+        return (harness, k8s);
+    }
+
+    public static (ServiceHarness Harness, Mock<IKubernetes> K8s) AddTopologyStack(this BunitContext ctx, string actor = "admin")
+    {
+        var harness = ctx.AddClusterStack(actor);
+        ctx.AddGroupAndSyncStack(harness, actor);
+        var k8s = new Mock<IKubernetes>();
+        ctx.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8s));
+        ctx.AddClientCache();
+        ctx.Services.AddScoped<TopologyService>();
+        ctx.Services.AddScoped<PodService>();
+        ctx.Services.AddScoped<SvcService>();
+        return (harness, k8s);
+    }
+
+    public static (ServiceHarness Harness, Mock<IKubernetes> K8s) AddAlertStack(this BunitContext ctx, string actor = "admin")
+    {
+        var harness = ctx.AddClusterStack(actor);
+        var roles = actor == "admin" ? new[] { "Admin" } : Array.Empty<string>();
+        var configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>())
+            .Build();
+        ctx.Services.AddSingleton<IConfiguration>(configuration);
+        ctx.Services.AddSingleton<IAppSettingRepository>(_ => new AppSettingRepository(harness.Db));
+        ctx.Services.AddScoped<IAlertRepository>(_ => new AlertRepository(harness.Db));
+        ctx.Services.AddScoped(_ => harness.Audit);
+        ctx.Services.AddScoped(_ => TestHttpContext.ForIdentity(actor, 7, roles).Object);
+        ctx.Services.AddScoped<ClusterSyncSettingService>();
+        ctx.Services.AddScoped<AlertSettingService>();
+        ctx.Services.AddScoped<AlertService>();
+        return (harness, new Mock<IKubernetes>());
+    }
+
+    /// <summary>舰队模板页所需服务栈:复用集群栈,叠加工作负载 / 配置 / 舰队模板服务(舰队下发经逐作用域解析它们)。</summary>
+    public static (ServiceHarness Harness, Mock<IKubernetes> K8s) AddFleetStack(this BunitContext ctx, string actor = "admin")
+    {
+        var harness = ctx.AddClusterStack(actor);
+        var roles = actor == "admin" ? new[] { "Admin" } : Array.Empty<string>();
+        ctx.Services.AddScoped(_ => TestHttpContext.ForIdentity(actor, 7, roles).Object);
+        ctx.Services.AddScoped<WorkloadService>();
+        ctx.Services.AddScoped<ConfigMapService>();
+        ctx.Services.AddScoped<FleetTemplateService>();
+        var k8s = new Mock<IKubernetes>();
+        ctx.Services.AddSingleton<Func<KubernetesClientConfiguration, IKubernetes>>(K8sMocks.Factory(k8s));
+        ctx.AddClientCache();
         return (harness, k8s);
     }
 }

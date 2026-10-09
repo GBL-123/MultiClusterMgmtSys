@@ -1,0 +1,87 @@
+@inject AlertService AlertSvc
+@inject NavigationManager NavigationManager
+@implements IAsyncDisposable
+
+@using MultiClusterMgmtSys.Application.Services
+
+<MudBadge Content="@(OpenCount > 0 ? OpenCount : null)"
+          Color="Color.Error"
+          Overlap="true"
+          Class="mr-2">
+    <MudIconButton Icon="@Icons.Material.Filled.Notifications"
+                   Color="Color.Inherit"
+                   aria-label="告警中心"
+                   OnClick="GoToAlerts" />
+</MudBadge>
+
+@code {
+    /// <summary>角标轮询间隔:与后台评估器同频(1 分钟),最坏约 2 分钟上角标。</summary>
+    private static readonly TimeSpan PollInterval = TimeSpan.FromMinutes(1);
+
+    /// <summary>当前 open 告警数;null 表示尚未完成首次读取,不显示角标。</summary>
+    private int? _openCount;
+
+    /// <summary>角标轮询计时器,组件释放时停止。</summary>
+    private PeriodicTimer? _timer;
+
+    private int OpenCount => _openCount ?? 0;
+
+    [Parameter]
+    public bool ShowCount { get; set; } = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PollOnceAsync();
+        _timer = new PeriodicTimer(PollInterval);
+        // 独立后台循环轮询 open 数,不阻塞组件生命周期。
+        _ = PollLoopAsync();
+    }
+
+    private void GoToAlerts()
+    {
+        NavigationManager.NavigateTo("/alerts");
+    }
+
+    private async Task PollLoopAsync()
+    {
+        try
+        {
+            var timer = _timer;
+            while (timer is not null && await timer.WaitForNextTickAsync())
+            {
+                await PollOnceAsync();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
+    private async Task PollOnceAsync()
+    {
+        try
+        {
+            var count = await AlertSvc.GetOpenCountAsync();
+            _openCount = count;
+            StateHasChanged();
+        }
+        catch (Exception)
+        {
+            // 读取失败保持上次值,下一轮重试;不打断电路。
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        var timer = _timer;
+        _timer = null;
+        if (timer is not null)
+        {
+            timer.Dispose();
+        }
+        await Task.CompletedTask;
+    }
+}

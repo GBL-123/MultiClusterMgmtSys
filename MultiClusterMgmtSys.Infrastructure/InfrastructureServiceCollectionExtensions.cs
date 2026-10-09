@@ -24,7 +24,8 @@ public static class InfrastructureServiceCollectionExtensions
 {
     /// <summary>
     /// 注册 Infrastructure 层实现:SQLite(连接字符串相对路径锚定到内容根)、仓库端口实现、
-    /// ASP.NET Identity(kint 主键 + 中文错误描述)、k8s 客户端工厂与缓存、YAML 模板读取、定时同步后台服务。
+    /// ASP.NET Identity(kint 主键 + 中文错误描述)、k8s 客户端工厂与缓存、YAML 模板读取、
+    /// 定时同步与告警评估后台服务。
     /// </summary>
     /// <param name="services">DI 容器。</param>
     /// <param name="configuration">应用配置(读取 DefaultConnection 连接字符串)。</param>
@@ -57,6 +58,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IAppSettingRepository, AppSettingRepository>();
         services.AddScoped<IAccountQueryRepository, AccountQueryRepository>();
         services.AddScoped<IHelmReleaseOwnershipRepository, HelmReleaseOwnershipRepository>();
+        services.AddScoped<IAlertRepository, AlertRepository>();
 
         services.AddIdentityCore<ApplicationUser>(options =>
             {
@@ -87,6 +89,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IClusterClientCache, ClusterClientCache>();
         services.AddSingleton<IYamlTemplateService, YamlTemplateService>();
         services.AddHostedService<ClusterSyncBackgroundService>();
+        services.AddHostedService<AlertEvaluationBackgroundService>();
 
         return services;
     }

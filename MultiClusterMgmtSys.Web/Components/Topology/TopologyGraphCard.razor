@@ -1,0 +1,256 @@
+@implements IAsyncDisposable
+@using Microsoft.JSInterop
+@using MultiClusterMgmtSys.Application.Requests
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Application.ViewModels
+
+@inject TopologyService TopologyService
+@inject IJSRuntime JS
+@inject NavigationManager NavigationManager
+@inject ExceptionPresenter ExHandler
+@inject ILogger<TopologyGraphCard> Logger
+
+<MudCard Class="pa-4 topology-card">
+    <MudCardHeader>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">资源拓扑</MudText>
+        </CardHeaderContent>
+    </MudCardHeader>
+    <MudCardContent>
+        @if (_loading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="my-2" />
+            <MudText Align="Align.Center" Class="mud-text-secondary font-mono">// 正在加载拓扑...</MudText>
+        }
+        else if (_error is not null)
+        {
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.Center" Class="my-2">
+                <MudText Class="mud-text-secondary">@_error</MudText>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="LoadAsync">重试</MudButton>
+            </MudStack>
+        }
+        else if (_chartFailed)
+        {
+            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.Center" Class="my-2">
+                <MudText Class="mud-text-secondary">拓扑图渲染失败,请重试</MudText>
+                <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="ReloadAsync">重试</MudButton>
+            </MudStack>
+        }
+        else if (_topo is not null && _topo.Nodes.Count == 0)
+        {
+            <div class="empty-state">[ 暂无拓扑数据 ]</div>
+        }
+        else if (_topo is not null)
+        {
+            <div @ref="_chartEl" class="topology-chart"></div>
+            <MudText Align="Align.Center" Typo="Typo.caption" Class="mud-text-secondary topology-hint font-mono">
+                点击节点跳转详情 · 滚轮缩放 · 拖拽平移
+            </MudText>
+        }
+        else
+        {
+            <div class="empty-state">[ 尚未加载 ]</div>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public int ClusterId { get; set; }
+
+    [Parameter]
+    public string Namespace { get; set; } = "";
+
+    [Parameter]
+    public string Kind { get; set; } = "";
+
+    [Parameter]
+    public string Name { get; set; } = "";
+
+    /// <summary>宿主详情页的拓扑 tab 是否处于激活态;首次变为 true 时触发懒加载。</summary>
+    [Parameter]
+    public bool Active { get; set; }
+
+    private TopologyViewModel? _topo;
+
+    private bool _loaded;
+
+    private bool _loading;
+
+    private string? _error;
+
+    private bool _chartFailed;
+
+    private bool _chartMounted;
+
+    private bool _needsUpdate;
+
+    private ElementReference _chartEl;
+
+    private IJSObjectReference? _module;
+
+    private DotNetObjectReference<TopologyGraphCard>? _dotnetRef;
+
+    /// <summary>加载拓扑数据(幂等:已加载或正在加载时跳过);宿主详情页也可显式调用(重试)。</summary>
+    public async Task LoadAsync()
+    {
+        if (_loaded || _loading)
+        {
+            return;
+        }
+
+        _loading = true;
+        _error = null;
+        try
+        {
+            _topo = await TopologyService.GetTopologyAsync(new TopologyQueryRequest(ClusterId, Namespace, Kind, Name));
+            _dotnetRef?.Dispose();
+            _dotnetRef = DotNetObjectReference.Create(this);
+            _loaded = true;
+        }
+        catch (Exception ex)
+        {
+            _topo = null;
+            _chartMounted = false;
+            _error = "加载拓扑失败,请重试";
+            await ExHandler.HandleAsync(ex, "加载拓扑");
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>清空已加载数据并重新拉取(失败重试入口)。</summary>
+    public async Task ReloadAsync()
+    {
+        _loaded = false;
+        _topo = null;
+        _chartMounted = false;
+        _chartFailed = false;
+        await LoadAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Active)
+        {
+            await LoadAsync();
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_topo is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _module ??= await JS.InvokeAsync<IJSObjectReference?>("import", "/js/topology-graph.js");
+            if (_module is null)
+            {
+                return;
+            }
+
+            if (!_chartMounted)
+            {
+                await _module.InvokeVoidAsync("mount", _chartEl, BuildPayload());
+                _chartMounted = true;
+                _needsUpdate = false;
+            }
+            else if (_needsUpdate)
+            {
+                await _module.InvokeVoidAsync("update", _chartEl, BuildPayload());
+                _needsUpdate = false;
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (Exception ex)
+        {
+            _chartFailed = true;
+            StateHasChanged();
+            Logger.LogError(ex, "拓扑图渲染失败 clusterId={ClusterId} kind={Kind} name={Name}", ClusterId, Kind, Name);
+        }
+    }
+
+    /// <summary>JS 侧节点点击回调:按 Kind 映射详情路由;Ingress/PV 等终端节点不导航。</summary>
+    /// <param name="nodeId">节点 Id,格式 "Kind/name"。</param>
+    [JSInvokable]
+    public void OnNodeClicked(string nodeId)
+    {
+        var separator = nodeId.IndexOf('/');
+        if (separator <= 0)
+        {
+            return;
+        }
+
+        var kind = nodeId[..separator];
+        var name = nodeId[(separator + 1)..];
+        var route = kind switch
+        {
+            "Pod" => $"/pods/{ClusterId}/{Namespace}/{name}",
+            "Service" => $"/services/{ClusterId}/{Namespace}/{name}",
+            "ConfigMap" => $"/configmaps/{ClusterId}/{Namespace}/{name}",
+            "Secret" => $"/secrets/{ClusterId}/{Namespace}/{name}",
+            "PersistentVolumeClaim" => $"/storage/claims/{ClusterId}/{Namespace}/{name}",
+            "Node" => $"/nodes/{ClusterId}/{name}",
+            "Deployment" => $"/workloads/deployments/{ClusterId}/{Namespace}/{name}",
+            "StatefulSet" => $"/workloads/statefulsets/{ClusterId}/{Namespace}/{name}",
+            "DaemonSet" => $"/workloads/daemonsets/{ClusterId}/{Namespace}/{name}",
+            "ReplicaSet" => $"/workloads/replicasets/{ClusterId}/{Namespace}/{name}",
+            _ => null,
+        };
+        if (route is not null)
+        {
+            NavigationManager.NavigateTo(route);
+        }
+    }
+
+    private object BuildPayload() => new
+    {
+        nodes = _topo!.Nodes.Select(n => new
+        {
+            id = n.Id,
+            label = n.Name,
+            kind = n.Kind,
+            kindText = n.KindText,
+            statusHint = n.StatusHint,
+            isCenter = n.IsCenter,
+            isMissing = n.IsMissing,
+            layer = n.Layer,
+            order = n.Order,
+        }),
+        edges = _topo.Edges.Select(e => new
+        {
+            from = e.From,
+            to = e.To,
+            relation = e.Relation,
+        }),
+        dotnetRef = _dotnetRef,
+    };
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        _dotnetRef?.Dispose();
+        try
+        {
+            if (_module is not null)
+            {
+                await _module.InvokeVoidAsync("dispose", _chartEl);
+                await _module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (Exception)
+        {
+        }
+    }
+}

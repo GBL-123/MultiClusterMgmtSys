@@ -1,109 +1,18 @@
 @using MultiClusterMgmtSys.Application.ViewModels
 @using MultiClusterMgmtSys.Web.Components.Compare
+@using MultiClusterMgmtSys.Web.Components.Common
 
 @inject IDialogService DialogService
 @inject ExceptionPresenter ExHandler
 
 <MudPaper Class="pa-4 compare-card">
-    @if (Pair!.SourceExists && Pair.TargetExists)
-    {
-        <MudStack Spacing="2" Class="mb-2">
-            <MudStack Row="true" AlignItems="AlignItems.Center">
-                <MudText Typo="Typo.body2" Class="compare-column-title">源:@Pair.SourceClusterName</MudText>
-                <MudText Typo="Typo.body2" Class="compare-column-title compare-column-title-right">对照:@Pair.TargetClusterName</MudText>
-                <MudSpacer />
-                @if (Pair.CanClone)
-                {
-                    <MudButton Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.ContentCopy"
-                               Disabled="@_cloning"
-                               OnClick="OpenCloneDialogAsync">
-                        克隆
-                    </MudButton>
-                }
-            </MudStack>
-            <MudStack Row="true" AlignItems="AlignItems.Center">
-                @if (Pair.CanClone)
-                {
-                    <MudText Typo="Typo.body2" Class="compare-clone-hint">@CloneHint()</MudText>
-                }
-                <MudSpacer />
-                <MudSwitch T="bool" Value="_onlyChanged" ValueChanged="@(v => SetOnlyChanged(v))" Label="仅看差异" Color="Color.Primary" />
-            </MudStack>
-        </MudStack>
-        @if (Rows.Count(r => r.Kind != CompareDiffRowKind.Same) == 0)
-        {
-            <div class="compare-diff-notice centered">两侧内容一致</div>
-        }
-        else
-        {
-            <div class="compare-diff-grid" role="table" aria-label="YAML 差异对照">
-                @foreach (var row in (_onlyChanged ? Rows.Where(r => r.Kind != CompareDiffRowKind.Same) : Rows.AsEnumerable()))
-                {
-                    <div class="compare-diff-row" role="row">
-                        <span class="@LeftClass(row)">@row.LeftText</span>
-                        <span class="@RightClass(row)">@row.RightText</span>
-                    </div>
-                }
-            </div>
-            <div class="compare-diff-legend">
-                <span class="compare-diff-swatch is-changed"></span><span>改动</span>
-                <span class="compare-diff-swatch is-removed"></span><span>仅源</span>
-                <span class="compare-diff-swatch is-added"></span><span>仅对照</span>
-            </div>
-        }
-    }
-    else if (Pair!.SourceExists)
-    {
-        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
-            <MudText Typo="Typo.body2" Class="compare-column-title">源:@Pair.SourceClusterName</MudText>
-            <MudText Typo="Typo.body2" Class="mud-text-error">@(Pair.TargetClusterName + "(不存在)")</MudText>
-            @if (Pair.CanClone)
-            {
-                <MudSpacer />
-                <MudText Typo="Typo.body2" Class="compare-clone-hint">@CloneHint()</MudText>
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.ContentCopy"
-                           Disabled="@_cloning"
-                           OnClick="OpenCloneDialogAsync">
-                    克隆
-                </MudButton>
-            }
-        </MudStack>
-        <div class="compare-columns">
-            <div class="compare-pane"><pre class="compare-plain">@Pair.SourceYaml</pre></div>
-            <div class="compare-pane empty-pane">
-                <div class="empty-state is-compact">[ (不存在) ]</div>
-            </div>
-        </div>
-    }
-    else
-    {
-        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
-            <MudText Typo="Typo.body2" Class="compare-column-title">@(Pair.SourceClusterName + "(不存在)")</MudText>
-            <MudText Typo="Typo.body2" Class="compare-column-title">对照:@Pair.TargetClusterName</MudText>
-            @if (Pair.CanClone)
-            {
-                <MudSpacer />
-                <MudText Typo="Typo.body2" Class="compare-clone-hint">@CloneHint()</MudText>
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           StartIcon="@Icons.Material.Filled.ContentCopy"
-                           Disabled="@_cloning"
-                           OnClick="OpenCloneDialogAsync">
-                    克隆
-                </MudButton>
-            }
-        </MudStack>
-        <div class="compare-columns">
-            <div class="compare-pane empty-pane">
-                <div class="empty-state is-compact">[ (不存在) ]</div>
-            </div>
-            <div class="compare-pane"><pre class="compare-plain">@Pair.TargetYaml</pre></div>
-        </div>
-    }
+    <YamlDiffView LeftTitle="@($"源:{Pair?.SourceClusterName}")"
+                  RightTitle="@($"对照:{Pair?.TargetClusterName}")"
+                  LeftYaml="@(Pair?.SourceExists == true ? Pair.SourceYaml : null)"
+                  RightYaml="@(Pair?.TargetExists == true ? Pair.TargetYaml : null)"
+                  Rows="@Rows"
+                  HeaderActions="@HeaderFragment"
+                  HintRow="@HintFragment" />
 </MudPaper>
 
 @code {
@@ -116,20 +25,26 @@
     [Parameter]
     public EventCallback OnCloned { get; set; }
 
-    private bool _onlyChanged;
-
     private bool _cloning;
-
-    private Task SetOnlyChanged(bool value)
-    {
-        _onlyChanged = value;
-        return Task.CompletedTask;
-    }
 
     private string CloneHint()
         => Pair!.TargetExists && Pair.HasDifference && Pair.DifferenceCount > 0
             ? $"两侧内容存在 {Pair.DifferenceCount} 处差异,可克隆到 {Pair.TargetClusterName}"
             : $"目标集群 {Pair.TargetClusterName} 不存在该资源,可克隆过去";
+
+    private RenderFragment? HeaderFragment => Pair!.CanClone
+        ? @<MudButton Variant="Variant.Filled"
+                      Color="Color.Primary"
+                      StartIcon="@Icons.Material.Filled.ContentCopy"
+                      Disabled="@_cloning"
+                      OnClick="OpenCloneDialogAsync">
+            克隆
+        </MudButton>
+        : null;
+
+    private RenderFragment? HintFragment => Pair!.CanClone
+        ? @<MudText Typo="Typo.body2" Class="compare-clone-hint">@CloneHint()</MudText>
+        : null;
 
     private async Task OpenCloneDialogAsync()
     {
@@ -160,14 +75,4 @@
             _cloning = false;
         }
     }
-
-    private string LeftClass(CompareDiffRow row)
-        => row.Kind == CompareDiffRowKind.Changed ? "is-changed"
-            : row.Kind == CompareDiffRowKind.LeftOnly ? "is-removed"
-            : "";
-
-    private string RightClass(CompareDiffRow row)
-        => row.Kind == CompareDiffRowKind.Changed ? "is-changed"
-            : row.Kind == CompareDiffRowKind.RightOnly ? "is-added"
-            : "";
 }

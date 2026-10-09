@@ -340,7 +340,10 @@ public class DashboardServiceTests : IDisposable
     [Fact]
     public async Task GetNodeReadinessTrend_aggregates_same_second_events_keeping_last()
     {
-        var baseTime = DateTime.UtcNow.AddHours(-5);
+        var nowTruncated = new DateTime(
+            DateTime.UtcNow.AddHours(-5).Ticks / TimeSpan.TicksPerSecond * TimeSpan.TicksPerSecond,
+            DateTimeKind.Utc);
+        var baseTime = nowTruncated;
         var alpha = await SeedClusterAsync("alpha-second");
         var beta = await SeedClusterAsync("beta-second");
         await SeedSnapshotAsync(alpha, baseTime.AddHours(-2), 4, 0);

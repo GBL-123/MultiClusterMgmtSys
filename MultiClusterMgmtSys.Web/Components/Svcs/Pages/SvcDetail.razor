@@ -5,6 +5,7 @@
 @using MultiClusterMgmtSys.Application.Services
 @using MultiClusterMgmtSys.Application.ViewModels
 @using MultiClusterMgmtSys.Web.Components.Svcs.Shared
+@using MultiClusterMgmtSys.Web.Components.Topology
 
 @inject SvcService SvcService
 @inject ClusterSelectionState ClusterSelection
@@ -47,7 +48,8 @@
                           OnRefresh="LoadAsync"
                           OnEditYaml="@(() => NavigationManager.NavigateTo($"/services/{ClusterId}/{Namespace}/{Name}/yaml"))"
                           OnDelete="DeleteAsync" />
-        <MudTabs @bind-ActivePanelIndex="_activeTabIndex"
+        <MudTabs ActivePanelIndex="_activeTabIndex"
+                 ActivePanelIndexChanged="OnTabChanged"
                  Class="detail-tabs"
                  Elevation="0"
                  Rounded="false"
@@ -72,6 +74,13 @@
                     <SvcEndpointTable Endpoints="@_detail.Endpoints" />
                 }
             </MudTabPanel>
+            <MudTabPanel Text="拓扑">
+                <TopologyGraphCard ClusterId="@ClusterId"
+                                   Namespace="@Namespace"
+                                   Kind="Service"
+                                   Name="@Name"
+                                   Active="@(_activeTabIndex == TopologyTabIndex)" />
+            </MudTabPanel>
         </MudTabs>
     }
 </MudStack>
@@ -93,10 +102,17 @@
 
     private int _activeTabIndex;
 
+    private const int TopologyTabIndex = 3;
+
     protected override async Task OnInitializedAsync()
     {
         ClusterSelection.Set(ClusterId);
         await LoadAsync();
+    }
+
+    private void OnTabChanged(int index)
+    {
+        _activeTabIndex = index;
     }
 
     private async Task LoadAsync()

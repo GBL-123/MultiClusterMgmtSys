@@ -1,0 +1,377 @@
+@attribute [Authorize(Roles = "Admin")]
+@page "/fleet-templates"
+
+@using MultiClusterMgmtSys.Application.Enums
+@using MultiClusterMgmtSys.Application.Requests
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Application.ViewModels
+@using MultiClusterMgmtSys.Web.Components.Compare
+@using MultiClusterMgmtSys.Web.Components.Common
+
+@inject ClusterService ClusterService
+@inject FleetTemplateService FleetService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject ExceptionPresenter ExHandler
+
+<PageTitle>舰队模板下发</PageTitle>
+
+<MudStack Class="flex-auto">
+    <MudPaper Class="pa-4">
+        <MudText Typo="Typo.h5">舰队模板下发</MudText>
+        <MudText Typo="Typo.body2" Class="mt-1 fleet-page-hint">
+            粘贴含 <span class="font-mono">{{var}}</span> 占位符的 YAML 模板,为每个目标集群填值渲染,预览「新建 / 更新 / 一致」判定后逐集群下发;模板与矩阵零持久化,离开页面即丢弃。
+        </MudText>
+
+        <MudText Typo="Typo.subtitle2" Class="mt-4">模板 YAML</MudText>
+        <textarea class="yaml-textarea fleet-template-textarea"
+                  value="@_templateYaml"
+                  @oninput="OnTemplateInput"
+                  aria-label="模板 YAML"
+                  placeholder="@TemplatePlaceholder"></textarea>
+
+        <div class="mt-2 fleet-var-strip">
+            <span class="font-mono hint-compact">@(_vars.Count == 0 ? "[ 未提取到变量 ]" : $"变量:{_vars.Count}")</span>
+            @foreach (var variable in _vars)
+            {
+                <span class="font-mono var-chip">@variable</span>
+            }
+        </div>
+
+        <MudText Typo="Typo.subtitle2" Class="mt-4">目标集群与变量矩阵</MudText>
+        <div class="fleet-select-wrap">
+            <MudSelect T="List<int>"
+                       Value="@(new List<int>(_selectedClusterIds))"
+                       ValueChanged="OnClustersChanged"
+                       MultiSelection="true"
+                       Label="目标集群(可多选)"
+                       Variant="Variant.Outlined"
+                       Margin="Margin.Dense">
+                @foreach (var cluster in _clusters)
+                {
+                    <MudSelectItem T="int" Value="@cluster.Id">@cluster.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </div>
+
+        @if (_selectedClusterIds.Count > 0 && _vars.Count > 0)
+        {
+            <div class="mt-2 fleet-matrix">
+                <div class="fleet-matrix-row fleet-matrix-head" role="row" aria-label="变量矩阵表头">
+                    <span class="font-mono">集群</span>
+                    @foreach (var variable in _vars)
+                    {
+                        <span class="font-mono">@variable</span>
+                    }
+                </div>
+                @foreach (var cluster in SelectedClusters())
+                {
+                    <div class="fleet-matrix-row" role="row" aria-label="集群 {cluster.Name} 变量行">
+                        <span class="font-mono fleet-matrix-cluster">@cluster.Name</span>
+                        @foreach (var variable in _vars)
+                        {
+                            <MudTextField T="string"
+                                          Value="@MatrixValue(cluster.Id, variable)"
+                                          ValueChanged="@(value => OnMatrixCellChanged(cluster.Id, variable, value))"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense"
+                                          Class="fleet-matrix-cell" />
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-state is-compact mt-2">[ 选择目标集群并填写变量后预览 ]</div>
+        }
+
+        <MudStack Row="true" AlignItems="AlignItems.Center" Class="mt-4">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Disabled="@(_previewing || !CanRequest())"
+                       OnClick="PreviewAsync">
+                @(_previewing ? $"预览中…{_previewProgress}" : "预览")
+            </MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       Disabled="@(_deploying || _previewItems.Count == 0)"
+                       OnClick="OpenDeployConfirmAsync">
+                @(_deploying ? $"下发中…{_deployProgress}" : "下发")
+            </MudButton>
+            <MudSpacer />
+            @if (_previewItems.Count > 0 && !(_previewing || _deploying))
+            {
+                <MudText Typo="Typo.body2" Class="font-mono fleet-count-line">
+                    新建 @CountPreview(FleetTemplateAction.Create) /
+                    更新 @CountPreview(FleetTemplateAction.Update) /
+                    一致 @CountPreview(FleetTemplateAction.Identical) /
+                    失败 @CountPreview(FleetTemplateAction.FetchFailed)
+                </MudText>
+            }
+        </MudStack>
+    </MudPaper>
+
+    @if (_previewItems.Count > 0 && _deployResult is null)
+    {
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.subtitle1" Class="mb-2">预览(逐集群)</MudText>
+            @foreach (var item in _previewItems)
+            {
+                <div class="fleet-preview-row">
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudText Typo="Typo.body2" Class="fleet-cluster-name">@item.ClusterName</MudText>
+                        <span class="@ActionClass(item.Action)">@item.Action.ToDisplayText()</span>
+                        @if (item.Message.Length > 0)
+                        {
+                            <MudText Typo="Typo.body2" Class="fleet-failed-message">@item.Message</MudText>
+                        }
+                    </MudStack>
+                    @if (item.Action != FleetTemplateAction.FetchFailed)
+                    {
+                        <YamlDiffView LeftTitle="@($"现值 ({item.ClusterName})")"
+                                      RightTitle="渲染值"
+                                      LeftYaml="@(item.CurrentYaml ?? "")"
+                                      RightYaml="@item.RenderedYaml"
+                                      Rows="@DiffRows(item)" />
+                    }
+                </div>
+            }
+        </MudPaper>
+    }
+
+    @if (_deployResult is not null)
+    {
+        <MudPaper Class="pa-4">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-2">
+                <MudText Typo="Typo.subtitle1">下发结果</MudText>
+                <MudSpacer />
+                <MudText Typo="Typo.body2" Class="font-mono fleet-count-line">
+                    成功 @_deployResult.SuccessCount / 失败 @_deployResult.FailureCount
+                </MudText>
+            </MudStack>
+            @foreach (var item in _deployResult.Items)
+            {
+                <div class="fleet-deploy-row">
+                    <MudStack Row="true" AlignItems="AlignItems.Center">
+                        <MudText Typo="Typo.body2" Class="fleet-cluster-name">@item.ClusterName</MudText>
+                        <span class="@ActionClass(item.Action)">@item.Action.ToDisplayText()</span>
+                        <span class="@(item.Succeeded ? "fleet-status-ok" : "fleet-status-bad")">@(item.Succeeded ? "成功" : "失败")</span>
+                        @if (item.Message.Length > 0)
+                        {
+                            <MudText Typo="Typo.body2" Class="fleet-failed-message">@item.Message</MudText>
+                        }
+                    </MudStack>
+                </div>
+            }
+        </MudPaper>
+    }
+</MudStack>
+
+@code {
+    /// <summary>模板输入框的示例占位文本(真实换行,避免 HTML 实体二次转义)。</summary>
+    private const string TemplatePlaceholder = "apiVersion: v1\nkind: ConfigMap\ndata:\n  color: {{color}}";
+
+    private List<ClusterViewModel> _clusters = [];
+
+    private string _templateYaml = "";
+
+    private IReadOnlyList<string> _vars = [];
+
+    private List<int> _selectedClusterIds = [];
+
+    private Dictionary<int, Dictionary<string, string>> _matrix = [];
+
+    private List<FleetTemplatePreviewItemViewModel> _previewItems = [];
+
+    private FleetTemplateDeployResultViewModel? _deployResult;
+
+    private bool _previewing;
+
+    private bool _deploying;
+
+    private string _previewProgress = "";
+
+    private string _deployProgress = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var request = new ClusterQueryRequest { Page = 1, PageSize = 1000, SortBy = ClusterSortField.Name, SortDescending = false };
+        try
+        {
+            var result = await ClusterService.GetPagedAsync(request);
+            _clusters = result.Items;
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "加载集群列表");
+        }
+    }
+
+    private List<ClusterViewModel> SelectedClusters()
+        => _clusters.Where(cluster => _selectedClusterIds.Contains(cluster.Id)).ToList();
+
+    private bool CanRequest()
+        => _templateYaml.Length > 0 && _selectedClusterIds.Count > 0;
+
+    private int CountPreview(FleetTemplateAction action)
+        => _previewItems.Count(item => item.Action == action);
+
+    private void OnTemplateInput(ChangeEventArgs args)
+    {
+        _templateYaml = args.Value?.ToString() ?? "";
+        _vars = FleetTemplateVariables.Extract(_templateYaml);
+        _previewItems = [];
+        _deployResult = null;
+    }
+
+    private async Task OnClustersChanged(List<int> value)
+    {
+        _selectedClusterIds = value;
+        _matrix = _matrix.Where(kv => _selectedClusterIds.Contains(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value);
+        _previewItems = [];
+        _deployResult = null;
+        _vars = _templateYaml.Length > 0 ? FleetTemplateVariables.Extract(_templateYaml) : _vars;
+        await Task.CompletedTask;
+    }
+
+    private string MatrixValue(int clusterId, string variable)
+        => _matrix.TryGetValue(clusterId, out var cells) && cells.TryGetValue(variable, out var cell) ? cell : "";
+
+    private void OnMatrixCellChanged(int clusterId, string variable, string value)
+    {
+        if (!_matrix.TryGetValue(clusterId, out var cells))
+        {
+            cells = [];
+            _matrix[clusterId] = cells;
+        }
+
+        cells[variable] = value;
+    }
+
+    private async Task PreviewAsync()
+    {
+        if (!CanRequest() || _previewing)
+        {
+            return;
+        }
+
+        if (_templateYaml.Length > 0)
+        {
+            _vars = FleetTemplateVariables.Extract(_templateYaml);
+        }
+
+        _previewing = true;
+        _previewProgress = $"已解析 0/{_selectedClusterIds.Count}";
+        _deployResult = null;
+        _previewItems = [];
+        try
+        {
+            var result = await FleetService.PreviewAsync(
+                BuildPreviewRequest(),
+                new Progress<(int Current, int Total)>(report => _previewProgress = $"已解析 {report.Current}/{report.Total}"));
+            _previewItems = result.Items;
+            if (_previewItems.Any(item => item.Action == FleetTemplateAction.FetchFailed))
+            {
+                Snackbar.Add("部分集群预览失败,可先修复后再下发", Severity.Warning);
+            }
+            else
+            {
+                Snackbar.Add("预览完成,请确认各集群差异后下发", Severity.Info);
+            }
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "预览舰队模板");
+        }
+        finally
+        {
+            _previewing = false;
+            _previewProgress = "";
+        }
+    }
+
+    private async Task OpenDeployConfirmAsync()
+    {
+        if (_deployResult is not null || _deploying || _previewItems.Count == 0)
+        {
+            return;
+        }
+
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>(
+            "下发确认",
+            new DialogParameters
+            {
+                { nameof(ConfirmDialog.Message), "确认将渲染后的模板逐集群下发?「新建 / 更新」集群将被写入,「一致」集群自动跳过。" },
+                { nameof(ConfirmDialog.ConfirmText), "下发" },
+                { nameof(ConfirmDialog.ConfirmIcon), Icons.Material.Filled.RocketLaunch }
+            });
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            await DeployAsync();
+        }
+    }
+
+    private async Task DeployAsync()
+    {
+        if (!CanRequest() || _deploying)
+        {
+            return;
+        }
+
+        _deploying = true;
+        _deployProgress = $"已完成 0/{_selectedClusterIds.Count}";
+        try
+        {
+            var result = await FleetService.DeployToFleetAsync(
+                BuildDeployRequest(),
+                new Progress<(int Current, int Total)>(report => _deployProgress = $"已完成 {report.Current}/{report.Total}"));
+            _deployResult = result;
+            if (result.FailureCount == 0)
+            {
+                Snackbar.Add($"舰队下发完成,成功 {result.SuccessCount} 个集群", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"舰队下发完成,成功 {result.SuccessCount} 个,失败 {result.FailureCount} 个", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            await ExHandler.HandleAsync(ex, "舰队下发");
+        }
+        finally
+        {
+            _deploying = false;
+            _deployProgress = "";
+        }
+    }
+
+    private FleetTemplatePreviewRequest BuildPreviewRequest() => new(
+        _templateYaml,
+        _selectedClusterIds,
+        _matrix.ToDictionary(
+            kv => kv.Key,
+            kv => (IReadOnlyDictionary<string, string>)new Dictionary<string, string>(kv.Value)));
+
+    private FleetTemplateDeployRequest BuildDeployRequest() => new(
+        _templateYaml,
+        _selectedClusterIds,
+        _matrix.ToDictionary(
+            kv => kv.Key,
+            kv => (IReadOnlyDictionary<string, string>)new Dictionary<string, string>(kv.Value)));
+
+    private IReadOnlyList<CompareDiffRow> DiffRows(FleetTemplatePreviewItemViewModel item)
+        => item.CurrentYaml is { Length: > 0 }
+            ? YamlDiff.Compute(item.CurrentYaml, item.RenderedYaml)
+            : [];
+
+    private string ActionClass(FleetTemplateAction action) => action switch
+    {
+        FleetTemplateAction.Create => "status-badge online",
+        FleetTemplateAction.Update => "status-badge unknown",
+        FleetTemplateAction.Identical => "status-badge offline",
+        _ => "status-badge unknown"
+    };
+}

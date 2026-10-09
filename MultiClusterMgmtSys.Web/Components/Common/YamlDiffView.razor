@@ -1,0 +1,126 @@
+@namespace MultiClusterMgmtSys.Web.Components.Common
+@using MultiClusterMgmtSys.Web.Components.Compare
+
+@* 双栏 YAML 差异展示视图:三分支(双侧存在 / 仅左侧 / 仅右侧),由调用方算好行数据后传入(契约见 fleet-templates 与 cross-cluster-compare)。 *@
+
+@if (_leftExists && _rightExists)
+{
+    <MudStack Spacing="2" Class="mb-2">
+        <MudStack Row="true" AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.body2" Class="compare-column-title">@LeftTitle</MudText>
+            <MudText Typo="Typo.body2" Class="compare-column-title compare-column-title-right">@RightTitle</MudText>
+            <MudSpacer />
+            @HeaderActions
+        </MudStack>
+        <MudStack Row="true" AlignItems="AlignItems.Center">
+            @HintRow
+            <MudSpacer />
+            <MudSwitch T="bool" Value="_onlyChanged" ValueChanged="@(v => SetOnlyChanged(v))" Label="仅看差异" Color="Color.Primary" />
+        </MudStack>
+    </MudStack>
+    @if (Rows.Count(r => r.Kind != CompareDiffRowKind.Same) == 0)
+    {
+        <div class="compare-diff-notice centered">两侧内容一致</div>
+    }
+    else
+    {
+        <div class="compare-diff-grid" role="table" aria-label="YAML 差异对照">
+            @foreach (var row in (_onlyChanged ? Rows.Where(r => r.Kind != CompareDiffRowKind.Same) : Rows.AsEnumerable()))
+            {
+                <div class="compare-diff-row" role="row">
+                    <span class="@LeftClass(row)">@row.LeftText</span>
+                    <span class="@RightClass(row)">@row.RightText</span>
+                </div>
+            }
+        </div>
+        <div class="compare-diff-legend">
+            <span class="compare-diff-swatch is-changed"></span><span>改动</span>
+            <span class="compare-diff-swatch is-removed"></span><span>仅源</span>
+            <span class="compare-diff-swatch is-added"></span><span>仅对照</span>
+        </div>
+    }
+}
+else if (_leftExists)
+{
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+        <MudText Typo="Typo.body2" Class="compare-column-title">@LeftTitle</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-error">@(RightTitle + "(不存在)")</MudText>
+        <MudSpacer />
+        @HeaderActions
+    </MudStack>
+    <div class="compare-columns">
+        <div class="compare-pane"><pre class="compare-plain">@LeftYaml</pre></div>
+        <div class="compare-pane empty-pane">
+            <div class="empty-state is-compact">[ (不存在) ]</div>
+        </div>
+    </div>
+}
+else
+{
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+        <MudText Typo="Typo.body2" Class="mud-text-error">@(LeftTitle + "(不存在)")</MudText>
+        <MudText Typo="Typo.body2" Class="compare-column-title">@RightTitle</MudText>
+        <MudSpacer />
+        @HeaderActions
+    </MudStack>
+    <div class="compare-columns">
+        <div class="compare-pane empty-pane">
+            <div class="empty-state is-compact">[ (不存在) ]</div>
+        </div>
+        <div class="compare-pane"><pre class="compare-plain">@_rightYamlShown</pre></div>
+    </div>
+}
+
+@code {
+    /// <summary>左侧标题(如「源:alpha」)。</summary>
+    [Parameter]
+    public string LeftTitle { get; set; } = "";
+
+    /// <summary>右侧标题(如「对照:beta」)。</summary>
+    [Parameter]
+    public string RightTitle { get; set; } = "";
+
+    /// <summary>左侧 YAML 文本;null 或空串 = 该侧不存在(与 <see cref="YamlDiff.Compute"/> 约定一致)。</summary>
+    [Parameter]
+    public string? LeftYaml { get; set; }
+
+    /// <summary>右侧 YAML 文本;null 或空串 = 该侧不存在。</summary>
+    [Parameter]
+    public string? RightYaml { get; set; }
+
+    /// <summary>差异行数据,由调用方经 <see cref="YamlDiff.Compute"/> 计算后传入;共享组件不做差异计算。</summary>
+    [Parameter]
+    public IReadOnlyList<CompareDiffRow> Rows { get; set; } = [];
+
+    /// <summary>标题行右侧的动作区(如克隆按钮)。</summary>
+    [Parameter]
+    public RenderFragment? HeaderActions { get; set; }
+
+    /// <summary>第二行左侧提示区(如克隆提示文本);双侧存在分支独占。</summary>
+    [Parameter]
+    public RenderFragment? HintRow { get; set; }
+
+    private bool _onlyChanged;
+
+    private bool _leftExists => LeftYaml is { Length: > 0 };
+
+    private bool _rightExists => RightYaml is { Length: > 0 };
+
+    private string _rightYamlShown => RightYaml ?? "";
+
+    private Task SetOnlyChanged(bool value)
+    {
+        _onlyChanged = value;
+        return Task.CompletedTask;
+    }
+
+    private string LeftClass(CompareDiffRow row)
+        => row.Kind == CompareDiffRowKind.Changed ? "is-changed"
+            : row.Kind == CompareDiffRowKind.LeftOnly ? "is-removed"
+            : "";
+
+    private string RightClass(CompareDiffRow row)
+        => row.Kind == CompareDiffRowKind.Changed ? "is-changed"
+            : row.Kind == CompareDiffRowKind.RightOnly ? "is-added"
+            : "";
+}

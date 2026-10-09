@@ -98,7 +98,13 @@ public class CreateWorkloadDialogTests
             var submit = provider.FindComponents<MudButton>().First(b => b.Markup.Contains("创建"));
             await provider.InvokeAsync(async () => await submit.Instance.OnClick.InvokeAsync());
 
-            provider.WaitForState(() => reference.Result.IsCompleted, TimeSpan.FromSeconds(10));
+            var deadline = DateTime.UtcNow.AddSeconds(10);
+            while (!reference.Result.IsCompleted && DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(50, Xunit.TestContext.Current.CancellationToken);
+            }
+
+            Assert.True(reference.Result.IsCompleted, "对话框任务未在 10 秒内完成");
             var result = await reference.Result;
             Assert.False(result.Canceled);
         }

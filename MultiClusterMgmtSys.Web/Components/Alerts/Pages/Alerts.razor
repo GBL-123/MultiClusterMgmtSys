@@ -1,0 +1,113 @@
+@attribute [Authorize(Roles = "Admin")]
+@page "/alerts"
+
+@using MultiClusterMgmtSys.Application.Requests
+@using MultiClusterMgmtSys.Application.Services
+@using MultiClusterMgmtSys.Application.ViewModels
+@using MultiClusterMgmtSys.Web.Components.Common
+
+@inject AlertService AlertSvc
+
+<PageTitle>告警中心</PageTitle>
+
+<MudStack Class="flex-auto">
+    <MudPaper Class="pa-4">
+        <MudStack>
+            <MudStack Row="true" AlignItems="AlignItems.Center">
+                <MudText Typo="Typo.h5">告警中心</MudText>
+                <MudSpacer />
+                <MudSelect T="bool?"
+                           @bind-Value="_resolvedFilter"
+                           Label="状态"
+                           Class="alert-status-filter"
+                           Immediate="true">
+                    <MudSelectItem Value="@((bool?)false)">告警中</MudSelectItem>
+                    <MudSelectItem Value="@((bool?)true)">已解析</MudSelectItem>
+                    <MudSelectItem Value="@((bool?)null)">全部</MudSelectItem>
+                </MudSelect>
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Inherit"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="RefreshTable">
+                    刷新
+                </MudButton>
+            </MudStack>
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                纯读本地数据的自动评估:集群离线持续、节点未就绪与快照断流三类告警由后台评估器自动开立与解析,不提供人工关闭。
+            </MudText>
+        </MudStack>
+    </MudPaper>
+
+    <MudTable ServerData="LoadData"
+              Hover="true"
+              FixedHeader="true"
+              Class="alerts-table"
+              @ref="_table">
+        <HeaderContent>
+            <MudTh>状态</MudTh>
+            <MudTh>规则</MudTh>
+            <MudTh>集群</MudTh>
+            <MudTh>信息</MudTh>
+            <MudTh>开立时间</MudTh>
+            <MudTh>解析时间</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="状态">
+                @if (context.IsResolved)
+                {
+                    <StatusBadge Text="已解析" CssClass="online" />
+                }
+                else
+                {
+                    <StatusBadge Text="告警中" CssClass="offline" />
+                }
+            </MudTd>
+            <MudTd DataLabel="规则">@context.RuleText</MudTd>
+            <MudTd DataLabel="集群">
+                <MudLink Href="@($"/clusters/{context.ClusterId}")"
+                         Class="link-primary"
+                         Underline="Underline.None">
+                    @context.ClusterName
+                </MudLink>
+            </MudTd>
+            <MudTd DataLabel="信息">@(string.IsNullOrEmpty(context.Detail) ? "—" : context.Detail)</MudTd>
+            <MudTd DataLabel="开立时间"><span class="font-mono">@context.OpenedAt.ToString("yyyy-MM-dd HH:mm:ss")</span></MudTd>
+            <MudTd DataLabel="解析时间">
+                <span class="font-mono">@(context.ResolvedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—")</span>
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager RowsPerPageString="每页条数：" InfoFormat="共 {all_items} 条" />
+        </PagerContent>
+        <LoadingContent>
+            <MudText Class="pa-4 font-mono mud-text-secondary">// 正在加载...</MudText>
+        </LoadingContent>
+        <NoRecordsContent>
+            <div class="empty-state">[ 暂无告警记录 ]</div>
+        </NoRecordsContent>
+    </MudTable>
+</MudStack>
+
+@code {
+    private bool? _resolvedFilter = false;
+
+    private MudTable<AlertListItemViewModel> _table = default!;
+
+    private Task RefreshTable() => _table.ReloadServerData();
+
+    private async Task<TableData<AlertListItemViewModel>> LoadData(TableState state, CancellationToken _)
+    {
+        var request = new AlertListRequest
+        {
+            Resolved = _resolvedFilter,
+            Page = state.Page + 1,
+            PageSize = state.PageSize > 0 ? state.PageSize : 20
+        };
+        var result = await AlertSvc.GetAlertsAsync(request);
+        return new TableData<AlertListItemViewModel>
+        {
+            Items = result.Items,
+            TotalItems = result.Total
+        };
+    }
+}

@@ -224,6 +224,7 @@ html, body {
 .clusters-table,
 .accounts-table,
 .audit-logs-table,
+.alerts-table,
 .nodes-table,
 .configmaps-table,
 .secrets-table,
@@ -245,6 +246,7 @@ html, body {
     .clusters-table .mud-table-container,
     .accounts-table .mud-table-container,
     .audit-logs-table .mud-table-container,
+    .alerts-table .mud-table-container,
     .nodes-table .mud-table-container,
     .configmaps-table .mud-table-container,
     .secrets-table .mud-table-container,
@@ -263,6 +265,7 @@ html, body {
     .clusters-table .mud-table-pagination,
     .accounts-table .mud-table-pagination,
     .audit-logs-table .mud-table-pagination,
+    .alerts-table .mud-table-pagination,
     .nodes-table .mud-table-pagination,
     .configmaps-table .mud-table-pagination,
     .secrets-table .mud-table-pagination,
@@ -1632,4 +1635,129 @@ html .dashboard-stat-note {
     .compare-columns {
         grid-template-columns: minmax(0, 1fr);
     }
+}
+
+/* ---------- 17. 资源拓扑 /topology ---------- */
+
+.topology-card .topology-chart {
+    height: 420px;
+    min-height: 0;
+    border: 1px solid #E2DED5;
+    border-radius: 3px;
+    background: #F4F4F0;
+}
+
+.topology-card .topology-hint {
+    margin-top: 8px;
+}
+
+/* 16. 舰队模板下发(fleet-templates) */
+
+.fleet-page-hint {
+    color: #6E675C;
+}
+
+.hint-compact {
+    font-size: 12px;
+    color: #6E675C;
+}
+
+.fleet-var-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.var-chip {
+    background: #FCFBF7;
+    border: 1px solid #E2DED5;
+    border-radius: 3px;
+    padding: 2px 8px;
+    font-size: 12px;
+    color: #111111;
+}
+
+.fleet-template-textarea {
+    height: 300px;
+    min-height: 220px;
+    font-size: 13px;
+    line-height: 1.55;
+    resize: vertical;
+    width: 100%;
+}
+
+.fleet-select-wrap {
+    display: flex;
+    width: 460px;
+    max-width: 100%;
+}
+
+.fleet-matrix {
+    border: 1px solid #E2DED5;
+    border-radius: 3px;
+    background: #FCFBF7;
+    padding: 8px 12px;
+    max-width: 860px;
+}
+
+.fleet-matrix-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 0;
+}
+
+.fleet-matrix-head {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: #6E675C;
+    border-bottom: 1px solid #E2DED5;
+    padding-bottom: 6px;
+}
+
+.fleet-matrix-head > span {
+    flex: 0 0 130px;
+}
+
+.fleet-matrix-cluster {
+    flex: 0 0 130px;
+}
+
+.fleet-matrix-row > .fleet-matrix-cell {
+    flex: 1 1 0;
+}
+
+.fleet-preview-row {
+    border: 1px solid #E2DED5;
+    border-radius: 3px;
+    background: #FCFBF7;
+    padding: 12px;
+    margin-top: 12px;
+}
+
+.fleet-deploy-row {
+    border-top: 1px solid #E2DED5;
+    padding: 8px 0;
+}
+
+.fleet-cluster-name {
+    min-width: 160px;
+}
+
+.fleet-status-ok {
+    color: #2F7D32;
+}
+
+.fleet-status-bad {
+    color: #B3261E;
+}
+
+.fleet-failed-message {
+    color: #B3261E;
+}
+
+.fleet-count-line {
+    font-size: 13px;
+    color: #6E675C;
 }
