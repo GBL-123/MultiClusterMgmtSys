@@ -235,7 +235,7 @@ public class AccountService(
         if (result.Succeeded)
         {
             await _userManager.AddToRoleAsync(user, request.RoleName);
-            await _auditService.LogAsync(AuditCategory.Account, AuditAction.Create, $"账号: {request.UserName}");
+            await _auditService.LogAsync(AuditCategory.Account, AuditAction.Create, $"账号： {request.UserName}");
         }
         return result;
     }
@@ -276,7 +276,7 @@ public class AccountService(
             }
         }
 
-        await _auditService.LogAsync(AuditCategory.Account, AuditAction.Update, $"账号: {user.UserName}");
+        await _auditService.LogAsync(AuditCategory.Account, AuditAction.Update, $"账号： {user.UserName}");
         return IdentityResult.Success;
     }
 
@@ -333,7 +333,7 @@ public class AccountService(
         var deleteResult = await _userManager.DeleteAsync(user);
         if (deleteResult.Succeeded)
         {
-            await _auditService.LogAsync(AuditCategory.Account, AuditAction.Delete, $"账号: {user.UserName}");
+            await _auditService.LogAsync(AuditCategory.Account, AuditAction.Delete, $"账号： {user.UserName}");
         }
         return deleteResult;
     }
@@ -366,7 +366,7 @@ public class AccountService(
         var result = await _userManager.ResetPasswordAsync(user, token, request.NewPassword);
         if (result.Succeeded)
         {
-            await _auditService.LogAsync(AuditCategory.Account, AuditAction.Update, $"账号: {user.UserName} 重置密码");
+            await _auditService.LogAsync(AuditCategory.Account, AuditAction.Update, $"账号： {user.UserName} 重置密码");
         }
         return result;
     }
@@ -395,7 +395,7 @@ public class AccountService(
         {
             user.UpdatedAt = DateTime.UtcNow;
             await _userManager.UpdateAsync(user);
-            await _auditService.LogAsync(AuditCategory.Account, AuditAction.Update, $"账号: {username} 修改密码");
+            await _auditService.LogAsync(AuditCategory.Account, AuditAction.Update, $"账号： {username} 修改密码");
         }
         return result;
     }

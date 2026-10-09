@@ -181,7 +181,7 @@ public class SvcService(
                 request.ClusterId, request.Namespace, request.Name);
             throw K8sExceptionMapper.Translate(ex, "删除服务");
         }
-        await _auditService.LogAsync(AuditCategory.Service, AuditAction.Delete, $"服务: {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
+        await _auditService.LogAsync(AuditCategory.Service, AuditAction.Delete, $"服务： {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
     }
 
     /// <summary>以 YAML 更新服务:先读对象完成归属判定,再校验 clusterIP/clusterIPs/ipFamilies 等不可变字段未被改动(归属元数据保持服务器侧提交),以服务器最新对象(补齐 resourceVersion/uid)替换提交;YAML 非法或改动不可变字段抛 <see cref="ValidationException"/>,成功后写更新审计。</summary>
@@ -199,7 +199,7 @@ public class SvcService(
         {
             _logger.LogWarning(ex, "Deserialize YAML failed for update clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
-            throw new ValidationException($"YAML 格式错误:{ex.Message}");
+            throw new ValidationException($"YAML 格式错误：{ex.Message}");
         }
         V1Service existing;
         try
@@ -230,7 +230,7 @@ public class SvcService(
                 request.ClusterId, request.Namespace, request.Name);
             throw K8sExceptionMapper.Translate(ex, "保存服务");
         }
-        await _auditService.LogAsync(AuditCategory.Service, AuditAction.Update, $"服务: {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
+        await _auditService.LogAsync(AuditCategory.Service, AuditAction.Update, $"服务： {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
     }
 
     /// <summary>以 YAML 创建服务:强制登录身份、校验命名空间黑名单并盖章归属,命名空间取自 YAML 的 metadata.namespace;YAML 非法或未指定命名空间抛 <see cref="ValidationException"/>,成功后写创建审计。</summary>
@@ -248,7 +248,7 @@ public class SvcService(
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Deserialize YAML failed for create clusterId={ClusterId}", request.ClusterId);
-            throw new ValidationException($"YAML 格式错误:{ex.Message}");
+            throw new ValidationException($"YAML 格式错误：{ex.Message}");
         }
         var ns = body.Metadata?.NamespaceProperty;
         if (string.IsNullOrWhiteSpace(ns))
@@ -263,7 +263,7 @@ public class SvcService(
             _logger.LogWarning(ex, "CreateService failed clusterId={ClusterId} ns={Namespace}", request.ClusterId, ns);
             throw K8sExceptionMapper.Translate(ex, "创建服务");
         }
-        await _auditService.LogAsync(AuditCategory.Service, AuditAction.Create, $"服务: {ns}/{body.Metadata?.Name ?? "未知"} @ 集群 {entity.Name}");
+        await _auditService.LogAsync(AuditCategory.Service, AuditAction.Create, $"服务： {ns}/{body.Metadata?.Name ?? "未知"} @ 集群 {entity.Name}");
     }
 
     /// <summary>创建前收拢:命名空间黑名单(Admin 不受限)+ 归属盖章(无条件覆盖用户 YAML 的归属元数据)。</summary>
@@ -283,13 +283,13 @@ public class SvcService(
         if (incoming is null || existing is null) return;
 
         if (!string.IsNullOrWhiteSpace(incoming.ClusterIP) && incoming.ClusterIP != existing.ClusterIP)
-            throw new ValidationException("clusterIP 为不可变字段,如需更换请删除服务后重建");
+            throw new ValidationException("clusterIP 为不可变字段，如需更换请删除服务后重建");
 
         if (incoming.ClusterIPs is { Count: > 0 } && !SequenceEquals(incoming.ClusterIPs, existing.ClusterIPs))
-            throw new ValidationException("clusterIPs 为不可变字段,如需更换请删除服务后重建");
+            throw new ValidationException("clusterIPs 为不可变字段，如需更换请删除服务后重建");
 
         if (incoming.IpFamilies is { Count: > 0 } && !SequenceEquals(incoming.IpFamilies, existing.IpFamilies))
-            throw new ValidationException("ipFamilies 为不可变字段,如需更换请删除服务后重建");
+            throw new ValidationException("ipFamilies 为不可变字段，如需更换请删除服务后重建");
 
         incoming.ClusterIP ??= existing.ClusterIP;
         if (incoming.ClusterIPs is not { Count: > 0 })

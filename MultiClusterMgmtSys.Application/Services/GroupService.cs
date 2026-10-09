@@ -50,7 +50,7 @@ public class GroupService(
 
         await _repo.AddAsync(entity);
         _logger.LogInformation("AddGroup created id={GroupId}", entity.Id);
-        await _auditService.LogAsync(AuditCategory.Group, AuditAction.Create, $"分组: {entity.Name}");
+        await _auditService.LogAsync(AuditCategory.Group, AuditAction.Create, $"分组： {entity.Name}");
         return entity.ToViewModel();
     }
 
@@ -62,7 +62,7 @@ public class GroupService(
         if (entity is not null)
         {
             await _repo.DeleteAsync(id);
-            await _auditService.LogAsync(AuditCategory.Group, AuditAction.Delete, $"分组: {entity.Name}");
+            await _auditService.LogAsync(AuditCategory.Group, AuditAction.Delete, $"分组： {entity.Name}");
         }
         _logger.LogInformation("DeleteGroup done id={GroupId}", id);
     }
@@ -80,7 +80,7 @@ public class GroupService(
 
         await _repo.RenameAsync(request.Id, request.NewName);
         _logger.LogInformation("RenameGroup done id={GroupId}", request.Id);
-        await _auditService.LogAsync(AuditCategory.Group, AuditAction.Rename, $"分组: {existing.Name}");
+        await _auditService.LogAsync(AuditCategory.Group, AuditAction.Rename, $"分组： {existing.Name}");
     }
 
     /// <summary>批量移动集群到目标分组;TargetGroupId 为 null 表示移出为未分组,为 0(未翻译的哨兵值)抛 <see cref="ValidationException"/>。移动数大于 0 时写审计。</summary>
@@ -90,7 +90,7 @@ public class GroupService(
         if (request.TargetGroupId == 0)
         {
             _logger.LogWarning("MoveClustersToGroup rejected targetGroupId=0 (sentinel must be translated to null before service call)");
-            throw new ValidationException("目标分组无效,请刷新后重试");
+            throw new ValidationException("目标分组无效，请刷新后重试");
         }
 
         var ids = request.ClusterIds.ToList();

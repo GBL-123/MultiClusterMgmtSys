@@ -71,7 +71,7 @@ public class ClusterSyncSettingService(
 
         logger.LogInformation("UpdateClusterSyncSettings done");
         await auditService.LogAsync(AuditCategory.Cluster, AuditAction.Update,
-            $"定时同步设置: 间隔 {request.IntervalMinutes} 分钟,{(request.Enabled ? "启用" : "停用")}");
+            $"定时同步设置： 间隔 {request.IntervalMinutes} 分钟，{(request.Enabled ? "启用" : "停用")}");
     }
 
     private bool ResolveEnabled(string? dbValue)
@@ -87,7 +87,7 @@ public class ClusterSyncSettingService(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "ClusterSync:Enabled 配置非法,回退默认值 true");
+            logger.LogWarning(ex, "ClusterSync:Enabled 配置非法，回退默认值 true");
             return DefaultEnabled;
         }
     }
@@ -110,7 +110,7 @@ public class ClusterSyncSettingService(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "ClusterSync:IntervalMinutes 配置非法,回退默认值 {Default} 分钟", DefaultIntervalMinutes);
+            logger.LogWarning(ex, "ClusterSync:IntervalMinutes 配置非法，回退默认值 {Default} 分钟", DefaultIntervalMinutes);
             return DefaultIntervalMinutes;
         }
     }

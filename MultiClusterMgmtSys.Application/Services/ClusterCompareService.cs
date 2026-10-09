@@ -99,7 +99,7 @@ public class ClusterCompareService
         var source = await ReadSideAsync(request.Kind, request.SourceClusterId, request.Namespace, request.Name);
         if (!source.Exists)
         {
-            throw new NotFoundException($"源资源不存在或已被删除:{request.Name}");
+            throw new NotFoundException($"源资源不存在或已被删除：{request.Name}");
         }
 
         return StripServerMetadata(source.Yaml, request.Kind, sourceName, request.Name);
@@ -112,7 +112,7 @@ public class ClusterCompareService
         var source = await ReadSideAsync(request.Kind, request.SourceClusterId, request.Namespace, request.Name);
         if (!source.Exists)
         {
-            throw new NotFoundException($"源资源不存在或已被删除:{request.Name}");
+            throw new NotFoundException($"源资源不存在或已被删除：{request.Name}");
         }
 
         var yaml = StripServerMetadata(source.Yaml, request.Kind, sourceName, request.Name);

@@ -272,7 +272,7 @@
         }
         if (!HelmCommandBuilder.IsValidReleaseName(releaseName))
         {
-            Snackbar.Add("Release 名称不合法:仅允许小写字母、数字与连字符,以字母或数字开头结尾且不超过 53 字符", Severity.Warning);
+            Snackbar.Add("Release 名称不合法：仅允许小写字母、数字与连字符，以字母或数字开头结尾且不超过 53 字符", Severity.Warning);
             return;
         }
         if (!HelmCommandBuilder.IsValidNamespace(namespaceName))

@@ -33,7 +33,7 @@ public static class K8sExceptionMapper
 
         if (ex is TaskCanceledException or OperationCanceledException or HttpRequestException)
         {
-            return new ClusterUnreachableException("集群连接失败或超时,请稍后重试");
+            return new ClusterUnreachableException("集群连接失败或超时，请稍后重试");
         }
 
         return ex;
@@ -42,10 +42,10 @@ public static class K8sExceptionMapper
     private static Exception MapStatus(int code, string? apiMessage, string operation, Exception original) => code switch
     {
         404 => new NotFoundException($"{operation}:资源不存在或已被删除"),
-        409 => new ConflictException("资源已被他人修改,请刷新后重试"),
-        429 => new ConflictException("请求过于频繁,请稍后重试"),
+        409 => new ConflictException("资源已被他人修改，请刷新后重试"),
+        429 => new ConflictException("请求过于频繁，请稍后重试"),
         403 => new PermissionException("没有权限执行该操作"),
-        401 => new PermissionException("认证失效,请重新登录"),
+        401 => new PermissionException("认证失效，请重新登录"),
         400 => new ValidationException(FirstNonEmpty(apiMessage, $"{operation}:请求参数不合法")),
         _ => original,
     };

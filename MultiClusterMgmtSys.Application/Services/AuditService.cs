@@ -25,7 +25,7 @@ public class AuditService(
     /// <summary>写一条审计日志,操作者默认取当前登录用户名;写入失败静默降级(记录警告日志,不向调用方抛异常)。</summary>
     /// <param name="category">业务类别,如集群/账号/工作负载。</param>
     /// <param name="action">具体动作,如创建/删除/更新。</param>
-    /// <param name="target">目标对象的中文描述,如"集群: prod"。</param>
+    /// <param name="target">目标对象的中文描述,如"集群： prod"。</param>
     /// <param name="userName">显式指定操作者用户名;缺省时从当前 HTTP 上下文解析。</param>
     public async Task LogAsync(AuditCategory category, AuditAction action, string target, string? userName = null)
     {

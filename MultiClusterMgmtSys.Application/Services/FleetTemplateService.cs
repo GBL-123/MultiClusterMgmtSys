@@ -192,7 +192,7 @@ public class FleetTemplateService(
         var missingIds = selectedIds.Where(id => !nameByCluster.ContainsKey(id)).ToList();
         if (missingIds.Count > 0)
         {
-            throw new NotFoundException($"目标集群不存在:{string.Join("、", missingIds)}");
+            throw new NotFoundException($"目标集群不存在：{string.Join("、", missingIds)}");
         }
 
         var extracted = FleetTemplateVariables.Extract(templateYaml);
@@ -233,7 +233,7 @@ public class FleetTemplateService(
             if (family is null)
             {
                 throw new ValidationException(
-                    $"集群 {clusterName} 的模板 kind 不受支持,仅支持 Deployment、StatefulSet、DaemonSet、ReplicaSet、ConfigMap 五类资源");
+                    $"集群 {clusterName} 的模板 kind 不受支持，仅支持 Deployment、StatefulSet、DaemonSet、ReplicaSet、ConfigMap 五类资源");
             }
 
             if (string.IsNullOrEmpty(metadata?.Name))
@@ -270,11 +270,11 @@ public class FleetTemplateService(
         catch (KeyNotFoundException)
         {
             throw new ValidationException(
-                $"集群 {clusterName} 的模板 kind 不受支持,仅支持 Deployment、StatefulSet、DaemonSet、ReplicaSet、ConfigMap 五类资源");
+                $"集群 {clusterName} 的模板 kind 不受支持，仅支持 Deployment、StatefulSet、DaemonSet、ReplicaSet、ConfigMap 五类资源");
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            throw new ValidationException($"YAML 格式错误:{ex.Message}");
+            throw new ValidationException($"YAML 格式错误：{ex.Message}");
         }
 
         if (documents.Count == 0)
@@ -284,7 +284,7 @@ public class FleetTemplateService(
 
         if (documents.Count > 1)
         {
-            throw new ValidationException($"集群 {clusterName} 的模板须为单文档 YAML,当前包含 {documents.Count} 个文档");
+            throw new ValidationException($"集群 {clusterName} 的模板须为单文档 YAML，当前包含 {documents.Count} 个文档");
         }
 
         return documents[0];
@@ -331,7 +331,7 @@ public class FleetTemplateService(
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Fleet template preview failed clusterId={ClusterId} family={Family}", unit.ClusterId, unit.Kind);
-            return PreviewFailure(unit, $"获取现有{unit.Kind.ToDisplayText()}资源失败,请检查集群可达性");
+            return PreviewFailure(unit, $"获取现有{unit.Kind.ToDisplayText()}资源失败，请检查集群可达性");
         }
     }
 
@@ -411,7 +411,7 @@ public class FleetTemplateService(
             await auditService.LogAsync(
                 unit.Kind == CompareKind.ConfigMap ? AuditCategory.Configmap : AuditCategory.Workload,
                 created ? AuditAction.Create : AuditAction.Update,
-                $"舰队下发:在集群 {unit.ClusterName} {(created ? "创建" : "更新")} {unit.Kind.ToDisplayText()} {unit.Name}");
+                $"舰队下发：在集群 {unit.ClusterName} {(created ? "创建" : "更新")} {unit.Kind.ToDisplayText()} {unit.Name}");
             item.Action = created ? FleetTemplateAction.Create : FleetTemplateAction.Update;
             item.Succeeded = true;
             return item;
@@ -429,7 +429,7 @@ public class FleetTemplateService(
                 unit.Kind,
                 unit.Name);
             item.Succeeded = false;
-            item.Message = ex is BusinessException business ? business.UserMessage : "下发失败,请稍后重试";
+            item.Message = ex is BusinessException business ? business.UserMessage : "下发失败，请稍后重试";
             return item;
         }
     }
@@ -483,7 +483,7 @@ public class FleetTemplateService(
                 "Fleet template fetch current failed clusterId={ClusterId} family={Family}",
                 unit.ClusterId,
                 unit.Kind);
-            return (false, null, $"获取现有{unit.Kind.ToDisplayText()}资源失败,请检查集群可达性[{ex.GetType().Name}:{ex.Message}]");
+            return (false, null, $"获取现有{unit.Kind.ToDisplayText()}资源失败，请检查集群可达性[{ex.GetType().Name}:{ex.Message}]");
         }
     }
 

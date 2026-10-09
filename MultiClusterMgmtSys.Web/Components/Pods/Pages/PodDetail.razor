@@ -13,7 +13,7 @@
 @inject NavigationManager NavigationManager
 @inject ExceptionPresenter ExHandler
 
-<PageTitle>Pod 详情: @Name</PageTitle>
+<PageTitle>Pod 详情： @Name</PageTitle>
 
 <MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
     @if (_loading)
@@ -40,7 +40,7 @@
     {
         <MudCard Class="pa-4">
             <MudCardContent>
-                <MudText Align="Align.Center" Class="mud-text-secondary">集群不可达,无法获取 Pod 详情</MudText>
+                <MudText Align="Align.Center" Class="mud-text-secondary">集群不可达，无法获取 Pod 详情</MudText>
                 <div class="d-flex justify-center mt-4">
                     <MudButton Variant="Variant.Outlined"
                                Color="Color.Secondary"
@@ -403,7 +403,7 @@
         }
         catch (Exception ex)
         {
-            _logError = "加载日志失败,请重试";
+            _logError = "加载日志失败，请重试";
             await ExHandler.HandleAsync(ex, "加载 Pod 日志");
         }
         finally

@@ -139,7 +139,7 @@ public class SecretService(
         }
 
         var plaintext = Encoding.UTF8.GetString(bytes);
-        await _auditService.LogAsync(AuditCategory.Secret, AuditAction.View, $"密钥: {request.Namespace}/{request.Name}「{request.Key}」 @ 集群 {entity.Name}");
+        await _auditService.LogAsync(AuditCategory.Secret, AuditAction.View, $"密钥： {request.Namespace}/{request.Name}「{request.Key}」 @ 集群 {entity.Name}");
         return plaintext;
     }
 
@@ -158,7 +158,7 @@ public class SecretService(
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Deserialize YAML failed for create clusterId={ClusterId}", request.ClusterId);
-            throw new ValidationException($"YAML 格式错误:{ex.Message}");
+            throw new ValidationException($"YAML 格式错误：{ex.Message}");
         }
         if (!string.IsNullOrEmpty(shim.Kind) && shim.Kind != "Secret")
         {
@@ -182,7 +182,7 @@ public class SecretService(
             _logger.LogWarning(ex, "CreateSecret failed clusterId={ClusterId} ns={Namespace}", request.ClusterId, ns);
             throw K8sExceptionMapper.Translate(ex, "创建密钥");
         }
-        await _auditService.LogAsync(AuditCategory.Secret, AuditAction.Create, $"密钥: {ns}/{shim.Metadata?.Name ?? "未知"} @ 集群 {entity.Name}");
+        await _auditService.LogAsync(AuditCategory.Secret, AuditAction.Create, $"密钥： {ns}/{shim.Metadata?.Name ?? "未知"} @ 集群 {entity.Name}");
     }
 
     /// <summary>读取编辑页数据:先读对象完成归属判定,YAML 以占位符回显(不回显明文/base64)。</summary>
@@ -223,7 +223,7 @@ public class SecretService(
         {
             _logger.LogWarning(ex, "Deserialize YAML failed for update clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
-            throw new ValidationException($"YAML 格式错误:{ex.Message}");
+            throw new ValidationException($"YAML 格式错误：{ex.Message}");
         }
         if (!string.IsNullOrEmpty(shim.Kind) && shim.Kind != "Secret")
         {
@@ -257,7 +257,7 @@ public class SecretService(
                 request.ClusterId, request.Namespace, request.Name);
             throw K8sExceptionMapper.Translate(ex, "保存密钥");
         }
-        await _auditService.LogAsync(AuditCategory.Secret, AuditAction.Update, $"密钥: {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
+        await _auditService.LogAsync(AuditCategory.Secret, AuditAction.Update, $"密钥： {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
     }
 
     /// <summary>删除指定密钥:先读对象完成归属判定,成功后写删除审计;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
@@ -288,7 +288,7 @@ public class SecretService(
                 request.ClusterId, request.Namespace, request.Name);
             throw K8sExceptionMapper.Translate(ex, "删除密钥");
         }
-        await _auditService.LogAsync(AuditCategory.Secret, AuditAction.Delete, $"密钥: {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
+        await _auditService.LogAsync(AuditCategory.Secret, AuditAction.Delete, $"密钥： {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
     }
 
     /// <summary>创建前收拢:命名空间黑名单(Admin 不受限)+ 归属盖章(无条件覆盖用户 YAML 的归属元数据)。</summary>

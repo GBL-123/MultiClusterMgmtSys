@@ -14,12 +14,12 @@
                 <MudText Class="font-mono mud-text-secondary">// 正在预检节点上的 Pod...</MudText>
                 break;
             case DrainPhase.PreflightFailed:
-                <MudText Typo="Typo.body2">排空预检失败:</MudText>
+                <MudText Typo="Typo.body2">排空预检失败：</MudText>
                 <MudText Typo="Typo.body2">@_failedMessage</MudText>
                 break;
             case DrainPhase.Confirm:
                 <MudText Typo="Typo.body2" Class="mud-text-secondary">
-                    排空节点「@(Preflight?.NodeName ?? NodeName)」前将自动封锁该节点;DaemonSet Pod 随节点常驻会被跳过;裸 Pod(无控制器)驱逐后不会重建,默认不迁移。
+                    排空节点「@(Preflight?.NodeName ?? NodeName)」前将自动封锁该节点;DaemonSet Pod 随节点常驻会被跳过;裸 Pod(无控制器)驱逐后不会重建，默认不迁移。
                 </MudText>
                 @if (Preflight is { MigratablePods.Count: 0 })
                 {
@@ -56,7 +56,7 @@
                 @if (Preflight is { BarePods.Count: > 0 })
                 {
                     <MudText Typo="Typo.body2" Class="mt-2 mud-text-error">
-                        警告:@(Preflight.BarePods.Count) 个裸 Pod(无控制器)不会迁移,驱逐后需自行重建。
+                        警告：@(Preflight.BarePods.Count) 个裸 Pod(无控制器)不会迁移，驱逐后需自行重建。
                     </MudText>
                     @foreach (var pod in Preflight.BarePods)
                     {
@@ -81,7 +81,7 @@
                         <div class="font-mono">@pod.Namespace/@pod.Name</div>
                     }
                 }
-                <MudText Typo="Typo.body2" Class="mt-2 mud-text-secondary">节点保持封锁状态,可在维护完成后手动解封。</MudText>
+                <MudText Typo="Typo.body2" Class="mt-2 mud-text-secondary">节点保持封锁状态，可在维护完成后手动解封。</MudText>
                 break;
         }
     </DialogContent>
@@ -154,7 +154,7 @@
         catch (Exception ex)
         {
             await ExHandler.HandleAsync(ex, "排空预检");
-            _failedMessage = "排空预检失败,请稍后重试";
+            _failedMessage = "排空预检失败，请稍后重试";
             _phase = DrainPhase.PreflightFailed;
         }
     }

@@ -707,7 +707,7 @@ public class WorkloadService(
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Deserialize YAML failed for {Operation} clusterId={ClusterId}", operation, clusterId);
-            throw new ValidationException($"YAML 格式错误:{ex.Message}");
+            throw new ValidationException($"YAML 格式错误：{ex.Message}");
         }
     }
 

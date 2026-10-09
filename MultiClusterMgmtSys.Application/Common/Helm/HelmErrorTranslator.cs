@@ -16,13 +16,13 @@ public static class HelmErrorTranslator
     {
         if (result.TimedOut)
         {
-            return new ClusterUnreachableException("Helm 操作超时,请检查目标集群状态");
+            return new ClusterUnreachableException("Helm 操作超时，请检查目标集群状态");
         }
 
         var output = $"{result.StandardError}\n{result.StandardOutput}";
         if (ContainsAny(output, "cannot re-use", "already exists", "another release", "another operation"))
         {
-            return new ConflictException("目标命名空间已存在同名 release,请更换名称或改用升级");
+            return new ConflictException("目标命名空间已存在同名 release，请更换名称或改用升级");
         }
         if (ContainsAny(output, "not found", "no releases found"))
         {
@@ -34,9 +34,9 @@ public static class HelmErrorTranslator
         }
         if (ContainsAny(output, "unreachable", "connection refused", "no such host", "i/o timeout", "tls handshake", "dial tcp", "connection reset"))
         {
-            return new ClusterUnreachableException("无法连接目标集群,请检查集群连通性与凭据");
+            return new ClusterUnreachableException("无法连接目标集群，请检查集群连通性与凭据");
         }
-        return new HelmOperationException("Helm 操作失败,请检查 chart 包与目标集群状态");
+        return new HelmOperationException("Helm 操作失败，请检查 chart 包与目标集群状态");
     }
 
     private static bool ContainsAny(string text, params string[] patterns)

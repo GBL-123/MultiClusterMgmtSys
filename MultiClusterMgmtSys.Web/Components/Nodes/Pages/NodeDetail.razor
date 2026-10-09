@@ -1,4 +1,4 @@
-﻿@attribute [Authorize]
+@attribute [Authorize]
 @page "/nodes/{ClusterId:int}/{NodeName}"
 
 @using MultiClusterMgmtSys.Application.Requests
@@ -13,7 +13,7 @@
 @inject ExceptionPresenter ExHandler
 @inject IDialogService DialogService
 
-<PageTitle>节点详情: @NodeName</PageTitle>
+<PageTitle>节点详情： @NodeName</PageTitle>
 
 <MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
     @if (_loading)
@@ -156,7 +156,7 @@
     }
 
     /// <summary>
-    /// 维护入口禁用条件:集群不可达、页面刷新中或已有维护操作进行时一律禁用。
+    /// 维护入口禁用条件：集群不可达、页面刷新中或已有维护操作进行时一律禁用。
     /// </summary>
     private bool MaintenanceDisabled => !(_node?.IsReachable ?? false) || _loading || _maintaining;
 
@@ -164,7 +164,7 @@
     {
         var parameters = new DialogParameters
         {
-            { "Message", $"封锁后节点「{NodeName}」将不再接收新的 Pod 调度,已在运行的 Pod 不受影响。确定封锁吗？" },
+            { "Message", $"封锁后节点「{NodeName}」将不再接收新的 Pod 调度，已在运行的 Pod 不受影响。确定封锁吗？" },
             { "ConfirmText", "封锁" },
             { "ConfirmIcon", Icons.Material.Filled.Block }
         };
@@ -199,7 +199,7 @@
             };
             var options = new DialogOptions { CloseButton = false };
             await DialogService.ShowAsync<NodeDrainDialog>(
-                $"排空节点: {NodeName}", parameters, options);
+                $"排空节点： {NodeName}", parameters, options);
             await LoadAsync();
         }
         finally

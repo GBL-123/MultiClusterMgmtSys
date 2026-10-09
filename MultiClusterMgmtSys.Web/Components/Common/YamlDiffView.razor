@@ -1,7 +1,7 @@
 @namespace MultiClusterMgmtSys.Web.Components.Common
 @using MultiClusterMgmtSys.Web.Components.Compare
 
-@* 双栏 YAML 差异展示视图:三分支(双侧存在 / 仅左侧 / 仅右侧),由调用方算好行数据后传入(契约见 fleet-templates 与 cross-cluster-compare)。 *@
+@* 双栏 YAML 差异展示视图：三分支(双侧存在 / 仅左侧 / 仅右侧),由调用方算好行数据后传入(契约见 fleet-templates 与 cross-cluster-compare)。 *@
 
 @if (_leftExists && _rightExists)
 {
@@ -72,11 +72,11 @@ else
 }
 
 @code {
-    /// <summary>左侧标题(如「源:alpha」)。</summary>
+    /// <summary>左侧标题(如「源：alpha」)。</summary>
     [Parameter]
     public string LeftTitle { get; set; } = "";
 
-    /// <summary>右侧标题(如「对照:beta」)。</summary>
+    /// <summary>右侧标题(如「对照：beta」)。</summary>
     [Parameter]
     public string RightTitle { get; set; } = "";
 
@@ -88,7 +88,7 @@ else
     [Parameter]
     public string? RightYaml { get; set; }
 
-    /// <summary>差异行数据,由调用方经 <see cref="YamlDiff.Compute"/> 计算后传入;共享组件不做差异计算。</summary>
+    /// <summary>差异行数据，由调用方经 <see cref="YamlDiff.Compute"/> 计算后传入;共享组件不做差异计算。</summary>
     [Parameter]
     public IReadOnlyList<CompareDiffRow> Rows { get; set; } = [];
 

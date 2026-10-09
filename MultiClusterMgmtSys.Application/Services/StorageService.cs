@@ -121,7 +121,7 @@ public class StorageService(
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Deserialize YAML failed for create claim clusterId={ClusterId}", request.ClusterId);
-            throw new ValidationException($"YAML 格式错误:{ex.Message}");
+            throw new ValidationException($"YAML 格式错误：{ex.Message}");
         }
         if (!string.IsNullOrEmpty(body.Kind) && body.Kind != "PersistentVolumeClaim")
         {
@@ -144,7 +144,7 @@ public class StorageService(
             _logger.LogWarning(ex, "CreateClaim failed clusterId={ClusterId} ns={Namespace}", request.ClusterId, ns);
             throw K8sExceptionMapper.Translate(ex, "创建持久卷声明");
         }
-        await _auditService.LogAsync(AuditCategory.Storage, AuditAction.Create, $"持久卷声明: {ns}/{body.Metadata?.Name ?? "未知"} @ 集群 {entity.Name}");
+        await _auditService.LogAsync(AuditCategory.Storage, AuditAction.Create, $"持久卷声明： {ns}/{body.Metadata?.Name ?? "未知"} @ 集群 {entity.Name}");
     }
 
     /// <summary>删除指定持久卷声明:先读对象完成归属判定,成功后写删除审计;集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>
@@ -175,7 +175,7 @@ public class StorageService(
                 request.ClusterId, request.Namespace, request.Name);
             throw K8sExceptionMapper.Translate(ex, "删除持久卷声明");
         }
-        await _auditService.LogAsync(AuditCategory.Storage, AuditAction.Delete, $"持久卷声明: {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
+        await _auditService.LogAsync(AuditCategory.Storage, AuditAction.Delete, $"持久卷声明： {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
     }
 
     /// <summary>查询集群全部持久卷(PV,只读浏览、零审计);集群不存在抛 <see cref="NotFoundException"/>,K8s 失败经翻译后抛业务异常。</summary>

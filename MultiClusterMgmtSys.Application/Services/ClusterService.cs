@@ -136,7 +136,7 @@ public class ClusterService(
 
         _logger.LogInformation("AddCluster probed id={ClusterId} status={Status}", entity.Id, entity.Status);
         await _repo.UpdateAsync(entity);
-        await _auditService.LogAsync(AuditCategory.Cluster, AuditAction.Create, $"集群: {entity.Name}");
+        await _auditService.LogAsync(AuditCategory.Cluster, AuditAction.Create, $"集群： {entity.Name}");
         return entity.ToViewModel();
     }
 
@@ -177,7 +177,7 @@ public class ClusterService(
         }
 
         await _repo.UpdateAsync(entity);
-        await _auditService.LogAsync(AuditCategory.Cluster, AuditAction.Update, $"集群: {entity.Name}");
+        await _auditService.LogAsync(AuditCategory.Cluster, AuditAction.Update, $"集群： {entity.Name}");
         return entity.ToViewModel();
     }
 
@@ -189,7 +189,7 @@ public class ClusterService(
         if (entity is not null)
         {
             await _repo.DeleteAsync(id);
-            await _auditService.LogAsync(AuditCategory.Cluster, AuditAction.Delete, $"集群: {entity.Name}");
+            await _auditService.LogAsync(AuditCategory.Cluster, AuditAction.Delete, $"集群： {entity.Name}");
         }
     }
 
@@ -207,7 +207,7 @@ public class ClusterService(
         entity.ApplyEndpoints(request.Items);
         await _repo.UpdateAsync(entity);
         _logger.LogInformation("UpdateClusterEndpoints persisted id={ClusterId}", request.ClusterId);
-        await _auditService.LogAsync(AuditCategory.Cluster, AuditAction.Update, $"集群: {entity.Name} 端点");
+        await _auditService.LogAsync(AuditCategory.Cluster, AuditAction.Update, $"集群： {entity.Name} 端点");
     }
 
     /// <summary>立即探测单个集群连通性并回写状态/版本/节点数;探测失败置 Offline,不抛异常。</summary>

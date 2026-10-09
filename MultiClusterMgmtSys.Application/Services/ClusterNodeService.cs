@@ -149,7 +149,7 @@ public class ClusterNodeService(IClusterRepository repo, AuditService auditServi
 
         await _repo.UpdateAsync(entity);
         _logger.LogInformation("UpdateNodeIpNotes persisted clusterId={ClusterId} node={NodeName}", request.ClusterId, request.NodeName);
-        await _auditService.LogAsync(AuditCategory.Node, AuditAction.Update, $"节点: {request.NodeName} @ 集群 {entity.Name}");
+        await _auditService.LogAsync(AuditCategory.Node, AuditAction.Update, $"节点： {request.NodeName} @ 集群 {entity.Name}");
     }
 
     /// <summary>封锁节点:PATCH <c>spec.unschedulable=true</c>,此后调度器不再向该节点派发新 Pod,存量 Pod 不受影响;仅管理员可用,成功后写审计。K8s 调用失败经翻译后抛业务异常。</summary>
@@ -220,7 +220,7 @@ public class ClusterNodeService(IClusterRepository repo, AuditService auditServi
         if ((node.Spec?.Unschedulable ?? false) == false)
         {
             await PatchNodeSchedulableAsync(client, request.NodeName, unschedulable: true, "封锁节点");
-            await _auditService.LogAsync(AuditCategory.Node, AuditAction.Cordon, $"节点: {request.NodeName} @ 集群 {entity.Name}");
+            await _auditService.LogAsync(AuditCategory.Node, AuditAction.Cordon, $"节点： {request.NodeName} @ 集群 {entity.Name}");
         }
 
         IList<V1Pod> podItems;
@@ -288,7 +288,7 @@ public class ClusterNodeService(IClusterRepository repo, AuditService auditServi
             request.ClusterId, request.NodeName, evicted, skipped, blocked);
         await _auditService.LogAsync(
             AuditCategory.Node, AuditAction.Drain,
-            $"节点: {request.NodeName} @ 集群 {entity.Name}（成功 {evicted}/跳过 {skipped}/阻塞 {blocked}）");
+            $"节点： {request.NodeName} @ 集群 {entity.Name}（成功 {evicted}/跳过 {skipped}/阻塞 {blocked}）");
         return report;
     }
     // ---- Private k8s helpers ----
@@ -364,7 +364,7 @@ public class ClusterNodeService(IClusterRepository repo, AuditService auditServi
         var client = clientCache.GetOrCreate(entity);
         await PatchNodeSchedulableAsync(client, request.NodeName, unschedulable, operation);
         _logger.LogInformation("{Operation} done clusterId={ClusterId} node={NodeName}", operation, request.ClusterId, request.NodeName);
-        await _auditService.LogAsync(AuditCategory.Node, action, $"节点: {request.NodeName} @ 集群 {entity.Name}");
+        await _auditService.LogAsync(AuditCategory.Node, action, $"节点： {request.NodeName} @ 集群 {entity.Name}");
     }
 
     private static async Task PatchNodeSchedulableAsync(IKubernetes client, string nodeName, bool unschedulable, string operation)

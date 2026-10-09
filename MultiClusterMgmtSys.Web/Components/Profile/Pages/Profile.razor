@@ -105,7 +105,7 @@
                         </MudButton>
                     </MudStack>
                     <MudText Typo="Typo.caption" Class="mud-text-secondary mt-2">
-                        间隔范围 1~1440 分钟;保存后下一轮同步生效,列表页提示同步更新。
+                        间隔范围 1~1440 分钟;保存后下一轮同步生效，列表页提示同步更新。
                     </MudText>
                 </MudCardContent>
             </MudCard>
@@ -132,7 +132,7 @@
                         </MudButton>
                     </MudStack>
                     <MudText Typo="Typo.caption" Class="mud-text-secondary mt-2">
-                        阈值范围 1~1440 分钟;集群离线持续超过该时长即开立「集群离线」告警,保存后下一轮评估生效。
+                        阈值范围 1~1440 分钟;集群离线持续超过该时长即开立「集群离线」告警，保存后下一轮评估生效。
                     </MudText>
                 </MudCardContent>
             </MudCard>
@@ -268,7 +268,7 @@
         try
         {
             await SyncSettingSvc.UpdateClusterSyncSettingsAsync(new ClusterSyncSettingsUpdateRequest(_syncEnabled, _syncIntervalMinutes));
-            Snackbar.Add("定时同步设置已保存,下一轮同步生效", Severity.Success);
+            Snackbar.Add("定时同步设置已保存，下一轮同步生效", Severity.Success);
         }
         catch (Exception ex)
         {
@@ -286,7 +286,7 @@
         try
         {
             await AlertSettingSvc.UpdateAlertSettingsAsync(new AlertSettingsUpdateRequest(_alertOfflineThresholdMinutes));
-            Snackbar.Add("告警设置已保存,下一轮评估生效", Severity.Success);
+            Snackbar.Add("告警设置已保存，下一轮评估生效", Severity.Success);
         }
         catch (Exception ex)
         {

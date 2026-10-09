@@ -62,7 +62,7 @@ public class AlertSettingService(
 
         logger.LogInformation("UpdateAlertSettings done");
         await auditService.LogAsync(AuditCategory.Cluster, AuditAction.Update,
-            $"告警设置: 离线持续阈值 {request.OfflineThresholdMinutes} 分钟");
+            $"告警设置： 离线持续阈值 {request.OfflineThresholdMinutes} 分钟");
     }
 
     private int ResolveThreshold(string? dbValue)
@@ -83,7 +83,7 @@ public class AlertSettingService(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Alert:OfflineThresholdMinutes 配置非法,回退默认值 {Default} 分钟", DefaultThresholdMinutes);
+            logger.LogWarning(ex, "Alert:OfflineThresholdMinutes 配置非法，回退默认值 {Default} 分钟", DefaultThresholdMinutes);
             return DefaultThresholdMinutes;
         }
     }

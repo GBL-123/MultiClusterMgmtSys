@@ -59,7 +59,7 @@
         }
         catch (Exception ex)
         {
-            await ExHandler.HandleAsync(new ValidationException($"YAML 格式错误:{ex.Message}"), "创建命名空间");
+            await ExHandler.HandleAsync(new ValidationException($"YAML 格式错误：{ex.Message}"), "创建命名空间");
             return;
         }
 

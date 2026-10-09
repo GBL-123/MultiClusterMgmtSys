@@ -6,8 +6,8 @@
 @inject ExceptionPresenter ExHandler
 
 <MudPaper Class="pa-4 compare-card">
-    <YamlDiffView LeftTitle="@($"源:{Pair?.SourceClusterName}")"
-                  RightTitle="@($"对照:{Pair?.TargetClusterName}")"
+    <YamlDiffView LeftTitle="@($"源：{Pair?.SourceClusterName}")"
+                  RightTitle="@($"对照：{Pair?.TargetClusterName}")"
                   LeftYaml="@(Pair?.SourceExists == true ? Pair.SourceYaml : null)"
                   RightYaml="@(Pair?.TargetExists == true ? Pair.TargetYaml : null)"
                   Rows="@Rows"
@@ -29,8 +29,8 @@
 
     private string CloneHint()
         => Pair!.TargetExists && Pair.HasDifference && Pair.DifferenceCount > 0
-            ? $"两侧内容存在 {Pair.DifferenceCount} 处差异,可克隆到 {Pair.TargetClusterName}"
-            : $"目标集群 {Pair.TargetClusterName} 不存在该资源,可克隆过去";
+            ? $"两侧内容存在 {Pair.DifferenceCount} 处差异，可克隆到 {Pair.TargetClusterName}"
+            : $"目标集群 {Pair.TargetClusterName} 不存在该资源，可克隆过去";
 
     private RenderFragment? HeaderFragment => Pair!.CanClone
         ? @<MudButton Variant="Variant.Filled"

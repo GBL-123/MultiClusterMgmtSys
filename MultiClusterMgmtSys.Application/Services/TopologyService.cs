@@ -1,4 +1,4 @@
-﻿using k8s;
+using k8s;
 using k8s.Autorest;
 using k8s.Models;
 using MultiClusterMgmtSys.Application.Abstractions;
@@ -30,7 +30,7 @@ public class TopologyService(
             ?? throw new NotFoundException($"集群 {request.ClusterId} 不存在");
         if (!SupportedKinds.Contains(request.Kind))
         {
-            throw new ValidationException($"不支持的拓扑中心资源类型:{request.Kind}");
+            throw new ValidationException($"不支持的拓扑中心资源类型：{request.Kind}");
         }
 
         var client = clientCache.GetOrCreate(cluster);
@@ -74,7 +74,7 @@ public class TopologyService(
             }
             catch (Exception ex) when (IsDegradable(ex))
             {
-                logger.LogWarning(ex, "拓扑邻居查询失败,节点 {NodeName} 相关边已丢弃", nodeName);
+                logger.LogWarning(ex, "拓扑邻居查询失败，节点 {NodeName} 相关边已丢弃", nodeName);
                 if (ex is KubernetesException { Status.Code: 404 })
                 {
                     AddNode(view, MakeNode("Node", nodeName, "", isMissing: true));
@@ -219,7 +219,7 @@ public class TopologyService(
             }
             catch (Exception ex) when (IsDegradable(ex))
             {
-                logger.LogWarning(ex, "拓扑邻居查询失败,PV {VolumeName} 供给边已丢弃", volumeName);
+                logger.LogWarning(ex, "拓扑邻居查询失败，PV {VolumeName} 供给边已丢弃", volumeName);
             }
         }
 
@@ -291,7 +291,7 @@ public class TopologyService(
             }
             catch (Exception ex) when (IsDegradable(ex))
             {
-                logger.LogWarning(ex, "拓扑属主查询失败,副本集 {Name} 相关边已丢弃", owner.Name);
+                logger.LogWarning(ex, "拓扑属主查询失败，副本集 {Name} 相关边已丢弃", owner.Name);
                 if (ex is KubernetesException { Status.Code: 404 })
                 {
                     AddNode(view, MakeNode("ReplicaSet", owner.Name, ns, isMissing: true));
@@ -336,7 +336,7 @@ public class TopologyService(
         }
         catch (Exception ex) when (IsDegradable(ex))
         {
-            logger.LogWarning(ex, "拓扑属主查询失败,{Kind}/{Name} 相关边已丢弃", owner.Kind, owner.Name);
+            logger.LogWarning(ex, "拓扑属主查询失败，{Kind}/{Name} 相关边已丢弃", owner.Kind, owner.Name);
             if (ex is KubernetesException { Status.Code: 404 })
             {
                 AddNode(view, MakeNode(owner.Kind, owner.Name, ns, isMissing: true));
@@ -407,7 +407,7 @@ public class TopologyService(
         }
         catch (Exception ex) when (IsDegradable(ex))
         {
-            logger.LogWarning(ex, "拓扑邻居列表查询失败,丢弃 {What} 相关边 namespace={Namespace}", what, ns);
+            logger.LogWarning(ex, "拓扑邻居列表查询失败，丢弃 {What} 相关边 namespace={Namespace}", what, ns);
             return null;
         }
     }

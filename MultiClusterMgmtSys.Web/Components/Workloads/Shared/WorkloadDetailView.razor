@@ -1,4 +1,4 @@
-﻿@using MultiClusterMgmtSys.Application.Enums
+@using MultiClusterMgmtSys.Application.Enums
 @using MultiClusterMgmtSys.Application.Requests
 @using MultiClusterMgmtSys.Application.Services
 @using MultiClusterMgmtSys.Application.ViewModels
@@ -11,7 +11,7 @@
 @inject NavigationManager NavigationManager
 @inject ExceptionPresenter ExHandler
 
-<PageTitle>@(Kind.ToDisplayText())详情: @Name</PageTitle>
+<PageTitle>@(Kind.ToDisplayText())详情： @Name</PageTitle>
 
 <MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
     @if (_loading)

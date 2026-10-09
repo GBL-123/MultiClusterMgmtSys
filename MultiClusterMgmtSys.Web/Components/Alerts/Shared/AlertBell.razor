@@ -15,13 +15,13 @@
 </MudBadge>
 
 @code {
-    /// <summary>角标轮询间隔:与后台评估器同频(1 分钟),最坏约 2 分钟上角标。</summary>
+    /// <summary>角标轮询间隔：与后台评估器同频(1 分钟),最坏约 2 分钟上角标。</summary>
     private static readonly TimeSpan PollInterval = TimeSpan.FromMinutes(1);
 
-    /// <summary>当前 open 告警数;null 表示尚未完成首次读取,不显示角标。</summary>
+    /// <summary>当前 open 告警数;null 表示尚未完成首次读取，不显示角标。</summary>
     private int? _openCount;
 
-    /// <summary>角标轮询计时器,组件释放时停止。</summary>
+    /// <summary>角标轮询计时器，组件释放时停止。</summary>
     private PeriodicTimer? _timer;
 
     private int OpenCount => _openCount ?? 0;
@@ -33,7 +33,7 @@
     {
         await PollOnceAsync();
         _timer = new PeriodicTimer(PollInterval);
-        // 独立后台循环轮询 open 数,不阻塞组件生命周期。
+        // 独立后台循环轮询 open 数，不阻塞组件生命周期。
         _ = PollLoopAsync();
     }
 
@@ -70,7 +70,7 @@
         }
         catch (Exception)
         {
-            // 读取失败保持上次值,下一轮重试;不打断电路。
+            // 读取失败保持上次值，下一轮重试;不打断电路。
         }
     }
 

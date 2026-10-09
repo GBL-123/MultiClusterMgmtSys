@@ -349,7 +349,7 @@ public class HelmService(
         if (clusters.Count != selectedIdSet.Count)
         {
             var missing = selectedIdSet.Except(clusters.Select(cluster => cluster.Id)).ToList();
-            throw new NotFoundException($"目标集群不存在:{string.Join("、", missing)}");
+            throw new NotFoundException($"目标集群不存在：{string.Join("、", missing)}");
         }
 
         var files = BuildWriteFiles(request.ChartPackage, request.ValuesYaml);
@@ -477,7 +477,7 @@ public class HelmService(
                 request.Namespace,
                 request.ReleaseName);
             item.Succeeded = false;
-            item.Message = ex is BusinessException business ? business.UserMessage : "下发失败,请稍后重试";
+            item.Message = ex is BusinessException business ? business.UserMessage : "下发失败，请稍后重试";
         }
         return item;
     }
@@ -555,7 +555,7 @@ public class HelmService(
     {
         if (!HelmCommandBuilder.IsValidReleaseName(releaseName))
         {
-            throw new ValidationException("Release 名称不合法:仅允许小写字母、数字与连字符,以字母或数字开头结尾且不超过 53 字符");
+            throw new ValidationException("Release 名称不合法：仅允许小写字母、数字与连字符，以字母或数字开头结尾且不超过 53 字符");
         }
         if (!HelmCommandBuilder.IsValidNamespace(namespaceName))
         {

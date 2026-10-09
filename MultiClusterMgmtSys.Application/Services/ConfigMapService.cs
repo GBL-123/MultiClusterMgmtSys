@@ -132,7 +132,7 @@ public class ConfigMapService(
                 request.ClusterId, request.Namespace, request.Name);
             throw K8sExceptionMapper.Translate(ex, "删除配置");
         }
-        await _auditService.LogAsync(AuditCategory.Configmap, AuditAction.Delete, $"配置: {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
+        await _auditService.LogAsync(AuditCategory.Configmap, AuditAction.Delete, $"配置： {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
     }
 
     /// <summary>以 YAML 更新既有配置:先读对象完成归属判定,反序列化后仅覆盖 data/binaryData 字段(归属元数据保持服务器侧),携带服务器最新对象替换提交;YAML 非法抛 <see cref="ValidationException"/>,成功后写更新审计。</summary>
@@ -150,7 +150,7 @@ public class ConfigMapService(
         {
             _logger.LogWarning(ex, "Deserialize YAML failed for update clusterId={ClusterId} ns={Namespace} name={Name}",
                 request.ClusterId, request.Namespace, request.Name);
-            throw new ValidationException($"YAML 格式错误:{ex.Message}");
+            throw new ValidationException($"YAML 格式错误：{ex.Message}");
         }
         V1ConfigMap existing;
         try
@@ -177,7 +177,7 @@ public class ConfigMapService(
                 request.ClusterId, request.Namespace, request.Name);
             throw K8sExceptionMapper.Translate(ex, "保存配置");
         }
-        await _auditService.LogAsync(AuditCategory.Configmap, AuditAction.Update, $"配置: {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
+        await _auditService.LogAsync(AuditCategory.Configmap, AuditAction.Update, $"配置： {request.Namespace}/{request.Name} @ 集群 {entity.Name}");
     }
 
     /// <summary>以 YAML 创建配置:强制登录身份、校验命名空间黑名单并盖章归属,命名空间取自 YAML 的 metadata.namespace;YAML 非法或未指定命名空间抛 <see cref="ValidationException"/>,成功后写创建审计。</summary>
@@ -195,7 +195,7 @@ public class ConfigMapService(
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Deserialize YAML failed for create clusterId={ClusterId}", request.ClusterId);
-            throw new ValidationException($"YAML 格式错误:{ex.Message}");
+            throw new ValidationException($"YAML 格式错误：{ex.Message}");
         }
         var ns = body.Metadata?.NamespaceProperty;
         if (string.IsNullOrWhiteSpace(ns))
@@ -210,7 +210,7 @@ public class ConfigMapService(
             _logger.LogWarning(ex, "CreateConfigMap failed clusterId={ClusterId} ns={Namespace}", request.ClusterId, ns);
             throw K8sExceptionMapper.Translate(ex, "创建配置");
         }
-        await _auditService.LogAsync(AuditCategory.Configmap, AuditAction.Create, $"配置: {ns}/{body.Metadata?.Name ?? "未知"} @ 集群 {entity.Name}");
+        await _auditService.LogAsync(AuditCategory.Configmap, AuditAction.Create, $"配置： {ns}/{body.Metadata?.Name ?? "未知"} @ 集群 {entity.Name}");
     }
 
     /// <summary>创建前收拢:命名空间黑名单(Admin 不受限)+ 归属盖章(无条件覆盖用户 YAML 的归属元数据)。</summary>

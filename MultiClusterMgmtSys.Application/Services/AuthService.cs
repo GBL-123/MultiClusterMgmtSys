@@ -46,7 +46,7 @@ public class AuthService(
         {
             await _userManager.AddToRoleAsync(user, MemberRole);
             _logger.LogInformation("User registered successfully: {UserName}", request.UserName);
-            await _auditService.LogAsync(AuditCategory.Authentication, AuditAction.Register, $"账号: {request.UserName}", request.UserName);
+            await _auditService.LogAsync(AuditCategory.Authentication, AuditAction.Register, $"账号： {request.UserName}", request.UserName);
         }
         else
         {
@@ -74,7 +74,7 @@ public class AuthService(
                 user.LastLoginAt = DateTime.UtcNow;
                 await _userManager.UpdateAsync(user);
             }
-            await _auditService.LogAsync(AuditCategory.Authentication, AuditAction.Login, $"账号: {request.UserName}", request.UserName);
+            await _auditService.LogAsync(AuditCategory.Authentication, AuditAction.Login, $"账号： {request.UserName}", request.UserName);
         }
         return result;
     }
@@ -85,6 +85,6 @@ public class AuthService(
         var userName = _httpContextAccessor.HttpContext?.User.Identity?.Name;
         _logger.LogInformation("{userName} logging out", userName);
         await _signInManager.SignOutAsync();
-        await _auditService.LogAsync(AuditCategory.Authentication, AuditAction.Logout, $"账号: {userName}", userName);
+        await _auditService.LogAsync(AuditCategory.Authentication, AuditAction.Logout, $"账号： {userName}", userName);
     }
 }

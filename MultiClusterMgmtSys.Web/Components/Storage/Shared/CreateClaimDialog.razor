@@ -58,7 +58,7 @@
         }
         catch (Exception ex)
         {
-            await ExHandler.HandleAsync(new ValidationException($"YAML 格式错误:{ex.Message}"), "创建持久卷声明");
+            await ExHandler.HandleAsync(new ValidationException($"YAML 格式错误：{ex.Message}"), "创建持久卷声明");
             return;
         }
 

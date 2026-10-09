@@ -51,7 +51,7 @@ public class SnapshotRetentionService(
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "ClusterSync:SnapshotRetentionDays 配置非法,回退默认值 {Default} 天", DefaultRetentionDays);
+            _logger.LogWarning(ex, "ClusterSync:SnapshotRetentionDays 配置非法，回退默认值 {Default} 天", DefaultRetentionDays);
             return DefaultRetentionDays;
         }
     }

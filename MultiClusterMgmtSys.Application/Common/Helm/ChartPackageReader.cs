@@ -89,12 +89,12 @@ public static class ChartPackageReader
         }
         catch (Exception ex) when (ex is InvalidDataException or IOException or FormatException)
         {
-            throw new ValidationException($"chart 包无法读取:{ex.Message}");
+            throw new ValidationException($"chart 包无法读取：{ex.Message}");
         }
 
         if (chartMetadataText is null)
         {
-            throw new ValidationException("chart 包不合法:缺少 Chart.yaml");
+            throw new ValidationException("chart 包不合法：缺少 Chart.yaml");
         }
 
         ChartMetadataDto? metadata;
@@ -104,7 +104,7 @@ public static class ChartPackageReader
         }
         catch (Exception ex)
         {
-            throw new ValidationException($"Chart.yaml 格式错误:{ex.Message}");
+            throw new ValidationException($"Chart.yaml 格式错误：{ex.Message}");
         }
 
         var name = metadata?.Name?.Trim() ?? "";
@@ -121,7 +121,7 @@ public static class ChartPackageReader
         var warnings = new List<string>();
         if (dependencies.Count > 0 && !prefixesWithChartsFolder.Contains(chartPrefix))
         {
-            warnings.Add("包声明了 dependencies 但未包含 charts/ 目录,安装可能失败(请先执行 helm dependency build 后重新打包)");
+            warnings.Add("包声明了 dependencies 但未包含 charts/ 目录，安装可能失败(请先执行 helm dependency build 后重新打包)");
         }
 
         return new ChartPackageInfo(

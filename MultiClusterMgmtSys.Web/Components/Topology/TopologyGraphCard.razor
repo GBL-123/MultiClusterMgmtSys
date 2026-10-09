@@ -32,7 +32,7 @@
         else if (_chartFailed)
         {
             <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.Center" Class="my-2">
-                <MudText Class="mud-text-secondary">拓扑图渲染失败,请重试</MudText>
+                <MudText Class="mud-text-secondary">拓扑图渲染失败，请重试</MudText>
                 <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="ReloadAsync">重试</MudButton>
             </MudStack>
         }
@@ -91,7 +91,7 @@
 
     private DotNetObjectReference<TopologyGraphCard>? _dotnetRef;
 
-    /// <summary>加载拓扑数据(幂等:已加载或正在加载时跳过);宿主详情页也可显式调用(重试)。</summary>
+    /// <summary>加载拓扑数据(幂等：已加载或正在加载时跳过);宿主详情页也可显式调用(重试)。</summary>
     public async Task LoadAsync()
     {
         if (_loaded || _loading)
@@ -112,7 +112,7 @@
         {
             _topo = null;
             _chartMounted = false;
-            _error = "加载拓扑失败,请重试";
+            _error = "加载拓扑失败，请重试";
             await ExHandler.HandleAsync(ex, "加载拓扑");
         }
         finally
@@ -178,7 +178,7 @@
         }
     }
 
-    /// <summary>JS 侧节点点击回调:按 Kind 映射详情路由;Ingress/PV 等终端节点不导航。</summary>
+    /// <summary>JS 侧节点点击回调：按 Kind 映射详情路由;Ingress/PV 等终端节点不导航。</summary>
     /// <param name="nodeId">节点 Id,格式 "Kind/name"。</param>
     [JSInvokable]
     public void OnNodeClicked(string nodeId)

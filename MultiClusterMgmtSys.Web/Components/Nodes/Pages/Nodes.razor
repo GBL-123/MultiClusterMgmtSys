@@ -116,7 +116,7 @@
     private NodeListFilter _appliedFilter = new();
 
     /// <summary>
-    /// 当前生效的集群上下文:URL 参数存在时用 URL 参数,
+    /// 当前生效的集群上下文：URL 参数存在时用 URL 参数,
     /// 否则用会话级记忆的选择(回到 /nodes 时原位恢复)。
     /// </summary>
     private int? EffectiveClusterId => ClusterId ?? ClusterSelection.SelectedClusterId;
@@ -250,7 +250,7 @@
     }
 
     /// <summary>
-    /// 维护入口禁用条件:集群不可达、页面刷新中或已有维护操作进行时一律禁用。
+    /// 维护入口禁用条件：集群不可达、页面刷新中或已有维护操作进行时一律禁用。
     /// </summary>
     private bool MaintenanceDisabled => !(_cluster?.IsReachable ?? false) || _loading || _maintaining;
 
@@ -258,7 +258,7 @@
     {
         var parameters = new DialogParameters
         {
-            { "Message", $"封锁后节点「{name}」将不再接收新的 Pod 调度,已在运行的 Pod 不受影响。确定封锁吗？" },
+            { "Message", $"封锁后节点「{name}」将不再接收新的 Pod 调度，已在运行的 Pod 不受影响。确定封锁吗？" },
             { "ConfirmText", "封锁" },
             { "ConfirmIcon", Icons.Material.Filled.Block }
         };
@@ -293,7 +293,7 @@
             };
             var options = new DialogOptions { CloseButton = false };
             await DialogService.ShowAsync<NodeDrainDialog>(
-                $"排空节点: {name}", parameters, options);
+                $"排空节点： {name}", parameters, options);
             await LoadAsync(EffectiveClusterId!.Value);
         }
         finally

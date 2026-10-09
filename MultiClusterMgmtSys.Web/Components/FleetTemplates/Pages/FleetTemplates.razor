@@ -20,7 +20,7 @@
     <MudPaper Class="pa-4">
         <MudText Typo="Typo.h5">舰队模板下发</MudText>
         <MudText Typo="Typo.body2" Class="mt-1 fleet-page-hint">
-            粘贴含 <span class="font-mono">{{var}}</span> 占位符的 YAML 模板,为每个目标集群填值渲染,预览「新建 / 更新 / 一致」判定后逐集群下发;模板与矩阵零持久化,离开页面即丢弃。
+            粘贴含 <span class="font-mono">{{var}}</span> 占位符的 YAML 模板，为每个目标集群填值渲染，预览「新建 / 更新 / 一致」判定后逐集群下发;模板与矩阵零持久化，离开页面即丢弃。
         </MudText>
 
         <MudText Typo="Typo.subtitle2" Class="mt-4">模板 YAML</MudText>
@@ -31,7 +31,7 @@
                   placeholder="@TemplatePlaceholder"></textarea>
 
         <div class="mt-2 fleet-var-strip">
-            <span class="font-mono hint-compact">@(_vars.Count == 0 ? "[ 未提取到变量 ]" : $"变量:{_vars.Count}")</span>
+            <span class="font-mono hint-compact">@(_vars.Count == 0 ? "[ 未提取到变量 ]" : $"变量：{_vars.Count}")</span>
             @foreach (var variable in _vars)
             {
                 <span class="font-mono var-chip">@variable</span>
@@ -169,7 +169,7 @@
 </MudStack>
 
 @code {
-    /// <summary>模板输入框的示例占位文本(真实换行,避免 HTML 实体二次转义)。</summary>
+    /// <summary>模板输入框的示例占位文本(真实换行，避免 HTML 实体二次转义)。</summary>
     private const string TemplatePlaceholder = "apiVersion: v1\nkind: ConfigMap\ndata:\n  color: {{color}}";
 
     private List<ClusterViewModel> _clusters = [];
@@ -273,11 +273,11 @@
             _previewItems = result.Items;
             if (_previewItems.Any(item => item.Action == FleetTemplateAction.FetchFailed))
             {
-                Snackbar.Add("部分集群预览失败,可先修复后再下发", Severity.Warning);
+                Snackbar.Add("部分集群预览失败，可先修复后再下发", Severity.Warning);
             }
             else
             {
-                Snackbar.Add("预览完成,请确认各集群差异后下发", Severity.Info);
+                Snackbar.Add("预览完成，请确认各集群差异后下发", Severity.Info);
             }
         }
         catch (Exception ex)
@@ -302,7 +302,7 @@
             "下发确认",
             new DialogParameters
             {
-                { nameof(ConfirmDialog.Message), "确认将渲染后的模板逐集群下发?「新建 / 更新」集群将被写入,「一致」集群自动跳过。" },
+                { nameof(ConfirmDialog.Message), "确认将渲染后的模板逐集群下发？「新建 / 更新」集群将被写入,「一致」集群自动跳过。" },
                 { nameof(ConfirmDialog.ConfirmText), "下发" },
                 { nameof(ConfirmDialog.ConfirmIcon), Icons.Material.Filled.RocketLaunch }
             });
@@ -330,11 +330,11 @@
             _deployResult = result;
             if (result.FailureCount == 0)
             {
-                Snackbar.Add($"舰队下发完成,成功 {result.SuccessCount} 个集群", Severity.Success);
+                Snackbar.Add($"舰队下发完成，成功 {result.SuccessCount} 个集群", Severity.Success);
             }
             else
             {
-                Snackbar.Add($"舰队下发完成,成功 {result.SuccessCount} 个,失败 {result.FailureCount} 个", Severity.Warning);
+                Snackbar.Add($"舰队下发完成，成功 {result.SuccessCount} 个，失败 {result.FailureCount} 个", Severity.Warning);
             }
         }
         catch (Exception ex)

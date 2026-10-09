@@ -7,7 +7,7 @@
         <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="2" @key="row">
             @* MudSelect/MudTextField 的 Style 落在其内层 div,行内 flex 项是外层根
                (.mud-select/.mud-input-control 自带 flex-grow),控件自身 Style 不参与行内布局,
-               必须包一层 div 承载列宽,否则类型/排序列右侧会出现大段空隙 *@
+               必须包一层 div 承载列宽，否则类型/排序列右侧会出现大段空隙 *@
             <div style="flex:0 0 110px;">
                 <MudSelect T="ClusterEndpointKind"
                            Value="row.Kind"

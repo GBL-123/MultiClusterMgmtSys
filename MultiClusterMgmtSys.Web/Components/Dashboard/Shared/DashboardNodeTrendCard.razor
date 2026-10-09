@@ -81,7 +81,7 @@
                 _module = await JS.InvokeAsync<IJSObjectReference?>("import", "/js/dashboard-trend.js");
                 if (_module is null)
                 {
-                    // 无 JS 环境(如 bUnit 宽松模式),保持静态占位,不视为失败。
+                    // 无 JS 环境(如 bUnit 宽松模式),保持静态占位，不视为失败。
                     return;
                 }
 
@@ -96,7 +96,7 @@
         }
         catch (JSDisconnectedException)
         {
-            // 电路断开时的清理路径,无需提示。
+            // 电路断开时的清理路径，无需提示。
         }
         catch (Exception ex)
         {

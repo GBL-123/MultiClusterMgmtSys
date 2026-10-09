@@ -119,7 +119,7 @@
         }
         catch (Exception ex)
         {
-            await ExHandler.HandleAsync(new ValidationException($"YAML 格式错误:{ex.Message}"), "保存");
+            await ExHandler.HandleAsync(new ValidationException($"YAML 格式错误：{ex.Message}"), "保存");
             return;
         }
 

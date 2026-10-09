@@ -14,7 +14,7 @@
     </TitleContent>
     <DialogContent>
         <MudStack Spacing="3" Class="pt-2">
-            <MudText Typo="Typo.body2">当前版本:<span class="font-mono ml-1">@ChartName @ChartVersion</span></MudText>
+            <MudText Typo="Typo.body2">当前版本：<span class="font-mono ml-1">@ChartName @ChartVersion</span></MudText>
 
             <div>
                 <InputFile OnChange="OnFileSelected" accept=".tgz" style="width:100%;" />
@@ -29,7 +29,7 @@
 
             @if (_package is not null)
             {
-                <MudText Typo="Typo.body2">新版本:<span class="font-mono ml-1">@_package.Name @_package.Version</span></MudText>
+                <MudText Typo="Typo.body2">新版本：<span class="font-mono ml-1">@_package.Name @_package.Version</span></MudText>
                 @foreach (var warning in _package.Warnings)
                 {
                     <MudAlert Severity="Severity.Warning" Dense="true">@warning</MudAlert>

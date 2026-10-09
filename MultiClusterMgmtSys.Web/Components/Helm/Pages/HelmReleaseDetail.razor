@@ -12,7 +12,7 @@
 @inject NavigationManager NavigationManager
 @inject ExceptionPresenter ExHandler
 
-<PageTitle>Release 详情: @Name</PageTitle>
+<PageTitle>Release 详情： @Name</PageTitle>
 
 <MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
     @if (_loading)
@@ -85,9 +85,9 @@
                             <MudText Typo="Typo.body2">appVersion:<span class="font-mono ml-1">@_detail.AppVersion</span></MudText>
                         }
                         <MudText Typo="Typo.body2">Revision:<span class="font-mono ml-1">@_detail.Revision</span></MudText>
-                        <MudText Typo="Typo.body2">状态描述:@_detail.Description</MudText>
+                        <MudText Typo="Typo.body2">状态描述：@_detail.Description</MudText>
                         <MudText Typo="Typo.body2">
-                            最后部署:<span class="font-mono ml-1">@(_detail.LastDeployedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—")</span>
+                            最后部署：<span class="font-mono ml-1">@(_detail.LastDeployedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—")</span>
                         </MudText>
                         @if (!string.IsNullOrWhiteSpace(_detail.Notes))
                         {
@@ -184,7 +184,7 @@
 
     private (int ClusterId, string Namespace, string Name)? _loadedKey;
 
-    /// <summary>当前路由参数(集群/命名空间/名称)构成的加载键:参数变化即重新加载。</summary>
+    /// <summary>当前路由参数(集群/命名空间/名称)构成的加载键：参数变化即重新加载。</summary>
     private (int ClusterId, string Namespace, string Name) CurrentKey => (ClusterId, Namespace, Name);
 
     protected override async Task OnParametersSetAsync()

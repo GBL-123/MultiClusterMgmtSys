@@ -1,4 +1,4 @@
-﻿@attribute [Authorize]
+@attribute [Authorize]
 @page "/configmaps/{ClusterId:int}/{Namespace}/{Name}"
 
 @using MultiClusterMgmtSys.Application.Requests
@@ -12,7 +12,7 @@
 @inject NavigationManager NavigationManager
 @inject ExceptionPresenter ExHandler
 
-<PageTitle>ConfigMap 详情: @Name</PageTitle>
+<PageTitle>ConfigMap 详情： @Name</PageTitle>
 
 <MudStack Class="flex-auto d-flex" Style="align-self: stretch; min-height: 0;">
     @if (_loading)
