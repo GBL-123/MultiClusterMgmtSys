@@ -115,8 +115,8 @@
     private static string PortTooltip(SvcPortViewModel port)
     {
         var left = port.NodePort is int nodePort
-            ? $"服务端口 {port.Port},节点端口 {nodePort}"
+            ? $"服务端口 {port.Port}，节点端口 {nodePort}"
             : $"服务端口 {port.Port}";
-        return $"{left} / {port.Protocol},转发到容器端口 {PortTarget(port)}";
+        return $"{left} / {port.Protocol}，转发到容器端口 {PortTarget(port)}";
     }
 }

@@ -30,7 +30,7 @@ public static class HelmErrorTranslator
         }
         if (ContainsAny(output, "forbidden", "unauthorized", "permission denied", "cannot create resource", "cannot patch resource", "cannot get resource"))
         {
-            return new PermissionException("没有权限执行该操作(集群返回权限错误)");
+            return new PermissionException("没有权限执行该操作（集群返回权限错误）");
         }
         if (ContainsAny(output, "unreachable", "connection refused", "no such host", "i/o timeout", "tls handshake", "dial tcp", "connection reset"))
         {

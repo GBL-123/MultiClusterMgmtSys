@@ -8,7 +8,7 @@
     <MudStack AlignItems="AlignItems.Center" Spacing="3">
         <MudText Typo="Typo.caption" Class="fallback-code font-mono">500 // INTERNAL ERROR</MudText>
         <MudText Typo="Typo.h5" Class="fallback-title">请求处理出错</MudText>
-        <MudText Class="fallback-hint">请稍后重试;若问题持续出现，请携带以下请求 ID 联系管理员。</MudText>
+        <MudText Class="fallback-hint">请稍后重试；若问题持续出现，请携带以下请求 ID 联系管理员。</MudText>
         @if (ShowRequestId)
         {
             <MudText Typo="Typo.caption" Class="fallback-request-id font-mono">REQUEST ID // @RequestId</MudText>

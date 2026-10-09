@@ -28,7 +28,7 @@ public class ExceptionPresenter(ISnackbar snackbar, ILogger<ExceptionPresenter> 
         }
 
         _logger.LogError(ex, "Unhandled exception during {Operation}", fallbackMessage);
-        _snackbar.Add($"{fallbackMessage}失败,请稍后重试", Severity.Error);
+        _snackbar.Add($"{fallbackMessage}失败，请稍后重试", Severity.Error);
         return Task.CompletedTask;
     }
 }

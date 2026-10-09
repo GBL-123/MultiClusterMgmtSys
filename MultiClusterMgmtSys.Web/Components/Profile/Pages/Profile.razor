@@ -92,7 +92,7 @@
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4" Class="flex-wrap">
                         <MudSwitch @bind-Value="_syncEnabled" Label="启用定时同步" Color="Color.Primary" />
                         <MudNumericField @bind-Value="_syncIntervalMinutes"
-                                         Label="同步间隔(分钟)"
+                                         Label="同步间隔（分钟）"
                                          Min="1" Max="1440" Step="1"
                                          Class="font-mono sync-interval-field" />
                         <MudSpacer />
@@ -105,7 +105,7 @@
                         </MudButton>
                     </MudStack>
                     <MudText Typo="Typo.caption" Class="mud-text-secondary mt-2">
-                        间隔范围 1~1440 分钟;保存后下一轮同步生效，列表页提示同步更新。
+                        间隔范围 1~1440 分钟；保存后下一轮同步生效，列表页提示同步更新。
                     </MudText>
                 </MudCardContent>
             </MudCard>
@@ -119,7 +119,7 @@
                 <MudCardContent>
                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4" Class="flex-wrap">
                         <MudNumericField @bind-Value="_alertOfflineThresholdMinutes"
-                                         Label="离线持续阈值(分钟)"
+                                         Label="离线持续阈值（分钟）"
                                          Min="1" Max="1440" Step="1"
                                          Class="font-mono alert-threshold-field" />
                         <MudSpacer />
@@ -132,7 +132,7 @@
                         </MudButton>
                     </MudStack>
                     <MudText Typo="Typo.caption" Class="mud-text-secondary mt-2">
-                        阈值范围 1~1440 分钟;集群离线持续超过该时长即开立「集群离线」告警，保存后下一轮评估生效。
+                        阈值范围 1~1440 分钟；集群离线持续超过该时长即开立「集群离线」告警，保存后下一轮评估生效。
                     </MudText>
                 </MudCardContent>
             </MudCard>

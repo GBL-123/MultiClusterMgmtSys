@@ -54,7 +54,7 @@ public sealed class HelmCliRunner(
             catch (Exception ex) when (ex is Win32Exception || ex is InvalidOperationException)
             {
                 logger.LogWarning(ex, "Helm process failed to start cliPath={CliPath} clusterId={ClusterId}", options.CliPath, invocation.Cluster.Id);
-                throw new HelmOperationException($"Helm CLI 不可用,请确认已安装 Helm 4 或正确配置 Helm:CliPath(当前:{options.CliPath})");
+                throw new HelmOperationException($"Helm CLI 不可用，请确认已安装 Helm 4 或正确配置 Helm:CliPath（当前：{options.CliPath}）");
             }
 
             return new HelmCliResult

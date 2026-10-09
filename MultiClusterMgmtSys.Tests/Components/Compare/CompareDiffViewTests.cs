@@ -80,7 +80,7 @@ public class CompareDiffViewTests
         await using var ctx = new BunitHost();
         var cut = RenderView(ctx, Pair(targetExists: false, hasDifference: false));
 
-        Assert.Contains("(不存在)", cut.Markup);
+        Assert.Contains("（不存在）", cut.Markup);
         Assert.Single(cut.FindAll(".empty-state.is-compact"));
         Assert.Contains("a: 1", cut.Markup);
         Assert.DoesNotContain("compare-diff-grid", cut.Markup);
@@ -92,7 +92,7 @@ public class CompareDiffViewTests
         await using var ctx = new BunitHost();
         var cut = RenderView(ctx, Pair(sourceExists: false, hasDifference: false));
 
-        Assert.Contains("(不存在)", cut.Markup);
+        Assert.Contains("（不存在）", cut.Markup);
         Assert.Single(cut.FindAll(".empty-state.is-compact"));
         Assert.Contains("a: 2", cut.Markup);
     }

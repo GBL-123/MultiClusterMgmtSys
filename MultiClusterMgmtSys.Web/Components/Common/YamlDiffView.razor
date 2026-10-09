@@ -44,28 +44,28 @@ else if (_leftExists)
 {
     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
         <MudText Typo="Typo.body2" Class="compare-column-title">@LeftTitle</MudText>
-        <MudText Typo="Typo.body2" Class="mud-text-error">@(RightTitle + "(不存在)")</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-error">@(RightTitle + "（不存在）")</MudText>
         <MudSpacer />
         @HeaderActions
     </MudStack>
     <div class="compare-columns">
         <div class="compare-pane"><pre class="compare-plain">@LeftYaml</pre></div>
         <div class="compare-pane empty-pane">
-            <div class="empty-state is-compact">[ (不存在) ]</div>
+            <div class="empty-state is-compact">[ （不存在） ]</div>
         </div>
     </div>
 }
 else
 {
     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
-        <MudText Typo="Typo.body2" Class="mud-text-error">@(LeftTitle + "(不存在)")</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-error">@(LeftTitle + "（不存在）")</MudText>
         <MudText Typo="Typo.body2" Class="compare-column-title">@RightTitle</MudText>
         <MudSpacer />
         @HeaderActions
     </MudStack>
     <div class="compare-columns">
         <div class="compare-pane empty-pane">
-            <div class="empty-state is-compact">[ (不存在) ]</div>
+            <div class="empty-state is-compact">[ （不存在） ]</div>
         </div>
         <div class="compare-pane"><pre class="compare-plain">@_rightYamlShown</pre></div>
     </div>

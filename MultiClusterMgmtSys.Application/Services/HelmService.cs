@@ -239,7 +239,7 @@ public class HelmService(
         await _auditService.LogAsync(
             AuditCategory.Helm,
             AuditAction.Install,
-            $"Helm: 安装 {request.ReleaseName}(集群 {cluster.Name} / 命名空间 {request.Namespace})");
+            $"Helm: 安装 {request.ReleaseName}（集群 {cluster.Name} / 命名空间 {request.Namespace}）");
     }
 
     /// <summary>升级 release:上传新包执行 helm upgrade(沿用现存 values 或提交重新编辑的 values),归属不变;权限不足抛 <see cref="PermissionException"/>。</summary>
@@ -265,7 +265,7 @@ public class HelmService(
         await _auditService.LogAsync(
             AuditCategory.Helm,
             AuditAction.Upgrade,
-            $"Helm: 升级 {request.ReleaseName}(集群 {cluster.Name} / 命名空间 {request.Namespace})");
+            $"Helm: 升级 {request.ReleaseName}（集群 {cluster.Name} / 命名空间 {request.Namespace}）");
     }
 
     /// <summary>回滚 release 到指定 revision,归属不变;权限不足抛 <see cref="PermissionException"/>。</summary>
@@ -286,7 +286,7 @@ public class HelmService(
         await _auditService.LogAsync(
             AuditCategory.Helm,
             AuditAction.Rollback,
-            $"Helm: 回滚 {request.ReleaseName}(集群 {cluster.Name} / 命名空间 {request.Namespace}, revision {request.Revision})");
+            $"Helm: 回滚 {request.ReleaseName}（集群 {cluster.Name} / 命名空间 {request.Namespace}，revision {request.Revision}）");
     }
 
     /// <summary>卸载 release:成功后删除归属记录并写审计;权限不足抛 <see cref="PermissionException"/>。</summary>
@@ -308,7 +308,7 @@ public class HelmService(
         await _auditService.LogAsync(
             AuditCategory.Helm,
             AuditAction.Uninstall,
-            $"Helm: 卸载 {request.ReleaseName}(集群 {cluster.Name} / 命名空间 {request.Namespace})");
+            $"Helm: 卸载 {request.ReleaseName}（集群 {cluster.Name} / 命名空间 {request.Namespace}）");
     }
 
     /// <summary>批量多集群下发(仅 Admin):逐集群 helm status 预检后按「不存在安装 / 已存在升级」有界并发执行,逐集群隔离失败并即时写归属与审计。</summary>
@@ -414,7 +414,7 @@ public class HelmService(
                     await _auditService.LogAsync(
                         AuditCategory.Helm,
                         AuditAction.Upgrade,
-                        $"Helm: 批量下发升级 {request.ReleaseName}(集群 {cluster.Name} / 命名空间 {request.Namespace})");
+                        $"Helm: 批量下发升级 {request.ReleaseName}（集群 {cluster.Name} / 命名空间 {request.Namespace}）");
                 }
                 finally
                 {
@@ -454,7 +454,7 @@ public class HelmService(
                     await _auditService.LogAsync(
                         AuditCategory.Helm,
                         AuditAction.Install,
-                        $"Helm: 批量下发安装 {request.ReleaseName}(集群 {cluster.Name} / 命名空间 {request.Namespace})");
+                        $"Helm: 批量下发安装 {request.ReleaseName}（集群 {cluster.Name} / 命名空间 {request.Namespace}）");
                 }
                 finally
                 {

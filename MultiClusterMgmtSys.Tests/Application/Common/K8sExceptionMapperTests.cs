@@ -30,7 +30,7 @@ public class K8sExceptionMapperTests
         var translated = K8sExceptionMapper.Translate(K8sMocks.K8sError(429), "克隆资源");
 
         var business = Assert.IsType<ConflictException>(translated);
-        Assert.Equal("请求过于频繁,请稍后重试", business.UserMessage);
+        Assert.Equal("请求过于频繁，请稍后重试", business.UserMessage);
     }
 
 
@@ -40,7 +40,7 @@ public class K8sExceptionMapperTests
         var translated = K8sExceptionMapper.Translate(K8sMocks.K8sError(404), "删除集群");
 
         var business = Assert.IsType<NotFoundException>(translated);
-        Assert.Equal("删除集群:资源不存在或已被删除", business.UserMessage);
+        Assert.Equal("删除集群：资源不存在或已被删除", business.UserMessage);
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public class K8sExceptionMapperTests
         var translated = K8sExceptionMapper.Translate(K8sMocks.K8sError(400, "  "), "创建");
 
         var business = Assert.IsType<ValidationException>(translated);
-        Assert.Equal("创建:请求参数不合法", business.UserMessage);
+        Assert.Equal("创建：请求参数不合法", business.UserMessage);
     }
 
     [Theory]

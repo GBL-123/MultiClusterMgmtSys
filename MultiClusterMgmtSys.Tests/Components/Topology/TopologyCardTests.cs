@@ -180,7 +180,7 @@ public class TopologyCardTests
             .Add(p => p.Name, "web-1"));
         await cut.InvokeAsync(() => cut.Instance.LoadAsync());
 
-        Assert.Contains("加载拓扑失败,请重试", cut.Markup);
+        Assert.Contains("加载拓扑失败，请重试", cut.Markup);
         Assert.Empty(InvocationsOf(module, "mount"));
     }
 
@@ -210,7 +210,7 @@ public class TopologyCardTests
 
         k8s.SetupReadPodThrows("web-1", "app", K8sMocks.K8sError(500, "boom"));
         await cut.InvokeAsync(() => cut.Instance.LoadAsync());
-        Assert.Contains("加载拓扑失败,请重试", cut.Markup);
+        Assert.Contains("加载拓扑失败，请重试", cut.Markup);
 
         k8s.SetupReadPod("web-1", "app", K8sMocks.NewPod("web-1", "app"));
         k8s.SetupReadNode("node-1", ReadyNode("node-1"));

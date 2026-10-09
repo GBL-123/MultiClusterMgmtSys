@@ -18,10 +18,10 @@
                    Variant="Variant.Outlined"
                    Margin="Margin.Dense"
                    Class="mb-4">
-            <MudSelectItem Value="@ClusterIPType">ClusterIP(集群内部访问)</MudSelectItem>
-            <MudSelectItem Value="@NodePortType">NodePort(节点端口对外暴露)</MudSelectItem>
-            <MudSelectItem Value="@LoadBalancerType">LoadBalancer(负载均衡器)</MudSelectItem>
-            <MudSelectItem Value="@ExternalNameType">ExternalName(外部 DNS 别名)</MudSelectItem>
+            <MudSelectItem Value="@ClusterIPType">ClusterIP（集群内部访问）</MudSelectItem>
+            <MudSelectItem Value="@NodePortType">NodePort（节点端口对外暴露）</MudSelectItem>
+            <MudSelectItem Value="@LoadBalancerType">LoadBalancer（负载均衡器）</MudSelectItem>
+            <MudSelectItem Value="@ExternalNameType">ExternalName（外部 DNS 别名）</MudSelectItem>
         </MudSelect>
         <MudTextField T="string"
                       @bind-Value="_yamlContent"

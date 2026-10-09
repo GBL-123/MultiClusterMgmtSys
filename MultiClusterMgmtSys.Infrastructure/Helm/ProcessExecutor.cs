@@ -38,7 +38,7 @@ public sealed class ProcessExecutor : IProcessExecutor
         using var process = new Process { StartInfo = startInfo };
         if (!process.Start())
         {
-            throw new Win32Exception($"无法启动进程:{fileName}");
+            throw new Win32Exception($"无法启动进程：{fileName}");
         }
 
         var standardOutputTask = process.StandardOutput.ReadToEndAsync();

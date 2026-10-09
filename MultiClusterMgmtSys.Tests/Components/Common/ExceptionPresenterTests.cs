@@ -59,7 +59,7 @@ public class ExceptionPresenterTests
         await _presenter.HandleAsync(new InvalidOperationException("boom"), "刷新集群");
 
         _snackbar.Verify(s => s.Add(
-            "刷新集群失败,请稍后重试",
+            "刷新集群失败，请稍后重试",
             Severity.Error,
             It.IsAny<Action<SnackbarOptions>>(),
             It.IsAny<string>()), Times.Once);

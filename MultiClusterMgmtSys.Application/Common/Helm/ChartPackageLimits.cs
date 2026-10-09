@@ -12,7 +12,7 @@ public static class ChartPackageLimits
     {
         if (maxBytes > 0 && sizeInBytes > maxBytes)
         {
-            throw new ValidationException($"chart 包超出大小上限({maxBytes / 1024 / 1024} MB)");
+            throw new ValidationException($"chart 包超出大小上限（{maxBytes / 1024 / 1024} MB）");
         }
     }
 }

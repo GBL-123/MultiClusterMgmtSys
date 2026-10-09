@@ -283,7 +283,7 @@ public class HelmServiceFleetDeployTests
         Assert.Null(await harness.OwnershipRepo.GetAsync(cluster.Id, "web", "nginx"));
     }
 
-    private const string ClusterUnreachableExceptionMessage = "无法连接目标集群,请检查集群连通性与凭据";
+    private const string ClusterUnreachableExceptionMessage = "无法连接目标集群，请检查集群连通性与凭据";
 
     private static IHttpContextAccessor Admin() => TestHttpContext.ForIdentity("alice", 7, "Admin").Object;
 

@@ -651,7 +651,7 @@ public class WorkloadService(
         try
         {
             return await read()
-                ?? throw new NotFoundException($"{operation}:资源不存在或已被删除");
+                ?? throw new NotFoundException($"{operation}：资源不存在或已被删除");
         }
         catch (Exception ex) when (ex is KubernetesException or HttpOperationException or TaskCanceledException or OperationCanceledException or HttpRequestException)
         {

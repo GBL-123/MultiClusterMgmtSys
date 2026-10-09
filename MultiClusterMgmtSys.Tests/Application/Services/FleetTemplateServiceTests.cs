@@ -313,7 +313,7 @@ public sealed class FleetTemplateServiceTests : IDisposable
             {
                 var failed = Assert.Single(result.Items, item => !item.Succeeded);
                 Assert.Equal(alphaId, failed.ClusterId);
-                Assert.Equal("下发失败,请稍后重试", failed.Message);
+                Assert.Equal("下发失败，请稍后重试", failed.Message);
             },
             () =>
             {

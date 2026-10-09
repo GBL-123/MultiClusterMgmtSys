@@ -269,7 +269,7 @@ public class ClusterCompareServiceTests : IDisposable
         var ex = await Assert.ThrowsAsync<ConflictException>(
             () => NewService().CloneAsync(new(sourceId, targetId, CompareKind.ConfigMap, NamespaceName, ResourceName)));
 
-        Assert.Equal("资源已被他人修改,请刷新后重试", ex.UserMessage);
+        Assert.Equal("资源已被他人修改，请刷新后重试", ex.UserMessage);
     }
 
     [Fact]

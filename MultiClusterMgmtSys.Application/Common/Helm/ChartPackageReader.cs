@@ -121,7 +121,7 @@ public static class ChartPackageReader
         var warnings = new List<string>();
         if (dependencies.Count > 0 && !prefixesWithChartsFolder.Contains(chartPrefix))
         {
-            warnings.Add("包声明了 dependencies 但未包含 charts/ 目录，安装可能失败(请先执行 helm dependency build 后重新打包)");
+            warnings.Add("包声明了 dependencies 但未包含 charts/ 目录，安装可能失败（请先执行 helm dependency build 后重新打包）");
         }
 
         return new ChartPackageInfo(

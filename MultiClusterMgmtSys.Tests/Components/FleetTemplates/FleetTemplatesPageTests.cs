@@ -65,7 +65,7 @@ public class FleetTemplatesPageTests
         cut.Render();
 
         Assert.Multiple(
-            () => Assert.Contains("变量:", cut.Markup),
+            () => Assert.Contains("变量：", cut.Markup),
             () => Assert.Contains("color", cut.Markup),
             () => Assert.False(cut.FindComponents<MudButton>().First(b => b.Markup.Contains("预览")).Instance.Disabled),
             () => Assert.True(cut.FindComponents<MudButton>().First(b => b.Markup.Contains("下发")).Instance.Disabled));
