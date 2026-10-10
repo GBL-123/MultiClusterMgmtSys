@@ -7,6 +7,7 @@
 @using MultiClusterMgmtSys.Web.Components.Common
 
 @inject AlertService AlertSvc
+@inject NavigationManager Navigation
 
 <PageTitle>告警中心</PageTitle>
 
@@ -16,15 +17,6 @@
             <MudStack Row="true" AlignItems="AlignItems.Center">
                 <MudText Typo="Typo.h5">告警中心</MudText>
                 <MudSpacer />
-                <MudSelect T="bool?"
-                           @bind-Value="_resolvedFilter"
-                           Label="状态"
-                           Class="alert-status-filter"
-                           Immediate="true">
-                    <MudSelectItem Value="@((bool?)false)">告警中</MudSelectItem>
-                    <MudSelectItem Value="@((bool?)true)">已解析</MudSelectItem>
-                    <MudSelectItem Value="@((bool?)null)">全部</MudSelectItem>
-                </MudSelect>
                 <MudButton Variant="Variant.Text"
                            Color="Color.Inherit"
                            StartIcon="@Icons.Material.Filled.Refresh"
@@ -32,6 +24,22 @@
                     刷新
                 </MudButton>
             </MudStack>
+
+            <MudStack Row="true" Wrap="Wrap.Wrap" AlignItems="AlignItems.Center">
+                <MudSelect T="bool?"
+                           Value="_resolvedFilter"
+                           ValueChanged="OnStatusFilterChanged"
+                           Label="状态"
+                           Variant="Variant.Outlined"
+                           Margin="Margin.Dense"
+                           Class="alert-status-filter"
+                           Style="min-width:120px;">
+                    <MudSelectItem Value="@((bool?)false)">告警中</MudSelectItem>
+                    <MudSelectItem Value="@((bool?)true)">已解析</MudSelectItem>
+                    <MudSelectItem Value="@((bool?)null)">全部</MudSelectItem>
+                </MudSelect>
+            </MudStack>
+
             <MudText Typo="Typo.caption" Class="mud-text-secondary">
                 纯读本地数据的自动评估：集群离线持续、节点未就绪与快照断流三类告警由后台评估器自动开立与解析，不提供人工关闭。
             </MudText>
@@ -64,11 +72,10 @@
             </MudTd>
             <MudTd DataLabel="规则">@context.RuleText</MudTd>
             <MudTd DataLabel="集群">
-                <MudLink Href="@($"/clusters/{context.ClusterId}")"
-                         Class="link-primary"
-                         Underline="Underline.None">
+                <MudText Class="font-mono link-primary"
+                         @onclick="() => GoToCluster(context.ClusterId)">
                     @context.ClusterName
-                </MudLink>
+                </MudText>
             </MudTd>
             <MudTd DataLabel="信息">@(string.IsNullOrEmpty(context.Detail) ? "—" : context.Detail)</MudTd>
             <MudTd DataLabel="开立时间"><span class="font-mono">@context.OpenedAt.ToString("yyyy-MM-dd HH:mm:ss")</span></MudTd>
@@ -94,6 +101,18 @@
     private MudTable<AlertListItemViewModel> _table = default!;
 
     private Task RefreshTable() => _table.ReloadServerData();
+
+    private Task OnStatusFilterChanged(bool? resolved)
+    {
+        _resolvedFilter = resolved;
+
+        return RefreshTable();
+    }
+
+    private void GoToCluster(int clusterId)
+    {
+        Navigation.NavigateTo($"/clusters/{clusterId}");
+    }
 
     private async Task<TableData<AlertListItemViewModel>> LoadData(TableState state, CancellationToken _)
     {

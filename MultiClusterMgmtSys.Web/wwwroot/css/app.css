@@ -1657,27 +1657,6 @@ html .dashboard-stat-note {
     color: #6E675C;
 }
 
-.hint-compact {
-    font-size: 12px;
-    color: #6E675C;
-}
-
-.fleet-var-strip {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-}
-
-.var-chip {
-    background: #FCFBF7;
-    border: 1px solid #E2DED5;
-    border-radius: 3px;
-    padding: 2px 8px;
-    font-size: 12px;
-    color: #111111;
-}
-
 .fleet-template-textarea {
     height: 300px;
     min-height: 220px;
@@ -1687,45 +1666,29 @@ html .dashboard-stat-note {
     width: 100%;
 }
 
-.fleet-select-wrap {
-    display: flex;
-    width: 460px;
-    max-width: 100%;
-}
 
-.fleet-matrix {
-    border: 1px solid #E2DED5;
-    border-radius: 3px;
-    background: #FCFBF7;
-    padding: 8px 12px;
-    max-width: 860px;
-}
-
-.fleet-matrix-row {
+/* tab 条复用全站 .detail-tabs 契约(Class 挂 detail-tabs),此处只管面板内布局:
+ * 变量一列竖排,标签走 MudTextField 自带浮动 Label(与其他页表单一致)。 */
+.fleet-tab-vars {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 12px;
-    padding: 4px 0;
 }
 
-.fleet-matrix-head {
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    color: #6E675C;
-    border-bottom: 1px solid #E2DED5;
-    padding-bottom: 6px;
+/* tab 条:MudBlazor 原生 wrapper max-content 单行布局,页签超出视口即自带左右箭头 translateX 条内滚动。
+ * content 必须加 contain:inline-size:每页签被 MudTabs 内联写死 min-width:160px(MinimumTabWidth 默认),
+ * n×160 的固有(min-content)宽本会穿透 content 的 overflow:hidden 撑宽 MudPaper 直至文档出横向滚动条
+ * (Edge 实测 n=12 时 doc.scrollWidth 1968 > 视口 1650),且 content 同被吹宽后 C# 度量永判「未超出」、
+ * 原生箭头永不出现;size containment 切断固有宽传播后条恒 = 卡片宽、超出的页签溢出范围(sw)保留,箭头恢复出现。
+ * 百分比 max-width(基准被自身撑宽=循环,按 none 处理)、min-width:0(不减固有贡献)、
+ * 均分(flex:1 1 0)/换行(flex-wrap:wrap)类覆盖实测全无效或有害,勿加。 */
+.fleet-tabs .mud-tabs-tabbar-content {
+    contain: inline-size;
 }
 
-.fleet-matrix-head > span {
-    flex: 0 0 130px;
-}
-
-.fleet-matrix-cluster {
-    flex: 0 0 130px;
-}
-
-.fleet-matrix-row > .fleet-matrix-cell {
-    flex: 1 1 0;
+/* 变量输入格:常规 Outlined 表单(与其他页一致),仅限宽避免单列过长。 */
+.fleet-tabs .fleet-matrix-cell {
+    max-width: 640px;
 }
 
 .fleet-preview-row {
@@ -1734,6 +1697,18 @@ html .dashboard-stat-note {
     background: #FCFBF7;
     padding: 12px;
     margin-top: 12px;
+}
+
+/* 预览卡不处于 /compare 的定高 flex 链中:不限高会随差异内容把卡片撑到浏览器底;
+ * 逐卡限高 + 卡内滚动,标题行与图例留在卡外,与 /compare 的 bounded 口径一致。 */
+.fleet-preview-row .compare-diff-grid {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.fleet-preview-row .compare-plain {
+    max-height: 60vh;
+    overflow-y: auto;
 }
 
 .fleet-deploy-row {
@@ -1760,4 +1735,17 @@ html .dashboard-stat-note {
 .fleet-count-line {
     font-size: 13px;
     color: #6E675C;
+}
+
+/* 17. 告警角标(AlertBell):收紧 MudBadge 默认 20px 药丸,贴角 9px */
+.alert-bell .mud-badge {
+    height: 16px;
+    min-width: 16px;
+    border-radius: 8px;
+    font-size: 10px;
+    padding: 0 4px;
+}
+
+.alert-bell .mud-badge.mud-badge-top.right.mud-badge-overlap {
+    inset: auto auto calc(100% - 9px) calc(100% - 9px);
 }

@@ -4,15 +4,16 @@
 
 @using MultiClusterMgmtSys.Application.Services
 
-<MudBadge Content="@(OpenCount > 0 ? OpenCount : null)"
-          Color="Color.Error"
-          Overlap="true"
-          Class="mr-2">
-    <MudIconButton Icon="@Icons.Material.Filled.Notifications"
-                   Color="Color.Inherit"
-                   aria-label="告警中心"
-                   OnClick="GoToAlerts" />
-</MudBadge>
+<span class="alert-bell mr-2">
+    <MudBadge Content="@(OpenCount > 0 ? OpenCount : null)"
+              Color="Color.Error"
+              Overlap="true">
+        <MudIconButton Icon="@Icons.Material.Filled.Notifications"
+                       Color="Color.Inherit"
+                       aria-label="告警中心"
+                       OnClick="GoToAlerts" />
+    </MudBadge>
+</span>
 
 @code {
     /// <summary>角标轮询间隔：与后台评估器同频(1 分钟),最坏约 2 分钟上角标。</summary>

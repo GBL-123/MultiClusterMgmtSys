@@ -40,7 +40,7 @@ public class FleetTemplatesPageTests
         Assert.Multiple(
             () => Assert.Contains("舰队模板下发", cut.Markup),
             () => Assert.Contains("模板 YAML", cut.Markup),
-            () => Assert.Contains("[ 未提取到变量 ]", cut.Markup),
+            () => Assert.Contains("[ 选择目标集群并填写变量后预览 ]", cut.Markup),
             () => Assert.True(cut.FindComponents<MudButton>()
                 .Where(b => b.Markup.Contains("预览") || b.Markup.Contains("下发"))
                 .All(b => b.Instance.Disabled)));
@@ -65,7 +65,7 @@ public class FleetTemplatesPageTests
         cut.Render();
 
         Assert.Multiple(
-            () => Assert.Contains("变量：", cut.Markup),
+            () => Assert.Single(cut.FindComponents<MudTextField<string>>()),
             () => Assert.Contains("color", cut.Markup),
             () => Assert.False(cut.FindComponents<MudButton>().First(b => b.Markup.Contains("预览")).Instance.Disabled),
             () => Assert.True(cut.FindComponents<MudButton>().First(b => b.Markup.Contains("下发")).Instance.Disabled));

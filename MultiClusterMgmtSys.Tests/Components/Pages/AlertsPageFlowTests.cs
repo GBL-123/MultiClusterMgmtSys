@@ -1,5 +1,6 @@
 using System.Reflection;
 using Bunit;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using MultiClusterMgmtSys.Domain.Entities;
@@ -100,7 +101,9 @@ public sealed class AlertsPageFlowTests
             var cut = RenderAlerts(ctx);
 
             Assert.Contains("alert-target", cut.Markup);
-            Assert.Contains($"/clusters/{clusterId}", cut.Markup);
+            await cut.InvokeAsync(() => cut.Find(".link-primary").Click());
+            var nav = ctx.Services.GetRequiredService<NavigationManager>();
+            Assert.EndsWith($"/clusters/{clusterId}", nav.Uri);
             Assert.Contains("alert-status-filter", cut.Markup);
         }
         finally

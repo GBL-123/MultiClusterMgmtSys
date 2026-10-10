@@ -30,56 +30,45 @@
                   aria-label="模板 YAML"
                   placeholder="@TemplatePlaceholder"></textarea>
 
-        <div class="mt-2 fleet-var-strip">
-            <span class="font-mono hint-compact">@(_vars.Count == 0 ? "[ 未提取到变量 ]" : $"变量：{_vars.Count}")</span>
-            @foreach (var variable in _vars)
-            {
-                <span class="font-mono var-chip">@variable</span>
-            }
-        </div>
-
         <MudText Typo="Typo.subtitle2" Class="mt-4">目标集群与变量矩阵</MudText>
-        <div class="fleet-select-wrap">
-            <MudSelect T="List<int>"
-                       Value="@(new List<int>(_selectedClusterIds))"
-                       ValueChanged="OnClustersChanged"
-                       MultiSelection="true"
-                       Label="目标集群（可多选）"
-                       Variant="Variant.Outlined"
-                       Margin="Margin.Dense">
-                @foreach (var cluster in _clusters)
-                {
-                    <MudSelectItem T="int" Value="@cluster.Id">@cluster.Name</MudSelectItem>
-                }
-            </MudSelect>
-        </div>
+        <MudSelect T="int"
+                   SelectedValues="@(SelectedClusterIdsReadOnly)"
+                   SelectedValuesChanged="OnClustersSelectionChanged"
+                   MultiSelection="true"
+                   MultiSelectionTextFunc="MultiSelectionText"
+                   Label="目标集群（可多选）"
+                   Variant="Variant.Outlined"
+                   Margin="Margin.Dense">
+            @foreach (var cluster in _clusters)
+            {
+                <MudSelectItem T="int" Value="@cluster.Id">@cluster.Name</MudSelectItem>
+            }
+        </MudSelect>
 
         @if (_selectedClusterIds.Count > 0 && _vars.Count > 0)
         {
-            <div class="mt-2 fleet-matrix">
-                <div class="fleet-matrix-row fleet-matrix-head" role="row" aria-label="变量矩阵表头">
-                    <span class="font-mono">集群</span>
-                    @foreach (var variable in _vars)
-                    {
-                        <span class="font-mono">@variable</span>
-                    }
-                </div>
+            <MudTabs @bind-ActivePanelIndex="_activeFleetTab"
+                     Class="detail-tabs fleet-tabs"
+                     Elevation="0"
+                     Rounded="false">
                 @foreach (var cluster in SelectedClusters())
                 {
-                    <div class="fleet-matrix-row" role="row" aria-label="集群 {cluster.Name} 变量行">
-                        <span class="font-mono fleet-matrix-cluster">@cluster.Name</span>
-                        @foreach (var variable in _vars)
-                        {
-                            <MudTextField T="string"
-                                          Value="@MatrixValue(cluster.Id, variable)"
-                                          ValueChanged="@(value => OnMatrixCellChanged(cluster.Id, variable, value))"
-                                          Variant="Variant.Outlined"
-                                          Margin="Margin.Dense"
-                                          Class="fleet-matrix-cell" />
-                        }
-                    </div>
+                    <MudTabPanel Text="@cluster.Name">
+                        <div class="fleet-tab-vars">
+                            @foreach (var variable in _vars)
+                            {
+                                <MudTextField T="string"
+                                              Label="@variable"
+                                              Value="@MatrixValue(cluster.Id, variable)"
+                                              ValueChanged="@(value => OnMatrixCellChanged(cluster.Id, variable, value))"
+                                              Variant="Variant.Outlined"
+                                              Margin="Margin.Dense"
+                                              Class="fleet-matrix-cell" />
+                            }
+                        </div>
+                    </MudTabPanel>
                 }
-            </div>
+            </MudTabs>
         }
         else
         {
@@ -190,6 +179,8 @@
 
     private bool _deploying;
 
+    private int _activeFleetTab;
+
     private string _previewProgress = "";
 
     private string _deployProgress = "";
@@ -225,12 +216,23 @@
         _deployResult = null;
     }
 
-    private async Task OnClustersChanged(List<int> value)
+    private IReadOnlyCollection<int> SelectedClusterIdsReadOnly
+        => _selectedClusterIds;
+
+    /// <summary>多选框显示文本：MudBlazor 多选默认只显示转换后的原始值（集群 Id），映射回集群名。</summary>
+    private string MultiSelectionText(IReadOnlyList<string?>? values)
+        => string.Join("、", (values ?? []).Select(value =>
+            int.TryParse(value, out var id) && _clusters.FirstOrDefault(cluster => cluster.Id == id) is { } cluster
+                ? cluster.Name
+                : value ?? ""));
+
+    private async Task OnClustersSelectionChanged(IReadOnlyCollection<int> value)
     {
-        _selectedClusterIds = value;
+        _selectedClusterIds = value.ToList();
         _matrix = _matrix.Where(kv => _selectedClusterIds.Contains(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value);
         _previewItems = [];
         _deployResult = null;
+        _activeFleetTab = 0;
         _vars = _templateYaml.Length > 0 ? FleetTemplateVariables.Extract(_templateYaml) : _vars;
         await Task.CompletedTask;
     }
