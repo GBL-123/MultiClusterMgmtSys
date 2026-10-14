@@ -106,11 +106,13 @@ public class TopologyCardTests
         Assert.True(center.GetProperty("isCenter").GetBoolean());
         Assert.False(center.GetProperty("isMissing").GetBoolean());
         Assert.Equal("Running", center.GetProperty("statusHint").GetString());
+        Assert.Equal("运行中", center.GetProperty("statusHintText").GetString());
         Assert.Equal(0, center.GetProperty("layer").GetInt32());
         var node = nodes[1];
         Assert.Equal("Node/node-1", node.GetProperty("id").GetString());
         Assert.False(node.GetProperty("isCenter").GetBoolean());
         Assert.Equal("Ready", node.GetProperty("statusHint").GetString());
+        Assert.Equal("就绪", node.GetProperty("statusHintText").GetString());
         Assert.Equal(1, node.GetProperty("layer").GetInt32());
         Assert.Equal(0, node.GetProperty("order").GetInt32());
         var edges = payload.GetProperty("edges");

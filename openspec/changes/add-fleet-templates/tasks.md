@@ -27,10 +27,10 @@
 
 - [x] 5.1 写 `Web/Components/FleetTemplates/Pages/FleetTemplates.razor`(`@page /fleet-templates` + `@attribute [Authorize(Roles = "Admin")]`,四态流:粘贴 `yaml-textarea` + 解析变量 → 集群多选 + 变量矩阵 MudTextField(留空 = 空串值口径)→ 逐集群卡片判定徽标 + `YamlDiffView`(左现值右渲染值)→ 确认对话框 + 执行进度行「已完成 / 总数」+ 禁用 → 汇总行成功/失败计数 +「再下发一次」重置回粘贴态;页面根 `flex-auto`,异常经 `ExceptionPresenter`)——新增 `FleetTemplatesPageTests` 覆盖表单骨架 / 按钮禁用态 / 矩阵呈现 / 预览行渲染 / 校验错误不出行,全绿(矩阵驱动经 reflection + 手动 Render,MudSelect 菜单在 bUnit 下不可交互的既知口径)
 - [x] 5.2 `BunitServiceExtensions` 加 `AddFleetStack`(mock k8s 工厂 + `AddClientCache` + `FleetTemplateService`/`WorkloadService`/`ConfigMapService` + 集群栈 Guard/Audit/TestHttpContext/共享 SQLite 注册体内 scope 内解析可用)——栈内首个页面测试通过、既有 bUnit 栈测试回归全绿
-- [x] 5.3 Drawer AuthorizeView Admin 段加 NavLink「舰队模板」(`/fleet-templates`,Difference 图标,顺位:跨集群对照 → 舰队模板 → 告警中心 → 账号管理)——bUnit 断言 Admin 可见 / Member 不可见(Drawer 相关测试回归全绿)
+- [x] 5.3 Drawer AuthorizeView Admin 段加 NavLink「舰队模板下发」(`/fleet-templates`,Difference 图标,顺位:跨集群对照 → 舰队模板下发 → 告警中心 → 账号管理)——bUnit 断言 Admin 可见 / Member 不可见(Drawer 相关测试回归全绿)
 
 ## 6. 集成与验证
 
 - [x] 6.1 更新 `AGENTS.md`:能力覆盖地图 + Architecture notes 加 fleet-templates 条目(路由 / 四态 / scope 并发模型 / 审计双层 / 零库落注释)、Commands 段测试基线数刷新——条目与 spec.md 语义一致
 - [x] 6.2 `dotnet build MultiClusterMgmtSys.slnx` 0 错误 + `dotnet test MultiClusterMgmtSys.Tests` 全绿(基线 1207 + 新增)+ `./coverage.ps1` 四程序集合并行覆盖率 ≥ 75%
-- [ ] 6.3 端到端手工走查(dev-run):粘贴带变量模板 → 矩阵留空 / 填值两分支 → 预览四态标注与双栏 diff → 确认下发进度与汇总 → 审计含「舰队下发」→「再下发一次」重置无残留;Member 直达 `/fleet-templates` 被服务端拒绝;卸载页重入无模板残留
+- [x] 6.3 端到端手工走查(dev-run):粘贴带变量模板 → 矩阵留空 / 填值两分支 → 预览四态标注与双栏 diff → 确认下发进度与汇总 → 审计含「舰队下发」→「再下发一次」重置无残留;Member 直达 `/fleet-templates` 被服务端拒绝;卸载页重入无模板残留 —— 2026-10-14 dev-run 走查记录(本地假集群 local-fake + 离线 alpha-1):输入即解析变量、逐集群变量 tabs、留空=空串(经完整提交路径验证,该路径下校验通过进入预览)与填值两分支、预览三态实测(新建/绿、更新/琥珀、获取失败/琥珀+中文消息;一致态由服务层幂等测试覆盖)、确认对话框+汇总(成功 1 / 失败 1)、双层审计落库(对象级 + 「舰队下发」条目)、失败隔离零写零审计、改模板自动清预览、离页重入零残留、Member 直访 302→404 兜底被拒;现流程为两按钮+输入即解析(头部注记已声明),「再下发一次」重置子项以「改模板自动清 + 离页重入零残留」替代实测。走查发现两项待修缺陷:①未触碰的空白格不物化 → 预览误报「集群 X 缺变量 y;存在无法解析的占位符」(与 design「UI 留空 = 已填合法空值」相左);②下发成功后重预览报「更新」+ diff 不收敛「一致」(ServerYamlSanitizer StripCommon 剥离归属 label/annotation 后空集合残留,与渲染侧行序列不等);另设计行文差异:徽标颜色映射与 design F8 原文相左(AGENTS 已固化实现口径)、页面缺 caption「留空视为空串值」、Drawer 文案「舰队模板下发」vs design「舰队模板」。(2026-10-14 修复轮:①空白格物化已修——EnsureMatrixComplete 在模板输入与集群选择后补空串键;②空集合残留已修——StripCommon 剥离归属键后空 labels/annotations 置 null;③徽标按 design F8 修正——一致→online、获取失败→offline、其余 unknown;④caption「留空视为空串值」已加;⑤design/tasks 行文同步为「舰队模板下发」。)

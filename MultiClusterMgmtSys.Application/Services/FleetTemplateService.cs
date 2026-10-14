@@ -483,7 +483,7 @@ public class FleetTemplateService(
                 "Fleet template fetch current failed clusterId={ClusterId} family={Family}",
                 unit.ClusterId,
                 unit.Kind);
-            return (false, null, $"获取现有{unit.Kind.ToDisplayText()}资源失败，请检查集群可达性[{ex.GetType().Name}:{ex.Message}]");
+            return (false, null, $"获取现有{unit.Kind.ToDisplayText()}资源失败，请检查集群可达性");
         }
     }
 

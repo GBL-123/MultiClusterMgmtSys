@@ -25,4 +25,4 @@
 
 - [x] 4.1 更新 `AGENTS.md`(Architecture notes 告警中心条目、Database quirks 的 AlertRecord 建表删库重建警示、Drawer 导航与 Profile 设置卡提及),验证描述与实现逐项一致
 - [x] 4.2 全量验证:`dotnet build MultiClusterMgmtSys.slnx` 0 错误 + `dotnet test MultiClusterMgmtSys.Tests` 全绿 + `./coverage.ps1` 四程序集合并行覆盖 ≥75%,验证三条命令输出
-- [ ] 4.3 端到端走查(`dotnet run`,删库重建后):1)Member 直访 `/alerts` 被拒、AppBar 无铃铛;2)Admin 见铃铛且 open=0 无角标;3)停用同步或使集群离线,评估轮后角标与页面出现对应告警,恢复后 resolved 留痕;4)Profile 告警设置卡改阈值生效;5)Drawer「告警中心」入口可达——逐项核对 spec 场景
+- [x] 4.3 端到端走查(`dotnet run`,删库重建后):1)Member 直访 `/alerts` 被拒、AppBar 无铃铛;2)Admin 见铃铛且 open=0 无角标;3)停用同步或使集群离线,评估轮后角标与页面出现对应告警,恢复后 resolved 留痕;4)Profile 告警设置卡改阈值生效;5)Drawer「告警中心」入口可达——逐项核对 spec 场景

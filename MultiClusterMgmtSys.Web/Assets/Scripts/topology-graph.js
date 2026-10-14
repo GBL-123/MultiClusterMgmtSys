@@ -49,6 +49,7 @@ function buildOption(data) {
         kind: node.kind,
         kindText: node.kindText,
         status: node.statusHint || "",
+        statusText: node.statusHintText || "",
         x: (node.order || 0) * SPACING_X,
         y: (node.layer || 0) * ROW_HEIGHT,
         symbol: "rect",
@@ -86,8 +87,12 @@ function buildOption(data) {
                     return "";
                 }
                 const lines = [params.data.name, params.data.kindText];
-                if (params.data.status) {
-                    lines.push(params.data.status);
+                const mapped = params.data.statusText;
+                const raw = params.data.status;
+                if (mapped && raw && mapped !== raw) {
+                    lines.push(`${mapped} (${raw})`);
+                } else if (mapped || raw) {
+                    lines.push(mapped || raw);
                 }
                 return lines.join("\n");
             }
@@ -96,13 +101,14 @@ function buildOption(data) {
             {
                 type: "graph",
                 layout: "none",
+                preserveAspect: "contain",
                 roam: true,
                 data: nodes,
                 links: edges,
                 top: 30,
                 bottom: 30,
-                left: 40,
-                right: 40,
+                left: 60,
+                right: 60,
                 emphasis: { focus: "adjacency", itemStyle: { borderColor: AMBER } }
             }
         ]

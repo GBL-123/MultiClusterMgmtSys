@@ -13,7 +13,15 @@
                 <span>就绪</span>
                 <span class="dashboard-trend-swatch is-offline"></span>
                 <span>未就绪</span>
+                <span class="dashboard-trend-swatch is-total"></span>
+                <span>合计</span>
             </div>
+            @if (Latest is not null)
+            {
+                <span class="dashboard-trend-now font-mono">
+                    就绪 @Latest.ReadyNodes · 未就绪 @Latest.NotReadyNodes · 共 @(Latest.ReadyNodes + Latest.NotReadyNodes)
+                </span>
+            }
             <span class="dashboard-trend-note font-mono">近 24 小时</span>
         </div>
     </div>
@@ -50,6 +58,9 @@
     [Parameter]
 
     public DateTime? NowUtc { get; set; }
+
+    private DashboardTrendPointViewModel? Latest
+        => Series is { Count: > 0 } ? Series[^1] : null;
 
     private ElementReference _chartEl;
 
@@ -111,10 +122,14 @@
     {
         var now = DateTime.SpecifyKind(NowUtc ?? DateTime.UtcNow, DateTimeKind.Utc);
         var windowStart = now.AddHours(-WindowHours);
+        var totalNodes = Series.Count == 0
+            ? 0
+            : Series.Max(static point => point.ReadyNodes + point.NotReadyNodes);
         return new
         {
             windowStart = FormatIso(windowStart),
             windowEnd = FormatIso(now),
+            totalNodes,
             series = new object[]
             {
                 new

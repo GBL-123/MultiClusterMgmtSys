@@ -94,5 +94,15 @@ public static class ServerYamlSanitizer
         metadata.ManagedFields = null;
         metadata.Labels?.Remove(ResourceOwnershipKeys.OwnerUidLabel);
         metadata.Annotations?.Remove(ResourceOwnershipKeys.OwnerNameAnnotation);
+
+        if (metadata.Labels is { Count: 0 })
+        {
+            metadata.Labels = null;
+        }
+
+        if (metadata.Annotations is { Count: 0 })
+        {
+            metadata.Annotations = null;
+        }
     }
 }

@@ -31,6 +31,7 @@
                   placeholder="@TemplatePlaceholder"></textarea>
 
         <MudText Typo="Typo.subtitle2" Class="mt-4">目标集群与变量矩阵</MudText>
+        <MudText Typo="Typo.caption" Class="mud-text-secondary">留空视为空串值</MudText>
         <MudSelect T="int"
                    SelectedValues="@(SelectedClusterIdsReadOnly)"
                    SelectedValuesChanged="OnClustersSelectionChanged"
@@ -155,6 +156,10 @@
             }
         </MudPaper>
     }
+
+    @* 页面根定高使长内容溢出容器(卡片贴浏览器底):流内尾垫片把文档滚动区撑过末卡,
+       为其留出 16px 呼吸间隙;margin-bottom 与 stack 内边距均不计入滚动溢出区,替代无效。 *@
+    <div aria-hidden="true" class="fleet-tail-gap"></div>
 </MudStack>
 
 @code {
@@ -212,6 +217,7 @@
     {
         _templateYaml = args.Value?.ToString() ?? "";
         _vars = FleetTemplateVariables.Extract(_templateYaml);
+        EnsureMatrixComplete();
         _previewItems = [];
         _deployResult = null;
     }
@@ -234,6 +240,7 @@
         _deployResult = null;
         _activeFleetTab = 0;
         _vars = _templateYaml.Length > 0 ? FleetTemplateVariables.Extract(_templateYaml) : _vars;
+        EnsureMatrixComplete();
         await Task.CompletedTask;
     }
 
@@ -249,6 +256,23 @@
         }
 
         cells[variable] = value;
+    }
+
+    private void EnsureMatrixComplete()
+    {
+        foreach (var clusterId in _selectedClusterIds)
+        {
+            if (!_matrix.TryGetValue(clusterId, out var cells))
+            {
+                cells = [];
+                _matrix[clusterId] = cells;
+            }
+
+            foreach (var variable in _vars)
+            {
+                cells.TryAdd(variable, "");
+            }
+        }
     }
 
     private async Task PreviewAsync()
@@ -371,9 +395,8 @@
 
     private string ActionClass(FleetTemplateAction action) => action switch
     {
-        FleetTemplateAction.Create => "status-badge online",
-        FleetTemplateAction.Update => "status-badge unknown",
-        FleetTemplateAction.Identical => "status-badge offline",
+        FleetTemplateAction.Identical => "status-badge online",
+        FleetTemplateAction.FetchFailed => "status-badge offline",
         _ => "status-badge unknown"
     };
 }

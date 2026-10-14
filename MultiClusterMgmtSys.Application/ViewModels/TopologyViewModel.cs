@@ -31,6 +31,9 @@ public class TopologyNodeViewModel
     /// <summary>状态提示(原始英文,前端经显示映射转中文,未登记回退原文)。</summary>
     public string? StatusHint { get; set; }
 
+    /// <summary>状态提示的中文展示文本(未登记值回退原文,无状态提示时为 null)。</summary>
+    public string? StatusHintText => K8sDisplayText.ResourceStatusText(Kind, StatusHint);
+
     /// <summary>布局层号:中心 0、直接邻居 1(v1 仅一跳)。</summary>
     public int Layer { get; set; }
 

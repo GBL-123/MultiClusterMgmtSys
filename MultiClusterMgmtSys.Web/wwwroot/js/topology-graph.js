@@ -18703,6 +18703,7 @@ function Fk(e) {
 		kind: e.kind,
 		kindText: e.kindText,
 		status: e.statusHint || "",
+		statusText: e.statusHintText || "",
 		x: (e.order || 0) * Ok,
 		y: (e.layer || 0) * kk,
 		symbol: "rect",
@@ -18742,20 +18743,21 @@ function Fk(e) {
 			},
 			formatter: (e) => {
 				if (e.dataType !== "node") return "";
-				let t = [e.data.name, e.data.kindText];
-				return e.data.status && t.push(e.data.status), t.join("\n");
+				let t = [e.data.name, e.data.kindText], n = e.data.statusText, r = e.data.status;
+				return n && r && n !== r ? t.push(`${n} (${r})`) : (n || r) && t.push(n || r), t.join("\n");
 			}
 		},
 		series: [{
 			type: "graph",
 			layout: "none",
+			preserveAspect: "contain",
 			roam: !0,
 			data: t,
 			links: n,
 			top: 30,
 			bottom: 30,
-			left: 40,
-			right: 40,
+			left: 60,
+			right: 60,
 			emphasis: {
 				focus: "adjacency",
 				itemStyle: { borderColor: wk }

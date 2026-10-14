@@ -1377,19 +1377,21 @@ html .dashboard-stat-note {
     display: flex;
     align-items: center;
     gap: 12px;
+    margin-left: auto;
 }
 
 .dashboard-trend-legend {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-left: auto;
 }
 
+/* 图例色块:2px 圆角贴合面积图的色带观感 */
 .dashboard-trend-swatch {
     width: 10px;
     height: 10px;
     display: inline-block;
+    border-radius: 2px;
 }
 
 .dashboard-trend-swatch.is-online {
@@ -1400,8 +1402,28 @@ html .dashboard-stat-note {
     background: #9F2F2D;
 }
 
+/* 合计是堆叠顶边的墨色细线(非面积),图例用 2px 短线区分于实心方块 */
+.dashboard-trend-swatch.is-total {
+    height: 2px;
+    background: #111111;
+}
+
 .dashboard-trend-note {
     color: #6E675C;
+    white-space: nowrap;
+}
+
+/* 卡片头右侧的"最新一次"读数,与图例共占一行,挤掉时间窗说明。
+   读数含「就绪 / 未就绪 / 共 N」三项,与堆叠面积图的顶边口径一致。 */
+.dashboard-trend-now {
+    margin-left: 4px;
+    padding: 2px 8px;
+    color: #111111;
+    background: #FCFBF7;
+    border: 1px solid #E2DED5;
+    border-radius: 2px;
+    font-size: 12px;
+    line-height: 1.4;
     white-space: nowrap;
 }
 
@@ -1715,6 +1737,17 @@ html .dashboard-stat-note {
     border-top: 1px solid #E2DED5;
     padding: 8px 0;
 }
+
+/* 页面根定高使长内容溢出容器(末卡贴浏览器底无间隙):尾部流内垫片把文档
+ * 滚动区撑过末卡,补 16px 呼吸间隙;margin 与 stack 内边距不计入滚动溢出区。
+ * MudStack 自带 gap-3(12px,官网 API:Spacing 步进 4px、默认 3),垫片前会被
+ * 再加一次,故用负 margin 把 gap 顶回去:末卡下净空 = 16px,与其他页一致。 */
+.fleet-tail-gap {
+    height: 16px;
+    flex-shrink: 0;
+    margin-top: -12px;
+}
+
 
 .fleet-cluster-name {
     min-width: 160px;

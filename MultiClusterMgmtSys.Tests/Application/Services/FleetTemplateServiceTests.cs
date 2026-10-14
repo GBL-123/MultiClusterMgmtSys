@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using MultiClusterMgmtSys.Application;
 using MultiClusterMgmtSys.Application.Abstractions;
+using MultiClusterMgmtSys.Application.Common.Ownership;
 using MultiClusterMgmtSys.Application.Common.Yaml;
 using MultiClusterMgmtSys.Application.Enums;
 using MultiClusterMgmtSys.Application.Requests;
@@ -412,6 +413,31 @@ public sealed class FleetTemplateServiceTests : IDisposable
             () => Assert.Equal(0, second.FailureCount));
     }
 
+    [Fact]
+    public async Task Repeat_deploy_of_ownership_stamped_object_returns_identical()
+    {
+        var (alphaId, _, _) = await SeedClustersAsync("alpha");
+        _alpha.SetupSequence(x => x.CoreV1.ReadNamespacedConfigMapWithHttpMessagesAsync(
+                It.Is<string>(n => n == ResourceName),
+                It.Is<string>(n => n == NamespaceName),
+                It.IsAny<bool?>(),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(K8sMocks.K8sError(404))
+            .ReturnsAsync(new HttpOperationResponse<V1ConfigMap> { Body = OwnershipStampedConfigMap("blue") });
+        _alpha.SetupCreateConfigMap(NamespaceName);
+        var service = NewService();
+        var request = DeployRequest([alphaId], ConfigMapTemplate(), ColorMatrix(alphaId, "blue"));
+
+        var first = await service.DeployToFleetAsync(request);
+        var second = await service.DeployToFleetAsync(request);
+
+        Assert.Multiple(
+            () => Assert.Equal(FleetTemplateAction.Create, first.Items[0].Action),
+            () => Assert.Equal(FleetTemplateAction.Identical, second.Items[0].Action),
+            () => Assert.True(second.Items[0].Succeeded));
+    }
+
     private static string ConfigMapTemplate() => $"""
         apiVersion: v1
         kind: ConfigMap
@@ -494,6 +520,20 @@ public sealed class FleetTemplateServiceTests : IDisposable
             ResourceVersion = "123",
             CreationTimestamp = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
             ManagedFields = [new V1ManagedFieldsEntry { Manager = "kubectl" }]
+        },
+        Data = new Dictionary<string, string> { ["color"] = color }
+    };
+
+    private static V1ConfigMap OwnershipStampedConfigMap(string color) => new()
+    {
+        Metadata = new V1ObjectMeta
+        {
+            Name = ResourceName,
+            NamespaceProperty = NamespaceName,
+            Uid = "uid-server",
+            ResourceVersion = "123",
+            Labels = new Dictionary<string, string> { [ResourceOwnershipKeys.OwnerUidLabel] = "7" },
+            Annotations = new Dictionary<string, string> { [ResourceOwnershipKeys.OwnerNameAnnotation] = "admin" }
         },
         Data = new Dictionary<string, string> { ["color"] = color }
     };

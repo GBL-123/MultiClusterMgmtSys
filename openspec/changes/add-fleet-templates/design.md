@@ -24,7 +24,7 @@
 
 ### F1 入口与页面形态:独立页 + Drawer Admin 段
 
-路由 `/fleet-templates`,页面 `Web/Components/FleetTemplates/Pages/FleetTemplates.razor`(命名空间 `MultiClusterMgmtSys.Web.Components.FleetTemplates`),页面级 `@attribute [Authorize(Roles = "Admin")]`。四态流程(粘贴 → 矩阵 → 预览 → 执行 / 汇总)装不进对话框,且与 `/compare` 同为工作台页形态,不接 `ClusterSelectSidebar`(目标集群由页面内多选控件表达)。Drawer 入口在 AuthorizeView Admin 段内 NavLink「舰队模板」(图标 `Icons.Material.Filled.Difference`),顺位:跨集群对照 → **舰队模板** → 告警中心 → 账号管理(add-alert-center 同段相邻,两者落位互不冲突)。备选否决:挂在 /helm 或 /compare 下的对话框(四态 + 逐集群双栏 diff 展示面过大)。
+路由 `/fleet-templates`,页面 `Web/Components/FleetTemplates/Pages/FleetTemplates.razor`(命名空间 `MultiClusterMgmtSys.Web.Components.FleetTemplates`),页面级 `@attribute [Authorize(Roles = "Admin")]`。四态流程(粘贴 → 矩阵 → 预览 → 执行 / 汇总)装不进对话框,且与 `/compare` 同为工作台页形态,不接 `ClusterSelectSidebar`(目标集群由页面内多选控件表达)。Drawer 入口在 AuthorizeView Admin 段内 NavLink「舰队模板下发」(图标 `Icons.Material.Filled.Difference`),顺位:跨集群对照 → **舰队模板下发** → 告警中心 → 账号管理(add-alert-center 同段相邻,两者落位互不冲突)。备选否决:挂在 /helm 或 /compare 下的对话框(四态 + 逐集群双栏 diff 展示面过大)。
 
 ### F2 diff 复用:YamlDiff 直接引用 + CompareDiffView 提取薄壳化
 

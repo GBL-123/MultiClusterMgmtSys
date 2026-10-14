@@ -45,4 +45,4 @@
 
 - [x] 6.1 `dotnet build MultiClusterMgmtSys.slnx` 0 错误且 `dotnet test MultiClusterMgmtSys.Tests` 全绿(基线数量 + 新增 TopologyServiceTests/TopologyCardTests)
 - [x] 6.2 `./coverage.ps1` 四程序集合并行覆盖率 ≥75% 门禁通过(新代码有覆盖贡献)
-- [ ] 6.3 dev-run 手工端到端走查:Pod 中心全边型、Service 中心含 Ingress 路由、缺失引用虚线节点、节点点击跳转、Secret 中心无值泄露、Member 账号可见,记录走查结果
+- [x] 6.3 dev-run 手工端到端走查:Pod 中心全边型、Service 中心含 Ingress 路由、缺失引用虚线节点、节点点击跳转、Secret 中心无值泄露、Member 账号可见,记录走查结果(2026-10-14 本地假集群(8443)视觉走查:Pod 五类边齐全 + missing-cm 虚线节点;Service 含 Ingress「路由」边;Pod 节点点击跳转 /clusters→详情、Ingress 终端停留;Member 视图与 Admin 一致;全页 DOM 泄露扫描 clean。Secret 中心口径由服务层测试覆盖(UI v1 无 Secret 拓扑页)。走查另发现并修复 Service 小图节点压扁:ECharts graph view 默认逐轴非均匀 fit-to-fill,topology-graph.js series 加 `preserveAspect: "contain"`、边距 40→60,像素探针复验节点恒 110×34)

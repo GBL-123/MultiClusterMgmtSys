@@ -258,4 +258,20 @@ public class K8sDisplayTextTests
         Assert.Equal(expectedText, K8sDisplayText.PvcPhaseText(phase));
         Assert.Equal(expectedClass, K8sDisplayText.PvcPhaseCssClass(phase));
     }
+
+    [Theory]
+    [InlineData("Pod", "Running", "运行中")]
+    [InlineData("Pod", "Pending", "等待中")]
+    [InlineData("Pod", "Succeeded", "已完成")]
+    [InlineData("Node", "Ready", "就绪")]
+    [InlineData("Node", "NotReady", "未就绪")]
+    [InlineData("PersistentVolumeClaim", "Bound", "已绑定")]
+    [InlineData("PersistentVolumeClaim", "Lost", "丢失")]
+    [InlineData("Service", "ClusterIP", "ClusterIP")]
+    [InlineData("Pod", "Mystery", "Mystery")]
+    [InlineData("Pod", null, null)]
+    public void ResourceStatus_maps_by_kind_and_falls_back_to_raw(string kind, string? status, string? expected)
+    {
+        Assert.Equal(expected, K8sDisplayText.ResourceStatusText(kind, status));
+    }
 }

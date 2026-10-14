@@ -1,4 +1,5 @@
 using Bunit;
+using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using MultiClusterMgmtSys.Application.Requests;
 using MultiClusterMgmtSys.Application.Services;
@@ -40,6 +41,7 @@ public class FleetTemplatesPageTests
         Assert.Multiple(
             () => Assert.Contains("舰队模板下发", cut.Markup),
             () => Assert.Contains("模板 YAML", cut.Markup),
+            () => Assert.Contains("留空视为空串值", cut.Markup),
             () => Assert.Contains("[ 选择目标集群并填写变量后预览 ]", cut.Markup),
             () => Assert.True(cut.FindComponents<MudButton>()
                 .Where(b => b.Markup.Contains("预览") || b.Markup.Contains("下发"))
@@ -69,6 +71,31 @@ public class FleetTemplatesPageTests
             () => Assert.Contains("color", cut.Markup),
             () => Assert.False(cut.FindComponents<MudButton>().First(b => b.Markup.Contains("预览")).Instance.Disabled),
             () => Assert.True(cut.FindComponents<MudButton>().First(b => b.Markup.Contains("下发")).Instance.Disabled));
+    }
+
+    [Fact]
+    public async Task Template_input_materializes_blank_cells_for_selected_clusters()
+    {
+        await using var ctx = new BunitHost();
+        var (harness, _) = ctx.AddFleetStack();
+        var auth = ctx.AddAuthorization();
+        auth.SetAuthorized("admin");
+        auth.SetRoles("Admin");
+        var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("alpha"));
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.FleetTemplates.Pages.FleetTemplates>();
+        cut.WaitForState(() => ((List<ClusterViewModel>)ReflectGet(cut, "_clusters")).Count == 1);
+
+        ReflectSet(cut, "_selectedClusterIds", new List<int> { cluster.Id });
+        await cut.InvokeAsync(() =>
+        {
+            ReflectMethod(cut, "OnTemplateInput").Invoke(cut.Instance, [new ChangeEventArgs { Value = Template }]);
+        });
+
+        var matrix = (Dictionary<int, Dictionary<string, string>>)ReflectGet(cut, "_matrix");
+        Assert.Multiple(
+            () => Assert.Equal(new[] { "color" }, (IReadOnlyList<string>)ReflectGet(cut, "_vars")),
+            () => Assert.Equal("", matrix[cluster.Id]["color"]));
     }
 
     [Fact]

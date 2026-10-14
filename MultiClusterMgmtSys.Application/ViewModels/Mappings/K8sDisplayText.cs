@@ -425,4 +425,17 @@ public static class K8sDisplayText
         "Namespace" => "命名空间",
         _ => kind
     };
+
+    /// <summary>按资源类型映射状态提示中文文本(Pod phase/Node 就绪状态/PVC phase);未登记值回退原文,status 为 null 时为 null。</summary>
+    /// <param name="kind">资源原始 Kind(Pod/Node/PersistentVolumeClaim)。</param>
+    /// <param name="status">状态提示原始值(如 Running/Ready/Bound)。</param>
+    public static string? ResourceStatusText(string kind, string? status) => status is null
+        ? null
+        : kind switch
+        {
+            "Pod" => PodPhaseText(status),
+            "Node" => NodeStatusText(status),
+            "PersistentVolumeClaim" => PvcPhaseText(status),
+            _ => status
+        };
 }

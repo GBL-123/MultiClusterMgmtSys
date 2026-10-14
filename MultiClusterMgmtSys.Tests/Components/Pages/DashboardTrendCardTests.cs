@@ -36,6 +36,8 @@ public class DashboardTrendCardTests
         var payload = AsJson(mounts[^1].Arguments![^1]);
         Assert.Equal(FormatIso(Base.AddHours(-24)), payload.GetProperty("windowStart").GetString());
         Assert.Equal(FormatIso(Base), payload.GetProperty("windowEnd").GetString());
+        // 节点总数 = max(ready+notReady) over series = 4+0=4, 10+2=12, 9+3=12 → 12
+        Assert.Equal(12, payload.GetProperty("totalNodes").GetInt32());
 
         var seriesPayload = payload.GetProperty("series");
         Assert.Equal(2, seriesPayload.GetArrayLength());
@@ -57,9 +59,16 @@ public class DashboardTrendCardTests
         Assert.Contains("节点就绪趋势", head);
         Assert.Contains("就绪", head);
         Assert.Contains("未就绪", head);
+        Assert.Contains("合计", head);
         Assert.Contains("近 24 小时", head);
         Assert.Single(cut.FindAll(".dashboard-trend-swatch.is-online"));
         Assert.Single(cut.FindAll(".dashboard-trend-swatch.is-offline"));
+        Assert.Single(cut.FindAll(".dashboard-trend-swatch.is-total"));
+        // 最新一次快照(系列末点)读数:就绪 9 · 未就绪 3 · 共 12
+        var nowBadge = cut.Find(".dashboard-trend-now");
+        Assert.Contains("就绪 9", nowBadge.TextContent);
+        Assert.Contains("未就绪 3", nowBadge.TextContent);
+        Assert.Contains("共 12", nowBadge.TextContent);
     }
 
     [Fact]

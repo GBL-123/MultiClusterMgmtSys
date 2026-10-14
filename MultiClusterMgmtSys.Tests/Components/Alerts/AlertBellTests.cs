@@ -49,9 +49,11 @@ public sealed class AlertBellTests
         {
             var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Alerts.Shared.AlertBell>();
 
-            cut.WaitForState(() => BellInnerText(cut) is not null, TimeSpan.FromSeconds(10));
-            // 角标容器恒渲染,但 open 数为 0 时内容为空(不显示数字)。
-            Assert.Equal("", BellInnerText(cut));
+            // 等首次轮询完成(实例字段 reflect,避免依赖含糊文案)。
+            cut.WaitForState(() => ReadOpenCount(cut) is not null, TimeSpan.FromSeconds(10));
+            // open 数为 0 时整个角标不渲染:既不显示数字,也不残留空的红点圆。
+            Assert.DoesNotContain("mud-badge-overlap", cut.Markup);
+            Assert.Single(cut.FindAll("button"));
         }
         finally
         {
@@ -83,6 +85,13 @@ public sealed class AlertBellTests
         var match = System.Text.RegularExpressions.Regex.Match(
             cut.Markup, @"mud-badge-overlap"">([^<]*)</span>");
         return match.Success ? match.Groups[1].Value : null;
+    }
+
+    private static int? ReadOpenCount(IRenderedComponent<MultiClusterMgmtSys.Web.Components.Alerts.Shared.AlertBell> cut)
+    {
+        var field = typeof(MultiClusterMgmtSys.Web.Components.Alerts.Shared.AlertBell)
+            .GetField("_openCount", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        return (int?)field?.GetValue(cut.Instance);
     }
 
     [Fact]
