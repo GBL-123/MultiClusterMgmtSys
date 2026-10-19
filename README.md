@@ -1,6 +1,6 @@
 ﻿# MultiClusterMgmtSys
 
-基于 .NET 10 + Blazor 的 Kubernetes 多集群管理平台，统一管理多个集群的节点、工作负载、Pod、Service、ConfigMap、Secret、存储卷、命名空间、事件与 Helm 应用，提供全局集群健康看板，内置账号权限体系、操作审计与集群状态定时同步。
+基于 .NET 10 + Blazor 的 Kubernetes 多集群管理平台，统一管理多个集群的节点、工作负载、Pod、Service、ConfigMap、Secret、存储卷、命名空间、事件与 Helm 应用，提供全局集群健康看板、资源拓扑视图与跨集群资源对比，内置账号权限体系、操作审计、集群状态定时同步与告警中心。
 
 界面为中文，使用 MudBlazor 组件库（Swiss Industrial Print 工业印刷风格设计系统，浅色主题），数据存储采用 SQLite（零依赖，开箱即用）。
 
@@ -13,14 +13,18 @@
 - **工作负载管理**：Deployment / StatefulSet / DaemonSet / ReplicaSet 统一列表与详情（副本就绪、滚动三态、条件），YAML 在线编辑、新建、删除、扩缩容与滚动重启（能力矩阵按类型裁剪）
 - **Pod 管理**：按集群 / 命名空间浏览 Pod 列表与详情（容器、状态、条件、QoS），在线查看容器日志
 - **Service 管理**：ClusterIP / NodePort / LoadBalancer / ExternalName 四类 Service 的列表与详情、端口表、后端 EndpointSlice（旧集群自动回退 legacy Endpoints），YAML 在线编辑、新建、删除
+- **资源拓扑**：Pod / Service 详情页提供「拓扑」tab，一图展开对象的上下游引用关系（调度 / 拥有 / 选择 / 挂载 / 引用 / 路由 / 供给），引用悬空以虚线「缺失」节点呈现；支持缩放平移、点击跳转与放大查看
 - **ConfigMap 管理**：按集群浏览 ConfigMap，YAML 只读查看与在线编辑、新建、删除
 - **密钥管理**：Secret 列表 / 详情 / 新建 / 删除与 YAML 编辑，键值默认掩码、逐 key 查看明文且每次揭示写审计，非 UTF-8 二进制内容仅展示字节数
 - **存储管理**：PVC 列表 / 详情（含挂载此卷的 Pod）/ 新建 / 删除，PV 与 StorageClass 只读浏览
 - **Helm 应用管理**：上传 chart 包（.tgz）安装 / 升级 / 回滚 / 卸载 Helm Release，列表、详情、版本历史、values 与 manifest 查看；操作按安装者归属判定（Admin 任意、成员限本人安装的 Release）
 - **资源归属与自助管理**：Member 可自行创建并管理自己的工作负载 / ConfigMap / Service——归属以标签 / 注解记录在 K8s 对象上、随对象生灭，服务端强制判定；Helm 安装产生的资源与 Helm 归属记账互通，存量资源仅 Admin 可操作
+- **跨集群对比**：对同一命名空间下的同名资源做双栏 YAML 差异对照（可切换仅看差异行），并支持将源侧对象一键克隆到对照集群
+- **舰队模板下发**：粘贴 YAML 模板并填写逐集群变量矩阵，预览各集群差异（新建 / 更新 / 一致）后一次性下发到多个集群（管理员）
 - **命名空间管理**：按集群浏览命名空间（状态、标签数、创建时间），YAML 新建、删除，详情含标签 / 注解 / YAML 只读查看
 - **事件管理**：按集群浏览 K8s 事件，命名空间 / 级别 / 关键词筛选与对象类型分类，时间以相对形式展示（如「5 分钟前」）
 - **审计日志**：登录 / 注册及所有增删改操作自动记录（操作人、类别、动作、目标），Admin 可查全量，普通用户仅见本人记录
+- **告警中心**：集群离线 / 节点未就绪 / 快照断流三类规则自动开立与恢复，顶栏铃铛角标、告警列表与阈值设置（仅管理员）
 - **账号与权限**：`Admin` / `Member` 两级角色；管理员可批量删除、批量改角色、重置密码；用户可在个人资料页修改密码
 - **界面设计**：Swiss Industrial Print 工业印刷风格（浅色主题、无暗色模式），自托管 Space Grotesk / IBM Plex Mono 字体
 
@@ -33,6 +37,7 @@
 | EF Core 10 + SQLite | `EnsureCreated()` 建库，无迁移文件 |
 | ASP.NET Identity | Cookie 认证（8 小时滑动过期），角色键 `int` |
 | KubernetesClient 19 | 官方 K8s API 客户端，按集群缓存复用连接（凭据变更自动重建，空闲自动驱逐） |
+| ECharts 6 / G6 5.1.1 | 自托管前端图表与资源拓扑渲染（vite 打包为单文件 bundle，无 CDN 依赖） |
 | Serilog | 控制台 + 按天滚动文件日志（`logs/app-.log`，保留 30 天） |
 | xUnit.v3 + Moq + bUnit | 单元测试（MTP 运行器，SQLite 内存库、K8s mock） |
 
@@ -42,7 +47,7 @@
 
 ```pwsh
 dotnet build MultiClusterMgmtSys.slnx
-dotnet test MultiClusterMgmtSys.Tests           # 1187 个单元测试（xunit.v3 + Moq + bUnit，MTP 运行器）
+dotnet test MultiClusterMgmtSys.Tests           # 1342 个单元测试（xunit.v3 + Moq + bUnit，MTP 运行器）
 ./coverage.ps1                                  # 一键 UT + 覆盖率报告（四程序集合并行覆盖门禁 75%）
 dotnet run --project MultiClusterMgmtSys.Web          # http://localhost:5021
 dotnet run --project MultiClusterMgmtSys.Web --launch-profile https   # https://localhost:7081
@@ -79,6 +84,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 - 日志：按天滚动写入 `logs/app-日期.log`，保留 30 天，可直接 tail / grep 排查
 - 备份：停服后直接复制 `db/MultiClusterMgmtSys.db`
 - 注意：不要用裸 `docker compose up`，会合并 VS 调试用的 `docker-compose.override.yml`（Development 环境 + 用户密钥挂载，服务器上会失败）
+- 离线部署：根目录 `build-image.ps1`（Windows）/ `build-image.sh`（Linux）导出应用镜像 tar（默认 `multiclustermgmtsys:v1.0.0`，`-Tag` 指定版本）；`-IncludeBase` / `--include-base` 连基础镜像（builder + aspnet）一并导出为完整离线搬迁包，目标机 `docker load` 双包后构建 / 运行全程零外网
 
 ## 配置说明
 
@@ -109,11 +115,13 @@ Logging__File__Path="/data/logs/app-.log"
 │   ├── Program.cs                     # 组合根：AddApplicationServices / AddInfrastructure、认证、EnsureCreated 与管理员种子
 │   ├── appsettings.json               # 连接串、Serilog 日志路径等配置
 │   ├── Components/                    # Razor 组件（Pages/Shared/Layout + 按功能分目录）
-│   │   ├── Clusters/  Nodes/  Workloads/  Svcs/  Configmaps/  Namespaces/  Events/   # 各功能页与共享组件
-│   │   ├── Helm/  Dashboard/  Pods/  Secrets/  Storage/  AuditLogs/  Account/  Profile/  Auth/
+│   │   ├── Clusters/  Nodes/  Workloads/  Svcs/  Configmaps/  Secrets/  Storage/  Namespaces/  Events/
+│   │   ├── Helm/  FleetTemplates/  Compare/  Topology/  Alerts/  Dashboard/  Pods/  AuditLogs/
+│   │   ├── Account/  Profile/  Auth/
 │   │   └── Common/                    # 共享组件与服务（ThemeManager、ExceptionPresenter 等）
+│   ├── Assets/Scripts/                # 前端图表 / 拓扑源文件（vite 打包进 wwwroot/js 的自托管 bundle）
 │   ├── Endpoints/                     # 额外 endpoint（Identity 退出等）
-│   └── wwwroot/                       # 静态资源、自托管字体与新建对话框的 YAML 模板（templates/）
+│   └── wwwroot/                       # 静态资源、自托管字体、图表 bundle（js/）与新建对话框的 YAML 模板（templates/）
 ├── MultiClusterMgmtSys.Tests/         # xUnit.v3 + Moq + bUnit 单元测试（镜像四层目录 + TestInfrastructure + Architecture）
 ├── nginx/                             # nginx 配置与 TLS 证书（gitignored）
 ├── docker-compose.prod.yml            # 生产部署编排（应用 + nginx）

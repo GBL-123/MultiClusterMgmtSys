@@ -8,12 +8,12 @@
 
 ### Requirement: 拓扑查询按中心资源返回节点与边
 
-系统 SHALL 提供 TopologyService,接收集群 Id、命名空间、中心资源类型与名称,返回拓扑数据(节点列表 + 边列表)。节点 SHALL 携带去重标识(`Kind/name`)、原始 Kind、中文类型名、名称、命名空间、是否中心、是否缺失、状态提示(可选)与布局坐标(层号 + 层内序号);边 SHALL 携带起点、终点与中文关系名。中心节点层号 SHALL 为 0,直接邻居层号为 1(v1 仅聚合一跳关系)。中心资源类型 SHALL 支持:Pod、Service、ConfigMap、Secret、PersistentVolumeClaim、Deployment、StatefulSet、DaemonSet、Job。集群不存在或中心资源类型不支持时 SHALL 抛业务异常;集群不可达时 SHALL 转译为可达性业务异常。
+系统 SHALL 提供 TopologyService,接收集群 Id、命名空间、中心资源类型与名称,返回拓扑数据(节点列表 + 边列表)。节点 SHALL 携带去重标识(`Kind/name`)、原始 Kind、中文类型名、名称、命名空间、是否中心、是否缺失、状态提示(可选:原始值 + 中文文案)与渲染布局语义(渲染侧上行/下行、下行分组键、确定性顺序、与中心的关系名——多关系按优先级以「 / 」合并);边 SHALL 携带起点、终点与中文关系名。中心节点 SHALL 唯一并携带中心标记(v1 仅聚合一跳关系)。中心资源类型 SHALL 支持:Pod、Service、ConfigMap、Secret、PersistentVolumeClaim、Deployment、StatefulSet、DaemonSet、Job。集群不存在或中心资源类型不支持时 SHALL 抛业务异常;集群不可达时 SHALL 转译为可达性业务异常。
 
 #### Scenario: 以 Pod 为中心查询拓扑
 
 - **WHEN** 请求 Pod 中心拓扑(集群、命名空间、名称均有效)
-- **THEN** 返回的数据中该 Pod 为唯一中心节点(层号 0),其关系对象为邻居节点(层号 1),边的关系名为中文
+- **THEN** 返回的数据中该 Pod 为唯一中心节点,其关系对象为一跳邻居节点,边的关系名为中文
 
 #### Scenario: 集群不存在
 
@@ -129,7 +129,7 @@
 
 ### Requirement: 拓扑图渲染与节点点击导航
 
-拓扑 tab SHALL 以 ECharts 图渲染:中心节点 SHALL 以品牌色边框高亮,缺失节点 SHALL 以虚线样式区分,边 SHALL 带方向箭头与中文关系名;支持缩放与平移。节点点击 SHALL 跳转到该资源在系统内的详情页(Pod/工作负载/Service/ConfigMap/Secret/PVC/Node);系统内无对应页面的资源(如 Ingress、PV)SHALL 不可点击导航。相同输入的布局 SHALL 确定(同数据同坐标)。
+拓扑 tab SHALL 以自托管的 G6 组织架构图风格渲染:对象节点为卡片(资源名、类型缩写与中文类型名、命名空间与跟中心的关系三行),关系为直角连线(无箭头);中心节点 SHALL 以品牌琥珀色边框高亮,缺失节点 SHALL 以虚线边框与降低不透明度区分;图 SHALL 支持滚轮缩放与拖拽平移,并呈现「中心对象 / 关系对象 / 缺失引用 / 关系连线」图例,悬浮节点 SHALL 以提示展示完整名称与类型信息。节点点击 SHALL 跳转到该资源在系统内的详情页(Pod/工作负载(含 ReplicaSet)/Service/ConfigMap/Secret/PVC/Node);系统内无对应页面的资源(如 Ingress、PV)SHALL 不可点击导航。相同输入的布局 SHALL 确定(同数据同坐标)。渲染模块加载或渲染失败 SHALL 显示可重试的中文提示,不影响页面其余部分。
 
 #### Scenario: 点击 Service 节点跳转
 
@@ -145,6 +145,25 @@
 
 - **WHEN** 拓扑含缺失节点
 - **THEN** 该节点以虚线边框与降低不透明度渲染,与普通节点视觉可区分
+
+### Requirement: 下行邻居聚合与容器高度自适应
+
+下行侧(非属主链、非入口、非供给侧)同类型邻居数量 ≥2 时,渲染 SHALL 将其聚合为分组卡片(组名 + 数量徽标),成员节点排列于分组卡片之下;分组卡片 SHALL 不参与点击导航。拓扑容器高度 SHALL 按图内容自适应并在 420~900 像素区间夹紧(小图收紧留白、纵向大图加高)。卡片 SHALL 提供「放大查看」入口,以近全屏画布渲染同一拓扑数据(不参与高度自适应),其中点击可导航节点 SHALL 关闭对话框并跳转对应详情页。
+
+#### Scenario: 下行同类型邻居聚合为分组卡片
+
+- **WHEN** Pod 中心拓扑含 5 个下行同类型邻居(如 5 个被挂载的 ConfigMap)
+- **THEN** 渲染为「配置 · 5 项」分组卡片,5 个 ConfigMap 节点排列于其下,分组卡片点击不导航
+
+#### Scenario: 纵向大图自动加高
+
+- **WHEN** 拓扑内容高于基线高度(层数多)
+- **THEN** 容器高度自动增大以保证整图可读(上限 900 像素)
+
+#### Scenario: 放大查看
+
+- **WHEN** 点击卡片「放大查看」入口
+- **THEN** 近全屏画布渲染同一拓扑;点击其中可导航节点跳转对应详情页
 
 ### Requirement: 详情页拓扑 tab 懒加载
 
