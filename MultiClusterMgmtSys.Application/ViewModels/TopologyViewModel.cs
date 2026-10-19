@@ -3,7 +3,7 @@ using MultiClusterMgmtSys.Application.ViewModels.Mappings;
 namespace MultiClusterMgmtSys.Application.ViewModels;
 
 /// <summary>
-/// 拓扑图节点:以资源为顶点的展示单元;布局层号与层内序号由 <see cref="TopologyLayout"/> 计算。
+/// 拓扑图节点:以资源为顶点的展示单元;渲染侧、分组与顺序由 <see cref="TopologyLayout"/> 计算。
 /// </summary>
 public class TopologyNodeViewModel
 {
@@ -34,11 +34,17 @@ public class TopologyNodeViewModel
     /// <summary>状态提示的中文展示文本(未登记值回退原文,无状态提示时为 null)。</summary>
     public string? StatusHintText => K8sDisplayText.ResourceStatusText(Kind, StatusHint);
 
-    /// <summary>布局层号:中心 0、直接邻居 1(v1 仅一跳)。</summary>
-    public int Layer { get; set; }
+    /// <summary>渲染侧:true = 渲染于中心上方(属主链/入口/供给等「指向中心」的对象),false = 渲染于中心下方。</summary>
+    public bool IsAbove { get; set; }
 
-    /// <summary>层内序号(前端乘以像素间距得 x 坐标)。</summary>
+    /// <summary>下行侧分组键(同 Kind 邻居 ≥2 个时按 Kind 聚合成组卡片);null = 直接挂在中心下。</summary>
+    public string? Group { get; set; }
+
+    /// <summary>确定性渲染顺序:中心为 0,邻居按(渲染侧、分组、Kind、名称、命名空间、Id)排序后从 1 连续递增(前端按此序喂给布局引擎,同输入必得同布局)。</summary>
     public int Order { get; set; }
+
+    /// <summary>与中心的关系名;多关系按(调度/拥有/选择/路由/挂载/引用/供给)优先级以 " / " 连接;中心节点为空串。</summary>
+    public string Relation { get; set; } = "";
 }
 
 /// <summary>

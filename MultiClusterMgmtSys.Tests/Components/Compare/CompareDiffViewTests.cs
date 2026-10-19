@@ -1,4 +1,8 @@
 using Bunit;
+using k8s.Models;
+using MudBlazor;
+using MultiClusterMgmtSys.Application.Enums;
+using MultiClusterMgmtSys.Application.Requests;
 using MultiClusterMgmtSys.Application.ViewModels;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 using MultiClusterMgmtSys.Web.Components.Compare;
@@ -95,5 +99,47 @@ public class CompareDiffViewTests
         Assert.Contains("（不存在）", cut.Markup);
         Assert.Single(cut.FindAll(".empty-state.is-compact"));
         Assert.Contains("a: 2", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Clone_button_opens_dialog_and_preview_loads_via_query()
+    {
+        // 回归:CompareDiffView 打开克隆对话框时必须把 Query(集群 Id 等)传给对话框,
+        // 否则 CloneConfirmDialog 预览读取空引用,恒显示「加载预览失败」。
+        await using var ctx = new BunitHost();
+        var (harness, k8s) = ctx.AddCompareStack();
+        var auth = ctx.AddAuthorization();
+        auth.SetAuthorized("admin");
+        auth.SetRoles("Admin");
+        ctx.Renderer.SetRendererInfo(new Microsoft.AspNetCore.Components.RendererInfo("bunit", true));
+
+        var source = await harness.ClusterRepo.AddAsync(TestData.NewCluster("alpha"));
+        var target = await harness.ClusterRepo.AddAsync(TestData.NewCluster("beta"));
+        k8s.SetupReadConfigMap("web", "app", new V1ConfigMap
+        {
+            Metadata = new V1ObjectMeta { Name = "web", NamespaceProperty = "app", Uid = "uid-1" },
+            Data = new Dictionary<string, string> { ["color"] = "blue" }
+        });
+
+        var pair = Pair(targetExists: false, hasDifference: false);
+        pair.CanClone = true;
+        var query = new ComparePairQueryRequest(source.Id, target.Id, CompareKind.ConfigMap, "app", "web");
+
+        var provider = ctx.Render<MudDialogProvider>();
+        var cut = ctx.Render<CompareDiffView>(parameters => parameters
+            .Add(p => p.Pair, pair)
+            .Add(p => p.Query, query)
+            .Add(p => p.Rows, YamlDiff.Compute(pair.SourceYaml, null)));
+
+        var cloneButton = cut.FindComponents<MudButton>().First(b => b.Markup.Contains("克隆"));
+        _ = cut.InvokeAsync(() => cloneButton.Instance.OnClick.InvokeAsync());
+        await provider.InvokeAsync(() => { });
+
+        provider.WaitForState(() => provider.Markup.Contains("剥离服务端字段后的 YAML"), TimeSpan.FromSeconds(5));
+
+        Assert.Multiple(
+            () => Assert.Contains("blue", provider.Markup),
+            () => Assert.DoesNotContain("uid-1", provider.Markup),
+            () => Assert.DoesNotContain("加载预览失败", provider.Markup));
     }
 }

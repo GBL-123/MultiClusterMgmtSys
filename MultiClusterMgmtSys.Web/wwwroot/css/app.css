@@ -1661,15 +1661,93 @@ html .dashboard-stat-note {
 
 /* ---------- 17. 资源拓扑 /topology ---------- */
 
-.topology-card .topology-chart {
-    height: 420px;
+.topology-card .topology-chart,
+.topology-fullscreen .topology-chart {
     min-height: 0;
     border: 1px solid #E2DED5;
     border-radius: 3px;
-    background: #F4F4F0;
+    background:
+        linear-gradient(rgba(17, 17, 17, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(17, 17, 17, 0.025) 1px, transparent 1px),
+        #F4F4F0;
+    background-size: 20px 20px;
 }
 
-.topology-card .topology-hint {
+.topology-card .topology-chart {
+    height: 560px;
+}
+
+/* 放大查看对话框:近全屏画布(不参与卡片的按图自适应) */
+.topology-fullscreen .topology-chart {
+    height: min(80vh, 900px);
+}
+
+.topology-card .topology-legend,
+.topology-fullscreen .topology-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 18px;
+    margin-top: 10px;
+    font-size: 11px;
+    color: #57534E;
+}
+
+.topology-card .tooltip,
+.topology-fullscreen .tooltip {
+    font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.topology-card .tooltip .topo-tt-name,
+.topology-fullscreen .tooltip .topo-tt-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: #111111;
+    word-break: break-all;
+}
+
+.topology-card .tooltip .topo-tt-sub,
+.topology-fullscreen .tooltip .topo-tt-sub {
+    margin-top: 2px;
+    font-size: 10px;
+    color: #57534E;
+}
+
+.topology-card .topology-legend .sw,
+.topology-fullscreen .topology-legend .sw {
+    display: inline-block;
+    width: 14px;
+    height: 10px;
+    margin-right: 5px;
+    vertical-align: -1px;
+    border: 1px solid #C0C0C0;
+    border-radius: 1px;
+    background: #FFFFFF;
+}
+
+.topology-card .topology-legend .sw-center,
+.topology-fullscreen .topology-legend .sw-center {
+    border: 2px solid #D97706;
+}
+
+.topology-card .topology-legend .sw-missing,
+.topology-fullscreen .topology-legend .sw-missing {
+    border-style: dashed;
+    opacity: 0.65;
+}
+
+.topology-card .topology-legend .sw-edge,
+.topology-fullscreen .topology-legend .sw-edge {
+    width: 18px;
+    height: 0;
+    border: 0;
+    border-top: 1px solid #C0C0C0;
+    border-radius: 0;
+    background: transparent;
+    vertical-align: 3px;
+}
+
+.topology-card .topology-hint,
+.topology-fullscreen .topology-hint {
     margin-top: 8px;
 }
 

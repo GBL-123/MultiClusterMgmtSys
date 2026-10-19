@@ -33,6 +33,18 @@ public class DisplayComponentTests
     }
 
     [Fact]
+    public async Task StackedText_omits_secondary_when_equal_to_primary()
+    {
+        await using var ctx = new BunitHost();
+        var cut = ctx.Render<StackedText>(p => p
+            .Add(x => x.Primary, "PodReadyToStartContainers")
+            .Add(x => x.Secondary, "PodReadyToStartContainers"));
+
+        Assert.Contains("PodReadyToStartContainers", cut.Markup);
+        Assert.DoesNotContain("stacked-text-secondary", cut.Markup);
+    }
+
+    [Fact]
     public async Task StatusBadge_renders_primary_and_raw_secondary()
     {
         await using var ctx = new BunitHost();
@@ -57,6 +69,19 @@ public class DisplayComponentTests
             .Add(x => x.CssClass, "online"));
 
         Assert.Contains("在线", cut.Markup);
+        Assert.DoesNotContain("status-badge-raw", cut.Markup);
+    }
+
+    [Fact]
+    public async Task StatusBadge_omits_raw_line_when_equal_to_text()
+    {
+        await using var ctx = new BunitHost();
+        var cut = ctx.Render<StatusBadge>(p => p
+            .Add(x => x.Text, "UnknownPhase")
+            .Add(x => x.CssClass, "unknown")
+            .Add(x => x.Raw, "UnknownPhase"));
+
+        Assert.Contains("UnknownPhase", cut.Markup);
         Assert.DoesNotContain("status-badge-raw", cut.Markup);
     }
 

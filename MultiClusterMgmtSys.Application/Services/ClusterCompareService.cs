@@ -95,7 +95,7 @@ public class ClusterCompareService
     /// <summary>克隆预览:读取源资源并返回剥离服务器侧元数据后的 YAML(确认对话框展示用,不写目标集群)。</summary>
     public async Task<string> GetClonePreviewAsync(CompareCloneRequest request)
     {
-        var (_, sourceName) = await ResolveClusterNamesAsync(request.TargetClusterId, request.SourceClusterId);
+        var (sourceName, _) = await ResolveClusterNamesAsync(request.SourceClusterId, request.TargetClusterId);
         var source = await ReadSideAsync(request.Kind, request.SourceClusterId, request.Namespace, request.Name);
         if (!source.Exists)
         {

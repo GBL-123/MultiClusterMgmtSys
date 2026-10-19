@@ -1,0 +1,116 @@
+@implements IAsyncDisposable
+@using Microsoft.JSInterop
+@using MultiClusterMgmtSys.Application.ViewModels
+
+@inject IJSRuntime JS
+@inject ILogger<TopologyFullscreenDialog> Logger
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">资源拓扑 · @Caption</MudText>
+    </TitleContent>
+    <DialogContent>
+        <div class="topology-fullscreen">
+            <div @ref="_chartEl" class="topology-chart"></div>
+            <div class="topology-legend font-mono">
+                <span class="item"><span class="sw sw-center"></span>中心对象</span>
+                <span class="item"><span class="sw sw-node"></span>关系对象</span>
+                <span class="item"><span class="sw sw-missing"></span>缺失引用</span>
+                <span class="item"><span class="sw sw-edge"></span>关系连线</span>
+            </div>
+            <MudText Align="Align.Center" Typo="Typo.caption" Class="mud-text-secondary topology-hint font-mono">
+                点击节点跳转详情 · 滚轮缩放 · 拖拽平移
+            </MudText>
+        </div>
+    </DialogContent>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    public IMudDialogInstance Dialog { get; set; } = default!;
+
+    /// <summary>已加载的拓扑数据(复用卡片查询结果,对话框内不重复请求)。</summary>
+    [Parameter]
+    public TopologyViewModel Topo { get; set; } = default!;
+
+    /// <summary>标题附注(中心资源的 Kind · Name)。</summary>
+    [Parameter]
+    public string Caption { get; set; } = "";
+
+    /// <summary>节点点击回调:关闭对话框后交由宿主卡片按 Kind 映射路由导航。</summary>
+    [Parameter]
+    public EventCallback<string> OnNavigate { get; set; }
+
+    private ElementReference _chartEl;
+
+    private IJSObjectReference? _module;
+
+    private DotNetObjectReference<TopologyFullscreenDialog>? _dotnetRef;
+
+    private bool _mounting;
+
+    private bool _mounted;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_mounting || _mounted || Topo is null)
+        {
+            return;
+        }
+
+        _mounting = true;
+        try
+        {
+            _module ??= await JS.InvokeAsync<IJSObjectReference?>("import", "/js/topology-graph.js");
+            if (_module is null)
+            {
+                return;
+            }
+
+            _dotnetRef = DotNetObjectReference.Create(this);
+            /* 对话框画布高度由 CSS 固定(min(80vh, 900px)),不参与卡片的按图自适应 */
+            await _module.InvokeVoidAsync("mount", _chartEl, TopologyPayload.Build(Topo, _dotnetRef), new { autoHeight = false });
+            _mounted = true;
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "拓扑放大视图渲染失败");
+        }
+        finally
+        {
+            _mounting = false;
+        }
+    }
+
+    /// <summary>JS 侧节点点击回调。</summary>
+    /// <param name="nodeId">节点 Id,格式 "Kind/name"。</param>
+    [JSInvokable]
+    public async Task OnNodeClicked(string nodeId)
+    {
+        Dialog.Close();
+        await OnNavigate.InvokeAsync(nodeId);
+    }
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
+    {
+        _dotnetRef?.Dispose();
+        try
+        {
+            if (_module is not null)
+            {
+                await _module.InvokeVoidAsync("dispose", _chartEl);
+                await _module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (Exception)
+        {
+        }
+    }
+}

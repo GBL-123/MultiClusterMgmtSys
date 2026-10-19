@@ -112,7 +112,7 @@
     }
     else
     {
-        <CompareDiffView Pair="@_pair" Rows="@_rows" OnCloned="HandleClonedAsync" />
+        <CompareDiffView Pair="@_pair" Query="@(_lastQuery!)" Rows="@_rows" OnCloned="HandleClonedAsync" />
     }
 </MudStack>
 
@@ -138,6 +138,8 @@
     private IReadOnlyList<CompareDiffRow> _rows = [];
 
     private bool _comparing;
+
+    private ComparePairQueryRequest? _lastQuery;
 
     protected override async Task OnInitializedAsync()
     {
@@ -221,6 +223,7 @@
             _comparing = true;
             var request = new ComparePairQueryRequest(_sourceId!.Value, _targetId!.Value, _kind!.Value, _namespace!, _resourceName!);
             _pair = await CompareService.GetPairAsync(request);
+            _lastQuery = request;
             _rows = YamlDiff.Compute(
                 _pair.SourceExists ? _pair.SourceYaml : null,
                 _pair.TargetExists ? _pair.TargetYaml : null);

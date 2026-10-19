@@ -5,6 +5,7 @@ using k8s.Models;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
+using MudBlazor;
 using MultiClusterMgmtSys.Domain.Enums;
 using MultiClusterMgmtSys.Tests.TestInfrastructure;
 
@@ -98,7 +99,9 @@ public class TopologyCardTests
 
         var mounts = InvocationsOf(module, "mount");
         Assert.Single(mounts);
-        var payload = AsJson(mounts[^1].Arguments![^1]);
+        var payload = AsJson(mounts[^1].Arguments![1]);
+        var options = AsJson(mounts[^1].Arguments![2]);
+        Assert.True(options.GetProperty("autoHeight").GetBoolean());
         var nodes = payload.GetProperty("nodes");
         Assert.Equal(2, nodes.GetArrayLength());
         var center = nodes[0];
@@ -107,20 +110,64 @@ public class TopologyCardTests
         Assert.False(center.GetProperty("isMissing").GetBoolean());
         Assert.Equal("Running", center.GetProperty("statusHint").GetString());
         Assert.Equal("运行中", center.GetProperty("statusHintText").GetString());
-        Assert.Equal(0, center.GetProperty("layer").GetInt32());
+        Assert.False(center.GetProperty("isAbove").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, center.GetProperty("group").ValueKind);
+        Assert.Equal("", center.GetProperty("relation").GetString());
         var node = nodes[1];
         Assert.Equal("Node/node-1", node.GetProperty("id").GetString());
         Assert.False(node.GetProperty("isCenter").GetBoolean());
         Assert.Equal("Ready", node.GetProperty("statusHint").GetString());
         Assert.Equal("就绪", node.GetProperty("statusHintText").GetString());
-        Assert.Equal(1, node.GetProperty("layer").GetInt32());
-        Assert.Equal(0, node.GetProperty("order").GetInt32());
+        Assert.False(node.GetProperty("isAbove").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, node.GetProperty("group").ValueKind);
+        Assert.Equal(1, node.GetProperty("order").GetInt32());
+        Assert.Equal("调度", node.GetProperty("relation").GetString());
         var edges = payload.GetProperty("edges");
         Assert.Equal(1, edges.GetArrayLength());
         Assert.Equal("Pod/web-1", edges[0].GetProperty("from").GetString());
         Assert.Equal("Node/node-1", edges[0].GetProperty("to").GetString());
         Assert.Equal("调度", edges[0].GetProperty("relation").GetString());
         Assert.Contains("资源拓扑", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Card_fullscreen_button_opens_dialog_and_mounts_second_chart()
+    {
+        await using var ctx = new BunitHost();
+        AuthorizeAdmin(ctx);
+        var (harness, k8s) = ctx.AddTopologyStack();
+        var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("topo-card"));
+        StubPodCenter(k8s, "web-1", K8sMocks.NewPod("web-1", "app"));
+        k8s.SetupReadNode("node-1", ReadyNode("node-1"));
+        var module = ctx.JSInterop.SetupModule(ModulePath);
+
+        var provider = ctx.Render<MudDialogProvider>();
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Topology.TopologyGraphCard>(parameters => parameters
+            .Add(p => p.ClusterId, cluster.Id)
+            .Add(p => p.Namespace, "app")
+            .Add(p => p.Kind, "Pod")
+            .Add(p => p.Name, "web-1"));
+        await cut.InvokeAsync(() => cut.Instance.LoadAsync());
+        cut.WaitForState(() => InvocationsOf(module, "mount").Count == 1);
+
+        /* 从真实按钮触发(接线可测):放大查看 */
+        var button = cut.Find("button[aria-label='放大查看']");
+        await cut.InvokeAsync(() => button.Click());
+        await provider.InvokeAsync(() => { });
+        provider.WaitForState(() => InvocationsOf(module, "mount").Count == 2);
+
+        var mounts = InvocationsOf(module, "mount");
+        var dialogPayload = AsJson(mounts[^1].Arguments![1]);
+        Assert.Equal(2, dialogPayload.GetProperty("nodes").GetArrayLength());
+        var dialogOptions = AsJson(mounts[^1].Arguments![2]);
+        Assert.False(dialogOptions.GetProperty("autoHeight").GetBoolean());
+
+        /* 对话框内点击节点 → 经卡片回调按 Kind 导航 */
+        var dialog = provider.FindComponent<MultiClusterMgmtSys.Web.Components.Topology.TopologyFullscreenDialog>();
+        await cut.InvokeAsync(() => dialog.Instance.OnNodeClicked("Service/svc-a"));
+
+        var uri = ctx.Services.GetRequiredService<NavigationManager>().Uri;
+        Assert.EndsWith($"/services/{cluster.Id}/app/svc-a", uri, StringComparison.Ordinal);
     }
 
     [Theory]

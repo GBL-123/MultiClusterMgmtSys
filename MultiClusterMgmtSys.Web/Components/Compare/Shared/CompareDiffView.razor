@@ -1,3 +1,4 @@
+@using MultiClusterMgmtSys.Application.Requests
 @using MultiClusterMgmtSys.Application.ViewModels
 @using MultiClusterMgmtSys.Web.Components.Compare
 @using MultiClusterMgmtSys.Web.Components.Common
@@ -18,6 +19,10 @@
 @code {
     [Parameter]
     public ComparePairViewModel Pair { get; set; } = default!;
+
+    /// <summary>本次对照的查询(集群 Id 与资源族等);克隆对话框据此读取源资源预览与执行克隆。</summary>
+    [Parameter]
+    public ComparePairQueryRequest Query { get; set; } = default!;
 
     [Parameter]
     public IReadOnlyList<CompareDiffRow> Rows { get; set; } = [];
@@ -56,7 +61,11 @@
         _cloning = true;
         try
         {
-            var parameters = new DialogParameters { { nameof(CloneConfirmDialog.Pair), Pair } };
+            var parameters = new DialogParameters
+            {
+                { nameof(CloneConfirmDialog.Pair), Pair },
+                { nameof(CloneConfirmDialog.Query), Query }
+            };
             var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
             var dialog = await DialogService.ShowAsync<CloneConfirmDialog>(
                 $"克隆到 {Pair!.TargetClusterName}", parameters, options);

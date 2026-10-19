@@ -2,7 +2,7 @@
     <span class="status-badge @CssClass">
         <span class="status-dot"></span>@Text
     </span>
-    @if (!string.IsNullOrEmpty(Raw))
+    @if (!string.IsNullOrEmpty(Raw) && Raw != Text)
     {
         <span class="status-badge-raw font-mono">@Raw</span>
     }

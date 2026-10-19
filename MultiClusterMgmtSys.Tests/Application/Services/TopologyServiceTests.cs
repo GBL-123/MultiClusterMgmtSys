@@ -109,7 +109,7 @@ public class TopologyServiceTests : IDisposable
         Assert.True(node.IsCenter);
         Assert.Equal("Pod/web-1", node.Id);
         Assert.False(node.IsMissing);
-        Assert.Equal(0, node.Layer);
+        Assert.Equal(0, node.Order);
         Assert.Empty(view.Edges);
     }
 

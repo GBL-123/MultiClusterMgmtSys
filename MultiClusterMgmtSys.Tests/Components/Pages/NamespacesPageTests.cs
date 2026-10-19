@@ -177,6 +177,10 @@ public class NamespacesPageTests
         provider.WaitForState(() => provider.Markup.Contains("mud-dialog-content"), TimeSpan.FromSeconds(5));
 
         var yamlField = provider.FindComponents<MudTextField<string>>().First(f => f.Instance.Label == "YAML");
+        // 模板经异步文件读取加载:先有界等待字段值就绪,再断言(避免与并行执行下的加载完成竞态)
+        provider.WaitForState(
+            () => (yamlField.Instance.GetState(x => x.Value) ?? "").Contains("kind: Namespace"),
+            TimeSpan.FromSeconds(5));
         Assert.Contains("kind: Namespace", yamlField.Instance.GetState(x => x.Value) ?? "");
 
         await provider.InvokeAsync(async () => await yamlField.Instance.ValueChanged!.InvokeAsync("""

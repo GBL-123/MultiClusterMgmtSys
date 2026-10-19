@@ -1,6 +1,6 @@
 <span class="stacked-text">
     <span class="stacked-text-primary">@Primary</span>
-    @if (!string.IsNullOrEmpty(Secondary))
+    @if (!string.IsNullOrEmpty(Secondary) && Secondary != Primary)
     {
         <span class="stacked-text-secondary font-mono">@Secondary</span>
     }

@@ -6,6 +6,7 @@
 
 @inject TopologyService TopologyService
 @inject IJSRuntime JS
+@inject IDialogService DialogService
 @inject NavigationManager NavigationManager
 @inject ExceptionPresenter ExHandler
 @inject ILogger<TopologyGraphCard> Logger
@@ -15,6 +16,12 @@
         <CardHeaderContent>
             <MudText Typo="Typo.h6">资源拓扑</MudText>
         </CardHeaderContent>
+        <CardHeaderActions>
+            @if (_topo is { Nodes.Count: > 0 })
+            {
+                <TooltipIconButton Icon="@Icons.Material.Filled.OpenInFull" Text="放大查看" OnClick="OpenFullscreenAsync" />
+            }
+        </CardHeaderActions>
     </MudCardHeader>
     <MudCardContent>
         @if (_loading)
@@ -43,6 +50,12 @@
         else if (_topo is not null)
         {
             <div @ref="_chartEl" class="topology-chart"></div>
+            <div class="topology-legend font-mono">
+                <span class="item"><span class="sw sw-center"></span>中心对象</span>
+                <span class="item"><span class="sw sw-node"></span>关系对象</span>
+                <span class="item"><span class="sw sw-missing"></span>缺失引用</span>
+                <span class="item"><span class="sw sw-edge"></span>关系连线</span>
+            </div>
             <MudText Align="Align.Center" Typo="Typo.caption" Class="mud-text-secondary topology-hint font-mono">
                 点击节点跳转详情 · 滚轮缩放 · 拖拽平移
             </MudText>
@@ -82,6 +95,8 @@
     private bool _chartFailed;
 
     private bool _chartMounted;
+
+    private bool _chartBusy;
 
     private bool _needsUpdate;
 
@@ -142,7 +157,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_topo is null)
+        if (_topo is null || _chartBusy)
         {
             return;
         }
@@ -155,16 +170,30 @@
                 return;
             }
 
-            if (!_chartMounted)
+            _chartBusy = true;
+            try
             {
-                await _module.InvokeVoidAsync("mount", _chartEl, BuildPayload());
-                _chartMounted = true;
-                _needsUpdate = false;
+                if (!_chartMounted)
+                {
+                    await _module.InvokeVoidAsync("mount", _chartEl, BuildPayload(), BuildOptions());
+                    _chartMounted = true;
+                    _needsUpdate = false;
+                }
+                else if (_needsUpdate)
+                {
+                    await _module.InvokeVoidAsync("update", _chartEl, BuildPayload(), BuildOptions());
+                    _needsUpdate = false;
+                }
             }
-            else if (_needsUpdate)
+            finally
             {
-                await _module.InvokeVoidAsync("update", _chartEl, BuildPayload());
-                _needsUpdate = false;
+                _chartBusy = false;
+            }
+
+            /* 并发渲染批次在忙时被跳过时,补一次渲染把待更新落地 */
+            if (_needsUpdate)
+            {
+                StateHasChanged();
             }
         }
         catch (JSDisconnectedException)
@@ -211,29 +240,28 @@
         }
     }
 
-    private object BuildPayload() => new
+    /// <summary>打开「放大查看」对话框:近全屏画布,数据复用已加载的拓扑;节点点击经同一路由映射导航。</summary>
+    private async Task OpenFullscreenAsync()
     {
-        nodes = _topo!.Nodes.Select(n => new
+        if (_topo is null)
         {
-            id = n.Id,
-            label = n.Name,
-            kind = n.Kind,
-            kindText = n.KindText,
-            statusHint = n.StatusHint,
-            statusHintText = n.StatusHintText,
-            isCenter = n.IsCenter,
-            isMissing = n.IsMissing,
-            layer = n.Layer,
-            order = n.Order,
-        }),
-        edges = _topo.Edges.Select(e => new
+            return;
+        }
+
+        var parameters = new DialogParameters
         {
-            from = e.From,
-            to = e.To,
-            relation = e.Relation,
-        }),
-        dotnetRef = _dotnetRef,
-    };
+            { nameof(TopologyFullscreenDialog.Topo), _topo },
+            { nameof(TopologyFullscreenDialog.Caption), $"{Kind} · {Name}" },
+            { nameof(TopologyFullscreenDialog.OnNavigate), EventCallback.Factory.Create<string>(this, OnNodeClicked) }
+        };
+        var options = new DialogOptions { FullWidth = true, MaxWidth = MaxWidth.ExtraExtraLarge, CloseButton = true };
+        await DialogService.ShowAsync<TopologyFullscreenDialog>("", parameters, options);
+    }
+
+    private object BuildPayload() => TopologyPayload.Build(_topo!, _dotnetRef!);
+
+    /// <summary>卡片场景渲染选项:容器高度按图自适应(放大查看对话框另行传 false)。</summary>
+    private static object BuildOptions() => new { autoHeight = true };
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync()

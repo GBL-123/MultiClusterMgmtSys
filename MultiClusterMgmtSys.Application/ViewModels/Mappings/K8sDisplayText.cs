@@ -302,13 +302,14 @@ public static class K8sDisplayText
     };
 
     /// <summary>Pod 条件类型中文展示名;未登记值回退原文。</summary>
-    /// <param name="type">条件类型原始值(Ready/Initialized/PodsScheduled/ContainersReady)。</param>
+    /// <param name="type">条件类型原始值(Ready/Initialized/PodsScheduled/ContainersReady/PodReadyToStartContainers 等)。</param>
     public static string PodConditionTypeText(string type) => type switch
     {
         "Ready" => "就绪",
         "Initialized" => "已初始化",
         "PodScheduled" => "已调度",
         "ContainersReady" => "容器就绪",
+        "PodReadyToStartContainers" or "PodHasNetwork" => "容器可启动",
         "DisruptionTarget" => "中断目标",
         _ => type
     };

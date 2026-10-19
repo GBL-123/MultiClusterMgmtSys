@@ -232,10 +232,18 @@ public class HelmServiceFleetDeployTests
         };
         var service = CreateService(harness, runner, Admin());
         var reports = new List<(int Current, int Total)>();
+        var reportsGate = new object();
 
         var result = await service.DeployToFleetAsync(
             NewRequest([first.Id, second.Id, third.Id]),
-            new CollectingProgress(reports.Add));
+            new CollectingProgress(report =>
+            {
+                /* 进度来自并行 worker(≤4 并发),收集必须线程安全 */
+                lock (reportsGate)
+                {
+                    reports.Add(report);
+                }
+            }));
 
         Assert.Equal(3, reports.Count);
         Assert.Equal([(1, 3), (2, 3), (3, 3)], [.. reports.OrderBy(report => report.Current)]);

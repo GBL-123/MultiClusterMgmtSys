@@ -66,6 +66,43 @@ public class PodsPageFlowTests
     }
 
     [Fact]
+    public async Task Pods_page_status_chips_show_total_and_group_counts()
+    {
+        await using var ctx = new BunitHost();
+        AuthorizeAdmin(ctx);
+        var (harness, k8s) = ctx.AddPodStack();
+        var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("pod-counts", status: ClusterStatus.Online));
+        SetupProbe(k8s);
+        k8s.SetupListPods(
+            K8sMocks.NewPod("web-1", "app"),
+            K8sMocks.NewPod("web-2", "app"),
+            K8sMocks.NewPod("db-0", "data", phase: "Running", customize: p =>
+                p.Status.ContainerStatuses =
+                [
+                    new V1ContainerStatus
+                    {
+                        Name = "db",
+                        Ready = false,
+                        RestartCount = 3,
+                        Image = "pg:16",
+                        State = K8sMocks.PodStateWaiting("CrashLoopBackOff")
+                    }
+                ]));
+
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Pods.Pages.Pods>(
+            parameters => parameters.Add(p => p.ClusterId, cluster.Id));
+        cut.WaitForState(() => cut.Markup.Contains("web-1"));
+
+        Assert.Contains("全部 3", cut.Markup);
+        Assert.Contains("异常 1", cut.Markup);
+        Assert.Contains("运行中 2", cut.Markup);
+
+        var bar = cut.FindComponent<PodsFilterBar>();
+        await cut.InvokeAsync(() => bar.Instance.KeywordChanged.InvokeAsync("db-"));
+        cut.WaitForState(() => cut.Markup.Contains("全部 1"));
+    }
+
+    [Fact]
     public async Task Pods_page_filter_narrows_rows_without_new_k8s_calls()
     {
         await using var ctx = new BunitHost();

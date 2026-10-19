@@ -22,7 +22,7 @@ public class TopologyService(
         "Deployment", "StatefulSet", "DaemonSet", "Job"
     };
 
-    /// <summary>按中心资源查询拓扑:中心节点 Layer=0,邻居节点 Layer=1;邻居查询失败按类别丢弃(降级),不破坏整图。</summary>
+    /// <summary>按中心资源查询拓扑:节点渲染侧(上行/下行)、下行分组与顺序由 TopologyLayout 计算;邻居查询失败按类别丢弃(降级),不破坏整图。</summary>
     /// <param name="request">集群、命名空间、资源 Kind 与名称。</param>
     public async Task<TopologyViewModel> GetTopologyAsync(TopologyQueryRequest request)
     {
@@ -45,7 +45,7 @@ public class TopologyService(
                 "PersistentVolumeClaim" => await BuildClaimTopologyAsync(client, request.Namespace, request.Name),
                 _ => await BuildWorkloadTopologyAsync(client, request.Kind, request.Namespace, request.Name),
             };
-            TopologyLayout.Apply(view.Nodes);
+            TopologyLayout.Apply(view.Nodes, view.Edges);
             return view;
         }
         catch (Exception ex) when (ex is not BusinessException)

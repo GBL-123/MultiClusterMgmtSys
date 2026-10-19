@@ -230,6 +230,9 @@ public class K8sDisplayTextTests
     [InlineData("Initialized", "已初始化")]
     [InlineData("PodScheduled", "已调度")]
     [InlineData("ContainersReady", "容器就绪")]
+    [InlineData("PodReadyToStartContainers", "容器可启动")]
+    [InlineData("PodHasNetwork", "容器可启动")]
+    [InlineData("DisruptionTarget", "中断目标")]
     [InlineData("New", "New")]
     public void Pod_condition_type_maps_known_values(string type, string expected)
         => Assert.Equal(expected, K8sDisplayText.PodConditionTypeText(type));
