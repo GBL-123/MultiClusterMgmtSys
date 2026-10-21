@@ -2,10 +2,10 @@
 # 触发 Docker 打包项目镜像并导出为 tar 包
 #
 # 用法：
-#   ./build-image.sh                           # 默认 multiclustermgmtsys:v1.0.0
-#   ./build-image.sh v1.1.0                    # 指定版本标签
-#   ./build-image.sh v1.1.0 ./dist/mcms.tar    # 指定导出路径
-#   ./build-image.sh v1.1.0 --include-base     # 同时导出离线构建基础镜像包(--include-base 放任意参数位)
+#   ./build-image.sh                           # 默认 multiclustermgmtsys:1.0.0
+#   ./build-image.sh 1.1.0                    # 指定版本标签
+#   ./build-image.sh 1.1.0 ./dist/mcms.tar    # 指定导出路径
+#   ./build-image.sh 1.1.0 --include-base     # 同时导出离线构建基础镜像包(--include-base 放任意参数位)
 #
 # 镜像命名规则：multiclustermgmtsys:<Tag>（与 docker-compose.prod.yml 保持一致）
 #
@@ -23,7 +23,7 @@ for arg in "$@"; do
         *) POSITIONAL+=("$arg") ;;
     esac
 done
-TAG="${POSITIONAL[0]:-v1.0.0}"
+TAG="${POSITIONAL[0]:-1.0.0}"
 OUT="${POSITIONAL[1]:-}"
 
 # 脚本所在目录（仓库根），保证在任何位置执行都从正确上下文构建

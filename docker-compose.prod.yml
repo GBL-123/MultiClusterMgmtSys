@@ -33,7 +33,7 @@ services:
   # 修正为运行应用的用户。幂等，每次 up 都会跑一遍，跑完即退出。
   # 复用应用镜像（Debian 系含 /bin/sh），不额外拉取镜像。
   fs-init:
-    image: multiclustermgmtsys:v1.0.0
+    image: multiclustermgmtsys:1.0.0
     container_name: mcms-fs-init
     user: "0"
     restart: "no"
@@ -50,7 +50,7 @@ services:
       - ./nginx/certs:/data/certs
 
   multiclustermgmtsys:
-    image: multiclustermgmtsys:v1.0.0
+    image: multiclustermgmtsys:1.0.0
     container_name: multiclustermgmtsys
     restart: unless-stopped
     depends_on:
@@ -72,7 +72,7 @@ services:
       - ./logs:/app/logs
 
   nginx:
-    image: nginx:stable-alpine
+    image: nginx:1.31-alpine
     container_name: mcms-nginx
     restart: unless-stopped
     depends_on:

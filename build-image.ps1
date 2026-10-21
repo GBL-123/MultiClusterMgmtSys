@@ -1,9 +1,9 @@
 ﻿# 触发 Docker 打包项目镜像并导出为 tar 包
 #
 # 用法：
-#   .\build-image.ps1                      # 默认 multiclustermgmtsys:v1.0.0
-#   .\build-image.ps1 -Tag v1.1.0          # 指定版本标签
-#   .\build-image.ps1 -Tag v1.1.0 -Out .\dist\mcms.tar   # 指定导出路径
+#   .\build-image.ps1                      # 默认 multiclustermgmtsys:1.0.0
+#   .\build-image.ps1 -Tag 1.1.0          # 指定版本标签
+#   .\build-image.ps1 -Tag 1.1.0 -Out .\dist\mcms.tar   # 指定导出路径
 #   .\build-image.ps1 -IncludeBase                       # 同时导出离线构建基础镜像包
 #
 # 镜像命名规则：multiclustermgmtsys:<Tag>（与 docker-compose.prod.yml 保持一致）
@@ -12,7 +12,7 @@
 # 与应用 tar 组成离线搬迁包；新机 docker load 两个 tar 后构建全程零外网）
 
 param(
-    [string]$Tag = "v1.0.0",
+    [string]$Tag = "1.0.0",
     [string]$Out = "",
     [switch]$IncludeBase
 )
