@@ -377,3 +377,6 @@ coverage/
 
 # vite build output (source in Assets/Scripts; produced by csproj target / Docker charts stage)
 MultiClusterMgmtSys.Web/wwwroot/js/dashboard-trend.js
+MultiClusterMgmtSys.Web/wwwroot/js/topology-graph.js
+
+*.tar

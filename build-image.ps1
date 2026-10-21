@@ -1,19 +1,20 @@
 ﻿# 触发 Docker 打包项目镜像并导出为 tar 包
 #
 # 用法：
-#   .\build-image.ps1                      # 默认 multiclustermgmtsys:1.0.0
-#   .\build-image.ps1 -Tag 1.1.0          # 指定版本标签
-#   .\build-image.ps1 -Tag 1.1.0 -Out .\dist\mcms.tar   # 指定导出路径
-#   .\build-image.ps1 -IncludeBase                       # 同时导出离线构建基础镜像包
+#   .\build-image.ps1                            # 默认导出 multiclustermgmtsys-1.0.0.tar（仓库根）
+#   .\build-image.ps1 -Tag 1.1.0                 # 指定版本标签
+#   .\build-image.ps1 -Tag 1.1.0 -OutDir .\dist  # 导出到指定目录
+#   .\build-image.ps1 -IncludeBase               # 同时导出离线构建基础镜像包
 #
 # 镜像命名规则：multiclustermgmtsys:<Tag>（与 docker-compose.prod.yml 保持一致）
+# 导出文件命名固定为 multiclustermgmtsys-<Tag>.tar；-OutDir 只指定目录，不能自定义文件名
 #
 # -IncludeBase 会额外导出 mcms-base-images.tar（mcms-builder:10.0 + aspnet:10.0，
 # 与应用 tar 组成离线搬迁包；新机 docker load 两个 tar 后构建全程零外网）
 
 param(
     [string]$Tag = "1.0.0",
-    [string]$Out = "",
+    [string]$OutDir = "",
     [switch]$IncludeBase
 )
 
@@ -21,6 +22,13 @@ $ErrorActionPreference = "Stop"
 
 # 脚本所在目录（仓库根），保证在任何位置执行都从正确上下文构建
 $RepoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+
+# -OutDir 只接受目录；文件名固定，传入 *.tar 视为误用，构建前快速失败
+if ($OutDir -ne "" -and $OutDir -match '\.tar$') {
+    Write-Host "[错误] -OutDir 只接受目录,导出文件名固定为 multiclustermgmtsys-$Tag.tar。" -ForegroundColor Red
+    exit 1
+}
+
 $Dockerfile = Join-Path $RepoRoot "MultiClusterMgmtSys.Web\Dockerfile"
 
 if (-not (Test-Path -LiteralPath $Dockerfile)) {
@@ -67,14 +75,13 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "[成功] 镜像构建完成: $ImageName" -ForegroundColor Green
 
-if ($Out -eq "") {
-    $Out = Join-Path $RepoRoot "multiclustermgmtsys-$Tag.tar"
-} else {
-    $OutDir = Split-Path -Parent $Out
-    if ($OutDir -and -not (Test-Path -LiteralPath $OutDir)) {
-        New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
-    }
+if ($OutDir -eq "") {
+    $OutDir = $RepoRoot
+} elseif (-not (Test-Path -LiteralPath $OutDir)) {
+    New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
 }
+
+$Out = Join-Path $OutDir "multiclustermgmtsys-$Tag.tar"
 
 Write-Host "[信息] 开始导出镜像: $ImageName -> $Out" -ForegroundColor Cyan
 docker save -o $Out $ImageName
@@ -86,7 +93,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "[成功] 镜像导出完成: $Out" -ForegroundColor Green
 
 if ($IncludeBase) {
-    $BaseOut = Join-Path (Split-Path -Parent $Out) "mcms-base-images.tar"
+    $BaseOut = Join-Path $OutDir "mcms-base-images.tar"
     $RuntimeImage = "mcr.microsoft.com/dotnet/aspnet:10.0"
 
     # aspnet 运行时基础镜像可能仅有 BuildKit 解析用的 digest、未落地本地 tag，缺则先拉取

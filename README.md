@@ -84,7 +84,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 - 日志：按天滚动写入 `logs/app-日期.log`，保留 30 天，可直接 tail / grep 排查
 - 备份：停服后直接复制 `db/MultiClusterMgmtSys.db`
 - 注意：不要用裸 `docker compose up`，会合并 VS 调试用的 `docker-compose.override.yml`（Development 环境 + 用户密钥挂载，服务器上会失败）
-- 离线部署：根目录 `build-image.ps1`（Windows）/ `build-image.sh`（Linux）导出应用镜像 tar（默认 `multiclustermgmtsys:v1.0.0`，`-Tag` 指定版本）；`-IncludeBase` / `--include-base` 连基础镜像（builder + aspnet）一并导出为完整离线搬迁包，目标机 `docker load` 双包后构建 / 运行全程零外网
+- 离线部署：根目录 `build-image.ps1`（Windows）/ `build-image.sh`（Linux）导出应用镜像 tar，文件名固定为 `multiclustermgmtsys-<版本号>.tar`（默认 `1.0.0`，`-Tag` / 第一个位置参数指定版本；`-OutDir` / 第二个位置参数只指定输出目录，不能自定义文件名）；`-IncludeBase` / `--include-base` 连基础镜像（builder + aspnet）一并导出为完整离线搬迁包，目标机 `docker load` 双包后构建 / 运行全程零外网
 
 ## 配置说明
 
