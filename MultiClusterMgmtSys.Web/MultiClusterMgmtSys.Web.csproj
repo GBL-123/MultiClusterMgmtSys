@@ -32,9 +32,8 @@
 
   <ItemGroup>
     <None Include="wwwroot\js\show-password.js" />
-    <!-- 由 vite 构建产出(见下方 BuildChartBundle target),产物不入 git -->
-    <None Include="wwwroot\js\dashboard-trend.js" Condition="Exists('wwwroot\js\dashboard-trend.js')" />
-    <None Include="wwwroot\js\topology-graph.js" Condition="Exists('wwwroot\js\topology-graph.js')" />
+    <!-- dashboard-trend.js / topology-graph.js 由 vite 构建产出(见下方 BuildChartBundle target),产物不入 git,
+         不登记为项目项——删除/重建产物时 IDE 不会改写本文件 -->
   </ItemGroup>
 
   <!-- 图表 bundle:vite 构建 eucharts 入口脚本到 wwwroot/js(dashboard-trend + topology-graph,
