@@ -15,7 +15,7 @@
 # 没有正式证书时可先生成自签名测试（必须带 SAN：IP/域名要与访问地址一致）：
 #   cd nginx/certs && openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
 #     -keyout privkey.pem -out fullchain.pem \
-#     -subj "/CN=192.168.1.100" -addext "subjectAltName=IP:192.168.1.100,DNS:mcms.local"
+#     -subj "/CN=192.168.1.100" -addext "subjectAltName=IP:192.168.1.100,DNS:multiclustermgmtsys.local"
 # （把 192.168.1.100 换成你的服务器 IP；自签名浏览器会有"不安全"警告，属正常）
 #
 # 挂载目录（./db ./logs ./nginx/certs）由 fs-init 容器在部署时自动创建并修正属主，
@@ -34,7 +34,7 @@ services:
   # 复用应用镜像（Debian 系含 /bin/sh），不额外拉取镜像。
   fs-init:
     image: multiclustermgmtsys:1.0.0
-    container_name: mcms-fs-init
+    container_name: multiclustermgmtsys-fs-init
     user: "0"
     restart: "no"
     entrypoint:
@@ -73,7 +73,7 @@ services:
 
   nginx:
     image: nginx:1.31-alpine
-    container_name: mcms-nginx
+    container_name: multiclustermgmtsys-nginx
     restart: unless-stopped
     depends_on:
       - multiclustermgmtsys

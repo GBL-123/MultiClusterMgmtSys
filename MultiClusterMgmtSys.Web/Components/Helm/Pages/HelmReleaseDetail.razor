@@ -55,12 +55,15 @@
                                OnClick="OpenUpgradeDialog">
                         升级
                     </MudButton>
-                    <MudButton Variant="Variant.Text"
-                               Color="Color.Inherit"
-                               StartIcon="@Icons.Material.Filled.History"
-                               OnClick="OpenRollbackDialog">
-                        回滚
-                    </MudButton>
+                    @if (HasRollbackTarget)
+                    {
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Inherit"
+                                   StartIcon="@Icons.Material.Filled.History"
+                                   OnClick="OpenRollbackDialog">
+                            回滚
+                        </MudButton>
+                    }
                     <MudButton Variant="Variant.Text"
                                Color="Color.Error"
                                StartIcon="@Icons.Material.Filled.DeleteOutline"
@@ -100,26 +103,34 @@
             </MudTabPanel>
             <MudTabPanel Text="Values">
                 <MudCard Class="pa-4 yaml-card">
-                    @if (string.IsNullOrWhiteSpace(_values))
-                    {
-                        <div class="empty-state">[ 无用户提供的 values ]</div>
-                    }
-                    else
-                    {
-                        <textarea class="yaml-textarea" readonly value="@_values"></textarea>
-                    }
+                    <MudCardContent>
+                        @if (string.IsNullOrWhiteSpace(_values))
+                        {
+                            <div class="empty-state">[ 无用户提供的 values ]</div>
+                        }
+                        else
+                        {
+                            <div class="yaml-textarea-wrap">
+                                <textarea class="yaml-textarea" readonly spellcheck="false">@_values</textarea>
+                            </div>
+                        }
+                    </MudCardContent>
                 </MudCard>
             </MudTabPanel>
             <MudTabPanel Text="Manifest">
                 <MudCard Class="pa-4 yaml-card">
-                    @if (string.IsNullOrWhiteSpace(_manifest))
-                    {
-                        <div class="empty-state">[ 暂无 manifest ]</div>
-                    }
-                    else
-                    {
-                        <textarea class="yaml-textarea" readonly value="@_manifest"></textarea>
-                    }
+                    <MudCardContent>
+                        @if (string.IsNullOrWhiteSpace(_manifest))
+                        {
+                            <div class="empty-state">[ 暂无 manifest ]</div>
+                        }
+                        else
+                        {
+                            <div class="yaml-textarea-wrap">
+                                <textarea class="yaml-textarea" readonly spellcheck="false">@_manifest</textarea>
+                            </div>
+                        }
+                    </MudCardContent>
                 </MudCard>
             </MudTabPanel>
             <MudTabPanel Text="历史">
@@ -187,6 +198,9 @@
     /// <summary>当前路由参数(集群/命名空间/名称)构成的加载键：参数变化即重新加载。</summary>
     private (int ClusterId, string Namespace, string Name) CurrentKey => (ClusterId, Namespace, Name);
 
+    /// <summary>是否存在可回滚的历史版本(当前 revision 不能作为回滚目标)。</summary>
+    private bool HasRollbackTarget => _detail is not null && _history.Any(item => item.Revision != _detail.Revision);
+
     protected override async Task OnParametersSetAsync()
     {
         if (_loadedKey == CurrentKey && _detail is not null)
@@ -232,13 +246,11 @@
             { "ChartName", _detail?.ChartName ?? "" },
             { "ChartVersion", _detail?.ChartVersion ?? "" }
         };
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var options = new DialogOptions { CloseOnEscapeKey = true, BackdropClick = false, MaxWidth = MaxWidth.Medium, FullWidth = true };
         var dialog = await DialogService.ShowAsync<UpgradeHelmReleaseDialog>("升级 Release", parameters, options);
-        var result = await dialog.Result;
-        if (result is not null && !result.Canceled)
-        {
-            await ReloadAsync();
-        }
+        await dialog.Result;
+        // 无论成功、失败还是取消,对话框关闭后都重载详情:失败可能已留下 pending-upgrade 等中间状态。
+        await ReloadAsync();
     }
 
     private async Task OpenRollbackDialog()
@@ -263,13 +275,10 @@
         {
             parameters.Add("Revision", revision.Value);
         }
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var options = new DialogOptions { CloseOnEscapeKey = true, BackdropClick = false, MaxWidth = MaxWidth.Small, FullWidth = true };
         var dialog = await DialogService.ShowAsync<RollbackHelmReleaseDialog>("回滚 Release", parameters, options);
-        var result = await dialog.Result;
-        if (result is not null && !result.Canceled)
-        {
-            await ReloadAsync();
-        }
+        await dialog.Result;
+        await ReloadAsync();
     }
 
     private async Task OpenUninstallDialog()
@@ -280,13 +289,16 @@
             { "Namespace", Namespace },
             { "ReleaseName", Name }
         };
-        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var options = new DialogOptions { CloseOnEscapeKey = true, BackdropClick = false, MaxWidth = MaxWidth.Small, FullWidth = true };
         var dialog = await DialogService.ShowAsync<UninstallHelmReleaseDialog>("卸载 Release", parameters, options);
         var result = await dialog.Result;
         if (result is not null && !result.Canceled)
         {
             NavigationManager.NavigateTo($"/helm/{ClusterId}");
+            return;
         }
+        // 失败/取消关闭后重载:release 可能已被系统外删除或留下中间状态。
+        await ReloadAsync();
     }
 
     private async Task ReloadAsync()
@@ -299,6 +311,10 @@
             _history = await HelmService.GetReleaseHistoryAsync(key);
             _values = await HelmService.GetReleaseValuesAsync(key);
             _manifest = await HelmService.GetReleaseManifestAsync(key);
+        }
+        catch (NotFoundException)
+        {
+            _detail = null;
         }
         catch (Exception ex)
         {

@@ -20,7 +20,15 @@ public static class HelmErrorTranslator
         }
 
         var output = $"{result.StandardError}\n{result.StandardOutput}";
-        if (ContainsAny(output, "cannot re-use", "already exists", "another release", "another operation"))
+        if (ContainsAny(output, "timed out waiting for the condition", "context deadline exceeded"))
+        {
+            return new HelmOperationException("等待资源就绪超时，请检查工作负载状态与镜像拉取情况");
+        }
+        if (ContainsAny(output, "another operation (install/upgrade/rollback) is in progress", "another operation is in progress"))
+        {
+            return new ConflictException("该 Release 有未完成的操作（安装/升级/回滚中），请等待其结束；若长期停留在安装中，请先卸载再重新安装");
+        }
+        if (ContainsAny(output, "cannot re-use", "already exists", "another release"))
         {
             return new ConflictException("目标命名空间已存在同名 release，请更换名称或改用升级");
         }

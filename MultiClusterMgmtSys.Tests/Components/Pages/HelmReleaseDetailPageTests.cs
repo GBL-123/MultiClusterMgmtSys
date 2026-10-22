@@ -89,6 +89,8 @@ public class HelmReleaseDetailPageTests
         "history" => FakeHelmCliRunner.Succeeded(HelmFixtures.HistoryJson),
         "get" when invocation.Arguments.Count > 1 && invocation.Arguments[1] == "values"
             => FakeHelmCliRunner.Succeeded(HelmFixtures.UserValuesYaml),
+        "get" when invocation.Arguments.Count > 1 && invocation.Arguments[1] == "metadata"
+            => FakeHelmCliRunner.Succeeded(HelmFixtures.MetadataJson),
         "get" => FakeHelmCliRunner.Succeeded(HelmFixtures.Manifest),
         _ => FakeHelmCliRunner.Succeeded()
     };

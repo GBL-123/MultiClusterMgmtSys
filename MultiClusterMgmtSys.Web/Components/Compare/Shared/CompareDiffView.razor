@@ -6,7 +6,7 @@
 @inject IDialogService DialogService
 @inject ExceptionPresenter ExHandler
 
-<MudPaper Class="pa-4 compare-card">
+<MudPaper Class="@CardClass">
     <YamlDiffView LeftTitle="@($"源：{Pair?.SourceClusterName}")"
                   RightTitle="@($"对照：{Pair?.TargetClusterName}")"
                   LeftYaml="@(Pair?.SourceExists == true ? Pair.SourceYaml : null)"
@@ -31,6 +31,11 @@
     public EventCallback OnCloned { get; set; }
 
     private bool _cloning;
+
+    /// <summary>卡片样式:单侧缺失时不再撑满剩余高度,避免短 YAML 留下整屏空白纸面。</summary>
+    private string CardClass => Pair is { SourceExists: true, TargetExists: true }
+        ? "pa-4 compare-card"
+        : "pa-4 compare-card compare-card-single";
 
     private string CloneHint()
         => Pair!.TargetExists && Pair.HasDifference && Pair.DifferenceCount > 0

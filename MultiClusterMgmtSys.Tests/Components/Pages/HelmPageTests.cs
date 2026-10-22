@@ -145,6 +145,42 @@ public class HelmPageTests
     }
 
     [Fact]
+    public async Task Helm_page_refreshes_list_after_install_dialog_closes()
+    {
+        await using var ctx = new BunitHost();
+        AuthorizeAdmin(ctx);
+        var (harness, runner, k8s) = ctx.AddHelmStack();
+        var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("k8s-src"));
+        SetupOnlineCluster(k8s);
+        k8s.SetupListNamespaces("web");
+        runner.Handler = invocation => invocation.Arguments[0] == "list"
+            ? FakeHelmCliRunner.Succeeded(HelmFixtures.ReleaseListJson)
+            : FakeHelmCliRunner.Succeeded();
+
+        var provider = ctx.Render<MudDialogProvider>();
+        var cut = ctx.Render<MultiClusterMgmtSys.Web.Components.Helm.Pages.Helm>(
+            parameters => parameters.Add(p => p.ClusterId, cluster.Id));
+
+        cut.WaitForState(() => cut.Markup.Contains("nginx"));
+        var listCallsBefore = runner.Invocations.Count(invocation => invocation.Arguments[0] == "list");
+
+        // 打开对话框必须用 DOM 点击(不能 await OnClick.InvokeAsync:该处理器要等对话框关闭才返回,会死锁)。
+        cut.FindAll("button").First(button => button.TextContent.Contains("安装 Chart")).Click();
+        provider.WaitForState(() => provider.Markup.Contains("安装 Chart 包"));
+
+        provider.FindComponents<MudButton>().First(button => button.Markup.Contains("取消")).Find("button").Click();
+
+        for (var i = 0;
+             i < 20 && runner.Invocations.Count(invocation => invocation.Arguments[0] == "list") == listCallsBefore;
+             i++)
+        {
+            await provider.InvokeAsync(() => { });
+        }
+
+        Assert.True(runner.Invocations.Count(invocation => invocation.Arguments[0] == "list") > listCallsBefore);
+    }
+
+    [Fact]
     public async Task Helm_page_toolbar_shows_fleet_deploy_entry_for_admin()
     {
         await using var ctx = new BunitHost();

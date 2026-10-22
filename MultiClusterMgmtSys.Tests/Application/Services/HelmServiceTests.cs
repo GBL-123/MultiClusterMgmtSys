@@ -87,7 +87,16 @@ public class HelmServiceTests
         using var harness = new ServiceHarness("alice");
         var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("prod"));
         await harness.OwnershipRepo.UpsertAsync(NewOwnership(cluster.Id, "web", "nginx", ownerUserId: 7, installedRevision: 3));
-        var runner = new FakeHelmCliRunner { Handler = _ => FakeHelmCliRunner.Succeeded(HelmFixtures.StatusJson) };
+        var runner = new FakeHelmCliRunner
+        {
+            Handler = invocation => invocation.Arguments[0] switch
+            {
+                "status" => FakeHelmCliRunner.Succeeded(HelmFixtures.StatusJson),
+                "get" when invocation.Arguments.Count > 1 && invocation.Arguments[1] == "metadata"
+                    => FakeHelmCliRunner.Succeeded(HelmFixtures.MetadataJson),
+                _ => FakeHelmCliRunner.Succeeded()
+            }
+        };
         var service = CreateService(harness, runner, TestHttpContext.ForIdentity("alice", 7).Object);
 
         var detail = await service.GetReleaseDetailAsync(new HelmReleaseKeyRequest(cluster.Id, "nginx", "web"));
@@ -105,6 +114,7 @@ public class HelmServiceTests
         Assert.NotNull(detail.LastDeployedAt);
         Assert.True(detail.CanOperate);
         Assert.Equal("status", runner.Invocations[0].Arguments[0]);
+        Assert.Equal(["get", "metadata", "nginx", "-n", "web", "-o", "json", "--kubeconfig", "{kubeconfig}"], runner.Invocations[1].Arguments);
     }
 
     [Fact]
@@ -118,11 +128,11 @@ public class HelmServiceTests
         var history = await service.GetReleaseHistoryAsync(new HelmReleaseKeyRequest(cluster.Id, "nginx", "web"));
 
         Assert.Equal(2, history.Count);
-        Assert.Equal(1, history[0].Revision);
-        Assert.Equal("已取代", history[0].StatusText);
-        Assert.Equal("Install complete", history[0].Description);
-        Assert.Equal(3, history[1].Revision);
-        Assert.Equal("已部署", history[1].StatusText);
+        Assert.Equal(3, history[0].Revision);
+        Assert.Equal("已部署", history[0].StatusText);
+        Assert.Equal(1, history[1].Revision);
+        Assert.Equal("已取代", history[1].StatusText);
+        Assert.Equal("Install complete", history[1].Description);
     }
 
     [Fact]
@@ -137,6 +147,19 @@ public class HelmServiceTests
 
         Assert.Contains("replicaCount: 2", values);
         Assert.Equal(["get", "values", "nginx", "-n", "web", "-o", "yaml", "--kubeconfig", "{kubeconfig}"], runner.Invocations[0].Arguments);
+    }
+
+    [Fact]
+    public async Task GetReleaseValues_returns_empty_for_null_output()
+    {
+        using var harness = new ServiceHarness("admin", "Admin");
+        var cluster = await harness.ClusterRepo.AddAsync(TestData.NewCluster("prod"));
+        var runner = new FakeHelmCliRunner { Handler = _ => FakeHelmCliRunner.Succeeded("null\n") };
+        var service = CreateService(harness, runner, TestHttpContext.For("admin", "Admin").Object);
+
+        var values = await service.GetReleaseValuesAsync(new HelmReleaseKeyRequest(cluster.Id, "nginx", "web"));
+
+        Assert.Equal("", values);
     }
 
     [Fact]

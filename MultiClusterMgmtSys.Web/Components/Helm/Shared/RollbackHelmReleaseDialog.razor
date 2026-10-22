@@ -12,15 +12,28 @@
     </TitleContent>
     <DialogContent>
         <MudStack Spacing="3" Class="pt-2">
-            @if (_loading)
+            @if (_submitting)
+            {
+                <div>
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary mt-1">
+                        正在回滚：Helm 会等待 hook 与资源就绪（最长约 5 分钟），请勿关闭页面…
+                    </MudText>
+                </div>
+            }
+            else if (_loading)
             {
                 <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
             }
+            else if (_candidates.Count == 0)
+            {
+                <div class="empty-state">[ 暂无可回滚的历史版本(当前 revision @_currentRevision 不能作为回滚目标) ]</div>
+            }
             else
             {
-                <MudText Typo="Typo.body2">选择要回滚到的历史版本：</MudText>
+                <MudText Typo="Typo.body2">选择要回滚到的历史版本（当前为 revision @_currentRevision）：</MudText>
                 <MudSelect T="int" Label="Revision" @bind-Value="_selectedRevision" Variant="Variant.Outlined" Margin="Margin.Dense">
-                    @foreach (var item in _history)
+                    @foreach (var item in _candidates)
                     {
                         <MudSelectItem T="int" Value="@item.Revision">
                             revision @item.Revision · @item.StatusText · @(item.UpdatedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—")
@@ -31,10 +44,10 @@
         </MudStack>
     </DialogContent>
     <DialogActions>
-        <MudButton Variant="Variant.Text" OnClick="() => Dialog.Cancel()">取消</MudButton>
+        <MudButton Variant="Variant.Text" OnClick="() => Dialog.Cancel()" Disabled="@_submitting">取消</MudButton>
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
-                   Disabled="@(_loading || _submitting || _history.Count == 0)"
+                   Disabled="@(_loading || _submitting || _candidates.Count == 0)"
                    OnClick="SubmitAsync">
             回滚
         </MudButton>
@@ -57,7 +70,9 @@
     [Parameter]
     public int? Revision { get; set; }
 
-    private List<HelmReleaseHistoryItemViewModel> _history = new();
+    private List<HelmReleaseHistoryItemViewModel> _candidates = new();
+
+    private int _currentRevision;
 
     private int _selectedRevision;
 
@@ -70,8 +85,12 @@
         _loading = true;
         try
         {
-            _history = await HelmService.GetReleaseHistoryAsync(new HelmReleaseKeyRequest(ClusterId, ReleaseName, Namespace));
-            _selectedRevision = Revision ?? _history.LastOrDefault()?.Revision ?? 0;
+            var history = await HelmService.GetReleaseHistoryAsync(new HelmReleaseKeyRequest(ClusterId, ReleaseName, Namespace));
+            _currentRevision = history.FirstOrDefault()?.Revision ?? 0;
+            _candidates = [.. history.Where(item => item.Revision != _currentRevision)];
+            _selectedRevision = Revision is { } requested && requested != _currentRevision
+                ? requested
+                : _candidates.FirstOrDefault()?.Revision ?? 0;
         }
         catch (Exception ex)
         {

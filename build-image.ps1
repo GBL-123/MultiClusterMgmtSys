@@ -9,7 +9,7 @@
 # 镜像命名规则：multiclustermgmtsys:<Tag>（与 docker-compose.prod.yml 保持一致）
 # 导出文件命名固定为 multiclustermgmtsys-<Tag>.tar；-OutDir 只指定目录，不能自定义文件名
 #
-# -IncludeBase 会额外导出 mcms-base-images.tar（mcms-builder:10.0 + aspnet:10.0，
+# -IncludeBase 会额外导出 multiclustermgmtsys-base-images.tar（multiclustermgmtsys-builder:10.0 + aspnet:10.0，
 # 与应用 tar 组成离线搬迁包；新机 docker load 两个 tar 后构建全程零外网）
 
 param(
@@ -43,7 +43,7 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
 
 # 构建基础镜像（离线构建链）：不存在时自动构建，存在时直接复用
 $BuilderDockerfile = Join-Path $RepoRoot "MultiClusterMgmtSys.Web\Dockerfile.builder"
-$BuilderImage = "mcms-builder:10.0"
+$BuilderImage = "multiclustermgmtsys-builder:10.0"
 
 if (-not (Test-Path -LiteralPath $BuilderDockerfile)) {
     Write-Host "[错误] 未找到构建基础镜像定义: $BuilderDockerfile" -ForegroundColor Red
@@ -93,7 +93,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "[成功] 镜像导出完成: $Out" -ForegroundColor Green
 
 if ($IncludeBase) {
-    $BaseOut = Join-Path $OutDir "mcms-base-images.tar"
+    $BaseOut = Join-Path $OutDir "multiclustermgmtsys-base-images.tar"
     $RuntimeImage = "mcr.microsoft.com/dotnet/aspnet:10.0"
 
     # aspnet 运行时基础镜像可能仅有 BuildKit 解析用的 digest、未落地本地 tag，缺则先拉取

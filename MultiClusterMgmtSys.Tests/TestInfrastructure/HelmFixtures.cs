@@ -13,7 +13,7 @@ public static class HelmFixtures
             "name": "nginx",
             "namespace": "web",
             "revision": "3",
-            "updated": "2026-09-20 10:12:33.123456789 +0000 UTC",
+            "updated": "2026-09-20 18:12:33.123456789 +0800 CST",
             "status": "deployed",
             "chart": "nginx-1.2.3",
             "app_version": "1.25.0"
@@ -30,7 +30,7 @@ public static class HelmFixtures
         ]
         """;
 
-    /// <summary>`helm status <name> -o json` 输出样本。</summary>
+    /// <summary>`helm status <name> -o json` 输出样本(Helm 4:不含 chart 元数据)。</summary>
     public const string StatusJson = """
         {
           "name": "nginx",
@@ -42,20 +42,25 @@ public static class HelmFixtures
             "status": "deployed",
             "notes": "1. Get the application URL by running these commands:\n  export POD_NAME=nginx\n"
           },
-          "chart": {
-            "metadata": {
-              "name": "nginx",
-              "version": "1.2.3",
-              "appVersion": "1.25.0",
-              "description": "A basic nginx chart"
-            },
-            "values": { "replicaCount": 2 },
-            "templates": []
-          },
           "config": { "replicaCount": 2 },
           "manifest": "---\n# Source: nginx/templates/deployment.yaml\napiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: nginx\n",
           "version": 3,
-          "namespace": "web"
+          "namespace": "web",
+          "apply_method": "ssa"
+        }
+        """;
+
+    /// <summary>`helm get metadata <name> -o json` 输出样本(详情页 chart 信息的数据源)。</summary>
+    public const string MetadataJson = """
+        {
+          "name": "nginx",
+          "chart": "nginx",
+          "version": "1.2.3",
+          "appVersion": "1.25.0",
+          "namespace": "web",
+          "revision": 3,
+          "status": "deployed",
+          "deployedAt": "2026-09-20T10:12:33+08:00"
         }
         """;
 
@@ -97,11 +102,17 @@ public static class HelmFixtures
     /// <summary>同名 release 冲突失败输出。</summary>
     public const string ConflictError = "Error: INSTALLATION FAILED: cannot re-use a name that is still in use";
 
+    /// <summary>同名 release 仍有未完成操作(如进程被杀后停留在 pending-install)的失败输出。</summary>
+    public const string OngoingOperationError = "Error: UPGRADE FAILED: another operation (install/upgrade/rollback) is in progress";
+
     /// <summary>集群权限不足失败输出。</summary>
     public const string ForbiddenError = "Error: INSTALLATION FAILED: deployments.apps \"nginx\" is forbidden: User \"x\" cannot create resource \"deployments\" in API group \"apps\"";
 
     /// <summary>集群不可达失败输出。</summary>
     public const string UnreachableError = "Error: INSTALLATION FAILED: Kubernetes cluster unreachable: dial tcp 10.0.0.1:6443: connect: connection refused";
+
+    /// <summary>等待资源就绪超时(如 hook Job 镜像拉取失败)的失败输出。</summary>
+    public const string WaitTimeoutError = "Error: INSTALLATION FAILED: timed out waiting for the condition";
 
     /// <summary>模板渲染等无法归类的失败输出。</summary>
     public const string TemplateError = "Error: INSTALLATION FAILED: template: nginx/templates/deployment.yaml:13:16: executing \"nginx/templates/deployment.yaml\" at <wrongtype>: nil pointer evaluating interface {}.replicaCount";

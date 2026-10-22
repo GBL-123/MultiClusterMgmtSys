@@ -36,6 +36,13 @@ public static partial class HelmCommandBuilder
     public static IReadOnlyList<string> BuildGetValues(string releaseName, string namespaceName)
         => WithKubeConfig(["get", "values", releaseName, "-n", namespaceName, "-o", "yaml"]);
 
+    /// <summary>构建 `helm get metadata` 参数表(JSON 输出,含 chart 名称/版本与 appVersion)。</summary>
+    /// <param name="releaseName">release 名称。</param>
+    /// <param name="namespaceName">命名空间。</param>
+    /// <returns>参数表。</returns>
+    public static IReadOnlyList<string> BuildGetMetadata(string releaseName, string namespaceName)
+        => WithKubeConfig(["get", "metadata", releaseName, "-n", namespaceName, "-o", "json"]);
+
     /// <summary>构建 `helm get manifest` 参数表(输出渲染后的 manifest 文本)。</summary>
     /// <param name="releaseName">release 名称。</param>
     /// <param name="namespaceName">命名空间。</param>

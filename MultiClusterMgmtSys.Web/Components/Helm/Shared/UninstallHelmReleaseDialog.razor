@@ -11,12 +11,22 @@
     </TitleContent>
     <DialogContent>
         <MudStack Spacing="3" Class="pt-2">
+            @if (_submitting)
+            {
+                <div>
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary mt-1">
+                        正在卸载：Helm 会等待 hook 与资源删除（最长约 5 分钟），请勿关闭页面…
+                    </MudText>
+                </div>
+            }
+
             <MudText Class="mud-dialog-content-text">确认卸载 Release「@ReleaseName」（命名空间 @Namespace）？此操作不可撤销。</MudText>
             <MudCheckBox T="bool" @bind-Value="_keepHistory" Label="保留 release 历史（--keep-history）" />
         </MudStack>
     </DialogContent>
     <DialogActions>
-        <MudButton Variant="Variant.Text" OnClick="() => Dialog.Cancel()">取消</MudButton>
+        <MudButton Variant="Variant.Text" OnClick="() => Dialog.Cancel()" Disabled="@_submitting">取消</MudButton>
         <MudButton Variant="Variant.Filled"
                    Color="Color.Error"
                    StartIcon="@Icons.Material.Filled.DeleteOutline"

@@ -31,9 +31,11 @@ public class HelmService(
 {
     private static readonly TimeSpan _ReadTimeout = TimeSpan.FromSeconds(60);
 
-    private static readonly TimeSpan _WriteTimeout = TimeSpan.FromSeconds(120);
-
-    private static readonly TimeSpan _WaitTimeoutMargin = TimeSpan.FromSeconds(60);
+    /// <summary>
+    /// 写操作进程级上限:须覆盖 Helm 对单个 hook 的默认等待(5 分钟)与多 hook 串行场景,
+    /// 否则进程会在 Helm 自行超时前被杀死,留下 pending-install/pending-upgrade 脏状态。
+    /// </summary>
+    private static readonly TimeSpan _WriteTimeout = TimeSpan.FromMinutes(15);
 
     private const int WaitTimeoutSeconds = 300;
 
@@ -96,7 +98,10 @@ public class HelmService(
         return releases;
     }
 
-    /// <summary>读取 release 详情(状态、NOTES、chart 元数据与 manifest);集群或 release 不存在抛 <see cref="NotFoundException"/>。</summary>
+    /// <summary>
+    /// 读取 release 详情(状态、NOTES、chart 元数据与 manifest);集群或 release 不存在抛 <see cref="NotFoundException"/>。
+    /// Helm 4 的 `helm status -o json` 不再输出 chart 元数据,故 chart 名称/版本与 appVersion 改读 `helm get metadata`。
+    /// </summary>
     /// <param name="request">release 资源键。</param>
     /// <returns>详情展示数据。</returns>
     public async Task<HelmReleaseDetailViewModel> GetReleaseDetailAsync(HelmReleaseKeyRequest request)
@@ -105,6 +110,7 @@ public class HelmService(
         var cluster = await RequireClusterAsync(request.ClusterId);
         var result = await RunAsync(HelmCommandBuilder.BuildStatus(request.Name, request.Namespace), cluster, _ReadTimeout);
         var status = HelmOutputParser.ParseStatus(result.StandardOutput);
+        var metadata = await GetReleaseMetadataAsync(cluster, request.Name, request.Namespace);
         var ownership = await _ownershipRepo.GetAsync(request.ClusterId, request.Namespace, request.Name);
 
         return new HelmReleaseDetailViewModel
@@ -115,9 +121,9 @@ public class HelmService(
             Status = status.Status,
             Description = status.Description,
             Notes = status.Notes,
-            ChartName = status.ChartName,
-            ChartVersion = status.ChartVersion,
-            AppVersion = status.AppVersion,
+            ChartName = FirstNonEmpty(metadata.ChartName, status.ChartName),
+            ChartVersion = FirstNonEmpty(metadata.ChartVersion, status.ChartVersion),
+            AppVersion = FirstNonEmpty(metadata.AppVersion, status.AppVersion),
             Manifest = status.Manifest,
             LastDeployedAt = status.LastDeployedAt,
             CanOperate = IsAdmin() || IsOwnedBy(ownership, status.Revision, GetCurrentUserId())
@@ -126,7 +132,7 @@ public class HelmService(
 
     /// <summary>读取 release 历史(revision 列表);集群或 release 不存在抛 <see cref="NotFoundException"/>。</summary>
     /// <param name="request">release 资源键。</param>
-    /// <returns>按 CLI 输出顺序的历史项(通常为 revision 升序)。</returns>
+    /// <returns>按 revision 倒序的历史项(最新版本在前)。</returns>
     public async Task<List<HelmReleaseHistoryItemViewModel>> GetReleaseHistoryAsync(HelmReleaseKeyRequest request)
     {
         _logger.LogInformation("GetHelmReleaseHistory clusterId={ClusterId} ns={Namespace} name={Name}", request.ClusterId, request.Namespace, request.Name);
@@ -134,15 +140,17 @@ public class HelmService(
         var result = await RunAsync(HelmCommandBuilder.BuildHistory(request.Name, request.Namespace), cluster, _ReadTimeout);
         var history = HelmOutputParser.ParseHistory(result.StandardOutput);
 
-        return [.. history.Select(item => new HelmReleaseHistoryItemViewModel
-        {
-            Revision = item.Revision,
-            Status = item.Status,
-            Chart = item.Chart,
-            AppVersion = item.AppVersion,
-            Description = item.Description,
-            UpdatedAt = item.UpdatedAt
-        })];
+        return [.. history
+            .OrderByDescending(item => item.Revision)
+            .Select(item => new HelmReleaseHistoryItemViewModel
+            {
+                Revision = item.Revision,
+                Status = item.Status,
+                Chart = item.Chart,
+                AppVersion = item.AppVersion,
+                Description = item.Description,
+                UpdatedAt = item.UpdatedAt
+            })];
     }
 
     /// <summary>读取 release 的用户 values(YAML 文本);集群或 release 不存在抛 <see cref="NotFoundException"/>。</summary>
@@ -153,7 +161,7 @@ public class HelmService(
         _logger.LogInformation("GetHelmReleaseValues clusterId={ClusterId} ns={Namespace} name={Name}", request.ClusterId, request.Namespace, request.Name);
         var cluster = await RequireClusterAsync(request.ClusterId);
         var result = await RunAsync(HelmCommandBuilder.BuildGetValues(request.Name, request.Namespace), cluster, _ReadTimeout);
-        return result.StandardOutput;
+        return IsEmptyValues(result.StandardOutput) ? "" : result.StandardOutput;
     }
 
     /// <summary>读取 release 渲染后的 manifest 文本;集群或 release 不存在抛 <see cref="NotFoundException"/>。</summary>
@@ -224,7 +232,7 @@ public class HelmService(
             createNamespace: request.CreateNamespace,
             wait: request.Wait,
             timeoutSeconds: WaitTimeoutSeconds);
-        await RunAsync(arguments, cluster, BuildWriteTimeout(request.Wait), BuildWriteFiles(request.ChartPackage, request.ValuesYaml));
+        await RunAsync(arguments, cluster, _WriteTimeout, BuildWriteFiles(request.ChartPackage, request.ValuesYaml));
 
         await TryUpsertOwnershipAsync(new HelmReleaseOwnership
         {
@@ -260,7 +268,7 @@ public class HelmService(
             reuseValues: request.ReuseValues,
             wait: request.Wait,
             timeoutSeconds: WaitTimeoutSeconds);
-        await RunAsync(arguments, cluster, BuildWriteTimeout(request.Wait), BuildWriteFiles(request.ChartPackage, request.ValuesYaml));
+        await RunAsync(arguments, cluster, _WriteTimeout, BuildWriteFiles(request.ChartPackage, request.ValuesYaml));
 
         await _auditService.LogAsync(
             AuditCategory.Helm,
@@ -353,7 +361,7 @@ public class HelmService(
         }
 
         var files = BuildWriteFiles(request.ChartPackage, request.ValuesYaml);
-        var timeout = BuildWriteTimeout(request.Wait);
+        var timeout = _WriteTimeout;
         var results = new ConcurrentDictionary<int, HelmFleetDeployItemViewModel>();
         var total = clusters.Count;
         var completed = 0;
@@ -565,8 +573,17 @@ public class HelmService(
 
     private static bool HasValues(string? valuesYaml) => !string.IsNullOrWhiteSpace(valuesYaml);
 
-    private TimeSpan BuildWriteTimeout(bool wait)
-        => wait ? TimeSpan.FromSeconds(WaitTimeoutSeconds) + _WaitTimeoutMargin : _WriteTimeout;
+    /// <summary>无用户 values 时 Helm 的 `-o yaml` 输出为 `null`(或空映射),页面按空态展示。</summary>
+    private static bool IsEmptyValues(string output)
+    {
+        var text = output.Trim();
+        return text.Length == 0
+            || string.Equals(text, "null", StringComparison.Ordinal)
+            || string.Equals(text, "{}", StringComparison.Ordinal);
+    }
+
+    private static string FirstNonEmpty(string preferred, string fallback)
+        => string.IsNullOrEmpty(preferred) ? fallback : preferred;
 
     private static IReadOnlyList<HelmCliFile> BuildWriteFiles(byte[] chartPackage, string valuesYaml)
     {
@@ -576,6 +593,12 @@ public class HelmService(
             files.Add(new HelmCliFile(HelmCliFileNames.Values, Encoding.UTF8.GetBytes(valuesYaml)));
         }
         return files;
+    }
+
+    private async Task<HelmReleaseMetadata> GetReleaseMetadataAsync(ClusterInfo cluster, string releaseName, string namespaceName)
+    {
+        var result = await RunAsync(HelmCommandBuilder.BuildGetMetadata(releaseName, namespaceName), cluster, _ReadTimeout);
+        return HelmOutputParser.ParseMetadata(result.StandardOutput);
     }
 
     private async Task<int> GetCurrentRevisionAsync(ClusterInfo cluster, string namespaceName, string releaseName)

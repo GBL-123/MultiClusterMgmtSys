@@ -47,6 +47,19 @@ public sealed record HelmReleaseStatus(
     string Manifest,
     DateTime? LastDeployedAt);
 
+/// <summary>Helm release 元数据(helm get metadata -o json 的解析结果)。</summary>
+/// <param name="Name">release 名称。</param>
+/// <param name="Namespace">命名空间。</param>
+/// <param name="ChartName">chart 名称。</param>
+/// <param name="ChartVersion">chart 版本。</param>
+/// <param name="AppVersion">chart 的 appVersion。</param>
+public sealed record HelmReleaseMetadata(
+    string Name,
+    string Namespace,
+    string ChartName,
+    string ChartVersion,
+    string AppVersion);
+
 /// <summary>Helm release 历史项(helm history -o json 的解析结果)。</summary>
 /// <param name="Revision">revision 序号。</param>
 /// <param name="Status">该 revision 的 Helm 状态原值。</param>
@@ -121,6 +134,31 @@ public static class HelmOutputParser
         }
     }
 
+    /// <summary>
+    /// 解析 `helm get metadata -o json` 输出(Helm 4 的 `helm status -o json` 不再包含 chart 元数据,
+    /// 详情页的 chart 名称/版本与 appVersion 以此命令为准)。
+    /// </summary>
+    /// <param name="json">标准输出文本。</param>
+    /// <returns>release 元数据。</returns>
+    public static HelmReleaseMetadata ParseMetadata(string json)
+    {
+        try
+        {
+            var dto = JsonSerializer.Deserialize<MetadataDto>(json, _options)
+                ?? throw new JsonException("empty metadata output");
+            return new HelmReleaseMetadata(
+                dto.Name ?? "",
+                dto.Namespace ?? "",
+                dto.Chart ?? "",
+                dto.Version ?? "",
+                dto.AppVersion ?? "");
+        }
+        catch (JsonException)
+        {
+            throw new HelmOperationException("Helm 命令输出无法解析");
+        }
+    }
+
     /// <summary>解析 `helm history -o json` 输出。</summary>
     /// <param name="json">标准输出文本。</param>
     /// <returns>历史项列表。</returns>
@@ -144,7 +182,8 @@ public static class HelmOutputParser
     }
 
     /// <summary>
-    /// 解析 Helm 输出的时间文本:兼容 RFC3339 与 Go time.Time.String()(形如 `2026-09-20 10:12:33.123456789 +0000 UTC`);
+    /// 解析 Helm 输出的时间文本:兼容 RFC3339 与 Go time.Time.String()
+    /// (形如 `2026-09-20 10:12:33.123456789 +0000 UTC` 或 `2026-10-22 00:12:57 +0800 CST`);
     /// 无法识别返回 null。
     /// </summary>
     /// <param name="value">时间文本。</param>
@@ -162,6 +201,8 @@ public static class HelmOutputParser
         {
             text = text[..utcSuffixIndex];
         }
+
+        text = StripTimeZoneName(text);
 
         if (text.Length > 10 && text[10] == ' ')
         {
@@ -204,6 +245,37 @@ public static class HelmOutputParser
 
     private static int ParseRevision(string? revision)
         => int.TryParse(revision, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) ? parsed : 0;
+
+    /// <summary>
+    /// 去掉 Go 时间文本末尾的时区缩写(如 `+0800 CST` 的 ` CST`):本地时区下 Helm 4 的
+    /// `helm list` 会输出缩写,而 .NET 的 InvariantCulture 不识别 `CST` 这类名称,
+    /// 只保留数值偏移才能正确解析。
+    /// </summary>
+    private static string StripTimeZoneName(string text)
+    {
+        var lastSpace = text.LastIndexOf(' ');
+        if (lastSpace <= 0)
+        {
+            return text;
+        }
+
+        var zone = text[(lastSpace + 1)..];
+        if (zone.Length is < 2 or > 5 || !zone.All(char.IsAsciiLetter))
+        {
+            return text;
+        }
+
+        var offsetText = text[..lastSpace];
+        if (offsetText.Length < 5)
+        {
+            return text;
+        }
+
+        var offset = offsetText[^5..];
+        return (offset[0] == '+' || offset[0] == '-') && offset[1..].All(char.IsAsciiDigit)
+            ? offsetText
+            : text;
+    }
 
     private sealed class ListItemDto
     {
@@ -256,6 +328,19 @@ public static class HelmOutputParser
     private sealed class StatusChartMetadataDto
     {
         [JsonPropertyName("name")] public string? Name { get; set; }
+
+        [JsonPropertyName("version")] public string? Version { get; set; }
+
+        [JsonPropertyName("appVersion")] public string? AppVersion { get; set; }
+    }
+
+    private sealed class MetadataDto
+    {
+        [JsonPropertyName("name")] public string? Name { get; set; }
+
+        [JsonPropertyName("namespace")] public string? Namespace { get; set; }
+
+        [JsonPropertyName("chart")] public string? Chart { get; set; }
 
         [JsonPropertyName("version")] public string? Version { get; set; }
 

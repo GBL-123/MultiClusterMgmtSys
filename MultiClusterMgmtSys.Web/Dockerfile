@@ -11,10 +11,10 @@ EXPOSE 8080
 EXPOSE 8081
 
 
-# 此阶段用于生成服务项目:基于离线工具链镜像 mcms-builder:10.0(由 Dockerfile.builder 构建,
+# 此阶段用于生成服务项目:基于离线工具链镜像 multiclustermgmtsys-builder:10.0(由 Dockerfile.builder 构建,
 # build-image.ps1 会自动准备)——内含 dotnet sdk 10 + node 22 + helm 钉版 + npm/NuGet 预热缓存,
 # 构建全程无 helm 下载/npm registry/NuGet 源的网络依赖。
-FROM mcms-builder:10.0 AS build
+FROM multiclustermgmtsys-builder:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["MultiClusterMgmtSys.Domain/MultiClusterMgmtSys.Domain.csproj", "MultiClusterMgmtSys.Domain/"]

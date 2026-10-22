@@ -1500,12 +1500,19 @@ html .dashboard-stat-note {
 }
 /* == 16. 跨集群对照 (/compare) == */
 
-/* 对比卡片处于定高 flex 链中:overflow:hidden 会取消内容最小高度,
- * 致使 flex 收缩把整体裁掉且无滚动条;改为 min-height:0 + 网格内部滚动。 */
+/* 对比卡片参与页面剩余高度分配:不设置 overflow:hidden——它会取消内容最小高度,
+ * 导致 flex 收缩把整体裁掉且无滚动条;改用 min-height:0 + 网格内部滚动。 */
 .compare-card {
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
     min-height: 0;
+}
+
+/* 单侧缺失时卡片随内容收缩、超长时再收缩到可视高度内滚动,
+ * 避免短 YAML + 空态也铺出一整屏空白纸面。 */
+.compare-card.compare-card-single {
+    flex: 0 1 auto;
 }
 
 .compare-column-title {
@@ -1543,6 +1550,33 @@ html .dashboard-stat-note {
     color: #111111;
     white-space: pre;
     overflow-x: auto;
+}
+
+/* 单侧不存在分支:双栏在卡片可用高度内布局,
+ * 有内容的一侧在栏内纵向滚动;缺失侧只保留紧凑空态框,不再撑出整列虚线空白。 */
+.compare-card .compare-columns {
+    flex: 1 1 auto;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr);
+}
+
+/* 有内容的一侧需允许收缩到栏高以内(内部滚动);缺失侧保留 .empty-pane 的 120px 下限。 */
+.compare-card .compare-columns.is-single > .compare-pane:not(.empty-pane) {
+    min-height: 0;
+}
+
+.compare-columns.is-single {
+    align-items: start;
+}
+
+.compare-columns.is-single > .compare-pane:not(.empty-pane) {
+    align-self: stretch;
+}
+
+/* 内容短时 YAML 框随内容收缩,内容长时以栏高为上限并在框内滚动。 */
+.compare-card .compare-pane > .compare-plain {
+    max-height: 100%;
+    overflow: auto;
 }
 
 .compare-preview {
@@ -1656,6 +1690,10 @@ html .dashboard-stat-note {
 @media (max-width: 1280px) {
     .compare-columns {
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    .compare-card .compare-columns {
+        grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
     }
 }
 

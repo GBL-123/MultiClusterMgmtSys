@@ -51,7 +51,9 @@ public class CompareDiffViewTests
             () => Assert.Equal(3, cut.FindAll(".compare-diff-swatch").Count),
             () => Assert.Contains("仅看差异", cut.Markup),
             () => Assert.Contains("仅源", cut.Markup),
-            () => Assert.Contains("仅对照", cut.Markup));
+            () => Assert.Contains("仅对照", cut.Markup),
+            () => Assert.Empty(cut.FindAll(".compare-columns.is-single")),
+            () => Assert.Empty(cut.FindAll(".compare-card-single")));
     }
 
     [Fact]
@@ -84,10 +86,13 @@ public class CompareDiffViewTests
         await using var ctx = new BunitHost();
         var cut = RenderView(ctx, Pair(targetExists: false, hasDifference: false));
 
-        Assert.Contains("（不存在）", cut.Markup);
-        Assert.Single(cut.FindAll(".empty-state.is-compact"));
-        Assert.Contains("a: 1", cut.Markup);
-        Assert.DoesNotContain("compare-diff-grid", cut.Markup);
+        Assert.Multiple(
+            () => Assert.Contains("（不存在）", cut.Markup),
+            () => Assert.Single(cut.FindAll(".empty-state.is-compact")),
+            () => Assert.Single(cut.FindAll(".compare-columns.is-single")),
+            () => Assert.Single(cut.FindAll(".compare-card.compare-card-single")),
+            () => Assert.Contains("a: 1", cut.Markup),
+            () => Assert.DoesNotContain("compare-diff-grid", cut.Markup));
     }
 
     [Fact]
@@ -96,9 +101,12 @@ public class CompareDiffViewTests
         await using var ctx = new BunitHost();
         var cut = RenderView(ctx, Pair(sourceExists: false, hasDifference: false));
 
-        Assert.Contains("（不存在）", cut.Markup);
-        Assert.Single(cut.FindAll(".empty-state.is-compact"));
-        Assert.Contains("a: 2", cut.Markup);
+        Assert.Multiple(
+            () => Assert.Contains("（不存在）", cut.Markup),
+            () => Assert.Single(cut.FindAll(".empty-state.is-compact")),
+            () => Assert.Single(cut.FindAll(".compare-columns.is-single")),
+            () => Assert.Single(cut.FindAll(".compare-card.compare-card-single")),
+            () => Assert.Contains("a: 2", cut.Markup));
     }
 
     [Fact]

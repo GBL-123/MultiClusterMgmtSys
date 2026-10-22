@@ -17,6 +17,16 @@ public class HelmErrorTranslatorTests
     }
 
     [Fact]
+    public void Translate_maps_ongoing_operation_output()
+    {
+        var translated = HelmErrorTranslator.Translate(Failed(HelmFixtures.OngoingOperationError));
+
+        var conflict = Assert.IsType<ConflictException>(translated);
+        Assert.Contains("未完成的操作", conflict.UserMessage);
+        Assert.DoesNotContain("请更换名称", conflict.UserMessage);
+    }
+
+    [Fact]
     public void Translate_maps_not_found_output()
     {
         var translated = HelmErrorTranslator.Translate(Failed(HelmFixtures.NotFoundError));
@@ -42,6 +52,16 @@ public class HelmErrorTranslatorTests
         var unreachable = Assert.IsType<ClusterUnreachableException>(translated);
         Assert.Contains("无法连接目标集群", unreachable.UserMessage);
         Assert.DoesNotContain("dial tcp", unreachable.UserMessage);
+    }
+
+    [Fact]
+    public void Translate_maps_wait_timeout_output()
+    {
+        var translated = HelmErrorTranslator.Translate(Failed(HelmFixtures.WaitTimeoutError));
+
+        var operation = Assert.IsType<HelmOperationException>(translated);
+        Assert.Contains("等待资源就绪超时", operation.UserMessage);
+        Assert.DoesNotContain("timed out", operation.UserMessage);
     }
 
     [Fact]

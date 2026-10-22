@@ -14,6 +14,16 @@
     </TitleContent>
     <DialogContent>
         <MudStack Spacing="3" Class="pt-2">
+            @if (_submitting)
+            {
+                <div>
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary mt-1">
+                        正在安装：Helm 会等待 hook 与资源就绪（最长约 5 分钟），请勿关闭页面…
+                    </MudText>
+                </div>
+            }
+
             <div>
                 <InputFile OnChange="OnFileSelected" accept=".tgz" style="width:100%;" />
                 <MudText Typo="Typo.caption" Class="mud-text-secondary mt-1">选择打包好的 .tgz chart 包（最大 @MaxPackageMegabytes MB）</MudText>
@@ -50,12 +60,19 @@
                           Variant="Variant.Outlined"
                           Margin="Margin.Dense" />
 
-            <MudSelect T="string" Label="命名空间" @bind-Value="_namespace" Variant="Variant.Outlined" Margin="Margin.Dense">
-                @foreach (var namespaceName in _namespaces)
-                {
-                    <MudSelectItem T="string" Value="@namespaceName">@namespaceName</MudSelectItem>
-                }
-            </MudSelect>
+            <div>
+                <MudAutocomplete T="string"
+                                 Label="命名空间"
+                                 @bind-Value="_namespace"
+                                 SearchFunc="SearchNamespacesAsync"
+                                 CoerceValue="true"
+                                 OpenOnFocus="true"
+                                 Variant="Variant.Outlined"
+                                 Margin="Margin.Dense" />
+                <MudText Typo="Typo.caption" Class="mud-text-secondary mt-1">
+                    可从现有命名空间选择，也可直接输入新名称
+                </MudText>
+            </div>
 
             <MudCheckBox T="bool" @bind-Value="_createNamespace" Label="命名空间不存在时自动创建（--create-namespace）" />
             <MudCheckBox T="bool" @bind-Value="_wait" Label="等待资源就绪（--wait，最长 5 分钟）" />
@@ -67,7 +84,7 @@
         </MudStack>
     </DialogContent>
     <DialogActions>
-        <MudButton Variant="Variant.Text" OnClick="() => Dialog.Cancel()">取消</MudButton>
+        <MudButton Variant="Variant.Text" OnClick="() => Dialog.Cancel()" Disabled="@_submitting">取消</MudButton>
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    Disabled="@_submitting"
@@ -111,11 +128,21 @@
         try
         {
             _namespaces = await HelmService.GetNamespacesAsync(ClusterId);
+            _namespace = _namespaces.Contains("default") ? "default" : _namespaces.FirstOrDefault();
         }
         catch (Exception ex)
         {
             await ExHandler.HandleAsync(ex, "加载命名空间列表");
         }
+    }
+
+    private Task<IEnumerable<string>> SearchNamespacesAsync(string value, CancellationToken cancellationToken)
+    {
+        var keyword = value?.Trim() ?? "";
+        var matches = keyword.Length == 0
+            ? _namespaces
+            : _namespaces.Where(name => name.Contains(keyword, StringComparison.OrdinalIgnoreCase)).ToList();
+        return Task.FromResult<IEnumerable<string>>(matches);
     }
 
     private async Task OnFileSelected(InputFileChangeEventArgs e)

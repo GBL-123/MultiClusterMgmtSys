@@ -51,11 +51,23 @@ public class HelmOutputParserTests
         Assert.Equal("deployed", status.Status);
         Assert.Equal("Upgrade complete", status.Description);
         Assert.Contains("POD_NAME", status.Notes);
-        Assert.Equal("nginx", status.ChartName);
-        Assert.Equal("1.2.3", status.ChartVersion);
-        Assert.Equal("1.25.0", status.AppVersion);
+        Assert.Equal("", status.ChartName);
+        Assert.Equal("", status.ChartVersion);
+        Assert.Equal("", status.AppVersion);
         Assert.Contains("kind: Deployment", status.Manifest);
         Assert.NotNull(status.LastDeployedAt);
+    }
+
+    [Fact]
+    public void ParseMetadata_reads_chart_fields()
+    {
+        var metadata = HelmOutputParser.ParseMetadata(HelmFixtures.MetadataJson);
+
+        Assert.Equal("nginx", metadata.Name);
+        Assert.Equal("web", metadata.Namespace);
+        Assert.Equal("nginx", metadata.ChartName);
+        Assert.Equal("1.2.3", metadata.ChartVersion);
+        Assert.Equal("1.25.0", metadata.AppVersion);
     }
 
     [Fact]
@@ -77,6 +89,8 @@ public class HelmOutputParserTests
     [InlineData("2026-09-20 10:12:33.123456789 +0000 UTC")]
     [InlineData("2026-09-20T10:12:33Z")]
     [InlineData("2026-09-20 10:12:33 +0000 UTC")]
+    [InlineData("2026-10-22 00:12:57.202397534 +0800 CST")]
+    [InlineData("2026-10-21 12:12:57 -0400 EDT")]
     public void TryParseTime_parses_supported_formats(string value)
     {
         var parsed = HelmOutputParser.TryParseTime(value);
@@ -84,6 +98,15 @@ public class HelmOutputParserTests
         Assert.NotNull(parsed);
         Assert.Equal(2026, parsed!.Value.Year);
         Assert.Equal(DateTimeKind.Utc, parsed.Value.Kind);
+    }
+
+    [Fact]
+    public void TryParseTime_converts_named_zone_offset_to_utc()
+    {
+        var parsed = HelmOutputParser.TryParseTime("2026-10-22 00:12:57.202397534 +0800 CST");
+
+        Assert.NotNull(parsed);
+        Assert.Equal(new DateTime(2026, 10, 21, 16, 12, 57, 202, DateTimeKind.Utc), parsed!.Value, TimeSpan.FromMilliseconds(1));
     }
 
     [Theory]
